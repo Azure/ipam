@@ -43,7 +43,7 @@ IPAM is a lightweight solution developed on top of the Azure platform designed h
 ## Documentation
 IPAM uses both [Docsify](https://docsify.js.org/) and [GitHub Pages](https://docs.github.com/en/github/working-with-github-pages) to present the project documentation, which can be found here:
 
-- **[Welcome to IPAM!](https://NEED_ACTUAL_LINK)**
+- **[Welcome to IPAM!](https://azure.github.io/ipam/)**
 
 ## Questions or Comments for the team?
 The IPAM team welcomes questions and contributions from the community. We have set up a GitHub Discussions page [here](https://NEED_ACTUAL_LINK) to make it easy to engage with the IPAM team without opening an issue.
