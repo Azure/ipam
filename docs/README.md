@@ -9,7 +9,7 @@ Taxonomies for products and languages: https://review.docs.microsoft.com/new-hop
 -->
 
 ## IPAM Overview and Architecture
-IPAM was deveploed to give customers a simple, straightforward way to manage their private IP address space. IPAM is completely serverless in design leveraging App Service Plans and CosmosDB to provide this capability. The IPAM application/service runs on a scheduled loop (customer can customize the timing) and will query for all network objects depoloyed at a given scope. This information is then stored in CosmosDB as  a JSON document and can then be retrieved and queried against.
+IPAM was developed to give customers a simple, straightforward way to manage their private IP address space. IPAM is completely serverless in design leveraging App Service Plans and CosmosDB to provide this capability. The IPAM application/service runs on a scheduled loop (customer can customize the timing) and will query for all network objects depoloyed at a given scope. This information is then stored in CosmosDB as a JSON document and can then be retrieved and queried against.
 
 MORE DETAIL. NEED ACTUAL ARCHITECTURE.
 
