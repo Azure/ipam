@@ -288,7 +288,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
     siteConfig: {
       linuxFxVersion: 'PYTHON|3.9'
       appCommandLine: 'gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app'
-      scmType: 'Github'
+      scmType: 'GitHub'
       connectionStrings: [
         {
           connectionString: listConnectionStrings(cosmosAccount.id, cosmosAccount.apiVersion).connectionStrings[0].connectionString
