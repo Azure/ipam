@@ -50,7 +50,7 @@ Now you can deploy your Bicep file to the recently created Resource Group. Here 
     az deployment group create \
         --name MyBicepDeployment \
         --resource-group MyResourceGroup
-        --template file .\bicep\main.bicep \
+        --template-file .\bicep\main.bicep \
         --parameters .\main.parameters.json
     
     // via Azure PowerShell

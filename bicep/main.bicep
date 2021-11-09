@@ -1,14 +1,11 @@
 // Global parameters
-@description('prefix to use for all resource names')
-param resourceNamePrefix string = 'ipam'
+@description('New GUID used for naming all resources')
+param guidValue string = newGuid()
 
 @description('location for all resources')
 param location string = resourceGroup().location
 
 // Authorization related parameters
-@description('Contributor Role definition ID')
-param roleAssignmentGuid string = newGuid()
-
 @description('Contributor Role definition ID')
 param roleDefinitionId string = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 
@@ -36,19 +33,19 @@ param vmSize string = 'Standard_B2s'
 param osDiskType string = 'Standard_LRS'
 
 // Naming variables
-var managedIdentityName = '${resourceNamePrefix}-mi'
-var vnetName = '${resourceNamePrefix}-vnet'
-var subnetName = '${resourceNamePrefix}-subnet'
-var cosmosAcctName = '${resourceNamePrefix}-dbacct'
-var cosmosDbName = '${resourceNamePrefix}-db'
-var cosmosDbCollectionName = '${resourceNamePrefix}-collection'
-var appServicePlanName = '${resourceNamePrefix}-asp'
-var websiteName = '${resourceNamePrefix}-service'
-var vmName = '${resourceNamePrefix}-vm'
-var networkSecurityGroupName = '${resourceNamePrefix}-nsg'
-var publicIPAddressName = '${resourceNamePrefix}-vmpip'
-var networkInterfaceName = '${resourceNamePrefix}-vmnic'
-var dnsLabelPrefix = '${resourceNamePrefix}-service'
+var managedIdentityName = 'mi-${uniqueString(guidValue)}'
+var vnetName = 'vnet-${uniqueString(guidValue)}'
+var subnetName = 'subnet-${uniqueString(guidValue)}'
+var cosmosAcctName = 'dbacct-${uniqueString(guidValue)}'
+var cosmosDbName = 'db-${uniqueString(guidValue)}'
+var cosmosDbCollectionName = 'collection-${uniqueString(guidValue)}'
+var appServicePlanName = 'asp-${uniqueString(guidValue)}'
+var websiteName = 'ipamservice-${uniqueString(guidValue)}'
+var vmName = 'vm-${uniqueString(guidValue)}'
+var networkSecurityGroupName = 'nsg-${uniqueString(guidValue)}'
+var publicIPAddressName = 'vmpip-${uniqueString(guidValue)}'
+var networkInterfaceName = 'vmnic-${uniqueString(guidValue)}'
+var dnsLabelPrefix = 'ipamservice-${uniqueString(guidValue)}'
 
 //Authentication related resources
 resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
@@ -57,7 +54,7 @@ resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-
 }
 
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  name: roleAssignmentGuid
+  name: guidValue
   properties: {
     principalType: 'ServicePrincipal'
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
@@ -288,7 +285,6 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
     siteConfig: {
       linuxFxVersion: 'PYTHON|3.9'
       appCommandLine: 'gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app'
-      scmType: 'GitHub'
       connectionStrings: [
         {
           connectionString: listConnectionStrings(cosmosAccount.id, cosmosAccount.apiVersion).connectionStrings[0].connectionString
