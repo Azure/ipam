@@ -6,7 +6,13 @@
       "value": "azuser"
     },
     "sshKey": {
-      "value": ""
+      "value": "<insert ssh public key here>"
+    },
+    "repositoryUrl": {
+      "value": "https://github.com/azure/ipam.git"
+    },
+    "repositoryBranch": {
+      "value": "main"
     }
   }
 }

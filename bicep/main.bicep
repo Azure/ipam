@@ -11,10 +11,10 @@ param roleDefinitionId string = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 
 // Compute related parameters
 @description('The Github Repository URL that contains the project to deploy to Web App')
-param repositoryUrl string = 'https://github.com/Azure/ipam.git'
+param repositoryUrl string
 
 @description('The Github Repository Branch to deploy to Web App from')
-param repositoryBranch string ='main'
+param repositoryBranch string
 
 @description('Username for the Virtual Machine.')
 param adminUsername string
@@ -296,11 +296,12 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
   }
 }
 
-resource sourceControls 'Microsoft.Web/sites/sourcecontrols@2021-01-01' = {
-  name: '${appService.name}/web'
+resource sourceControls 'Microsoft.Web/sites/sourcecontrols@2021-02-01' = {
+  name: 'web'
+  parent: appService
   properties: {
-    repoUrl: repositoryUrl
     branch: repositoryBranch
+    repoUrl: repositoryUrl
     isManualIntegration: true
   }
 }
