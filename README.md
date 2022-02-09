@@ -33,7 +33,7 @@ IPAM is a lightweight solution developed on top of the Azure platform designed h
 |----------------------|---------------------------------------------------------------|
 | `modules/`           | Python Modules                                                |
 | `docs/`              | Docsify Repo                                                  |
-| `templates/`         | Bellhop Infrastructure Bicep Template & Portal UI Definition  |
+| `bicep/`             | Infrastructure Bicep Templates & Portal UI Definition  |
 | `.gitignore`         | Untracked Files to Ignore                                     |
 | `CODE_OF_CONDUCT.md` | Microsoft Code of Conduct                                     |
 | `LICENSE`            | MIT License                                                   |
