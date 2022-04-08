@@ -1,52 +1,30 @@
-
 param cosmosAccountName string
 param cosmosDbName string
-param cosmosDbCollectionName string
-
-
+param cosmosDbContainerName string
+param location string = resourceGroup().location
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2021-04-15' = {
   name: cosmosAccountName
-  location: resourceGroup().location
-  kind: 'MongoDB'
+  location: location
+  kind: 'GlobalDocumentDB'
   properties: {
-    apiProperties: {
-      serverVersion: '4.0'
-    }
-    backupPolicy: {
-      type: 'Periodic'
-      periodicModeProperties: {
-        backupIntervalInMinutes: 240
-        backupRetentionIntervalInHours: 8
-      }
-    }
     consistencyPolicy: {
       defaultConsistencyLevel: 'Session'
-      maxStalenessPrefix: 100
-      maxIntervalInSeconds: 5
     }
     locations: [
       {
-        locationName: resourceGroup().location
+        locationName: location
         failoverPriority: 0
       }
     ]
     databaseAccountOfferType: 'Standard'
     enableAutomaticFailover: true
-    capabilities: [
-      {
-        name: 'EnableMongo'
-      }
-      {
-        name: 'DisableRateLimitingResponses'
-      }
-    ]
   }
 }
 
-resource cosmosDB 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases@2021-06-15' = {
+resource cosmosDB 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2021-06-15' = {
   name: '${cosmosAccount.name}/${cosmosDbName}'
-  location: resourceGroup().location
+  location: location
   properties: {
     resource: {
       id: cosmosDbName
@@ -54,32 +32,32 @@ resource cosmosDB 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases@2021-0
   }
 }
 
-resource cosmosDBCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2021-06-15' ={
-  name: '${cosmosDB.name}/${cosmosDbCollectionName}'
-  location: resourceGroup().location
+resource cosmosDBCollection 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2021-06-15' = {
+  name: '${cosmosDB.name}/${cosmosDbContainerName}'
+  location: location
   properties: {
-    options: {
-      autoscaleSettings: {
-        maxThroughput: 4000
-      }
-    }
     resource: {
-      id: cosmosDbCollectionName
-      shardKey: {
-        tenant_id: 'Hash'
+      id: cosmosDbContainerName
+      partitionKey: {
+        paths: [
+          '/id'
+        ]
+        kind: 'Hash'
       }
-      indexes: [
-        {
-          key: {
-            keys: [
-              '_id'
-            ]
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+        includedPaths: [
+          {
+            path: '/*'
           }
-        }
-      ]
+        ]
+        excludedPaths: [
+          {
+            path: '/"_etag"/?'
+          }
+        ]
+      }
     }
   }
 }
-
-output cosmosAccountId string = cosmosAccount.id
-output cosmosAccountApiVersion string = cosmosAccount.apiVersion

@@ -1,13 +1,13 @@
 param appServicePlanName string
-param cosmosAccountApiVersion string
-param cosmosAccountId string
-param cosmosAccountName string
+param location string = resourceGroup().location
+param containerRegistryloginServer string
+param managedIdentityClientId string
 param managedIdentityId string
 param websiteName string
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
   name: appServicePlanName
-  location: resourceGroup().location
+  location: location
   sku: {
     name: 'B1'
     capacity: 1
@@ -20,8 +20,8 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
 
 resource appService 'Microsoft.Web/sites@2021-02-01' = {
   name: websiteName
-  location: resourceGroup().location
-  kind: 'app,linux'
+  location: location
+  kind: 'app,linux,container'
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
@@ -31,13 +31,13 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
   properties: {
     serverFarmId: appServicePlan.id
     siteConfig: {
-      linuxFxVersion: 'PYTHON|3.9'
-      appCommandLine: 'gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app'
-      connectionStrings: [
+      linuxFxVersion: 'DOCKER|${containerRegistryloginServer}/ipam/ipamapp:latest'
+      acrUseManagedIdentityCreds: true
+      acrUserManagedIdentityID: managedIdentityClientId
+      appSettings: [
         {
-          connectionString: listConnectionStrings(cosmosAccountId, cosmosAccountApiVersion).connectionStrings[0].connectionString
-          name: cosmosAccountName
-          type: 'DocDb'
+          name: 'DOCKER_ENABLE_CI'
+          value: 'true'
         }
       ]
     }
