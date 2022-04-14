@@ -9,9 +9,6 @@ param location string = deployment().location
 @description('string used for naming all resources')
 param name string
 
-@description('object ID of the service principal for accessing secrets in key vault')
-param objectId string
-
 @description('contributor role definition ID')
 param roleId string = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 
@@ -51,7 +48,7 @@ module managedIdentity 'managedIdentity.bicep' = {
 
 module roleAssignment 'role.bicep' = {
   name: 'roleAssignmentModule'
-  scope: subscription()
+  scope: resourceGroup
   params: {
     roleId: roleId
     principalId: managedIdentity.outputs.principalId
@@ -65,7 +62,7 @@ module keyVault 'keyVault.bicep' ={
   params: {
     keyVaultName: keyVaultName
     location: location
-    objectId: objectId
+    objectId:  managedIdentity.outputs.principalId
     secretName: secretName
     secretValue: secretValue
   }
@@ -79,6 +76,7 @@ module cosmos 'cosmos.bicep' = {
     cosmosDbName: cosmosDbName
     cosmosAccountName: cosmosAccountName
     cosmosDbContainerName: cosmosDbContainerName
+    keyVaultName: keyVault.outputs.keyVaultName
     location: location
   }
 }
@@ -98,6 +96,7 @@ module appService 'appService.bicep' = {
   params: {
     appServicePlanName: appServicePlanName
     containerRegistryloginServer: containerRegistry.outputs.loginServer
+    cosmosDocumentEndpoint: cosmos.outputs.cosmosDocumentEndpoint
     location: location
     managedIdentityClientId: managedIdentity.outputs.clientId
     managedIdentityId: managedIdentity.outputs.managedIdentityId

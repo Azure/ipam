@@ -1,5 +1,3 @@
-targetScope = 'subscription'
-
 param principalId string
 param roleAssignmentName string = newGuid()
 param roleId string

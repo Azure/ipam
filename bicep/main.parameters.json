@@ -3,13 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "name": {
-      "value": "ipaminfra"
-    },
-    "objectId": {
-      "value": "GEN-AZUREAD-OBJECTID"
-    },
-    "roleId": {
-      "value": "b24988ac-6180-42a0-ab88-20f7382dd24c"
+      "value": "GEN-UNIQUE"
     },
     "secretName": {
       "value": "GEN-UNIQUE"

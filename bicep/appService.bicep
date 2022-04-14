@@ -1,6 +1,7 @@
 param appServicePlanName string
 param location string = resourceGroup().location
 param containerRegistryloginServer string
+param cosmosDocumentEndpoint string
 param managedIdentityClientId string
 param managedIdentityId string
 param websiteName string
@@ -38,6 +39,10 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         {
           name: 'DOCKER_ENABLE_CI'
           value: 'true'
+        }
+        {
+          name: 'COSMOS_ENDPOINT'
+          value: cosmosDocumentEndpoint
         }
       ]
     }

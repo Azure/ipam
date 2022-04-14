@@ -1,6 +1,7 @@
 param cosmosAccountName string
 param cosmosDbName string
 param cosmosDbContainerName string
+param keyVaultName string
 param location string = resourceGroup().location
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2021-04-15' = {
@@ -61,3 +62,12 @@ resource cosmosDBCollection 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/
     }
   }
 }
+
+resource secret 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
+  name: '${keyVaultName}/cosmos-db-key'
+  properties: {
+    value: cosmosAccount.listKeys().primaryMasterKey
+  }
+}
+
+output cosmosDocumentEndpoint string = cosmosAccount.properties.documentEndpoint
