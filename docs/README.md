@@ -9,7 +9,7 @@ Taxonomies for products and languages: https://review.docs.microsoft.com/new-hop
 -->
 
 ## IPAM Overview and Architecture
-IPAM was deveploed to give customers a simple, straightforward way to manage their private IP address space. IPAM is completely serverless in design leveraging App Service Plans and CosmosDB to provide this capability. The IPAM application/service runs on a scheduled loop (customer can customize the timing) and will query for all network objects depoloyed at a given scope. This information is then stored in CosmosDB as  a JSON document and can then be retrieved and queried against.
+IPAM was developed to give customers a simple, straightforward way to manage their private IP address space. IPAM is completely serverless in design leveraging App Service Plans and CosmosDB to provide this capability. The IPAM application/service runs on a scheduled loop (customer can customize the timing) and will query for all network objects deployed at a given scope. This information is then stored in CosmosDB as a JSON document and can then be retrieved and queried against.
 
 MORE DETAIL. NEED ACTUAL ARCHITECTURE.
 
@@ -62,7 +62,7 @@ When initially deploying IPAM, you can expect the following resources to be incl
             - Debug flag for troubleshooting
 
 #### Optional Alerting
-During the deployment process, you also has the option to deploy additional alerting infrastructure that will be used to send notifications in the event of any IPAM errors. The user will need to check the box to enable email alerting, and then enter the names and email addresses of the users that will need to receive the notifications:
+During the deployment process, you also have the option to deploy additional alerting infrastructure that will be used to send notifications in the event of any IPAM errors. The user will need to check the box to enable email alerting, and then enter the names and email addresses of the users that will need to receive the notifications:
 
 ![Optional Alerting](./images/alert_detail.png)
 
@@ -70,7 +70,7 @@ During the deployment process, you also has the option to deploy additional aler
 
 
 ### Security considerations
-For the purpose of this project we have not integrated a complete set of security features into IPAM. This solution is currently in an alpha phase and is not hardened from a security aspect. To use this service in a production deployment it is recommended to review the following documentation from Azure. They walk though best practices on securing the various parts of the required Azure infrastructure: 
+For the purpose of this project, we have not integrated a complete set of security features into IPAM. This solution is currently in an alpha phase and is not hardened from a security aspect. To use this service in a production deployment it is recommended to review the following documentation from Azure. They walk though best practices on securing the various parts of the required Azure infrastructure:
 - [Securing App Service Plans](https://docs.microsoft.com/en-us/azure/app-service/security-recommendations)
 - [Securing Cosmos DB](https://docs.microsoft.com/en-us/azure/cosmos-db/database-security?tabs=sql-api)
 
