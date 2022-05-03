@@ -12,12 +12,13 @@ param name string
 @description('contributor role definition ID')
 param roleId string = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 
-@description('name of key vault secret')
-param secretName string
-
-@description('value of key vault secret')
 @secure()
-param secretValue string
+@description('key vault SPN ID secret')
+param spnIdValue string
+
+@secure()
+@description('key vault SPN secret value')
+param spnSecretValue string
 
 // Naming variables
 var appServicePlanName = '${name}-asp'
@@ -63,8 +64,8 @@ module keyVault 'keyVault.bicep' ={
     keyVaultName: keyVaultName
     location: location
     objectId:  managedIdentity.outputs.principalId
-    secretName: secretName
-    secretValue: secretValue
+    spnIdValue: spnIdValue
+    spnSecretValue: spnSecretValue
   }
 }
 
@@ -96,7 +97,10 @@ module appService 'appService.bicep' = {
   params: {
     appServicePlanName: appServicePlanName
     containerRegistryloginServer: containerRegistry.outputs.loginServer
+    cosmosDbName: cosmos.outputs.cosmosDbName
+    cosmosDbContainerName: cosmos.outputs.cosmosDbContainerName
     cosmosDocumentEndpoint: cosmos.outputs.cosmosDocumentEndpoint
+    keyVaultUri: keyVault.outputs.keyVaultUri
     location: location
     managedIdentityClientId: managedIdentity.outputs.clientId
     managedIdentityId: managedIdentity.outputs.managedIdentityId

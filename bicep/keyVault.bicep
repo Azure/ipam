@@ -1,16 +1,15 @@
 param keyVaultName string
 param location string = resourceGroup().location
-param tenantId string = subscription().tenantId
 param objectId string
-param secretName string
-@secure()
-param secretValue string
-param keysPermissions array = [
-  'all'
-]
+param tenantId string = subscription().tenantId
 param secretsPermissions array = [
-  'all'
+  'get'
 ]
+@secure()
+param spnIdValue string
+@secure()
+param spnSecretValue string
+
 
 resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
   name: keyVaultName
@@ -22,7 +21,6 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
         objectId: objectId
         tenantId: tenantId
         permissions: {
-          keys: keysPermissions
           secrets: secretsPermissions
         }
       }
@@ -38,12 +36,29 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
   }
 }
 
-resource secret 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
+resource spnId 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
   parent: keyVault
-  name: secretName
+  name: 'spnId'
   properties: {
-    value: secretValue
+    value: spnIdValue
+  }
+}
+
+resource spnSecret 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
+  parent: keyVault
+  name: 'spnSecret'
+  properties: {
+    value: spnSecretValue
+  }
+}
+
+resource spnTenant 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
+  parent: keyVault
+  name: 'spnTenant'
+  properties: {
+    value: tenantId
   }
 }
 
 output keyVaultName string = keyVault.name
+output keyVaultUri string = keyVault.properties.vaultUri

@@ -63,11 +63,13 @@ resource cosmosDBCollection 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/
   }
 }
 
-resource secret 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
-  name: '${keyVaultName}/cosmos-db-key'
+resource cosmosKeySecret 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
+  name: '${keyVaultName}/cosmosKey'
   properties: {
     value: cosmosAccount.listKeys().primaryMasterKey
   }
 }
 
 output cosmosDocumentEndpoint string = cosmosAccount.properties.documentEndpoint
+output cosmosDbName string = cosmosDB.name
+output cosmosDbContainerName string = cosmosDBCollection.name

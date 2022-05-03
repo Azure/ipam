@@ -136,15 +136,14 @@ catch {
 
 }
 
-
 try {
     # Deploy IPAM bicep template
     Write-Host "INFO: Deploying IPAM bicep template" -ForegroundColor green
     Write-Verbose -Message "Deploying bicep template"
     $deploymentParameters =@{
         'name' = $name;
-        'secretName' = "ipam-sp-pw";
-        'secretValue' = $sp.PasswordCredentials.SecretText
+        'spnIdValue' = $sp.Id
+        'spnSecretValue' = $sp.PasswordCredentials.SecretText
     }
     
     New-AzSubscriptionDeployment `
