@@ -5,6 +5,9 @@
 ###############################################################################################################
 
 # Intake and set parameters
+$azureSvcMgmtApiPermissions =@("41094075-9dad-400e-a0bd-54e686782033")
+$azureSvcMgmtApiPermissionsScope = "user_impersonation"
+$azureSvcMgmtAppId ="797f4846-ba00-4fd7-ba43-dac1f8f63013"
 $parameters = Get-Content ./deployParams.json | ConvertFrom-Json
 $location = $parameters.location
 $logFile = "./deploy_$(get-date -format `"yyyyMMddhhmmsstt`").log"
@@ -92,8 +95,8 @@ catch {
     exit
 }
 
-# Assign Microsoft Graph API permissions to IPAM service principal
 try {
+    # Assign Microsoft Graph API permissions to IPAM service principal
     Write-Host "INFO: Assigning Microsoft Graph API permission to IPAM Service Principal" -ForegroundColor Green
     Write-Verbose -Message "Assigning Microsoft Graph API permission to IPAM Service Principal"
     foreach ($i in $msGraphApiPermissions) {
@@ -110,17 +113,39 @@ catch {
 
 }
 
+try {
+    # Assign Azure Service Management API permissions to IPAM service principal 
+    Write-Host "INFO: Assigning Azure Service Management API permission to IPAM Service Principal" -ForegroundColor Green
+    Write-Verbose -Message "Assigning Azure Service Management API permission to IPAM Service Principal"
+    foreach ($i in $azureSvcMgmtApiPermissions) {
+        Add-AzADAppPermission `
+        -ApplicationId $sp.AppId `
+        -ApiId $azureSvcMgmtAppId `
+        -PermissionId $i
+    }
+}
+catch {
+    $_ | Out-File -FilePath $logFile -Append
+    Write-Host "ERROR: Unable to assign Azure Service Management API permission to IPAM Service Principal due to an exception, see $logFile for detailed information!" -ForegroundColor red
+    exit
+
+}
+
 # Instantiate Microsoft Graph service principal object
 $msGraphSp = Get-AzureADServicePrincipal `
 -ApplicationId $msGraphAppId
+
+# Instantiate Azure Service Management service principal object
+$azureSvcMgmtSp = Get-AzureADServicePrincipal `
+-ApplicationId $azureSvcMgmtAppId
 
 # Connect to Microsoft Graph
 Connect-MgGraph -Scopes ("User.ReadBasic.All Application.ReadWrite.All " `
                         + "DelegatedPermissionGrant.ReadWrite.All " `
                         + "AppRoleAssignment.ReadWrite.All")
 
-# Grant admin consent for Microsoft Graph API permissions assigned to IPAM service principal
 try {
+    # Grant admin consent for Microsoft Graph API permissions assigned to IPAM service principal
     Write-Host "INFO: Granting admin consent for Microsoft Graph API permissions assigned to IPAM Service Principal" -ForegroundColor Green
     Write-Verbose -Message "Granting admin consent for Microsoft Graph API permissions assigned to IPAM Service Principal"
     New-MgOauth2PermissionGrant `
@@ -132,6 +157,23 @@ try {
 catch {
     $_ | Out-File -FilePath $logFile -Append
     Write-Host "ERROR: Unable to grant admin consent for Microsoft Graph API permission assigned to IPAM Service Principal due to an exception, see $logFile for detailed information!" -ForegroundColor red
+    exit
+
+}
+
+try {
+    # Grant admin consent for Azure Service Management API permissions assigned to IPAM service principal
+    Write-Host "INFO: Granting admin consent for Azure Service Management API permissions assigned to IPAM Service Principal" -ForegroundColor Green
+    Write-Verbose -Message "Granting admin consent for Azure Service Management API permissions assigned to IPAM Service Principal"
+    New-MgOauth2PermissionGrant `
+    -ResourceId $azureSvcMgmtSp.Id `
+    -Scope $azureSvcMgmtApiPermissionsScope `
+    -ClientId $sp.Id `
+    -ConsentType AllPrincipals
+}
+catch {
+    $_ | Out-File -FilePath $logFile -Append
+    Write-Host "ERROR: Unable to grant admin consent for Azure Service Management API permission assigned to IPAM Service Principal due to an exception, see $logFile for detailed information!" -ForegroundColor red
     exit
 
 }
