@@ -1,15 +1,10 @@
 ###############################################################################################################
 ##
-## Azure IPAM Deployment Script
+## Azure IPAM Service Principal Deployment Script
 ##
 ###############################################################################################################
 
-# Intake and set parameters
-Param(
-    [Parameter(Mandatory=$false)]
-    [string]
-    $location="westus2"
-)
+# Set parameters
 $azureSvcMgmtApiPermissions =@("41094075-9dad-400e-a0bd-54e686782033")
 $azureSvcMgmtApiPermissionsScope = "user_impersonation"
 $azureSvcMgmtAppId ="797f4846-ba00-4fd7-ba43-dac1f8f63013"
@@ -34,31 +29,13 @@ else {
 
 }
 
-# Validate Location
-$validLocations = Get-AzLocation
-Function ValidateLocation {
-    if ($location -in ($validLocations | Select-Object -ExpandProperty Location)) {
-        foreach ($l in $validLocations) {
-            if ($location -eq $l.Location) {
-                $script:locationName = $l.DisplayName
-            }
-        }
-    }
-    else {
-        Write-Host "ERROR: Location provided is not a valid Azure Region!" -ForegroundColor red
-        exit
-    }
-}
-
-ValidateLocation $location
-
 try {
     # Create IPAM service principal and assign it reader role at tenant root group level
     Write-Host "INFO: Creating Azure Service Principal" -ForegroundColor green
     Write-Verbose -Message "Creating Azure Service Principal"
     $sp = New-AzADServicePrincipal `
     -DisplayName "ipam-sp-$spGuid" `
-    -Scope "/providers/Microsoft.Management/managementGroups/$tenantId" `
+    -Scope "/providers/Microsoft.Management/managementGroups/$($tenantId)" `
     -Role "Reader"
 }
 catch {
@@ -144,7 +121,7 @@ try {
     -Scope $msGraphApiPermissionsScope `
     -ClientId $sp.Id `
     -ConsentType AllPrincipals `
-    Out-Null
+    | Out-Null
 }
 catch {
     $_ | Out-File -FilePath $logFile -Append
@@ -171,23 +148,6 @@ catch {
 
 }
 
-try {
-    # Deploy IPAM bicep template
-    Write-Host "INFO: Deploying IPAM bicep template" -ForegroundColor green
-    Write-Verbose -Message "Deploying bicep template"
-    $deploymentParameters = @{
-        'spnIdValue' = $sp.AppId
-        'spnSecretValue' = $spCred.SecretText
-    }
-    
-    New-AzSubscriptionDeployment `
-    -Location $location `
-    -TemplateFile ./bicep/main.bicep `
-    -TemplateParameterObject $deploymentParameters
-}
-catch {
-    $_ | Out-File -FilePath $logFile -Append
-    Write-Host "ERROR: Unable to deploy IPAM bicep template due to an exception, see $logFile for detailed information!" -ForegroundColor red
-    exit
-
-}
+Write-Host "INFO: Service Principal Deployment Complete!" -ForegroundColor Green
+Write-Host "INFO: Service Principal App ID: $($sp.AppId)" -ForegroundColor Green
+Write-Host "INFO: Service Principal Secret: $($spCred.SecretText)" -ForegroundColor Green

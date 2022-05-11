@@ -330,6 +330,3 @@ ASALocalRun/
 .mfractor/
 
 *.DS_Store
-
-deploy.sh
-script.ps1
