@@ -126,7 +126,7 @@ try {
     -Scope $msGraphApiPermissionsScope `
     -ClientId $sp.Id `
     -ConsentType AllPrincipals `
-    Out-Null
+    | Out-Null
 }
 catch {
     $_ | Out-File -FilePath $logFile -Append
