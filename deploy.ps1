@@ -17,7 +17,7 @@ $logFile = "./deploy_$(get-date -format `"yyyyMMddhhmmsstt`").log"
 $msGraphApiPermissions = @("06da0dbc-49e2-44d2-8312-53f166ab848a", "e1fe6dd8-ba31-4d61-89e7-88639da4683d")
 $msGraphApiPermissionsScope = "Directory.Read.All User.Read"
 $msGraphAppId = "00000003-0000-0000-c000-000000000000"
-$spGuid = (Get-Random -InputObject @('a'..'z') -Count 8) -join ''
+$spGuid = (Get-Random -InputObject @('a'..'z') -Count 13) -join ''
 $tenantId = (Get-AzContext).Tenant.Id
 
 # Set preference variables
@@ -163,6 +163,7 @@ try {
     }
     
     New-AzSubscriptionDeployment `
+    -Name ipamInfraDeployment `
     -Location $location `
     -TemplateFile ./bicep/main.bicep `
     -TemplateParameterObject $deploymentParameters
