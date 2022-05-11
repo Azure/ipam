@@ -69,24 +69,6 @@ catch {
 }
 
 try {
-    # Generate password credential for service principal
-    Write-Host "INFO: Generating Password Credential for Service Principal" -ForegroundColor Green
-    Write-Verbose -Message "Generating Password credential for Service Principal"
-    $startDate = Get-Date
-    $endDate = (Get-Date).AddYears(2)
-    $spCred = New-AzADAppCredential `
-    -ApplicationId $sp.AppId `
-    -StartDate $startDate `
-    -EndDate $endDate
-
-}
-catch {
-    $_ | Out-File -FilePath $logFile -Append
-    Write-Host "ERROR: Unable to Generate Password Credential for Service Principal due to an exception, see $logFile for detailed information!" -ForegroundColor red
-    exit
-}
-
-try {
     # Assign Microsoft Graph API permissions to IPAM service principal
     Write-Host "INFO: Assigning Microsoft Graph API permission to IPAM Service Principal" -ForegroundColor Green
     Write-Verbose -Message "Assigning Microsoft Graph API permission to IPAM Service Principal"
@@ -177,7 +159,7 @@ try {
     Write-Verbose -Message "Deploying bicep template"
     $deploymentParameters = @{
         'spnIdValue' = $sp.AppId
-        'spnSecretValue' = $spCred.SecretText
+        'spnSecretValue' = $sp.PasswordCredentials.SecretText
     }
     
     New-AzSubscriptionDeployment `
