@@ -5,16 +5,19 @@
 ###############################################################################################################
 
 # Intake and set parameters
+# Parameter help description
+Param(
+    [Parameter(Mandatory=$false)]
+    [string]
+    $location="westus2"
+)
 $azureSvcMgmtApiPermissions =@("41094075-9dad-400e-a0bd-54e686782033")
 $azureSvcMgmtApiPermissionsScope = "user_impersonation"
 $azureSvcMgmtAppId ="797f4846-ba00-4fd7-ba43-dac1f8f63013"
-$parameters = Get-Content ./deployParams.json | ConvertFrom-Json
-$location = $parameters.location
 $logFile = "./deploy_$(get-date -format `"yyyyMMddhhmmsstt`").log"
 $msGraphApiPermissions = @("06da0dbc-49e2-44d2-8312-53f166ab848a", "e1fe6dd8-ba31-4d61-89e7-88639da4683d")
 $msGraphApiPermissionsScope = "Directory.Read.All User.Read"
 $msGraphAppId = "00000003-0000-0000-c000-000000000000"
-$name = $parameters.name.ToLower()
 $tenantId = (Get-AzContext).Tenant.Id
 
 # Set preference variables
@@ -30,23 +33,6 @@ else {
     Install-Module Microsoft.Graph
 
 }
-
-# Validate name parameter
-Function ValidateName
-{
-    param (
-    [ValidateLength(4,30)]
-    [ValidatePattern('^(?!-)(?!.*--)[a-z]')]
-    [parameter(Mandatory=$true)]
-    [string]
-    $Name
-)
-
- write-host "Name is"$Name
-
-}
-
-ValidateName $Name
 
 # Validate Location
 $validLocations = Get-AzLocation
@@ -67,11 +53,13 @@ Function ValidateLocation {
 ValidateLocation $location
 
 try {
-    # Create IPAM service principal
+    # Create IPAM service principal and assign it reader role at tenant root group level
     Write-Host "INFO: Creating Azure Service Principal" -ForegroundColor green
     Write-Verbose -Message "Creating Azure Service Principal"
     $sp = New-AzADServicePrincipal `
-    -DisplayName "$($Name)-sp"
+    -DisplayName "ipam-sp" `
+    -Scope "/providers/Microsoft.Management/managementGroups/$($tenantId)" `
+    -Role "Reader"
 }
 catch {
     $_ | Out-File -FilePath $logFile -Append
@@ -81,17 +69,20 @@ catch {
 }
 
 try {
-    # Assign reader role at tenant scope to IPAM service principal
-    Write-Host "INFO: Assigning Reader Role at Tenant Scope to Service Principal" -ForegroundColor Green
-    Write-Verbose -Message "Assigning Reader Role at Tenant Scope to Service Principal"
-    New-AzRoleAssignment `
-    -RoleDefinitionName "Reader" `
-    -ObjectId $sp.Id `
-    -Scope "/providers/Microsoft.Management/managementGroups/$($tenantId)"
+    # Generate password credential for service principal
+    Write-Host "INFO: Generating Password Credential for Service Principal" -ForegroundColor Green
+    Write-Verbose -Message "Generating Password credential for Service Principal"
+    $startDate = Get-Date
+    $endDate = (Get-Date).AddYears(2)
+    $spCred = New-AzADAppCredential `
+    -ApplicationId $sp.AppId `
+    -StartDate $startDate `
+    -EndDate $endDate
+
 }
 catch {
     $_ | Out-File -FilePath $logFile -Append
-    Write-Host "ERROR: Unable to assign Role to Service Principal due to an exception, see $logFile for detailed information!" -ForegroundColor red
+    Write-Host "ERROR: Unable to Generate Password Credential for Service Principal due to an exception, see $logFile for detailed information!" -ForegroundColor red
     exit
 }
 
@@ -132,11 +123,11 @@ catch {
 }
 
 # Instantiate Microsoft Graph service principal object
-$msGraphSp = Get-AzureADServicePrincipal `
+$msGraphSp = Get-AzADServicePrincipal `
 -ApplicationId $msGraphAppId
 
 # Instantiate Azure Service Management service principal object
-$azureSvcMgmtSp = Get-AzureADServicePrincipal `
+$azureSvcMgmtSp = Get-AzADServicePrincipal `
 -ApplicationId $azureSvcMgmtAppId
 
 # Connect to Microsoft Graph
@@ -182,10 +173,9 @@ try {
     # Deploy IPAM bicep template
     Write-Host "INFO: Deploying IPAM bicep template" -ForegroundColor green
     Write-Verbose -Message "Deploying bicep template"
-    $deploymentParameters =@{
-        'name' = $name;
-        'spnIdValue' = $sp.Id
-        'spnSecretValue' = $sp.PasswordCredentials.SecretText
+    $deploymentParameters = @{
+        'spnIdValue' = $sp.AppId
+        'spnSecretValue' = $spCred.SecretText
     }
     
     New-AzSubscriptionDeployment `
