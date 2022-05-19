@@ -11,11 +11,11 @@ import {
 const initialState = {
   refreshInterval: 1,
   isAdmin: true,
-  spaces: [],
-  blocks: [],
-  vNets: [],
-  subnets: [],
-  endpoints: [],
+  spaces: null,
+  blocks: null,
+  vNets: null,
+  subnets: null,
+  endpoints: null,
   refreshing: false,
 };
 

@@ -82,7 +82,7 @@ export default function SpaceDataGrid(props) {
 	const menuOpen = Boolean(anchorEl);
 
 	React.useEffect(() => {
-    (spaces.length != 0) && setLoading(false);
+    spaces && setLoading(false);
   },[spaces]);
 
   React.useEffect(() => {
@@ -102,11 +102,9 @@ export default function SpaceDataGrid(props) {
 	function CustomNoRowsOverlay() {
 		return (
 			<StyledGridOverlay>
-				<Shrug />
-				09
 				<Typography variant="overline" display="block" sx={{ mt: 1 }}>
-					Nothing yet...
-				</Typography>
+          No Spaces Found, Create a Space to Begin
+        </Typography>
 			</StyledGridOverlay>
 		);
 	}
@@ -263,7 +261,7 @@ export default function SpaceDataGrid(props) {
 					hideFooterPagination
 					hideFooterSelectedRowCount
 					density="compact"
-					rows={spaces}
+					rows={spaces || []}
 					columns={columns}
 					loading={loading}
           getRowId={(row) => row.name}

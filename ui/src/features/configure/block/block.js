@@ -113,10 +113,10 @@ export default function BlockDataGrid(props) {
 			<StyledGridOverlay>
         { selected
           ? <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-              No IP Blocks Found
+              No Blocks Found in Selected Space
             </Typography>
           : <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-              Please Select an Space
+              Please Select a Space
             </Typography>
         }
 			</StyledGridOverlay>
