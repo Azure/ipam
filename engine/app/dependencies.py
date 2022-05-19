@@ -9,9 +9,6 @@ from app.routers.common.helper import (
     cosmos_query
 )
 
-COSMOS_ACCOUNT_URL = "https://ipam.documents.azure.com:443/"
-COSMOS_ACCOUNT_KEY = "Bfv7Ju23qIQPB7IdjnwWp89hKYsglKFOemtSvKcc5biOCFXXBmHR7JGTBZEvPmZeR8VpS3ouvweHIHMSIOCduA=="
-
 async def check_token_expired(request: Request):
     now = int(time.time()) + 10
     auth = request.headers.get('authorization')
