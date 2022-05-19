@@ -104,6 +104,10 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
           value: 'true'
         }
         {
+          name: 'DOCKER_REGISTRY_SERVER_URL'
+          value: 'https://azureipam.azureacr.io'
+        }
+        {
           name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
           value: 'true'
         }
