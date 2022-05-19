@@ -5,7 +5,7 @@ services:
       REACT_APP_CLIENT_ID: ${CLIENT_ID}
       REACT_APP_TENANT_ID: ${TENANT_ID}
       WDS_SOCKET_PORT: 3000
-    image: dcmattyg/ipam-ui:latest
+    image: azureipam.azurecr.io/ipam-ui:latest
   ipam-engine:
     environment:
       CLIENT_ID: ${CLIENT_ID}
@@ -14,7 +14,7 @@ services:
       COSMOS_URL: ${COSMOS_URL}
       COSMOS_KEY: ${COSMOS_KEY}
       KEYVAULT_URL: ${KEYVAULT_URL}
-    image: dcmattyg/ipam-engine:latest
+    image: azureipam.azurecr.io/ipam-engine:latest
   nginx-proxy:
     image: nginx:alpine
     volumes: 

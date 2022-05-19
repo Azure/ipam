@@ -34,7 +34,10 @@ async def check_token_expired(request: Request):
 async def check_admin(request: Request, user_oid: str):
     item = await cosmos_query("admins")
 
-    is_admin = next((x for x in item['admins'] if user_oid == x['id']), None)
+    if item['admins']:
+        is_admin = next((x for x in item['admins'] if user_oid == x['id']), None)
+    else:
+        is_admin = True
 
     request.state.admin = True if is_admin else False
 

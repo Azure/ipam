@@ -105,7 +105,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'DOCKER_REGISTRY_SERVER_URL'
-          value: 'https://azureipam.azureacr.io'
+          value: 'https://index.docker.io/v1'
         }
         {
           name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
