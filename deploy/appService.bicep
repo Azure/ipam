@@ -10,12 +10,6 @@ param location string = resourceGroup().location
 @description('CosmosDB URI')
 param cosmosDbUri string
 
-// @description('CosmosDB Database Name')
-// param cosmosDbName string
-
-// @description('CosmosDB Container Name')
-// param cosmosDbContainerName string
-
 @description('KeyVault URI')
 param keyVaultUri string
 
@@ -62,7 +56,6 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
     serverFarmId: appServicePlan.id
     keyVaultReferenceIdentity: managedIdentityId
     siteConfig: {
-      // linuxFxVersion: 'DOCKER|dcmattyg/ipam:latest'
       linuxFxVersion: 'COMPOSE|${dockerCompose}'
       acrUseManagedIdentityCreds: true
       acrUserManagedIdentityID: managedIdentityClientId
@@ -75,14 +68,6 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
           name: 'COSMOS_KEY'
           value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/COSMOS-KEY/)'
         }
-        // {
-        //   name: 'COSMOS_DB'
-        //   value: cosmosDbName
-        // }
-        // {
-        //   name: 'COSMOS_CONTAINER'
-        //   value: cosmosDbContainerName
-        // }
         {
           name: 'CLIENT_ID'
           value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/CLIENT-ID/)'

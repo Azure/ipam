@@ -26,16 +26,14 @@ var appServiceName = 'ipam-${uniqueString(guid)}'
 
 // Cosmos Variables
 var cosmosAccountName = 'ipam-dbacct-${uniqueString(guid)}'
-// var cosmosDbName = 'ipam-db'
-// var cosmosDbContainerName = 'ipam-container'
 
-//Resource group
+// Resource group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: resourceGroupName
   location: location
 }
 
-//Authentication related resources
+// Authentication related resources
 module managedIdentity 'managedIdentity.bicep' = {
   name: 'managedIdentityModule'
   scope: resourceGroup
@@ -45,7 +43,7 @@ module managedIdentity 'managedIdentity.bicep' = {
   }
 }
 
-//Security related resources
+// Security related resources
 module keyVault 'keyVault.bicep' ={
   name: 'keyVaultModule'
   scope: resourceGroup
@@ -58,33 +56,14 @@ module keyVault 'keyVault.bicep' ={
   }
 }
 
-// Database related resources
+// Data related resources
 module cosmos 'cosmos.bicep' = {
   name: 'cosmosModule'
   scope: resourceGroup
   params: {
     location: location
     cosmosAccountName: cosmosAccountName
-    // cosmosDbName: cosmosDbName
-    // cosmosDbContainerName: cosmosDbContainerName
     keyVaultName: keyVault.outputs.keyVaultName
-  }
-}
-
-module appService 'appService.bicep' = {
-  scope: resourceGroup
-  name: 'appServiceModule'
-  params: {
-    location: location
-    appServicePlanName: appServicePlanName
-    appServiceName: appServiceName
-    keyVaultUri: keyVault.outputs.keyVaultUri
-    cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
-    // cosmosDbName: cosmos.outputs.cosmosDbName
-    // cosmosDbContainerName: cosmos.outputs.cosmosDbContainerName
-    managedIdentityClientId: managedIdentity.outputs.clientId
-    managedIdentityId: managedIdentity.outputs.id
-    storageAccountName: storageAccount.outputs.name
   }
 }
 
@@ -99,5 +78,21 @@ module storageAccount 'storageAccount.bicep' = {
   }
 }
 
-//Outputs
+// Compute related resources
+module appService 'appService.bicep' = {
+  scope: resourceGroup
+  name: 'appServiceModule'
+  params: {
+    location: location
+    appServicePlanName: appServicePlanName
+    appServiceName: appServiceName
+    keyVaultUri: keyVault.outputs.keyVaultUri
+    cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
+    managedIdentityClientId: managedIdentity.outputs.clientId
+    managedIdentityId: managedIdentity.outputs.id
+    storageAccountName: storageAccount.outputs.name
+  }
+}
+
+// Outputs
 output appServiceHostName string = appService.outputs.appServiceHostName

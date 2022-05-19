@@ -163,7 +163,7 @@ try {
         'spnSecret' = $sp.PasswordCredentials.SecretText
     }
     
-    $outputs = New-AzSubscriptionDeployment `
+    $deployment = New-AzSubscriptionDeployment `
     -Name "ipamInfraDeploy-$(Get-Date -Format `"yyyyMMddhhmmsstt`")" `
     -Location $location `
     -TemplateFile main.bicep `
@@ -180,7 +180,7 @@ try {
     # Update service principal with single-page application configuration
     Write-Host "INFO: Updating Service Principal with SPA configuration" -ForegroundColor green
     Write-Verbose -Message "Updating Service Principal with SPA configuration"
-    Update-AzADApplication -ApplicationId $sp.AppId -SPARedirectUri "https://$($outputs.Outputs["appServiceHostName"].Value)"
+    Update-AzADApplication -ApplicationId $sp.AppId -SPARedirectUri "https://$($deployment.Outputs["appServiceHostName"].Value)"
 
     $spObjectId = (Get-AzADApplication -ApplicationId $sp.AppId).Id
 

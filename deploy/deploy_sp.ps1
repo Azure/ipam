@@ -131,6 +131,24 @@ catch {
 
 }
 
+try {
+    # Populate bicep parameter file for infrastructure deployment
+    Write-Host "INFO: Populating Bicep parameter file for infrastructure deployment" -ForegroundColor Green
+    Write-Verbose -Message "Populating Bicep parameter file for infrastructure deployment"
+    $paramFileExample = Get-Content main.parameters.example.json
+
+    $paramFile = $paramFileExample.Replace('<SERVICE PRINCIPAL CLIENT ID>', $sp.AppId).Replace('<SERVICE PRINCIPAL SECRET>', $sp.PasswordCredentials.SecretText)
+
+    $paramFile | Out-File -FilePath main.parameters.json
+
+}
+catch {
+    $_ | Out-File -FilePath $logFile -Append
+    Write-Host "ERROR: Unable to popule Bicep parameter File for infrastructure deployment due to an exception, see $logFile for detailed information!" -ForegroundColor red
+    exit
+
+}
+
 Write-Host "INFO: Service Principal Deployment Complete!" -ForegroundColor Green
 Write-Host "INFO: Service Principal App ID: $($sp.AppId)" -ForegroundColor Green
 Write-Host "INFO: Service Principal Secret: $($sp.PasswordCredentials.SecretText)" -ForegroundColor Green
