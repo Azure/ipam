@@ -26,8 +26,8 @@ var appServiceName = 'ipam-${uniqueString(guid)}'
 
 // Cosmos Variables
 var cosmosAccountName = 'ipam-dbacct-${uniqueString(guid)}'
-var cosmosDbName = 'ipam-db'
-var cosmosDbContainerName = 'ipam-container'
+// var cosmosDbName = 'ipam-db'
+// var cosmosDbContainerName = 'ipam-container'
 
 //Resource group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -65,8 +65,8 @@ module cosmos 'cosmos.bicep' = {
   params: {
     location: location
     cosmosAccountName: cosmosAccountName
-    cosmosDbName: cosmosDbName
-    cosmosDbContainerName: cosmosDbContainerName
+    // cosmosDbName: cosmosDbName
+    // cosmosDbContainerName: cosmosDbContainerName
     keyVaultName: keyVault.outputs.keyVaultName
   }
 }
@@ -80,8 +80,8 @@ module appService 'appService.bicep' = {
     appServiceName: appServiceName
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
-    cosmosDbName: cosmos.outputs.cosmosDbName
-    cosmosDbContainerName: cosmos.outputs.cosmosDbContainerName
+    // cosmosDbName: cosmos.outputs.cosmosDbName
+    // cosmosDbContainerName: cosmos.outputs.cosmosDbContainerName
     managedIdentityClientId: managedIdentity.outputs.clientId
     managedIdentityId: managedIdentity.outputs.id
     storageAccountName: storageAccount.outputs.name

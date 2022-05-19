@@ -7,16 +7,26 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi_restful.tasks import repeat_every
 
+from azure.cosmos.aio import CosmosClient
+from azure.cosmos import PartitionKey
+from azure.cosmos.exceptions import CosmosResourceExistsError
+
 from typing import Optional, Union, Tuple
 
 from app.routers import azure, admin, user, space
 
 import os
+import logging
 from pathlib import Path
 
 import app.globals as globals
 
 BUILD_DIR = os.path.join(os.getcwd(), "app", "build")
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+console = logging.StreamHandler()
+logger.addHandler(console)
 
 app = FastAPI(
     openapi_url="/api/openapi.json",
@@ -108,6 +118,57 @@ async def set_globals():
     globals.COSMOS_URL = os.environ.get('COSMOS_URL')
     globals.COSMOS_KEY = os.environ.get('COSMOS_KEY')
     globals.KEYVAULT_URL = os.environ.get('KEYVAULT_URL')
+
+    client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+
+    database_name = 'ipam-db'
+
+    try:
+        logger.info('Creating Database...')
+        database = await client.create_database(
+            id = database_name
+        )
+    except CosmosResourceExistsError:
+        logger.warning('Database exists! Using existing database...')
+        database = client.get_database_client(database_name)
+
+    container_name = 'ipam-container'
+
+    try:
+        logger.info('Creating Container...')
+        container = await database.create_container(
+            id = container_name,
+            partition_key = PartitionKey(path = "/id")
+        )
+
+        logger.info('Creating Spaces Item...')
+        await container.upsert_item(
+            {
+                'id': 'spaces',
+                'spaces': []
+            }
+        )
+
+        logger.info('Creating Admins Item...')
+        await container.upsert_item(
+            {
+                'id': 'admins',
+                'admins': []
+            }
+        )
+
+        logger.info('Creating Users Item...')
+        await container.upsert_item(
+            {
+                'id': 'users',
+                'users': []
+            }
+        )
+    except CosmosResourceExistsError:
+        logger.warning('Container exists! Using existing container...')
+        container = database.get_container_client(container_name)
+
+    await client.close()
 
 # https://github.com/yuval9313/FastApi-RESTful/issues/138
 @app.on_event("startup")
