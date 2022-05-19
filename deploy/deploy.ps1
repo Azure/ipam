@@ -159,8 +159,8 @@ try {
     Write-Host "INFO: Deploying IPAM bicep template" -ForegroundColor green
     Write-Verbose -Message "Deploying bicep template"
     $deploymentParameters = @{
-        'spnIdValue' = $sp.AppId
-        'spnSecretValue' = $sp.PasswordCredentials.SecretText
+        'spnClientId' = $sp.AppId
+        'spnSecret' = $sp.PasswordCredentials.SecretText
     }
     
     $outputs = New-AzSubscriptionDeployment `
@@ -172,20 +172,6 @@ try {
 catch {
     $_ | Out-File -FilePath $logFile -Append
     Write-Host "ERROR: Unable to deploy IPAM bicep template due to an exception, see $logFile for detailed information!" -ForegroundColor red
-    exit
-
-}
-
-try {
-    # Build and push container image
-    Write-Host "INFO: Building and pushing container image" -ForegroundColor green
-    Write-Verbose -Message "Building and pushing container image"
-    az acr build -t ipam/ipamapp -r $outputs.Outputs["containerRegistryLoginServer"].value .
-    
-}
-catch {
-    $_ | Out-File -FilePath $logFile -Append
-    Write-Host "ERROR: Unable to build and push container image due to an exception, see $logFile for detailed information!" -ForegroundColor red
     exit
 
 }
