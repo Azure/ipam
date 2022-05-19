@@ -166,7 +166,7 @@ try {
     $outputs = New-AzSubscriptionDeployment `
     -Name "ipamInfraDeploy-$(Get-Date -Format `"yyyyMMddhhmmsstt`")" `
     -Location $location `
-    -TemplateFile ./bicep/main.bicep `
+    -TemplateFile main.bicep `
     -TemplateParameterObject $deploymentParameters
 }
 catch {
