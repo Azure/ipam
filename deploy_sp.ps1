@@ -35,8 +35,9 @@ try {
     Write-Verbose -Message "Creating Azure Service Principal"
     $sp = New-AzADServicePrincipal `
     -DisplayName "ipam-sp-$spGuid" `
-    -Scope "/providers/Microsoft.Management/managementGroups/$($tenantId)" `
-    -Role "Reader"
+    -Role "Reader" `
+    -Scope "/providers/Microsoft.Management/managementGroups/$($tenantId)"
+
 }
 catch {
     $_ | Out-File -FilePath $logFile -Append
