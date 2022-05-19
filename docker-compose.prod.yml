@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  ipam-ui:
+    environment:
+      REACT_APP_CLIENT_ID: ${CLIENT_ID}
+      REACT_APP_TENANT_ID: ${TENANT_ID}
+      WDS_SOCKET_PORT: 3000
+    image: dcmattyg/ipam-ui:latest
+  ipam-engine:
+    environment:
+      CLIENT_ID: ${CLIENT_ID}
+      CLIENT_SECRET: ${CLIENT_SECRET}
+      TENANT_ID: ${TENANT_ID}
+      COSMOS_URL: ${COSMOS_URL}
+      COSMOS_KEY: ${COSMOS_KEY}
+      KEYVAULT_URL: ${KEYVAULT_URL}
+    image: dcmattyg/ipam-engine:latest
+  nginx-proxy:
+    image: nginx:alpine
+    volumes: 
+      - nginx:/etc/nginx/conf.d
+    ports:
+      - "80:80"

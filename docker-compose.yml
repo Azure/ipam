@@ -1,0 +1,53 @@
+version: '3.8'
+services:
+  ipam-ui-dev:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile.dev
+      args:
+        PORT: 80
+    environment:
+      REACT_APP_CLIENT_ID: ${CLIENT_ID}
+      REACT_APP_TENANT_ID: ${TENANT_ID}
+      WDS_SOCKET_PORT: 3000
+    volumes:
+      - ./ui:/app
+      - /app/node_modules
+    networks:
+      my-network-name:
+        aliases:
+          - ipam-ui-name
+  ipam-engine-dev:
+    build:
+      context: ./engine
+      dockerfile: Dockerfile.dev
+      args:
+        PORT: 80
+    environment:
+      CLIENT_ID: ${CLIENT_ID}
+      CLIENT_SECRET: ${CLIENT_SECRET}
+      TENANT_ID: ${TENANT_ID}
+      COSMOS_URL: ${COSMOS_URL}
+      COSMOS_KEY: ${COSMOS_KEY}
+      KEYVAULT_URL: ${KEYVAULT_URL}
+    volumes:
+      - ./engine/app:/code/app
+    networks:
+      my-network-name:
+        aliases:
+          - ipam-engine-name
+  nginx-proxy-dev:
+    depends_on:
+      - ipam-ui
+      - ipam-engine
+    image: nginx:alpine
+    volumes: 
+      - ./default.dev.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      my-network-name:
+        aliases:
+          - proxy-name
+    ports:
+      - "3000:80"
+networks:
+  my-network-name:
