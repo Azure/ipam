@@ -73,15 +73,15 @@ resource exampleScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
       }
     ]
     scriptContent: '''
-      Invoke-WebRequest "https://raw.githubusercontent.com/microsoft/azure_arc/main/img/arcbox_wallpaper.png" -OutFile ./wallpaper.png
+      Invoke-WebRequest "https://raw.githubusercontent.com/Azure/ipam/init/default.conf" -OutFile ./default.conf
       $storageAccount = Get-AzStorageAccount -ResourceGroupName $Env:ResourceGroup -Name $Env:StorageAccountName
       $ctx = $storageAccount.Context
       $container = Get-AzStorageContainer -Name $Env:ContainerName -Context $ctx
 
       $NginxConfig = @{
-        File             = "./wallpaper.png"
+        File             = "./default.conf"
         Container        = $Env:ContainerName
-        Blob             = "wallpaper.png"
+        Blob             = "default.conf"
         Context          = $ctx
         StandardBlobTier = "Hot"
       }
