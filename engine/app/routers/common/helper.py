@@ -65,10 +65,10 @@ async def cosmos_query(target: str):
     """DOCSTRING"""
     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
-    database_name = "testdb"
+    database_name = "ipam-db"
     database = cosmos_client.get_database_client(database_name)
 
-    container_name = "container"
+    container_name = "ipam-container"
     container = database.get_container_client(container_name)
 
     item = await container.read_item(target, partition_key=target)
@@ -82,10 +82,10 @@ async def cosmos_upsert(target: str, data):
 
     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
-    database_name = "testdb"
+    database_name = "ipam-db"
     database = cosmos_client.get_database_client(database_name)
 
-    container_name = "container"
+    container_name = "ipam-container"
     container = database.get_container_client(container_name)
 
     try:
