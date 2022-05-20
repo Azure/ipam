@@ -16,7 +16,10 @@ import {
   DialogTitle,
 } from "@mui/material";
 
-import { getRefreshInterval } from "../ipam/ipamSlice";
+import {
+  getMeAsync,
+  getRefreshInterval
+} from "../ipam/ipamSlice";
 
 import { updateMe } from "../ipam/ipamAPI";
 
@@ -73,6 +76,7 @@ export default function UserSettings(props) {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
         const data = await updateMe(response.accessToken, body);
+        await getMeAsync(response.accessToken);
         handleClose();
       } catch (e) {
         console.log("ERROR");

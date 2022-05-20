@@ -1,19 +1,19 @@
 import React from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+// import { useSelector, useDispatch } from 'react-redux';
 import { BrowserRouter as Router} from "react-router-dom";
 
 import {
   AuthenticatedTemplate,
   UnauthenticatedTemplate,
-  useMsal,
-  useIsAuthenticated
+  // useMsal,
+  // useIsAuthenticated
 } from "@azure/msal-react";
 
-import {
-  getRefreshInterval,
-  refreshAllAsync,
-  getMeAsync
-} from './features/ipam/ipamSlice';
+// import {
+//   getRefreshInterval,
+//   refreshAllAsync,
+//   getMeAsync
+// } from './features/ipam/ipamSlice';
 
 import './App.css';
 
@@ -24,74 +24,69 @@ import Login from "./features/login/Login";
 
 import NavDrawer from './features/drawer/drawer';
 
-import { env } from './env';
+// import { env } from './env';
 
 function App() {
-  const { instance, accounts } = useMsal();
-  const [intervalAllId, setIntervalAllId] = React.useState();
-  const [intervalMeId, setIntervalMeId] = React.useState();
-  const isAuthenticated = useIsAuthenticated();
-  const refreshInterval = useSelector(getRefreshInterval);
-  const dispatch = useDispatch();
-  const refreshAllRef = React.useRef();
-  const refreshMeRef = React.useRef();
+  // const { instance, accounts } = useMsal();
+  // const [intervalAllId, setIntervalAllId] = React.useState();
+  // const [intervalMeId, setIntervalMeId] = React.useState();
+  // const isAuthenticated = useIsAuthenticated();
+  // const refreshInterval = useSelector(getRefreshInterval);
+  // const dispatch = useDispatch();
+  // const refreshAllRef = React.useRef();
+  // const refreshMeRef = React.useRef();
 
-  refreshAllRef.current = React.useCallback(() => {
-    if(isAuthenticated) {
-      const request = {
-        scopes: ["https://management.azure.com/user_impersonation"],
-        account: accounts[0],
-      };
+  // refreshAllRef.current = React.useCallback(() => {
+  //   if(isAuthenticated) {
+  //     const request = {
+  //       scopes: ["https://management.azure.com/user_impersonation"],
+  //       account: accounts[0],
+  //     };
 
-      (async() => {
-        const response = await instance.acquireTokenSilent(request);
-        dispatch(refreshAllAsync(response.accessToken))
-      })();
-    }
-  }, [isAuthenticated]);
+  //     (async() => {
+  //       const response = await instance.acquireTokenSilent(request);
+  //       dispatch(refreshAllAsync(response.accessToken))
+  //     })();
+  //   }
+  // }, [isAuthenticated]);
 
-  refreshMeRef.current = React.useCallback(() => {
-    if(isAuthenticated) {
-      const request = {
-        scopes: ["https://management.azure.com/user_impersonation"],
-        account: accounts[0],
-      };
+  // refreshMeRef.current = React.useCallback(() => {
+  //   if(isAuthenticated) {
+  //     const request = {
+  //       scopes: ["https://management.azure.com/user_impersonation"],
+  //       account: accounts[0],
+  //     };
 
-      (async() => {
-        const response = await instance.acquireTokenSilent(request);
-        dispatch(getMeAsync(response.accessToken))
-      })();
-    }
-  }, [isAuthenticated]);
-
-  React.useEffect(()=>{
-    refreshAllRef.current()
-    clearInterval(intervalAllId);
-    setIntervalAllId(
-      setInterval(() => refreshAllRef.current(), refreshInterval * 60 * 1000)
-    );
-    return () => {
-      clearInterval(intervalAllId);
-    }
-  }, [refreshInterval]);
-
-  React.useEffect(()=>{
-    console.log("+++WEBSITE_DETAILS+++");
-    console.log(env);
-    console.log("+++++++++++++++++++++");
-    refreshMeRef.current()
-    clearInterval(intervalMeId);
-    setIntervalMeId(
-      setInterval(() => refreshMeRef.current(), 60 * 1000)
-    );
-    return () => {
-      clearInterval(intervalMeId);
-    }
-  }, []);
+  //     (async() => {
+  //       const response = await instance.acquireTokenSilent(request);
+  //       dispatch(getMeAsync(response.accessToken))
+  //     })();
+  //   }
+  // }, [isAuthenticated]);
 
   // React.useEffect(()=>{
-  //   console.log("GetMe upon loading")
+  //   refreshAllRef.current()
+  //   clearInterval(intervalAllId);
+  //   setIntervalAllId(
+  //     setInterval(() => refreshAllRef.current(), refreshInterval * 60 * 1000)
+  //   );
+  //   return () => {
+  //     clearInterval(intervalAllId);
+  //   }
+  // }, [refreshInterval]);
+
+  // React.useEffect(()=>{
+  //   console.log("+++WEBSITE_DETAILS+++");
+  //   console.log(env);
+  //   console.log("+++++++++++++++++++++");
   //   refreshMeRef.current()
+  //   clearInterval(intervalMeId);
+  //   setIntervalMeId(
+  //     setInterval(() => refreshMeRef.current(), 60 * 1000)
+  //   );
+  //   return () => {
+  //     clearInterval(intervalMeId);
+  //   }
   // }, []);
 
   return (

@@ -74,6 +74,8 @@ import AnalyzeTabs from "../tabs/analyzeTabs";
 import Administration from "../admin/admin";
 import ConfigureIPAM from "../configure/configure";
 
+import Refresh from "./refresh";
+
 const Search = styled("div")(({ theme }) => ({
   display: "flex",
   position: "relative",
@@ -529,6 +531,7 @@ export default function NavDrawer() {
 
   return (
     <React.Fragment>
+      <Refresh />
       <Box sx={{ flexGrow: 1 }}>
         <AppBar position="static">
           <Toolbar>
