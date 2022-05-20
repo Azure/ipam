@@ -53,11 +53,11 @@ export default function AnalyzeTabs() {
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={allTabs.indexOf(location.pathname)}>
             <Tab label="Visualize" component={Link} to={allTabs[0]} {...a11yProps(0)} />
-            <Tab label="IP Conflicts" component={Link} to={allTabs[1]} {...a11yProps(1)} />
+            {/* <Tab label="IP Conflicts" component={Link} to={allTabs[1]} {...a11yProps(1)} /> */}
           </Tabs>
         </Box>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={0}><AnalysisTool /></TabPanel>
-        <TabPanel value={allTabs.indexOf(location.pathname)} index={1}><GmailTreeView /></TabPanel>
+        {/* <TabPanel value={allTabs.indexOf(location.pathname)} index={1}><GmailTreeView /></TabPanel> */}
       </React.Fragment>
     </Box>
   );

@@ -41,10 +41,10 @@ export default function AnalysisTool() {
   const { enqueueSnackbar } = useSnackbar();
 
   const [open, setOpen] = React.useState(false);
-  const [options, setOptions] = React.useState([]);
+  const [options, setOptions] = React.useState(null);
   const [selected, setSelected] = React.useState(null);
 
-  const loading = open && options.length === 0;
+  const loading = open && !options
   
   const chart = React.useRef(null)
   const ref = React.useRef(null);
@@ -123,7 +123,8 @@ export default function AnalysisTool() {
           }}
           isOptionEqualToValue={(option, value) => option.children[0].name === value.children[0].name}
           getOptionLabel={(option) => `${option.children[0].name}`}
-          options={options}
+          noOptionsText={'No Spaces Found'}
+          options={options || []}
           loading={loading}
           renderInput={(params) => (
             <TextField
