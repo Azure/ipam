@@ -47,13 +47,16 @@ export default function UserSettings(props) {
 
   const [refreshValue, setRefreshValue] = React.useState();
   const [sending, setSending] = React.useState(false);
+  const [changed, setChanged] = React.useState(false);
   const refreshInterval = useSelector(getRefreshInterval);
-
-  const unchanged = refreshInterval == refreshValue;
 
   React.useEffect(()=>{
     setRefreshValue(refreshInterval);
   }, []);
+
+  React.useEffect(()=>{
+    refreshInterval == refreshValue ? setChanged(false) : setChanged(true);
+  }, [refreshValue]);
 
   function onSubmit() {
     var body = [
@@ -108,7 +111,7 @@ export default function UserSettings(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={onSubmit} disabled={unchanged || sending}>
+          <Button onClick={onSubmit} disabled={!changed || sending}>
             Apply
           </Button>
         </DialogActions>
