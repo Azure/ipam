@@ -179,11 +179,11 @@ export default function NavDrawer() {
             icon: Visualize,
             link: "analyze/visualize"
           },
-          {
-            title: "Conflicts",
-            icon: Conflict,
-            link: "analyze/conflict"
-          }
+          // {
+          //   title: "Conflicts",
+          //   icon: Conflict,
+          //   link: "analyze/conflict"
+          // }
         ]
       },
     ],
