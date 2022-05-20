@@ -31,13 +31,13 @@ import FilterMenu from "./FilterMenu";
 import ItemDetails from "./Utils/Details";
 
 const openStyle = {
-	right: 0,
-	transition: "all 0.5s ease-in-out",
+  right: 0,
+  transition: "all 0.5s ease-in-out",
 };
 
 const closedStyle = {
-	right: -300,
-	transition: "all 0.5s ease-in-out",
+  right: -300,
+  transition: "all 0.5s ease-in-out",
 };
 
 const StyledGridOverlay = styled('div')({
@@ -128,7 +128,7 @@ export default function DiscoverTable(props) {
     }
   }
 
-	const handleMenuClose = (state, filters) => {
+  const handleMenuClose = (state, filters) => {
     var newFilterMenuState = {
       ...filterMenuState,
       ...state
@@ -147,8 +147,8 @@ export default function DiscoverTable(props) {
 
     !filtersChanged && setDataFilters(newDataFilters);
 
-		setMenuOpen(false);
-	};
+    setMenuOpen(false);
+  };
 
   function CustomLoadingOverlay() {
     return (
@@ -251,10 +251,10 @@ export default function DiscoverTable(props) {
     );
   }
 
-	return (
-		<TableContext.Provider value={{ stateData, rowData, menuExpand }}>
+  return (
+    <TableContext.Provider value={{ stateData, rowData, menuExpand }}>
       {renderDetails()}
-			<Box sx={{ flexGrow: 1, height: "100%" }}>
+      <Box sx={{ flexGrow: 1, height: "100%" }}>
         <DataGrid
           disableSelectionOnClick
           disableColumnMenu
@@ -293,6 +293,6 @@ export default function DiscoverTable(props) {
           }}
         />
       </Box>
-		</TableContext.Provider>
-	);
+    </TableContext.Provider>
+  );
 }

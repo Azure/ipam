@@ -34,22 +34,22 @@ import {
 import { getRefreshing } from "../../../ipam/ipamSlice";
 
 const columns = [
-	{ field: "name", headerName: "Name", headerAlign: "left", align: "left", flex: 1 },
-	{ field: "subscription_id", headerName: "Subscription", headerAlign: "left", align: "left", flex: 1 },
-	{ field: "resource_group", headerName: "Resource Group", headerAlign: "left", align: "left", flex: 1 },
-	{ field: "prefixes", headerName: "Prefixes", headerAlign: "right", align: "right", flex: 0.75 },
+  { field: "name", headerName: "Name", headerAlign: "left", align: "left", flex: 1 },
+  { field: "subscription_id", headerName: "Subscription", headerAlign: "left", align: "left", flex: 1 },
+  { field: "resource_group", headerName: "Resource Group", headerAlign: "left", align: "left", flex: 1 },
+  { field: "prefixes", headerName: "Prefixes", headerAlign: "right", align: "right", flex: 0.75 },
 ];
 
 const Spotlight = styled("span")({
-	fontWeight: "bold",
+  fontWeight: "bold",
   color: "mediumblue"
 });
 
 export default function EditVnets(props) {
-	const { open, handleClose, space, block, refresh, refreshingState } = props;
+  const { open, handleClose, space, block, refresh, refreshingState } = props;
 
   const { instance, accounts } = useMsal();
-	const { enqueueSnackbar } = useSnackbar();
+  const { enqueueSnackbar } = useSnackbar();
 
   const [loading, setLoading] = React.useState(false);
   const [vNets, setVNets] = React.useState([]);
@@ -57,29 +57,29 @@ export default function EditVnets(props) {
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
-	const spacesRefreshing = useSelector(getRefreshing);
+  const spacesRefreshing = useSelector(getRefreshing);
 
   const unchanged = block ? isEqual(block['vnets'], selectionModel) : false;
 
   React.useEffect(() => {
-			refreshData();
-	}, [block]);
+      refreshData();
+  }, [block]);
 
-	React.useEffect(() => {
-		if(space && block) {
-    	!refreshingState && setSelectionModel(block['vnets']);
-		}
-	}, [refreshingState]);
+  React.useEffect(() => {
+    if(space && block) {
+      !refreshingState && setSelectionModel(block['vnets']);
+    }
+  }, [refreshingState]);
 
   function refreshData() {
     (async () => {
-			const request = {
-				scopes: ["https://management.azure.com/user_impersonation"],
-				account: accounts[0],
-			};
+      const request = {
+        scopes: ["https://management.azure.com/user_impersonation"],
+        account: accounts[0],
+      };
 
       setVNets([]);
-			setLoading(true);
+      setLoading(true);
 
       if(space && block) {
         console.log(block);
@@ -102,40 +102,40 @@ export default function EditVnets(props) {
         setVNets([])
       }
 
-			setLoading(false);
-		})();
+      setLoading(false);
+    })();
   }
 
-	function manualRefresh() {
-		refresh();
-		refreshData();
-	}
+  function manualRefresh() {
+    refresh();
+    refreshData();
+  }
 
   function onSubmit() {
     (async () => {
-			const request = {
-				scopes: ["https://management.azure.com/user_impersonation"],
-				account: accounts[0],
-			};
+      const request = {
+        scopes: ["https://management.azure.com/user_impersonation"],
+        account: accounts[0],
+      };
 
-			try {
-				setSending(true);
-				const response = await instance.acquireTokenSilent(request);
-				const data = await replaceBlockNetworks(response.accessToken, space, block.name, selectionModel);
-				handleClose();
-				enqueueSnackbar("Successfully updated IP Block vNets", { variant: "success" });
-				refresh();
-				refreshData();
-			} catch (e) {
-				console.log("ERROR");
-				console.log("------------------");
-				console.log(e);
-				console.log("------------------");
-				enqueueSnackbar(e.response.data.error, { variant: "error" });
-			} finally {
-				setSending(false);
-			}
-		})();
+      try {
+        setSending(true);
+        const response = await instance.acquireTokenSilent(request);
+        const data = await replaceBlockNetworks(response.accessToken, space, block.name, selectionModel);
+        handleClose();
+        enqueueSnackbar("Successfully updated IP Block vNets", { variant: "success" });
+        refresh();
+        refreshData();
+      } catch (e) {
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.response.data.error, { variant: "error" });
+      } finally {
+        setSending(false);
+      }
+    })();
   }
 
   function onModelChange(newModel) {
@@ -144,19 +144,19 @@ export default function EditVnets(props) {
   }
 
   function CustomLoadingOverlay() {
-		return (
-			<GridOverlay>
-				<div style={{ position: "absolute", top: 0, width: "100%" }}>
-					<LinearProgress />
-				</div>
-			</GridOverlay>
-		);
-	}
+    return (
+      <GridOverlay>
+        <div style={{ position: "absolute", top: 0, width: "100%" }}>
+          <LinearProgress />
+        </div>
+      </GridOverlay>
+    );
+  }
 
-	return (
-		<div sx={{ height: "300px", width: "100%" }}>
-			<Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-				<DialogTitle>
+  return (
+    <div sx={{ height: "300px", width: "100%" }}>
+      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+        <DialogTitle>
           <Box sx={{ display: "flex", flexDirection: "row" }}>
             <Box>
             Virtual Network Association
@@ -173,43 +173,43 @@ export default function EditVnets(props) {
             </Box>
           </Box>
         </DialogTitle>
-				<DialogContent>
-					<DialogContentText>
-						Select the Virtual Networks below which should be associated with the Block <Spotlight>'{block && block.name}'</Spotlight>
-					</DialogContentText>
-					<Box sx={{ pt: 4, height: "300px" }}>
-						<DataGrid
-							checkboxSelection
-							disableColumnMenu
-							hideFooter
-							hideFooterPagination
-							hideFooterSelectedRowCount
-							density="compact"
-							rows={vNets}
-							columns={columns}
-							loading={loading || refreshingState}
-							onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
-							selectionModel={selectionModel}
-							components={{
-								LoadingOverlay: CustomLoadingOverlay,
-								// NoRowsOverlay: CustomNoRowsOverlay,
-							}}
-							sx={{
-								"&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus":
-									{
-										outline: "none",
-									}
-							}}
-						/>
-					</Box>
-				</DialogContent>
-				<DialogActions>
-					<Button onClick={handleClose}>Cancel</Button>
-					<Button onClick={onSubmit} disabled={unchanged || sending}>
+        <DialogContent>
+          <DialogContentText>
+            Select the Virtual Networks below which should be associated with the Block <Spotlight>'{block && block.name}'</Spotlight>
+          </DialogContentText>
+          <Box sx={{ pt: 4, height: "300px" }}>
+            <DataGrid
+              checkboxSelection
+              disableColumnMenu
+              hideFooter
+              hideFooterPagination
+              hideFooterSelectedRowCount
+              density="compact"
+              rows={vNets}
+              columns={columns}
+              loading={loading || refreshingState}
+              onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
+              selectionModel={selectionModel}
+              components={{
+                LoadingOverlay: CustomLoadingOverlay,
+                // NoRowsOverlay: CustomNoRowsOverlay,
+              }}
+              sx={{
+                "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus":
+                  {
+                    outline: "none",
+                  }
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={onSubmit} disabled={unchanged || sending}>
             Apply
           </Button>
-				</DialogActions>
-			</Dialog>
-		</div>
-	);
+        </DialogActions>
+      </Dialog>
+    </div>
+  );
 }

@@ -4,21 +4,21 @@ import { styled } from "@mui/material/styles";
 import { DataGrid, GridOverlay } from "@mui/x-data-grid";
 
 import {
-	Box,
-	IconButton,
-	Tooltip,
-	Menu,
-	MenuItem,
-	ListItemIcon,
-	Divider,
-	Typography,
-	LinearProgress,
+  Box,
+  IconButton,
+  Tooltip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  Divider,
+  Typography,
+  LinearProgress,
 } from "@mui/material";
 
 import {
-	Edit as EditIcon,
-	DeleteOutline as DeleteOutlineIcon,
-	MoreVert as MoreVertIcon,
+  Edit as EditIcon,
+  DeleteOutline as DeleteOutlineIcon,
+  MoreVert as MoreVertIcon,
   CloudQueue as CloudQueueIcon,
 } from "@mui/icons-material";
 
@@ -31,118 +31,118 @@ import ConfirmDelete from "./Utils/confirmDelete";
 import { ConfigureContext } from "../configureContext";
 
 const GridHeader = styled("div")({
-	height: "50px",
-	width: "100%",
-	display: "flex",
-	borderBottom: "1px solid rgba(224, 224, 224, 1)",
+  height: "50px",
+  width: "100%",
+  display: "flex",
+  borderBottom: "1px solid rgba(224, 224, 224, 1)",
 });
 
 const GridTitle = styled("div")(({ theme }) => ({
-	...theme.typography.h6,
-	width: "80%",
-	textAlign: "center",
-	alignSelf: "center",
+  ...theme.typography.h6,
+  width: "80%",
+  textAlign: "center",
+  alignSelf: "center",
 }));
 
 const GridBody = styled("div")({
-	height: "100%",
-	width: "100%",
+  height: "100%",
+  width: "100%",
 });
 
 const StyledGridOverlay = styled("div")({
-	display: "flex",
-	flexDirection: "column",
-	alignItems: "center",
-	justifyContent: "center",
-	height: "100%",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  height: "100%",
 });
 
 const columns = [
-	{ field: "name", headerName: "Name", headerAlign: "left", align: "left", flex: 0.5 },
-	{ field: "desc", headerName: "Description", headerAlign: "left", align: "left", flex: 1 },
+  { field: "name", headerName: "Name", headerAlign: "left", align: "left", flex: 0.5 },
+  { field: "desc", headerName: "Description", headerAlign: "left", align: "left", flex: 1 },
 ];
 
 export default function SpaceDataGrid(props) {
   const { setSelected } = props;
-	const { spaces, refresh } = React.useContext(ConfigureContext);
+  const { spaces, refresh } = React.useContext(ConfigureContext);
 
-	const [loading, setLoading] = React.useState(true);
-	const [selectionModel, setSelectionModel] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [selectionModel, setSelectionModel] = React.useState([]);
   const [addSpaceOpen, setAddSpaceOpen] = React.useState(false);
   const [editSpaceOpen, setEditSpaceOpen] = React.useState(false);
-	const [deleteSpaceOpen, setDeleteSpaceOpen] = React.useState(false);
-	const [anchorEl, setAnchorEl] = React.useState(null);
+  const [deleteSpaceOpen, setDeleteSpaceOpen] = React.useState(false);
+  const [anchorEl, setAnchorEl] = React.useState(null);
 
-	const selectedRow = selectionModel.length
-		? spaces.find((obj) => {
-				return obj.name === selectionModel[0];
-		  })
-		: null;
+  const selectedRow = selectionModel.length
+    ? spaces.find((obj) => {
+        return obj.name === selectionModel[0];
+      })
+    : null;
 
-	const menuOpen = Boolean(anchorEl);
+  const menuOpen = Boolean(anchorEl);
 
-	React.useEffect(() => {
+  React.useEffect(() => {
     spaces && setLoading(false);
   },[spaces]);
 
   React.useEffect(() => {
     setSelected(selectedRow);
-	}, [selectedRow]);
+  }, [selectedRow]);
 
-	function CustomLoadingOverlay() {
-		return (
-			<GridOverlay>
-				<div style={{ position: "absolute", top: 0, width: "100%" }}>
-					<LinearProgress />
-				</div>
-			</GridOverlay>
-		);
-	}
+  function CustomLoadingOverlay() {
+    return (
+      <GridOverlay>
+        <div style={{ position: "absolute", top: 0, width: "100%" }}>
+          <LinearProgress />
+        </div>
+      </GridOverlay>
+    );
+  }
 
-	function CustomNoRowsOverlay() {
-		return (
-			<StyledGridOverlay>
-				<Typography variant="overline" display="block" sx={{ mt: 1 }}>
+  function CustomNoRowsOverlay() {
+    return (
+      <StyledGridOverlay>
+        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
           No Spaces Found, Create a Space to Begin
         </Typography>
-			</StyledGridOverlay>
-		);
-	}
+      </StyledGridOverlay>
+    );
+  }
 
-	const handleMenuClick = (event) => {
-		setAnchorEl(event.currentTarget);
-	};
+  const handleMenuClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
 
-	const handleMenuClose = () => {
-		setAnchorEl(null);
-	};
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
 
   const handleAddSpace = () => {
-		handleMenuClose();
-		setAddSpaceOpen(true);
-	};
+    handleMenuClose();
+    setAddSpaceOpen(true);
+  };
 
   const handleEditSpace = () => {
-		handleMenuClose();
-		setEditSpaceOpen(true);
-	};
+    handleMenuClose();
+    setEditSpaceOpen(true);
+  };
 
-	const handleDeleteSpace = () => {
-		handleMenuClose();
-		setDeleteSpaceOpen(true);
-	};
+  const handleDeleteSpace = () => {
+    handleMenuClose();
+    setDeleteSpaceOpen(true);
+  };
 
-	function onModelChange(newModel) {
-		if (JSON.stringify(newModel) === JSON.stringify(selectionModel)) {
-			setSelectionModel([]);
-		} else {
-			setSelectionModel(newModel);
-		}
-	}
+  function onModelChange(newModel) {
+    if (JSON.stringify(newModel) === JSON.stringify(selectionModel)) {
+      setSelectionModel([]);
+    } else {
+      setSelectionModel(newModel);
+    }
+  }
 
-	return (
-		<React.Fragment>
-			<EditSpace
+  return (
+    <React.Fragment>
+      <EditSpace
         open={editSpaceOpen}
         handleClose={() => setEditSpaceOpen(false)}
         space={selectedRow ? selectedRow : null}
@@ -155,21 +155,21 @@ export default function SpaceDataGrid(props) {
         spaces={spaces}
         refresh={() => refresh()}
       />
-			<ConfirmDelete
+      <ConfirmDelete
         open={deleteSpaceOpen}
         handleClose={() => setDeleteSpaceOpen(false)}
         space={selectedRow ? selectedRow.name : null}
         refresh={() => refresh()}
       />
-			<GridHeader
-				style={{
-					borderBottom: "1px solid rgba(224, 224, 224, 1)",
-					backgroundColor: selectedRow ? "rgba(25, 118, 210, 0.12)" : "unset",
-				}}
-			>
-				<Box sx={{ width: "20%" }}></Box>
-				<GridTitle>{selectedRow ? `'${selectedRow.name}' selected` : "Spaces"}</GridTitle>
-				<Box sx={{ width: "20%", display: "flex", justifyContent: "flex-end" }}>
+      <GridHeader
+        style={{
+          borderBottom: "1px solid rgba(224, 224, 224, 1)",
+          backgroundColor: selectedRow ? "rgba(25, 118, 210, 0.12)" : "unset",
+        }}
+      >
+        <Box sx={{ width: "20%" }}></Box>
+        <GridTitle>{selectedRow ? `'${selectedRow.name}' selected` : "Spaces"}</GridTitle>
+        <Box sx={{ width: "20%", display: "flex", justifyContent: "flex-end" }}>
           <React.Fragment>
             <Tooltip title="Actions">
               <IconButton
@@ -252,34 +252,34 @@ export default function SpaceDataGrid(props) {
               </MenuItem>
             </Menu>
           </React.Fragment>
-				</Box>
-			</GridHeader>
-			<GridBody>
-				<DataGrid
-					disableColumnMenu
-					hideFooter
-					hideFooterPagination
-					hideFooterSelectedRowCount
-					density="compact"
-					rows={spaces || []}
-					columns={columns}
-					loading={loading}
+        </Box>
+      </GridHeader>
+      <GridBody>
+        <DataGrid
+          disableColumnMenu
+          hideFooter
+          hideFooterPagination
+          hideFooterSelectedRowCount
+          density="compact"
+          rows={spaces || []}
+          columns={columns}
+          loading={loading}
           getRowId={(row) => row.name}
-					onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
-					selectionModel={selectionModel}
-					components={{
-						LoadingOverlay: CustomLoadingOverlay,
-						NoRowsOverlay: CustomNoRowsOverlay,
-					}}
-					sx={{
-						"&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus":
-							{
-								outline: "none",
-							},
-						border: "none",
-					}}
-				/>
-			</GridBody>
-		</React.Fragment>
-	);
+          onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
+          selectionModel={selectionModel}
+          components={{
+            LoadingOverlay: CustomLoadingOverlay,
+            NoRowsOverlay: CustomNoRowsOverlay,
+          }}
+          sx={{
+            "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus":
+              {
+                outline: "none",
+              },
+            border: "none",
+          }}
+        />
+      </GridBody>
+    </React.Fragment>
+  );
 }

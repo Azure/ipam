@@ -21,7 +21,7 @@ import {
 import { deleteSpace } from "../../../ipam/ipamAPI";
 
 const Spotlight = styled("span")({
-	fontWeight: "bold",
+  fontWeight: "bold",
   color: "mediumblue"
 });
 
@@ -29,7 +29,7 @@ export default function ConfirmDelete(props) {
   const { open, handleClose, space, refresh } = props;
 
   const { instance, accounts } = useMsal();
-	const { enqueueSnackbar } = useSnackbar();
+  const { enqueueSnackbar } = useSnackbar();
 
   const [force, setForce] = React.useState(false);
   const [verify, setVerify] = React.useState(false);

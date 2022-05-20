@@ -38,40 +38,40 @@ const StyledDiv = styled('div')({
 
 export default function AnalysisTool() {
   const { instance, accounts } = useMsal();
-	const { enqueueSnackbar } = useSnackbar();
+  const { enqueueSnackbar } = useSnackbar();
 
   const [open, setOpen] = React.useState(false);
   const [options, setOptions] = React.useState([]);
-	const [selected, setSelected] = React.useState(null);
+  const [selected, setSelected] = React.useState(null);
 
-	const loading = open && options.length === 0;
+  const loading = open && options.length === 0;
   
   const chart = React.useRef(null)
   const ref = React.useRef(null);
 
-	React.useEffect(() => {
-		(async () => {
-			const request = {
-				scopes: ["https://management.azure.com/user_impersonation"],
-				account: accounts[0],
-			};
+  React.useEffect(() => {
+    (async () => {
+      const request = {
+        scopes: ["https://management.azure.com/user_impersonation"],
+        account: accounts[0],
+      };
 
-			try {
-				const response = await instance.acquireTokenSilent(request);
-				const data = await fetchTreeView(response.accessToken);
+      try {
+        const response = await instance.acquireTokenSilent(request);
+        const data = await fetchTreeView(response.accessToken);
 
-				setOptions(data);
-			} catch (e) {
-				console.log("ERROR");
-				console.log("------------------");
-				console.log(e);
-				console.log("------------------");
-				enqueueSnackbar("Error fetching Tree View", { variant: "error" });
-			}
-		})();
-	}, []);
+        setOptions(data);
+      } catch (e) {
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar("Error fetching Tree View", { variant: "error" });
+      }
+    })();
+  }, []);
 
-	React.useEffect(() => {
+  React.useEffect(() => {
     chart.current = Sunburst()
     chart.current
       .data(selected)
@@ -83,14 +83,14 @@ export default function AnalysisTool() {
       .tooltipTitle(d => `<i>${d.name}</i>`)
       .tooltipContent(d => d.ip ? `<i>${d.ip}</i>` : ``)
     (ref.current);
-	}, []);
+  }, []);
 
   React.useEffect(() => {
     if(selected) {
       chart.current
       .data(selected)
     }
-	}, [selected]);
+  }, [selected]);
 
   return(
     <React.Fragment>
