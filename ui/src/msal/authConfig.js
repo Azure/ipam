@@ -20,9 +20,7 @@ export const msalConfig = {
 export const loginRequest = {
     // scopes: ["api://91067a4d-14ca-48e5-99cc-001fe07f3a94/.default"],
     scopes: ["https://management.azure.com/user_impersonation"],
-    extraScopesToConsent: ["User.Read", "Directory.Read.All"],
-    // scopes: ["User.Read"],
-    // extraScopesToConsent: ["api://ad9e3e8b-fbfd-4916-b9a9-eee3b3e94930/access_as_user"],
+    extraScopesToConsent: ["User.Read", "Directory.Read.All"]
 };
 
 // Add the endpoints here for Microsoft Graph API services you'd like to use.

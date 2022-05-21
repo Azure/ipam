@@ -4,7 +4,6 @@ services:
     environment:
       REACT_APP_CLIENT_ID: ${CLIENT_ID}
       REACT_APP_TENANT_ID: ${TENANT_ID}
-      WDS_SOCKET_PORT: 3000
     image: azureipam.azurecr.io/ipam-ui:latest
   ipam-engine:
     environment:
