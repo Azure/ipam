@@ -7,7 +7,8 @@ services:
       args:
         PORT: 80
     environment:
-      REACT_APP_CLIENT_ID: ${CLIENT_ID}
+      REACT_APP_UI_ID: ${UI_APP_ID}
+      REACT_APP_ENGINE_ID: ${ENGINE_APP_ID}
       REACT_APP_TENANT_ID: ${TENANT_ID}
       WDS_SOCKET_PORT: 3000
     volumes:
@@ -24,8 +25,8 @@ services:
       args:
         PORT: 80
     environment:
-      CLIENT_ID: ${CLIENT_ID}
-      CLIENT_SECRET: ${CLIENT_SECRET}
+      CLIENT_ID: ${ENGINE_APP_ID}
+      CLIENT_SECRET: ${ENGINE_APP_SECRET}
       TENANT_ID: ${TENANT_ID}
       COSMOS_URL: ${COSMOS_URL}
       COSMOS_KEY: ${COSMOS_KEY}

@@ -7,7 +7,7 @@ from pydantic import BaseModel, constr
 from typing import Optional, List
 
 from azure.identity.aio import OnBehalfOfCredential, ClientSecretCredential
-from azure.core.exceptions import ClientAuthenticationError
+from azure.core.exceptions import ClientAuthenticationError, HttpResponseError
 from azure.mgmt.compute.aio import ComputeManagementClient
 from azure.mgmt.network.aio import NetworkManagementClient
 from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
@@ -103,23 +103,27 @@ async def get_vmss_list_sdk_helper(credentials, subscription, list):
 
     compute_client = ComputeManagementClient(credentials, subscription['subscription_id'])
 
-    async for poll in compute_client.virtual_machine_scale_sets.list_all():
-        rg_name_search = re.search(r"(?<=resourceGroups/).*(?=/providers)", poll.id)
-        rg_name = rg_name_search.group(0)
+    try:
+        async for poll in compute_client.virtual_machine_scale_sets.list_all():
+            rg_name_search = re.search(r"(?<=resourceGroups/).*(?=/providers)", poll.id)
+            rg_name = rg_name_search.group(0)
 
-        rg_id_search = re.search(r".*(?=/providers)", poll.id)
-        rg_id = rg_id_search.group(0)
+            rg_id_search = re.search(r".*(?=/providers)", poll.id)
+            rg_id = rg_id_search.group(0)
 
-        vmss_data = {
-            "name": poll.name,
-            "id": poll.id,
-            "size": poll.sku.name,
-            "resource_group_name": rg_name,
-            "resource_group_id": rg_id,
-            "subscription": subscription
-        }
+            vmss_data = {
+                "name": poll.name,
+                "id": poll.id,
+                "size": poll.sku.name,
+                "resource_group_name": rg_name,
+                "resource_group_id": rg_id,
+                "subscription": subscription
+            }
 
-        list.append(vmss_data)
+            list.append(vmss_data)
+    except HttpResponseError:
+        print("Error fetching VMSS on subscription {}".format(subscription['subscription_id']))
+        pass
 
     await compute_client.close()
 

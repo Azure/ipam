@@ -17,6 +17,8 @@ import {
 
 import { createSpace } from "../../../ipam/ipamAPI";
 
+import { apiRequest } from "../../../../msal/authConfig";
+
 export default function AddSpace(props) {
   const { open, handleClose, spaces, refresh } = props;
 
@@ -46,7 +48,7 @@ export default function AddSpace(props) {
   
     (async () => {
       const request = {
-        scopes: ["https://management.azure.com/user_impersonation"],
+        scopes: apiRequest.scopes,
         account: accounts[0],
       };
 

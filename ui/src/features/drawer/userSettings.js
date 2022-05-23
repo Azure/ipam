@@ -23,6 +23,8 @@ import {
 
 import { updateMe } from "../ipam/ipamAPI";
 
+import { apiRequest } from "../../msal/authConfig";
+
 const marks = [
   {
     value: 5,
@@ -50,16 +52,13 @@ export default function UserSettings(props) {
 
   const [refreshValue, setRefreshValue] = React.useState();
   const [sending, setSending] = React.useState(false);
-  const [changed, setChanged] = React.useState(false);
   const refreshInterval = useSelector(getRefreshInterval);
+
+  const changed = (refreshInterval == refreshValue) ? false : true;
 
   React.useEffect(()=>{
     setRefreshValue(refreshInterval);
-  }, []);
-
-  React.useEffect(()=>{
-    refreshInterval == refreshValue ? setChanged(false) : setChanged(true);
-  }, [refreshValue]);
+  }, [open]);
 
   function onSubmit() {
     var body = [
@@ -68,7 +67,7 @@ export default function UserSettings(props) {
 
     (async () => {
       const request = {
-        scopes: ["https://management.azure.com/user_impersonation"],
+        scopes: apiRequest.scopes,
         account: accounts[0],
       };
 
@@ -76,6 +75,7 @@ export default function UserSettings(props) {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
         const data = await updateMe(response.accessToken, body);
+        enqueueSnackbar("User settings updated", { variant: "success" });
         await getMeAsync(response.accessToken);
         handleClose();
       } catch (e) {

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useSelector } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
 import { DataGrid, GridOverlay } from "@mui/x-data-grid";
@@ -29,6 +30,8 @@ import EditReservations from "./Utils/editReservations";
 import ConfirmDelete from "./Utils/confirmDelete";
 
 import { ConfigureContext } from "../configureContext";
+
+import { getAdminStatus } from "../../ipam/ipamSlice";
 
 const GridHeader = styled("div")({
   height: "50px",
@@ -75,6 +78,8 @@ export default function BlockDataGrid(props) {
   const [editResvOpen, setEditResvOpen] = React.useState(false);
   const [deleteBlockOpen, setDeleteBlockOpen] = React.useState(false);
   const [anchorEl, setAnchorEl] = React.useState(null);
+
+  const isAdmin = useSelector(getAdminStatus);
 
   const selectedRow = selectionModel.length
     ? blocks.find((obj) => {
@@ -161,33 +166,37 @@ export default function BlockDataGrid(props) {
 
   return (
     <React.Fragment>
-      <AddBlock
-        open={addBlockOpen}
-        handleClose={() => setAddBlockOpen(false)}
-        space={selected ? selected.name : null}
-        blocks={selected ? selected.blocks : null}
-        refresh={() => refresh()}
-      />
-      <EditVnets
-        open={editVNetsOpen}
-        handleClose={() => setEditVNetsOpen(false)}
-        space={selected ? selected.name : null}
-        block={selectedRow ? selectedRow : null}
-        refresh={() => refresh()}
-        refreshingState={refreshing}
-      />
+      { isAdmin &&
+        <React.Fragment>
+          <AddBlock
+            open={addBlockOpen}
+            handleClose={() => setAddBlockOpen(false)}
+            space={selected ? selected.name : null}
+            blocks={selected ? selected.blocks : null}
+            refresh={() => refresh()}
+          />
+          <EditVnets
+            open={editVNetsOpen}
+            handleClose={() => setEditVNetsOpen(false)}
+            space={selected ? selected.name : null}
+            block={selectedRow ? selectedRow : null}
+            refresh={() => refresh()}
+            refreshingState={refreshing}
+          />
+          <ConfirmDelete
+            open={deleteBlockOpen}
+            handleClose={() => setDeleteBlockOpen(false)}
+            space={selected ? selected.name : null}
+            block={selectedRow ? selectedRow.name : null}
+            refresh={() => refresh()}
+          />
+        </React.Fragment>
+      }
       <EditReservations
         open={editResvOpen}
         handleClose={() => setEditResvOpen(false)}
         space={selected ? selected.name : null}
         block={selectedRow ? selectedRow.name : null}
-      />
-      <ConfirmDelete
-        open={deleteBlockOpen}
-        handleClose={() => setDeleteBlockOpen(false)}
-        space={selected ? selected.name : null}
-        block={selectedRow ? selectedRow.name : null}
-        refresh={() => refresh()}
       />
       <GridHeader
         style={{
@@ -253,24 +262,28 @@ export default function BlockDataGrid(props) {
                 },
               }}
             >
-              <MenuItem
-                onClick={handleAddBlock}
-                disabled={!selected}
-              >
-                <ListItemIcon>
-                  <GridViewIcon fontSize="small" />
-                </ListItemIcon>
-                Add Block
-              </MenuItem>
-              <MenuItem
-                onClick={handleEditVNets}
-                disabled={!selectedRow}
-              >
-                <ListItemIcon>
-                  <SettingsEthernetIcon fontSize="small" />
-                </ListItemIcon>
-                Virtual Networks
-              </MenuItem>
+              { isAdmin &&
+                <MenuItem
+                  onClick={handleAddBlock}
+                  disabled={!selected}
+                >
+                  <ListItemIcon>
+                    <GridViewIcon fontSize="small" />
+                  </ListItemIcon>
+                  Add Block
+                </MenuItem>
+              }
+              { isAdmin &&
+                <MenuItem
+                  onClick={handleEditVNets}
+                  disabled={!selectedRow}
+                >
+                  <ListItemIcon>
+                    <SettingsEthernetIcon fontSize="small" />
+                  </ListItemIcon>
+                  Virtual Networks
+                </MenuItem>
+              }
               <MenuItem
                 onClick={handleEditResv}
                 disabled={!selectedRow}
@@ -280,16 +293,20 @@ export default function BlockDataGrid(props) {
                 </ListItemIcon>
                 Reservations
               </MenuItem>
-              <Divider />
-              <MenuItem
-                onClick={handleDeleteBlock}
-                disabled={!selectedRow}
-              >
-                <ListItemIcon>
-                  <DeleteOutlineIcon fontSize="small" />
-                </ListItemIcon>
-                Delete
-              </MenuItem>
+              { isAdmin &&
+                <Divider />
+              }
+              { isAdmin &&
+                <MenuItem
+                  onClick={handleDeleteBlock}
+                  disabled={!selectedRow}
+                >
+                  <ListItemIcon>
+                    <DeleteOutlineIcon fontSize="small" />
+                  </ListItemIcon>
+                  Delete
+                </MenuItem>
+              }
             </Menu>
           </React.Fragment>
         </Box>

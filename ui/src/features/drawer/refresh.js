@@ -12,6 +12,10 @@ import {
   getMeAsync
 } from '../ipam/ipamSlice';
 
+import {
+  apiRequest
+} from '../../msal/authConfig';
+
 function Refresh() {
   const { instance, accounts } = useMsal();
   const [intervalAllId, setIntervalAllId] = React.useState();
@@ -24,31 +28,49 @@ function Refresh() {
 
   refreshAllRef.current = React.useCallback(() => {
     const request = {
-      scopes: ["https://management.azure.com/user_impersonation"],
+      scopes: apiRequest.scopes,
       account: accounts[0],
     };
 
     (async() => {
-      const response = await instance.acquireTokenSilent(request);
+      const response = await instance.acquireTokenSilent(request).catch((e) => {
+        if (e.errorCode === "consent_required" || e.errorCode === "interaction_required" || e.errorCode === "login_required") {
+          instance.acquireTokenPopup(request).catch((e) => {
+            console.log("TOKEN ERROR:");
+            console.log("--------------");
+            console.error(e);
+            console.log("--------------");
+          });
+        }
+      });
       dispatch(refreshAllAsync(response.accessToken))
     })();
   }, []);
 
   refreshMeRef.current = React.useCallback(() => {
     const request = {
-      scopes: ["https://management.azure.com/user_impersonation"],
+      scopes: apiRequest.scopes,
       account: accounts[0],
     };
 
     (async() => {
-      const response = await instance.acquireTokenSilent(request);
+      const response = await instance.acquireTokenSilent(request).catch((e) => {
+        if (e.errorCode === "consent_required" || e.errorCode === "interaction_required" || e.errorCode === "login_required") {
+          instance.acquireTokenPopup(request).catch((e) => {
+            console.log("LOGIN ERROR:");
+            console.log("--------------");
+            console.error(e);
+            console.log("--------------");
+          });
+        }
+      });
       dispatch(getMeAsync(response.accessToken))
     })();
   }, []);
 
   React.useEffect(()=>{
     if(refreshInterval) {
-      // refreshAllRef.current()
+      refreshAllRef.current()
       clearInterval(intervalAllId);
       setIntervalAllId(
         setInterval(() => refreshAllRef.current(), refreshInterval * 60 * 1000)
@@ -60,20 +82,18 @@ function Refresh() {
   }, [refreshInterval]);
 
   React.useEffect(()=>{
-    if(refreshInterval) {
-      // refreshMeRef.current()
+    refreshMeRef.current()
+    clearInterval(intervalMeId);
+    setIntervalMeId(
+      setInterval(() => refreshMeRef.current(), 60 * 1000)
+    );
+    return () => {
       clearInterval(intervalMeId);
-      setIntervalMeId(
-        setInterval(() => refreshMeRef.current(), 60 * 1000)
-      );
-      return () => {
-        clearInterval(intervalMeId);
-      }
     }
   }, []);
 
   React.useEffect(()=>{
-    const env = process.env || window['env'];
+    const env = { ...process.env, ...window['env'] }
     console.log("+++WEBSITE_DETAILS+++");
     console.log(env);
     console.log("+++++++++++++++++++++");

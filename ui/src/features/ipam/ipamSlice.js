@@ -9,8 +9,8 @@ import {
 } from './ipamAPI';
 
 const initialState = {
-  refreshInterval: 1,
-  isAdmin: true,
+  refreshInterval: null,
+  isAdmin: false,
   spaces: null,
   blocks: null,
   vNets: null,

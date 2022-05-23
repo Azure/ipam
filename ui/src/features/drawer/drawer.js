@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useDispatch } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 
 import { useSnackbar } from "notistack";
 
@@ -76,6 +76,12 @@ import ConfigureIPAM from "../configure/configure";
 
 import Refresh from "./refresh";
 
+import {
+  getAdminStatus
+} from "../ipam/ipamSlice";
+
+import { apiRequest } from "../../msal/authConfig";
+
 const Search = styled("div")(({ theme }) => ({
   display: "flex",
   position: "relative",
@@ -127,6 +133,7 @@ export default function NavDrawer() {
   const [navChildOpen, setNavChildOpen] = React.useState({});
   const [drawerState, setDrawerState] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const isAdmin = useSelector(getAdminStatus);
   const dispatch = useDispatch();
 
   const isMenuOpen = Boolean(menuAnchorEl);
@@ -137,7 +144,8 @@ export default function NavDrawer() {
       {
         title: "Home",
         icon: Home,
-        link: "/"
+        link: "/",
+        admin: false
       },
     ],
     [
@@ -148,27 +156,32 @@ export default function NavDrawer() {
           {
             title: "Spaces",
             icon: Space,
-            link: "discover/space"
+            link: "discover/space",
+            admin: false
           },
           {
             title: "Blocks",
             icon: Block,
-            link: "discover/block"
+            link: "discover/block",
+            admin: false
           },
           {
             title: "vNets",
             icon: VNet,
-            link: "discover/vnet"
+            link: "discover/vnet",
+            admin: false
           },
           {
             title: "Subnets",
             icon: Subnet,
-            link: "discover/subnet"
+            link: "discover/subnet",
+            admin: false
           },
           {
             title: "Endpoints",
             icon: Endpoint,
-            link: "discover/endpoint"
+            link: "discover/endpoint",
+            admin: false
           }
         ]
       },
@@ -179,12 +192,14 @@ export default function NavDrawer() {
           {
             title: "Visualize",
             icon: Visualize,
-            link: "analyze/visualize"
+            link: "analyze/visualize",
+            admin: false
           },
           // {
           //   title: "Conflicts",
           //   icon: Conflict,
-          //   link: "analyze/conflict"
+          //   link: "analyze/conflict",
+          //   admin: false
           // }
         ]
       },
@@ -194,11 +209,13 @@ export default function NavDrawer() {
         title: "Configure",
         icon: Configure,
         link: "configure",
+        admin: false
       },
       {
         title: "Admin",
         icon: Admin,
         link: "admin",
+        admin: true
       },
     ]
   ];
@@ -218,17 +235,17 @@ export default function NavDrawer() {
     })();
   }, []);
 
-  React.useEffect(() => {
-    const request = {
-      scopes: ["https://management.azure.com/user_impersonation"],
-      account: accounts[0],
-    };
+  // React.useEffect(() => {
+  //   const request = {
+  //     scopes: ["api://de6cc43c-c275-46fc-9d9e-89b82fa930ec/access_as_user"],
+  //     account: accounts[0],
+  //   };
 
-    (async() => {
-      const response = await instance.acquireTokenSilent(request);
-      dispatch(refreshAllAsync(response.accessToken))
-    })();
-  }, []);
+  //   (async() => {
+  //     const response = await instance.acquireTokenSilent(request);
+  //     dispatch(refreshAllAsync(response.accessToken))
+  //   })();
+  // }, []);
 
   React.useEffect(() => {
     // Handler to call on window resize
@@ -288,6 +305,7 @@ export default function NavDrawer() {
                     >
                     <List component="div" disablePadding>
                       {item.children.map((child, childIndex) => (
+                        ((item.admin && isAdmin) || !item.admin) &&
                         <ListItem
                           button
                           key={child.title}
@@ -308,7 +326,8 @@ export default function NavDrawer() {
                     </List>
                     </Collapse>
                   </React.Fragment>
-                : <ListItem
+                : ((item.admin && isAdmin) || !item.admin) &&
+                  <ListItem
                     button
                     key={item.title}
                     component={Link}
@@ -335,7 +354,7 @@ export default function NavDrawer() {
   function RequestToken() {
     (async () => {
       const request = {
-        scopes: ["https://management.azure.com/user_impersonation"],
+        scopes: apiRequest.scopes,
         account: accounts[0],
       };
 

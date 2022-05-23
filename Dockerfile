@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:16-slim
+FROM node:16-slim AS builder
 
 # Set Working Directory
 WORKDIR /app
@@ -31,12 +31,16 @@ RUN apt install openssh-server -y \
       && echo "root:Docker!" | chpasswd 
 
 # Enable SSH root login with Password Authentication
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config
+# RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config
+
+# Copy 'sshd_config File' to /etc/ssh/
+COPY sshd_config /etc/ssh/
 
 RUN ssh-keygen -A
 RUN mkdir /var/run/sshd
 
 # Install NodeJS 16.x
+RUN apt install curl -y
 RUN curl -sL https://deb.nodesource.com/setup_16.x -o nodesource_setup.sh
 RUN bash ./nodesource_setup.sh
 RUN apt install nodejs

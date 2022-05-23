@@ -34,6 +34,8 @@ import {
   deleteBlockResvs
 } from "../../../ipam/ipamAPI";
 
+import { apiRequest } from "../../../../msal/authConfig";
+
 // Python
 // import time
 // time.time() -> 1647638968.5812438
@@ -199,7 +201,7 @@ export default function EditReservations(props) {
   function refreshData() {
     (async () => {
       const request = {
-        scopes: ["https://management.azure.com/user_impersonation"],
+        scopes: apiRequest.scopes,
         account: accounts[0],
       };
 
@@ -233,7 +235,7 @@ export default function EditReservations(props) {
   function onSubmit() {
     (async () => {
       const request = {
-        scopes: ["https://management.azure.com/user_impersonation"],
+        scopes: apiRequest.scopes,
         account: accounts[0],
       };
 

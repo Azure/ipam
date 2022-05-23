@@ -17,6 +17,8 @@ import {
 
 import { createBlock } from "../../../ipam/ipamAPI";
 
+import { apiRequest } from "../../../../msal/authConfig";
+
 export default function AddBlock(props) {
   const { open, handleClose, space, blocks, refresh } = props;
 
@@ -46,7 +48,7 @@ export default function AddBlock(props) {
   
     (async () => {
       const request = {
-        scopes: ["https://management.azure.com/user_impersonation"],
+        scopes: apiRequest.scopes,
         account: accounts[0],
       };
 

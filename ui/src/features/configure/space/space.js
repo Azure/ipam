@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useSelector } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
 import { DataGrid, GridOverlay } from "@mui/x-data-grid";
@@ -29,6 +30,8 @@ import EditSpace from "./Utils/editSpace";
 import ConfirmDelete from "./Utils/confirmDelete";
 
 import { ConfigureContext } from "../configureContext";
+
+import { getAdminStatus } from "../../ipam/ipamSlice";
 
 const GridHeader = styled("div")({
   height: "50px",
@@ -72,6 +75,8 @@ export default function SpaceDataGrid(props) {
   const [editSpaceOpen, setEditSpaceOpen] = React.useState(false);
   const [deleteSpaceOpen, setDeleteSpaceOpen] = React.useState(false);
   const [anchorEl, setAnchorEl] = React.useState(null);
+
+  const isAdmin = useSelector(getAdminStatus);
 
   const selectedRow = selectionModel.length
     ? spaces.find((obj) => {
@@ -142,25 +147,29 @@ export default function SpaceDataGrid(props) {
 
   return (
     <React.Fragment>
-      <EditSpace
-        open={editSpaceOpen}
-        handleClose={() => setEditSpaceOpen(false)}
-        space={selectedRow ? selectedRow : null}
-        spaces={spaces}
-        refresh={() => refresh()}
-      />
-      <AddSpace
-        open={addSpaceOpen}
-        handleClose={() => setAddSpaceOpen(false)}
-        spaces={spaces}
-        refresh={() => refresh()}
-      />
-      <ConfirmDelete
-        open={deleteSpaceOpen}
-        handleClose={() => setDeleteSpaceOpen(false)}
-        space={selectedRow ? selectedRow.name : null}
-        refresh={() => refresh()}
-      />
+      { isAdmin &&
+        <React.Fragment>
+        <EditSpace
+          open={editSpaceOpen}
+          handleClose={() => setEditSpaceOpen(false)}
+          space={selectedRow ? selectedRow : null}
+          spaces={spaces}
+          refresh={() => refresh()}
+        />
+        <AddSpace
+          open={addSpaceOpen}
+          handleClose={() => setAddSpaceOpen(false)}
+          spaces={spaces}
+          refresh={() => refresh()}
+        />
+        <ConfirmDelete
+          open={deleteSpaceOpen}
+          handleClose={() => setDeleteSpaceOpen(false)}
+          space={selectedRow ? selectedRow.name : null}
+          refresh={() => refresh()}
+        />
+        </React.Fragment>
+      }
       <GridHeader
         style={{
           borderBottom: "1px solid rgba(224, 224, 224, 1)",
@@ -170,88 +179,90 @@ export default function SpaceDataGrid(props) {
         <Box sx={{ width: "20%" }}></Box>
         <GridTitle>{selectedRow ? `'${selectedRow.name}' selected` : "Spaces"}</GridTitle>
         <Box sx={{ width: "20%", display: "flex", justifyContent: "flex-end" }}>
-          <React.Fragment>
-            <Tooltip title="Actions">
-              <IconButton
-                aria-label="upload picture"
-                component="span"
-                onClick={handleMenuClick}
-                sx={{ mr: 1.5 }}
-              >
-                <MoreVertIcon />
-              </IconButton>
-            </Tooltip>
-            <Menu
-              id="demo-positioned-menu"
-              aria-labelledby="demo-positioned-button"
-              anchorEl={anchorEl}
-              open={menuOpen}
-              onClose={handleMenuClose}
-              anchorOrigin={{
-                vertical: "bottom",
-                horizontal: "right",
-              }}
-              transformOrigin={{
-                vertical: "top",
-                horizontal: "right",
-              }}
-              PaperProps={{
-                elevation: 0,
-                style: {
-                  width: 200,
-                },
-                sx: {
-                  overflow: "visible",
-                  filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
-                  mt: 1.5,
-                  "& .MuiAvatar-root": {
-                    width: 32,
-                    height: 32,
-                    ml: -0.5,
-                    mr: 1,
+          { isAdmin &&
+            <React.Fragment>
+              <Tooltip title="Actions">
+                <IconButton
+                  aria-label="upload picture"
+                  component="span"
+                  onClick={handleMenuClick}
+                  sx={{ mr: 1.5 }}
+                >
+                  <MoreVertIcon />
+                </IconButton>
+              </Tooltip>
+              <Menu
+                id="demo-positioned-menu"
+                aria-labelledby="demo-positioned-button"
+                anchorEl={anchorEl}
+                open={menuOpen}
+                onClose={handleMenuClose}
+                anchorOrigin={{
+                  vertical: "bottom",
+                  horizontal: "right",
+                }}
+                transformOrigin={{
+                  vertical: "top",
+                  horizontal: "right",
+                }}
+                PaperProps={{
+                  elevation: 0,
+                  style: {
+                    width: 200,
                   },
-                  "&:before": {
-                    content: '""',
-                    display: "block",
-                    position: "absolute",
-                    top: 0,
-                    right: 14,
-                    width: 10,
-                    height: 10,
-                    bgcolor: "background.paper",
-                    transform: "translateY(-50%) rotate(45deg)",
-                    zIndex: 0,
+                  sx: {
+                    overflow: "visible",
+                    filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
+                    mt: 1.5,
+                    "& .MuiAvatar-root": {
+                      width: 32,
+                      height: 32,
+                      ml: -0.5,
+                      mr: 1,
+                    },
+                    "&:before": {
+                      content: '""',
+                      display: "block",
+                      position: "absolute",
+                      top: 0,
+                      right: 14,
+                      width: 10,
+                      height: 10,
+                      bgcolor: "background.paper",
+                      transform: "translateY(-50%) rotate(45deg)",
+                      zIndex: 0,
+                    },
                   },
-                },
-              }}
-            >
-              <MenuItem onClick={handleAddSpace}>
-                <ListItemIcon>
-                  <CloudQueueIcon fontSize="small" />
-                </ListItemIcon>
-                Add Space
-              </MenuItem>
-              <MenuItem
-                onClick={handleEditSpace}
-                disabled={!selectedRow}
+                }}
               >
-                <ListItemIcon>
-                  <EditIcon fontSize="small" />
-                </ListItemIcon>
-                Edit Space
-              </MenuItem>
-              <Divider />
-              <MenuItem
-                onClick={handleDeleteSpace}
-                disabled={!selectedRow}
-              >
-                <ListItemIcon>
-                  <DeleteOutlineIcon fontSize="small" />
-                </ListItemIcon>
-                Delete
-              </MenuItem>
-            </Menu>
-          </React.Fragment>
+                <MenuItem onClick={handleAddSpace}>
+                  <ListItemIcon>
+                    <CloudQueueIcon fontSize="small" />
+                  </ListItemIcon>
+                  Add Space
+                </MenuItem>
+                <MenuItem
+                  onClick={handleEditSpace}
+                  disabled={!selectedRow}
+                >
+                  <ListItemIcon>
+                    <EditIcon fontSize="small" />
+                  </ListItemIcon>
+                  Edit Space
+                </MenuItem>
+                <Divider />
+                <MenuItem
+                  onClick={handleDeleteSpace}
+                  disabled={!selectedRow}
+                >
+                  <ListItemIcon>
+                    <DeleteOutlineIcon fontSize="small" />
+                  </ListItemIcon>
+                  Delete
+                </MenuItem>
+              </Menu>
+            </React.Fragment>
+          }
         </Box>
       </GridHeader>
       <GridBody>

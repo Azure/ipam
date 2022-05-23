@@ -17,6 +17,8 @@ import {
 
 import { updateSpace } from "../../../ipam/ipamAPI";
 
+import { apiRequest } from "../../../../msal/authConfig";
+
 export default function EditSpace(props) {
   const { open, handleClose, space, spaces, refresh } = props;
 
@@ -70,7 +72,7 @@ export default function EditSpace(props) {
 
     (async () => {
       const request = {
-        scopes: ["https://management.azure.com/user_impersonation"],
+        scopes: apiRequest.scopes,
         account: accounts[0],
       };
 

@@ -38,6 +38,8 @@ import {
   replaceAdmins
 } from "../ipam/ipamAPI";
 
+import { apiRequest } from "../../msal/authConfig";
+
 function CustomToolbar(props) {
   const { admins, loadedAdmins, setAdmins, selectionModel, refresh } = props;
 
@@ -119,7 +121,7 @@ function CustomToolbar(props) {
   function onSave() {
     (async () => {
       const request = {
-        scopes: ["https://management.azure.com/user_impersonation"],
+        scopes: apiRequest.scopes,
         account: accounts[0],
       };
 
@@ -252,7 +254,7 @@ export default function Administration() {
   function refreshData() {
     (async () => {
       const request = {
-        scopes: ["https://management.azure.com/user_impersonation"],
+        scopes: apiRequest.scopes,
         account: accounts[0],
       };
 

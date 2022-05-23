@@ -11,6 +11,8 @@ import { ConfigureContext } from "./configureContext";
 
 import { selectSpaces, fetchSpacesAsync } from "../ipam/ipamSlice";
 
+import { apiRequest } from "../../msal/authConfig";
+
 const Wrapper = styled("div")(({ theme }) => ({
   height: "calc(100vh - 112px)",
   display: "flex",
@@ -70,7 +72,7 @@ export default function ConfigureIPAM() {
 
   function refresh() {
     const request = {
-      scopes: ["https://management.azure.com/user_impersonation"],
+      scopes: apiRequest.scopes,
       account: accounts[0],
     };
 

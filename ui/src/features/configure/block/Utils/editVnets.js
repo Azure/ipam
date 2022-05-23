@@ -33,6 +33,8 @@ import {
 
 import { getRefreshing } from "../../../ipam/ipamSlice";
 
+import { apiRequest } from "../../../../msal/authConfig";
+
 const columns = [
   { field: "name", headerName: "Name", headerAlign: "left", align: "left", flex: 1 },
   { field: "subscription_id", headerName: "Subscription", headerAlign: "left", align: "left", flex: 1 },
@@ -74,7 +76,7 @@ export default function EditVnets(props) {
   function refreshData() {
     (async () => {
       const request = {
-        scopes: ["https://management.azure.com/user_impersonation"],
+        scopes: apiRequest.scopes,
         account: accounts[0],
       };
 
@@ -114,7 +116,7 @@ export default function EditVnets(props) {
   function onSubmit() {
     (async () => {
       const request = {
-        scopes: ["https://management.azure.com/user_impersonation"],
+        scopes: apiRequest.scopes,
         account: accounts[0],
       };
 

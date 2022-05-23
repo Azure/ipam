@@ -13,9 +13,9 @@ import {
   CircularProgress
 } from "@mui/material";
 
-import {
-  fetchTreeView
-} from '../ipam/ipamAPI';
+import { fetchTreeView } from '../ipam/ipamAPI';
+
+import { apiRequest } from "../../msal/authConfig";
 
 import * as d3 from "d3";
 import Sunburst from 'sunburst-chart';
@@ -52,7 +52,7 @@ export default function AnalysisTool() {
   React.useEffect(() => {
     (async () => {
       const request = {
-        scopes: ["https://management.azure.com/user_impersonation"],
+        scopes: apiRequest.scopes,
         account: accounts[0],
       };
 

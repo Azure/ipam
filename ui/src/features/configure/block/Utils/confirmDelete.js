@@ -20,6 +20,8 @@ import {
 
 import { deleteBlock } from "../../../ipam/ipamAPI";
 
+import { apiRequest } from '../../../../msal/authConfig';
+
 const Spotlight = styled("span")({
   fontWeight: "bold",
   color: "mediumblue"
@@ -45,7 +47,7 @@ export default function ConfirmDelete(props) {
     } else {
       (async () => {
         const request = {
-          scopes: ["https://management.azure.com/user_impersonation"],
+          scopes: apiRequest.scopes,
           account: accounts[0],
         };
   
