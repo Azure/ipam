@@ -69,12 +69,16 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
           value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/COSMOS-KEY/)'
         }
         {
-          name: 'CLIENT_ID'
-          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/CLIENT-ID/)'
+          name: 'UI_APP_ID'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/UI-ID/)'
         }
         {
-          name: 'CLIENT_SECRET'
-          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/CLIENT-SECRET/)'
+          name: 'ENGINE_APP_ID'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-ID/)'
+        }
+        {
+          name: 'ENGINE_SECRET'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-SECRET/)'
         }
         {
           name: 'TENANT_ID'

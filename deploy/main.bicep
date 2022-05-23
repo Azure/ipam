@@ -7,14 +7,17 @@ param guid string = newGuid()
 @description('Deployment Location')
 param location string = deployment().location
 
-@description('Service Principal ClientId')
-param spnClientId string
+@description('IPAM-UI App Registration Client/App ID')
+param uiAppId string
+
+@description('IPAM-Engine App Registration Client/App ID')
+param engineAppId string
 
 @secure()
-@description('Service Principal Secret')
-param spnSecret string
+@description('IPAM-Engine App Registration Client Secret')
+param engineAppSecret string
 
-// Naming variables
+// Resource Naming Variables
 var resourceGroupName = 'ipam-rg-${uniqueString(guid)}'
 var managedIdentityName = 'ipam-mi-${uniqueString(guid)}'
 var keyVaultName = 'ipam-kv-${uniqueString(guid)}'
@@ -27,13 +30,13 @@ var appServiceName = 'ipam-${uniqueString(guid)}'
 // Cosmos Variables
 var cosmosAccountName = 'ipam-dbacct-${uniqueString(guid)}'
 
-// Resource group
+// Resource Group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: resourceGroupName
   location: location
 }
 
-// Authentication related resources
+// Managed Identity for Secure Access to KeyVault
 module managedIdentity 'managedIdentity.bicep' = {
   name: 'managedIdentityModule'
   scope: resourceGroup
@@ -43,7 +46,7 @@ module managedIdentity 'managedIdentity.bicep' = {
   }
 }
 
-// Security related resources
+// KeyVault for Secure Values
 module keyVault 'keyVault.bicep' ={
   name: 'keyVaultModule'
   scope: resourceGroup
@@ -51,12 +54,13 @@ module keyVault 'keyVault.bicep' ={
     keyVaultName: keyVaultName
     location: location
     principalId:  managedIdentity.outputs.principalId
-    spnClientId: spnClientId
-    spnSecret: spnSecret
+    uiAppId: uiAppId
+    engineAppId: engineAppId
+    engineAppSecret: engineAppSecret
   }
 }
 
-// Data related resources
+// Cosmos DB for IPAM Database
 module cosmos 'cosmos.bicep' = {
   name: 'cosmosModule'
   scope: resourceGroup
@@ -67,6 +71,7 @@ module cosmos 'cosmos.bicep' = {
   }
 }
 
+// Storage Account for Nginx Config
 module storageAccount 'storageAccount.bicep' = {
   scope: resourceGroup
   name: 'storageAccountModule'
@@ -78,7 +83,7 @@ module storageAccount 'storageAccount.bicep' = {
   }
 }
 
-// Compute related resources
+// App Service w/ Docker Compose + CI
 module appService 'appService.bicep' = {
   scope: resourceGroup
   name: 'appServiceModule'

@@ -10,13 +10,15 @@ param principalId string
 @description('AzureAD TenantId')
 param tenantId string = subscription().tenantId
 
-@description('Service Principal ClientId')
-@secure()
-param spnClientId string
+@description('IPAM-UI App Registration Client/App ID')
+param uiAppId string
 
-@description('Service Principal Secret')
+@description('IPAM-Engine App Registration Client/App ID')
+param engineAppId string
+
 @secure()
-param spnSecret string
+@description('IPAM-Engine App Registration Client Secret')
+param engineAppSecret string
 
 // KeyVault Secret Permissions Assigned to Managed Identity
 var secretsPermissions = [
@@ -48,23 +50,31 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
   }
 }
 
-resource clientId 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
+resource uiId 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
   parent: keyVault
-  name: 'CLIENT-ID'
+  name: 'UI-ID'
   properties: {
-    value: spnClientId
+    value: uiAppId
   }
 }
 
-resource clientSecret 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
+resource engineId 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
   parent: keyVault
-  name: 'CLIENT-SECRET'
+  name: 'ENGINE-ID'
   properties: {
-    value: spnSecret
+    value: engineAppId
   }
 }
 
-resource clientTenant 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
+resource engineSecret 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
+  parent: keyVault
+  name: 'ENGINE-SECRET'
+  properties: {
+    value: engineAppSecret
+  }
+}
+
+resource appTenant 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
   parent: keyVault
   name: 'TENANT-ID'
   properties: {

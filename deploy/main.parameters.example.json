@@ -2,11 +2,14 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "spnClientId": {
-      "value": "<SERVICE PRINCIPAL CLIENT ID>"
+    "uiAppId": {
+      "value": "<UI APP REGISTRATION APP/CLIENT ID>"
     },
-    "spnSecret": {
-      "value": "<SERVICE PRINCIPAL SECRET>"
+    "engineAppId": {
+      "value": "<ENGINE APP REGISTRATION APP/CLIENT ID>"
+    },
+    "engineAppSecret": {
+      "value": "<ENGINE APP REGISTRATION CLIENT SECRET>"
     }
   }
 }
