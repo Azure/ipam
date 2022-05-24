@@ -1,23 +1,23 @@
-@description('Deployment Location')
-param location string = resourceGroup().location
-
-@description('Storage Account Name')
-param storageAccountName string
-
 @description('Blob Container Name')
 param containerName string = 'nginx'
 
-@description('Managed Identity PrincipalId')
-param principalId string
+@description('Deployment Location')
+param location string = resourceGroup().location
 
 @description('Managed Identity Id')
 param managedIdentityId string
 
+@description('Managed Identity PrincipalId')
+param principalId string
+
 @description('Role Assignment GUID')
 param roleAssignmentName string = newGuid()
 
+@description('Storage Account Name')
+param storageAccountName string
+
 var storageBlobDataContributor = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
-var roleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributor)
+var storageBlobDataContributorId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributor)
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-06-01' = {
   name: storageAccountName
@@ -28,6 +28,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-06-01' = {
   kind: 'StorageV2'
   properties: {
     accessTier: 'Hot'
+    allowBlobPublicAccess: false
   }
 }
 
@@ -40,7 +41,7 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-prev
   scope: blobContainer
   properties: {
     principalType: 'ServicePrincipal'
-    roleDefinitionId: roleDefinitionId
+    roleDefinitionId: storageBlobDataContributorId
     principalId: principalId
   }
 }

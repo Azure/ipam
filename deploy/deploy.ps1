@@ -4,6 +4,11 @@
 ##
 ###############################################################################################################
 
+# Set minimum version requirements
+#Requires -Version 7.2
+#Requires -Modules @{ ModuleName="Az"; ModuleVersion="7.5.0"}
+#Requires -Modules @{ ModuleName="Microsoft.Graph"; ModuleVersion="1.9.6"}
+
 # Intake and set parameters
 Param(
     [Parameter(Mandatory=$false)]
@@ -23,20 +28,9 @@ $tenantId = (Get-AzContext).Tenant.Id
 # Set preference variables
 $ErrorActionPreference = "Stop"
 
-# Install Microsoft Graph module
-if (Get-InstalledModule Microsoft.Graph -ErrorAction SilentlyContinue) {
-    Write-Warning -Message "Microsoft Graph Module already installed, proceeding with deployment..."
-}
-else {
-    Write-Host "INFO: Installing Microsoft Graph PowerShell SDK Module" -ForegroundColor green
-    Write-Verbose -Message "Installing Microsoft Graph PowerShell SDK Module"
-    Install-Module Microsoft.Graph
-
-}
-
 # Validate Location
 $validLocations = Get-AzLocation
-Function ValidateLocation {
+Function validateLocation {
     if ($location -in ($validLocations | Select-Object -ExpandProperty Location)) {
         foreach ($l in $validLocations) {
             if ($location -eq $l.Location) {
@@ -50,26 +44,26 @@ Function ValidateLocation {
     }
 }
 
-ValidateLocation $location
+validateLocation $location
 
 try {
-    # Create IPAM service principal and assign it reader role at tenant root group level
-    Write-Host "INFO: Creating Azure Service Principal" -ForegroundColor green
-    Write-Verbose -Message "Creating Azure Service Principal"
-    $sp = New-AzADServicePrincipal `
-    -DisplayName "ipam-sp-$spGuid" `
-    -Role "Reader" `
-    -Scope "/providers/Microsoft.Management/managementGroups/$tenantId"
 
+    deployServicePrincipal
 }
 catch {
     $_ | Out-File -FilePath $logFile -Append
     Write-Host "ERROR: Unable to create Azure Service Principal due to an exception, see $logFile for detailed information!" -ForegroundColor red
     exit
-
 }
 
-try {
+Function deployServicePrincipal {
+    Write-Host "INFO: Creating Azure Service Principal" -ForegroundColor green
+    Write-Verbose -Message "Creating Azure Service Principal"
+    $global:sp = New-AzADServicePrincipal `
+    -DisplayName "ipam-sp-$spGuid" `
+    -Role "Reader" `
+    -Scope "/providers/Microsoft.Management/managementGroups/$tenantId"
+
     # Assign Microsoft Graph API permissions to IPAM service principal
     Write-Host "INFO: Assigning Microsoft Graph API permission to IPAM Service Principal" -ForegroundColor Green
     Write-Verbose -Message "Assigning Microsoft Graph API permission to IPAM Service Principal"
@@ -78,6 +72,16 @@ try {
         -ApplicationId $sp.AppId `
         -ApiId $msGraphAppId `
         -PermissionId $i
+    
+}
+
+
+
+
+
+try {
+
+
     }
 }
 catch {

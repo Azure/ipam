@@ -1,11 +1,11 @@
-@description('Deployment Location')
-param location string = resourceGroup().location
-
 @description('CosmosDB Account Name')
 param cosmosAccountName string
 
 @description('KeyVault Name')
 param keyVaultName string
+
+@description('Deployment Location')
+param location string = resourceGroup().location
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2021-04-15' = {
   name: cosmosAccountName

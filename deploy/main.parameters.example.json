@@ -2,11 +2,20 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "namePrefix": {
+      "value": "ipam"
+    },
     "spnClientId": {
       "value": "<SERVICE PRINCIPAL CLIENT ID>"
     },
     "spnSecret": {
       "value": "<SERVICE PRINCIPAL SECRET>"
+    },
+    "tags": {
+      "value": {
+        "<TAG NAME 1>": "<TAG VALUE 1>",
+        "<TAG NAME 2>": "<TAG VALUE 2>"
+      }
     }
   }
 }

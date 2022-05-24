@@ -7,9 +7,6 @@ param location string = resourceGroup().location
 @description('Managed Identity PrincipalId')
 param principalId string
 
-@description('AzureAD TenantId')
-param tenantId string = subscription().tenantId
-
 @description('Service Principal ClientId')
 @secure()
 param spnClientId string
@@ -17,6 +14,9 @@ param spnClientId string
 @description('Service Principal Secret')
 @secure()
 param spnSecret string
+
+@description('AzureAD TenantId')
+param tenantId string = subscription().tenantId
 
 // KeyVault Secret Permissions Assigned to Managed Identity
 var secretsPermissions = [
@@ -27,6 +27,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
   name: keyVaultName
   location: location
   properties: {
+    enablePurgeProtection: true
     tenantId: tenantId
     accessPolicies: [
       {

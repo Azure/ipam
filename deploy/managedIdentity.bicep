@@ -1,18 +1,18 @@
+@description('Contributor Role Assignment GUID')
+param contributorAssignmentName string = newGuid()
+
 @description('Deployment Location')
 param location string = resourceGroup().location
 
 @description('Managed Identity Name')
 param managedIdentityName string
 
-@description('Contributor Role Assignment GUID')
-param contributorAssignmentName string = newGuid()
-
 @description('Managed Identity Operator Role Assignment GUID')
 param managedIdentityOperatorAssignmentName string = newGuid()
 
 var contributor = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
-var managedIdentityOperator = 'f1a07417-d97a-45cb-824c-7a7467783830'
 var contributorId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributor)
+var managedIdentityOperator = 'f1a07417-d97a-45cb-824c-7a7467783830'
 var managedIdentityOperatorId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', managedIdentityOperator)
 
 resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {

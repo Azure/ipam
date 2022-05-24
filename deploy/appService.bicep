@@ -1,17 +1,17 @@
-@description('App Service Plan Name')
-param appServicePlanName string
-
 @description('App Service Name')
 param appServiceName string
 
-@description('Deployment Location')
-param location string = resourceGroup().location
+@description('App Service Plan Name')
+param appServicePlanName string
 
 @description('CosmosDB URI')
 param cosmosDbUri string
 
 @description('KeyVault URI')
 param keyVaultUri string
+
+@description('Deployment Location')
+param location string = resourceGroup().location
 
 @description('Managed Identity ClientId')
 param managedIdentityClientId string

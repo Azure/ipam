@@ -7,6 +7,9 @@ param guid string = newGuid()
 @description('Deployment Location')
 param location string = deployment().location
 
+@description('Name Prefix')
+param namePrefix string
+
 @description('Service Principal ClientId')
 param spnClientId string
 
@@ -14,23 +17,24 @@ param spnClientId string
 @description('Service Principal Secret')
 param spnSecret string
 
-// Naming variables
-var resourceGroupName = 'ipam-rg-${uniqueString(guid)}'
-var managedIdentityName = 'ipam-mi-${uniqueString(guid)}'
-var keyVaultName = 'ipam-kv-${uniqueString(guid)}'
-var storageName = 'ipamstg${uniqueString(guid)}'
+@description('Tags')
+param tags object
 
-// App Service Variables
-var appServicePlanName = 'ipam-asp-${uniqueString(guid)}'
-var appServiceName = 'ipam-${uniqueString(guid)}'
+// Resource naming variables
+var appServiceName = '${namePrefix}-${uniqueString(guid)}'
+var appServicePlanName = '${namePrefix}-asp-${uniqueString(guid)}'
+var cosmosAccountName = '${namePrefix}-dbacct-${uniqueString(guid)}'
+var keyVaultName = '${namePrefix}-kv-${uniqueString(guid)}'
+var managedIdentityName = '${namePrefix}-mi-${uniqueString(guid)}'
+var resourceGroupName = '${namePrefix}-rg-${uniqueString(guid)}'
+var storageName = '${namePrefix}stg${uniqueString(guid)}'
 
-// Cosmos Variables
-var cosmosAccountName = 'ipam-dbacct-${uniqueString(guid)}'
 
 // Resource group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: resourceGroupName
   location: location
+  name: resourceGroupName
+  tags: tags
 }
 
 // Authentication related resources
