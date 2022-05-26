@@ -46,7 +46,7 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-prev
   }
 }
 
-resource exampleScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
+resource copyNginxConfig 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   name: 'exampleScript'
   location: location
   kind: 'AzurePowerShell'
