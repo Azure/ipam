@@ -300,7 +300,8 @@ async def vm(authorization: str = Header(None), admin: str = Depends(get_admin))
 async def vmss(authorization: str = Header(None), admin: str = Depends(get_admin)):
     """DOCSTRING"""
 
-    vmss_list = await get_vmss(authorization, admin)
+    # vmss_list = await get_vmss(authorization, admin)
+    vmss_list = await arg_query(authorization, admin, argquery.VM_SCALE_SET)
 
     return vmss_list
 
