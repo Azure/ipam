@@ -20,8 +20,10 @@ import {
 
 import { deleteSpace } from "../../../ipam/ipamAPI";
 
+import { apiRequest } from '../../../../msal/authConfig';
+
 const Spotlight = styled("span")({
-	fontWeight: "bold",
+  fontWeight: "bold",
   color: "mediumblue"
 });
 
@@ -29,7 +31,7 @@ export default function ConfirmDelete(props) {
   const { open, handleClose, space, refresh } = props;
 
   const { instance, accounts } = useMsal();
-	const { enqueueSnackbar } = useSnackbar();
+  const { enqueueSnackbar } = useSnackbar();
 
   const [force, setForce] = React.useState(false);
   const [verify, setVerify] = React.useState(false);
@@ -45,7 +47,7 @@ export default function ConfirmDelete(props) {
     } else {
       (async () => {
         const request = {
-          scopes: ["https://management.azure.com/user_impersonation"],
+          scopes: apiRequest.scopes,
           account: accounts[0],
         };
   

@@ -20,81 +20,81 @@ import CloseIcon from '@mui/icons-material/Close';
 import { TableContext } from "../TableContext";
 
 const theme = createTheme({
-	palette: {
-		primary: {
-			main: "#1a90ff",
-		},
-	},
-	overrides: {
-		MuiLinearProgress: {
-			root: {
-				borderRadius: 4,
-				height: 7,
-			},
-			bar1Determinate: {
-				borderRadius: 4,
-			},
-			colorPrimary: {
-				backgroundColor: "#f5f5f5",
-			},
-		},
-		MuiCircularProgress: {
-			circle: {
-				strokeLinecap: "round",
-				strokeWidth: 2.8,
-			},
-		},
-	},
+  palette: {
+    primary: {
+      main: "#1a90ff",
+    },
+  },
+  overrides: {
+    MuiLinearProgress: {
+      root: {
+        borderRadius: 4,
+        height: 7,
+      },
+      bar1Determinate: {
+        borderRadius: 4,
+      },
+      colorPrimary: {
+        backgroundColor: "#f5f5f5",
+      },
+    },
+    MuiCircularProgress: {
+      circle: {
+        strokeLinecap: "round",
+        strokeWidth: 2.8,
+      },
+    },
+  },
 });
 
 function NumberCircularProgress(props) {
-	var circleColor = "inherit";
+  var circleColor = "inherit";
 
-	if (props.value <= 70) {
-		circleColor = "success";
-	} else if (props.value <= 90) {
-		circleColor = "warning";
-	} else if (props.value > 90) {
-		circleColor = "error";
-	}
+  if (props.value <= 70) {
+    circleColor = "success";
+  } else if (props.value <= 90) {
+    circleColor = "warning";
+  } else if (props.value > 90) {
+    circleColor = "error";
+  }
 
-	return (
-		<Box position="relative" display="inline-block">
-			<Box top={0} left={0} bottom={0} right={0} position="absolute">
-				<CircularProgress style={{ color: "#f5f5f5" }} size={110} variant="determinate" value={100} />
-			</Box>
-			<CircularProgress
-				// style={{ color: circleColor }}
-				color={circleColor}
-				size={110}
-				variant="determinate"
-				value={props.value}
-			/>
-			<Box
-				top={0}
-				left={0}
-				bottom={0}
-				right={0}
-				position="absolute"
-				display="flex"
-				alignItems="center"
-				justifyContent="center"
-			>
-				<Typography variant="h6" component="div" color="textSecondary">{`${props.value}%`}</Typography>
-			</Box>
-		</Box>
-	);
+  return (
+    <Box position="relative" display="inline-block">
+      <Box top={0} left={0} bottom={0} right={0} position="absolute">
+        <CircularProgress style={{ color: "#f5f5f5" }} size={110} variant="determinate" value={100} />
+      </Box>
+      <CircularProgress
+        // style={{ color: circleColor }}
+        color={circleColor}
+        size={110}
+        variant="determinate"
+        value={props.value}
+      />
+      <Box
+        top={0}
+        left={0}
+        bottom={0}
+        right={0}
+        position="absolute"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Typography variant="h6" component="div" color="textSecondary">{`${props.value}%`}</Typography>
+      </Box>
+    </Box>
+  );
 }
 
 export default function ItemDetails(props) {
-	const { data, rowData, menuExpand } = React.useContext(TableContext);
+  const { data, rowData, menuExpand } = React.useContext(TableContext);
   const { title, map, setExpand } = props;
 
   var isTarget = Object.keys(rowData).length;
-	var progress = isTarget ? (Math.round((rowData[map.progressUsed] / rowData[map.progressTotal]) * 100) || 0) : 0;
+  var progress = isTarget ? (Math.round((rowData[map.progressUsed] / rowData[map.progressTotal]) * 100) || 0) : 0;
 
   const rootTheme = useTheme();
-	const isSmallScreen = useMediaQuery(rootTheme.breakpoints.down("xl"));
+  const isSmallScreen = useMediaQuery(rootTheme.breakpoints.down("xl"));
 
   const Wrapper = styled(Box)({
     display: "flex",
@@ -132,9 +132,9 @@ export default function ItemDetails(props) {
     marginTop: "10px"
   }
 
-	return isTarget ? (
-		<ThemeProvider theme={theme}>
-			<Wrapper>
+  return isTarget ? (
+    <ThemeProvider theme={theme}>
+      <Wrapper>
         {/* <Box width="40px" sx={{ marginLeft: "auto" }}>
           <IconButton size="small" sx={{ padding: 0 }} onClick={() => setExpand(false)}>
             <CloseIcon />
@@ -182,7 +182,7 @@ export default function ItemDetails(props) {
             </Link>
           </React.Fragment>
         }
-			</Wrapper>
-		</ThemeProvider>
-	) : null;
+      </Wrapper>
+    </ThemeProvider>
+  ) : null;
 }

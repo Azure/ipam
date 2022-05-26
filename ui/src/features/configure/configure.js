@@ -11,46 +11,48 @@ import { ConfigureContext } from "./configureContext";
 
 import { selectSpaces, fetchSpacesAsync } from "../ipam/ipamSlice";
 
+import { apiRequest } from "../../msal/authConfig";
+
 const Wrapper = styled("div")(({ theme }) => ({
   height: "calc(100vh - 112px)",
-	display: "flex",
-	flexDirection: "column",
-	justifyContent: "flex-start",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "flex-start",
   padding: theme.spacing(3),
 }));
 
 const Header = styled("div")(({ theme }) => ({
-	...theme.typography.h5,
-	width: "100%",
-	padding: theme.spacing(1),
+  ...theme.typography.h5,
+  width: "100%",
+  padding: theme.spacing(1),
   paddingBottom: theme.spacing(3),
-	textAlign: "center",
+  textAlign: "center",
 }));
 
 const MainBody = styled("div")({
-	height: "100%",
-	width: "100%",
-	display: "flex",
+  height: "100%",
+  width: "100%",
+  display: "flex",
   flexDirection: "column",
 });
 
 const TopSection = styled("div")(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
+  display: "flex",
+  flexDirection: "column",
   height: "50%",
-	width: "100%",
+  width: "100%",
   border: "1px solid rgba(224, 224, 224, 1)",
-	borderRadius: "4px",
+  borderRadius: "4px",
   marginBottom: theme.spacing(1.5)
 }));
 
 const BottomSection = styled("div")(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
+  display: "flex",
+  flexDirection: "column",
   height: "50%",
-	width: "100%",
+  width: "100%",
   border: "1px solid rgba(224, 224, 224, 1)",
-	borderRadius: "4px",
+  borderRadius: "4px",
   marginTop: theme.spacing(1.5)
 }));
 
@@ -66,11 +68,11 @@ export default function ConfigureIPAM() {
 
   React.useEffect(() => {
     refresh();
-	}, []);
+  }, []);
 
   function refresh() {
     const request = {
-      scopes: ["https://management.azure.com/user_impersonation"],
+      scopes: apiRequest.scopes,
       account: accounts[0],
     };
 
@@ -82,7 +84,7 @@ export default function ConfigureIPAM() {
     })();
   }
 
-	return (
+  return (
     <ConfigureContext.Provider value={{ refreshing, spaces, refresh }}>
       <Wrapper>
         <Header>
@@ -102,5 +104,5 @@ export default function ConfigureIPAM() {
         </MainBody>
       </Wrapper>
     </ConfigureContext.Provider>
-	);
+  );
 }

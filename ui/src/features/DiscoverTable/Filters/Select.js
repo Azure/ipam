@@ -34,7 +34,7 @@ const MenuProps = {
 };
 
 export default function SelectFilter(props) {
-	const { title, data, dataField, handleChange, state } = props;
+  const { title, data, dataField, handleChange, state } = props;
   const didMount = React.useRef(false);
 
   const [value, setValue] = React.useState([]);
@@ -55,39 +55,39 @@ export default function SelectFilter(props) {
     didMount.current ? handleChange(changeData) : didMount.current = true;
   }, [value]);
 
-	return (
-		<FormControl
-			variant="standard"
-			size="small"
-			sx={{ margin: "0px 8px 0px 8px", width: 200, flexDirection: "row" }}
-		>
-			<InputLabel id="demo-multiple-checkbox-label">{title}</InputLabel>
-			<Select
-				labelId="demo-multiple-checkbox-label"
-				id="demo-multiple-checkbox"
-				multiple
-				value={value}
-				onChange={(event) => setValue(event.target.value)}
-				// input={<OutlinedInput label="Tag" />}
-				renderValue={(selected) => selected.join(", ")}
-				style={{ width: "180px", minWidth: "180px" }}
-				MenuProps={MenuProps}
-			>
-				{[...new Set(data.map((a) => a[dataField]))].map((name) => (
-					<MenuItem key={name} value={name}>
-						<Checkbox checked={value.indexOf(name) > -1} />
-						<ListItemText primary={name} />
-					</MenuItem>
-				))}
-			</Select>
-			<IconButton
-				onClick={() => setValue([])}
-				disableRipple
-				size="small"
-				style={{ padding: "20px 5px 0px 5px", backgroundColor: "transparent" }}
-			>
-				<FilterAltOff fontSize="inherit" />
-			</IconButton>
-		</FormControl>
-	);
+  return (
+    <FormControl
+      variant="standard"
+      size="small"
+      sx={{ margin: "0px 8px 0px 8px", width: 200, flexDirection: "row" }}
+    >
+      <InputLabel id="demo-multiple-checkbox-label">{title}</InputLabel>
+      <Select
+        labelId="demo-multiple-checkbox-label"
+        id="demo-multiple-checkbox"
+        multiple
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        // input={<OutlinedInput label="Tag" />}
+        renderValue={(selected) => selected.join(", ")}
+        style={{ width: "180px", minWidth: "180px" }}
+        MenuProps={MenuProps}
+      >
+        {[...new Set(data.map((a) => a[dataField]))].map((name) => (
+          <MenuItem key={name} value={name}>
+            <Checkbox checked={value.indexOf(name) > -1} />
+            <ListItemText primary={name} />
+          </MenuItem>
+        ))}
+      </Select>
+      <IconButton
+        onClick={() => setValue([])}
+        disableRipple
+        size="small"
+        style={{ padding: "20px 5px 0px 5px", backgroundColor: "transparent" }}
+      >
+        <FilterAltOff fontSize="inherit" />
+      </IconButton>
+    </FormControl>
+  );
 }

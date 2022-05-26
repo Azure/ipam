@@ -34,6 +34,8 @@ import {
   deleteBlockResvs
 } from "../../../ipam/ipamAPI";
 
+import { apiRequest } from "../../../../msal/authConfig";
+
 // Python
 // import time
 // time.time() -> 1647638968.5812438
@@ -48,15 +50,15 @@ const msgMap = {
 };
 
 const Spotlight = styled("span")({
-	fontWeight: "bold",
+  fontWeight: "bold",
   color: "mediumblue"
 });
 
 export default function EditReservations(props) {
-	const { open, handleClose, space, block } = props;
+  const { open, handleClose, space, block } = props;
 
   const { instance, accounts } = useMsal();
-	const { enqueueSnackbar } = useSnackbar();
+  const { enqueueSnackbar } = useSnackbar();
 
   const [loading, setLoading] = React.useState(false);
   const [reservations, setReservations] = React.useState([]);
@@ -182,7 +184,7 @@ export default function EditReservations(props) {
 
   React.useEffect(() => {
     refreshData();
-	}, [block]);
+  }, [block]);
 
   React.useEffect(() => {
     if(copied != "") {
@@ -194,18 +196,18 @@ export default function EditReservations(props) {
         }, 3000
       );
     }
-	}, [timer, copied]);
+  }, [timer, copied]);
 
   function refreshData() {
     (async () => {
-			const request = {
-				scopes: ["https://management.azure.com/user_impersonation"],
-				account: accounts[0],
-			};
+      const request = {
+        scopes: apiRequest.scopes,
+        account: accounts[0],
+      };
 
       setReservations([]);
       setSelectionModel([]);
-			setLoading(true);
+      setLoading(true);
 
       if(space && block) {
         try {
@@ -226,50 +228,50 @@ export default function EditReservations(props) {
         setReservations([])
       }
 
-			setLoading(false);
-		})();
+      setLoading(false);
+    })();
   }
 
   function onSubmit() {
     (async () => {
-			const request = {
-				scopes: ["https://management.azure.com/user_impersonation"],
-				account: accounts[0],
-			};
+      const request = {
+        scopes: apiRequest.scopes,
+        account: accounts[0],
+      };
 
-			try {
+      try {
         setSending(true);
-				const response = await instance.acquireTokenSilent(request);
-				const data = await deleteBlockResvs(response.accessToken, space, block, selectionModel);
+        const response = await instance.acquireTokenSilent(request);
+        const data = await deleteBlockResvs(response.accessToken, space, block, selectionModel);
         handleClose();
         enqueueSnackbar("Successfully deleted IP Block reservations", { variant: "success" });
         refreshData();
-			} catch (e) {
-				console.log("ERROR");
-				console.log("------------------");
-				console.log(e);
-				console.log("------------------");
+      } catch (e) {
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
         enqueueSnackbar(e.response.data.error, { variant: "error" });
-			} finally {
+      } finally {
         setSending(false);
       }
-		})();
+    })();
   }
 
   function CustomLoadingOverlay() {
-		return (
-			<GridOverlay>
-				<div style={{ position: "absolute", top: 0, width: "100%" }}>
-					<LinearProgress />
-				</div>
-			</GridOverlay>
-		);
-	}
+    return (
+      <GridOverlay>
+        <div style={{ position: "absolute", top: 0, width: "100%" }}>
+          <LinearProgress />
+        </div>
+      </GridOverlay>
+    );
+  }
 
-	return (
-		<div sx={{ height: "300px", width: "100%" }}>
-			<Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-				<DialogTitle>
+  return (
+    <div sx={{ height: "300px", width: "100%" }}>
+      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+        <DialogTitle>
           <Box sx={{ display: "flex", flexDirection: "row" }}>
             <Box>
               Block Reservations
@@ -286,44 +288,44 @@ export default function EditReservations(props) {
             </Box>
           </Box>
         </DialogTitle>
-				<DialogContent>
-					<DialogContentText>
-						Select the CIDR reservations for Block <Spotlight>'{block}'</Spotlight> to be deleted
-					</DialogContentText>
-					<Box sx={{ pt: 4, height: "300px" }}>
-						<DataGrid
-							checkboxSelection
-							disableColumnMenu
-							hideFooter
-							hideFooterPagination
-							hideFooterSelectedRowCount
-							density="compact"
-							rows={reservations}
-							columns={columns}
-							loading={loading}
-							onSelectionModelChange={(newSelectionModel) => setSelectionModel(newSelectionModel)}
-							selectionModel={selectionModel}
-							components={{
-								LoadingOverlay: CustomLoadingOverlay,
-								// NoRowsOverlay: CustomNoRowsOverlay,
-							}}
-							sx={{
-								"&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus-within":
-									{
-										outline: "none",
-									},
-								// border: "none",
-							}}
-						/>
-					</Box>
-				</DialogContent>
-				<DialogActions>
-					<Button onClick={handleClose}>Cancel</Button>
-					<Button onClick={onSubmit} disabled={empty || sending}>
+        <DialogContent>
+          <DialogContentText>
+            Select the CIDR reservations for Block <Spotlight>'{block}'</Spotlight> to be deleted
+          </DialogContentText>
+          <Box sx={{ pt: 4, height: "300px" }}>
+            <DataGrid
+              checkboxSelection
+              disableColumnMenu
+              hideFooter
+              hideFooterPagination
+              hideFooterSelectedRowCount
+              density="compact"
+              rows={reservations}
+              columns={columns}
+              loading={loading}
+              onSelectionModelChange={(newSelectionModel) => setSelectionModel(newSelectionModel)}
+              selectionModel={selectionModel}
+              components={{
+                LoadingOverlay: CustomLoadingOverlay,
+                // NoRowsOverlay: CustomNoRowsOverlay,
+              }}
+              sx={{
+                "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus-within":
+                  {
+                    outline: "none",
+                  },
+                // border: "none",
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={onSubmit} disabled={empty || sending}>
             Delete
           </Button>
-				</DialogActions>
-			</Dialog>
-		</div>
-	);
+        </DialogActions>
+      </Dialog>
+    </div>
+  );
 }

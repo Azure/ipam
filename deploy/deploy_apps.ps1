@@ -1,7 +1,7 @@
 ###############################################################################################################
 ##
-## Azure IPAM Solution Deployment Script
-## 
+## Azure IPAM Application & Service Principal Deployment Script
+##
 ###############################################################################################################
 
 # Set minimum version requirements
@@ -9,44 +9,13 @@
 #Requires -Modules @{ ModuleName="Az"; ModuleVersion="7.5.0"}
 #Requires -Modules @{ ModuleName="Microsoft.Graph"; ModuleVersion="1.9.6"}
 
-# Intake and set global parameters
-Param(
-	[Parameter(Mandatory=$false)]
-  	[string]$location="westus3",
-  	[Parameter(Mandatory=$false)]
-  	[string]$namePrefix="ipam",
-  	[Parameter(Mandatory=$true)]
-  	[string]$tags
-)
+# Set global parameters
 $engineApiGuid = New-Guid
 $logFile = "./deploy_$(get-date -format `"yyyyMMddhhmmsstt`").log"
 $tenantId = (Get-AzContext).Tenant.Id
 
 # Set preference variables
 $ErrorActionPreference = "Stop"
-
-Function validateLocation {
-    # Validate Azure Region
-    Write-Host "INFO: Validating Azure Region selected for deployment" -ForegroundColor green
-    Write-Verbose -Message "Validating Azure Region selected for deployment"
-  
-    $validLocations = Get-AzLocation
-    if ($location -in ($validLocations | Select-Object -ExpandProperty Location)) {
-        foreach ($l in $validLocations) {
-            if ($location -eq $l.Location) {
-                $script:locationName = $l.DisplayName
-
-                Write-Host "INFO: Azure Region validated successfully" -ForegroundColor green
-                Write-Verbose -Message "Azure Region validated successfully"
-            }
-        }
-    }
-    else {
-        Write-Host "ERROR: Location provided is not a valid Azure Region!" -ForegroundColor red
-        exit
-        
-    }
-}
 
 Function deployEngineApplication {
     $azureSvcMgmtApiPermissionsScope = "user_impersonation"
@@ -89,6 +58,7 @@ Function deployEngineApplication {
     # Create IPAM engine application
     Write-Host "INFO: Creating Azure IPAM Engine Service Principal" -ForegroundColor green
     Write-Verbose -Message "Creating Azure IPAM Engine Service Principal"
+
     $global:engineApp = New-AzADApplication `
     -DisplayName "ipam-engine-app" `
     -RequiredResourceAccess $engineResourceAccess
@@ -119,6 +89,7 @@ Function deployEngineApplication {
     # Grant admin consent for Microsoft Graph API permissions assigned to IPAM engine application
     Write-Host "INFO: Granting admin consent for Microsoft Graph API permissions assigned to IPAM Engine Application" -ForegroundColor Green
     Write-Verbose -Message "Granting admin consent for Microsoft Graph API permissions assigned to IPAM Engine Application"
+
     New-MgOauth2PermissionGrant `
     -ResourceId $msGraphSpn.Id `
     -Scope $msGraphApiPermissionsScope `
@@ -132,6 +103,7 @@ Function deployEngineApplication {
     # Grant admin consent for Azure Service Management API permissions assigned to IPAM application
     Write-Host "INFO: Granting admin consent for Azure Service Management API permissions assigned to IPAM ENgine Application" -ForegroundColor Green
     Write-Verbose -Message "Granting admin consent for Azure Service Management API permissions assigned to IPAM Engine Application"
+
     New-MgOauth2PermissionGrant `
     -ResourceId $azureSvcMgmtSpn.Id `
     -Scope $azureSvcMgmtApiPermissionsScope `
@@ -186,10 +158,12 @@ Function deployUiApplication {
     # Create IPAM UI Application
     Write-Host "INFO: Creating Azure IPAM UI Application" -ForegroundColor green
     Write-Verbose -Message "Creating Azure IPAM UI Application"
+
     $global:uiApp = New-AzADApplication `
     -DisplayName "ipam-ui-app" `
     -Web $uiWebSettings `
-    -RequiredResourceAccess $uiResourceAccess
+    -RequiredResourceAccess $uiResourceAccess `
+    -SPARedirectUri "https://ipam-placeholder-replace-me.azurewebsites.net"
 
     # Create IPAM UI service principal
     $uiSpn = New-AzADServicePrincipal -ApplicationObject $global:uiApp
@@ -208,6 +182,7 @@ Function deployUiApplication {
     # Grant admin consent for Microsoft Graph API permissions assigned to IPAM UI application
     Write-Host "INFO: Granting admin consent for Microsoft Graph API permissions assigned to IPAM UI Application" -ForegroundColor Green
     Write-Verbose -Message "Granting admin consent for Microsoft Graph API permissions assigned to IPAM UI Application"
+
     New-MgOauth2PermissionGrant `
     -ResourceId $msGraphSpn.Id `
     -Scope $msGraphApiPermissionsScope `
@@ -221,6 +196,7 @@ Function deployUiApplication {
     # Grant admin consent for Azure Service Management API permissions assigned to IPAM application
     Write-Host "INFO: Granting admin consent for Azure IPAM Engine API permissions assigned to IPAM UI Application" -ForegroundColor Green
     Write-Verbose -Message "Granting admin consent for Azure IPAM Engine API permissions assigned to IPAM UI Application"
+
     New-MgOauth2PermissionGrant `
     -ResourceId $engineSpn.Id `
     -Scope $engineApiPermissionsScope `
@@ -239,16 +215,16 @@ Function updateEngineApplication {
           $global:uiApp.AppId
         )
         Oauth2PermissionScope = @(
-        	@{
-            	AdminConsentDescription = "Allows the IPAM UI to access IPAM Engine API as the signed-in user."
-				AdminConsentDisplayName = "Access IPAM Engine API"
-				Id = $engineApiGuid
-				IsEnabled = $true
-				Type = "User"
-				UserConsentDescription = "Allow the IPAM UI to access IPAM Engine API on your behalf."
-				UserConsentDisplayName = "Access IPAM Engine API"
-				Value = "access_as_user"
-          	}
+            @{
+                AdminConsentDescription = "Allows the IPAM UI to access IPAM Engine API as the signed-in user."
+                AdminConsentDisplayName = "Access IPAM Engine API"
+                Id = $engineApiGuid
+                IsEnabled = $true
+                Type = "User"
+                UserConsentDescription = "Allow the IPAM UI to access IPAM Engine API on your behalf."
+                UserConsentDisplayName = "Access IPAM Engine API"
+                Value = "access_as_user"
+            }
         )
         RequestedAccessTokenVersion = 2
     }
@@ -256,54 +232,33 @@ Function updateEngineApplication {
     # Update IPAM engine application API settings
     Write-Host "INFO: Updating Azure IPAM Engine Application" -ForegroundColor green
     Write-Verbose -Message "Updating Azure IPAM Engine Application"
+
     Update-AzADApplication -ApplicationId $global:engineApp.AppId -Api $engineApiSettings
 
-    
     Write-Host "INFO: Updated Azure IPAM Engine Application successfully" -ForegroundColor green
     Write-Verbose -Message "Updated Azure IPAM Engine Application successfully"
 
 }
 
-Function deployBicep {
-    Write-Host "INFO: Deploying IPAM bicep templates" -ForegroundColor green
-    Write-Verbose -Message "Deploying bicep templates"
+Function populateBicepParameters {
+    Write-Host "INFO: Populating Bicep parameter file for infrastructure deployment" -ForegroundColor Green
+    Write-Verbose -Message "Populating Bicep parameter file for infrastructure deployment"
 
-	# Instantiate deployment parameter object
-	$tagsObject = $tags | ConvertFrom-Json
-    $deploymentParameters = @{
-        'engineAppId' = $global:engineApp.AppId
-        'engineAppSecret' = $global:engineSecret.SecretText
-        'namePrefix' = $namePrefix
-        'tags' = $tagsObject
-        'uiAppId' = $global:uiApp.AppId
+    # Retrieve JSON object from sample parameter file
+    $parametersObject = Get-Content main.parameters.example.json | ConvertFrom-Json
 
-    }
-    
-	# Deploy IPAM bicep template
-    $global:deployment = New-AzSubscriptionDeployment `
-    -Name "ipamInfraDeploy-$(Get-Date -Format `"yyyyMMddhhmmsstt`")" `
-    -Location $location `
-    -TemplateFile main.bicep `
-    -TemplateParameterObject $deploymentParameters
+    # update parameter values
+    $parametersObject.parameters.engineAppId.value = $global:engineApp.AppId
 
-	Write-Host "INFO: IPAM bicep templates deployed successfully" -ForegroundColor green
-	Write-Verbose -Message "IPAM bicep template deployed successfully"
-    
-}
+    $parametersObject.parameters.engineAppSecret.value = $global:engineSecret.SecretText
 
-Function updateUiApplication {
-    Write-Host "INFO: Updating UI Application with SPA configuration" -ForegroundColor green
-    Write-Verbose -Message "Updating UI Application with SPA configuration"
-  
-    $uiAppId = $global:deployment.Parameters["uiAppId"].Value
-    $appServiceEndpoint = "https://$($global:deployment.Outputs["appServiceHostName"].Value)"
-  
-	# Update UI Application with single-page application configuration
-    Update-AzADApplication -ApplicationId $uiAppId -SPARedirectUri $appServiceEndpoint 
-  
-    Write-Host "INFO: UI Application SPA configuration update complete" -ForegroundColor green
-    Write-Verbose -Message "UI Application SPA configuration update complete"
-  
+    $parametersObject.parameters.uiAppId.value = $global:uiApp.AppId
+
+    # Output updated parameter file for Bicep deployment
+    $parametersObject | ConvertTo-Json -Depth 3 | Out-File -FilePath main.parameters.json
+
+    Write-Host "INFO: Bicep parameter file populated successfully" -ForegroundColor green
+    Write-Verbose -Message "Bicep parameter file populated successfully"
 }
 
 try {
@@ -312,25 +267,26 @@ try {
 
     Connect-MgGraph -AccessToken $accesstoken
 
-    validateLocation $location
-
     deployEngineApplication
 
     deployUiApplication
 
     updateEngineApplication
 
-    deployBicep
+    populateBicepParameters
 
-    updateUiApplication
-
-	Write-Host "INFO: Azure IPAM Solution deployed successfully" -ForegroundColor green
-	Write-Verbose -Message "Azure IPAM Solution deployed successfully"
+    Write-Host "INFO: IPAM Engine Application Deployment Complete" -ForegroundColor Green
+    Write-Host "INFO: IPAM Engine Application Display Name: $($global:engineApp.DisplayName)" -ForegroundColor Green
+    Write-Host "INFO: IPAM Engine Application ID: $($global:engineApp.AppId)" -ForegroundColor Green
+    Write-Host "INFO: IPAM Engine Application Secret: $($global:engineSecret.SecretText)" -ForegroundColor Green
+    Write-Host "INFO: IPAM UI Application Deployment Complete" -ForegroundColor Green
+    Write-Host "INFO: IPAM UI Application Display Name: $($global:uiApp.DisplayName)" -ForegroundColor Green
+    Write-Host "INFO: IPAM UI Application ID: $($global:uiApp.AppId)" -ForegroundColor Green
 
 }
 catch {
     $_ | Out-File -FilePath $logFile -Append
-    Write-Host "ERROR: Unable to deploy Azure IPAM solution due to an exception, see $logFile for detailed information!" -ForegroundColor red
+    Write-Host "ERROR: Unable to create Azure IPAM Applications due to an exception, see $logFile for detailed information!" -ForegroundColor red
     exit
 
 }

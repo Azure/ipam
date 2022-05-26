@@ -31,13 +31,13 @@ import FilterMenu from "./FilterMenu";
 import ItemDetails from "./Utils/Details";
 
 const openStyle = {
-	right: 0,
-	transition: "all 0.5s ease-in-out",
+  right: 0,
+  transition: "all 0.5s ease-in-out",
 };
 
 const closedStyle = {
-	right: -300,
-	transition: "all 0.5s ease-in-out",
+  right: -300,
+  transition: "all 0.5s ease-in-out",
 };
 
 const StyledGridOverlay = styled('div')({
@@ -113,18 +113,22 @@ export default function DiscoverTable(props) {
   }
 
   React.useEffect(() => {
-    (stateData.length != 0) && setLoading(false);
+    stateData && setLoading(false);
   },[stateData, dataFilters]);
 
   function filterArray(array, filters) {
-    return array.filter(item => {
-      return Object.entries(filters)
-                   .map(([key, val]) => val.func(item, val.vals, key))
-                   .reduce((sum, next) => sum && next, true);
-    });
+    if(array) {
+      return array.filter(item => {
+        return Object.entries(filters)
+                    .map(([key, val]) => val.func(item, val.vals, key))
+                    .reduce((sum, next) => sum && next, true);
+      });
+    } else {
+      return [];
+    }
   }
 
-	const handleMenuClose = (state, filters) => {
+  const handleMenuClose = (state, filters) => {
     var newFilterMenuState = {
       ...filterMenuState,
       ...state
@@ -143,8 +147,8 @@ export default function DiscoverTable(props) {
 
     !filtersChanged && setDataFilters(newDataFilters);
 
-		setMenuOpen(false);
-	};
+    setMenuOpen(false);
+  };
 
   function CustomLoadingOverlay() {
     return (
@@ -235,7 +239,7 @@ export default function DiscoverTable(props) {
             </Tooltip>
             <FilterMenu
               open={menuOpen}
-              data={stateData}
+              data={stateData || []}
               anchorEl={anchorEl.current}
               filterSettings={filterSettings}
               handleClose={handleMenuClose}
@@ -247,10 +251,10 @@ export default function DiscoverTable(props) {
     );
   }
 
-	return (
-		<TableContext.Provider value={{ stateData, rowData, menuExpand }}>
+  return (
+    <TableContext.Provider value={{ stateData, rowData, menuExpand }}>
       {renderDetails()}
-			<Box sx={{ flexGrow: 1, height: "100%" }}>
+      <Box sx={{ flexGrow: 1, height: "100%" }}>
         <DataGrid
           disableSelectionOnClick
           disableColumnMenu
@@ -289,6 +293,6 @@ export default function DiscoverTable(props) {
           }}
         />
       </Box>
-		</TableContext.Provider>
-	);
+    </TableContext.Provider>
+  );
 }

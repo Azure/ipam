@@ -9,13 +9,13 @@ import {
 } from './ipamAPI';
 
 const initialState = {
-  refreshInterval: 1,
-  isAdmin: true,
-  spaces: [],
-  blocks: [],
-  vNets: [],
-  subnets: [],
-  endpoints: [],
+  refreshInterval: null,
+  isAdmin: false,
+  spaces: null,
+  blocks: null,
+  vNets: null,
+  subnets: null,
+  endpoints: null,
   refreshing: false,
 };
 

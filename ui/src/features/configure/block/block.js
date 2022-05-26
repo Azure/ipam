@@ -1,26 +1,27 @@
 import * as React from "react";
+import { useSelector } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
 import { DataGrid, GridOverlay } from "@mui/x-data-grid";
 
 import {
-	Box,
-	IconButton,
-	Tooltip,
-	Menu,
-	MenuItem,
-	ListItemIcon,
-	Divider,
-	Typography,
-	LinearProgress,
+  Box,
+  IconButton,
+  Tooltip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  Divider,
+  Typography,
+  LinearProgress,
 } from "@mui/material";
 
 import {
-	DeleteOutline as DeleteOutlineIcon,
-	MoreVert as MoreVertIcon,
+  DeleteOutline as DeleteOutlineIcon,
+  MoreVert as MoreVertIcon,
   GridView as GridViewIcon,
-	PieChartOutline as PieChartOutlineIcon,
-	SettingsEthernet as SettingsEthernetIcon,
+  PieChartOutline as PieChartOutlineIcon,
+  SettingsEthernet as SettingsEthernetIcon,
 } from "@mui/icons-material";
 
 import AddBlock from "./Utils/addBlock";
@@ -30,59 +31,63 @@ import ConfirmDelete from "./Utils/confirmDelete";
 
 import { ConfigureContext } from "../configureContext";
 
+import { getAdminStatus } from "../../ipam/ipamSlice";
+
 const GridHeader = styled("div")({
-	height: "50px",
-	width: "100%",
-	display: "flex",
-	borderBottom: "1px solid rgba(224, 224, 224, 1)",
+  height: "50px",
+  width: "100%",
+  display: "flex",
+  borderBottom: "1px solid rgba(224, 224, 224, 1)",
 });
 
 const GridTitle = styled("div")(({ theme }) => ({
-	...theme.typography.h6,
-	width: "80%",
-	textAlign: "center",
-	alignSelf: "center",
+  ...theme.typography.h6,
+  width: "80%",
+  textAlign: "center",
+  alignSelf: "center",
 }));
 
 const GridBody = styled("div")({
-	height: "100%",
-	width: "100%",
+  height: "100%",
+  width: "100%",
 });
 
 const StyledGridOverlay = styled("div")({
-	display: "flex",
-	flexDirection: "column",
-	alignItems: "center",
-	justifyContent: "center",
-	height: "100%",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  height: "100%",
 });
 
 const columns = [
-	{ field: "name", headerName: "Name", headerAlign: "left", align: "left", flex: 1 },
-	{ field: "space", headerName: "Parent Space", headerAlign: "left", align: "left", flex: 1 },
-	{ field: "cidr", headerName: "CIDR", headerAlign: "right", align: "right", flex: 0.75 },
+  { field: "name", headerName: "Name", headerAlign: "left", align: "left", flex: 1 },
+  { field: "space", headerName: "Parent Space", headerAlign: "left", align: "left", flex: 1 },
+  { field: "cidr", headerName: "CIDR", headerAlign: "right", align: "right", flex: 0.75 },
 ];
 
 export default function BlockDataGrid(props) {
   const { selected } = props;
   const { refresh, refreshing } = React.useContext(ConfigureContext);
 
-	const [blocks, setBlocks] = React.useState([]);
+  const [blocks, setBlocks] = React.useState([]);
   const [previous, setPrevious] = React.useState(null);
-	const [selectionModel, setSelectionModel] = React.useState([]);
+  const [selectionModel, setSelectionModel] = React.useState([]);
   const [addBlockOpen, setAddBlockOpen] = React.useState(false);
-	const [editVNetsOpen, setEditVNetsOpen] = React.useState(false);
-	const [editResvOpen, setEditResvOpen] = React.useState(false);
-	const [deleteBlockOpen, setDeleteBlockOpen] = React.useState(false);
-	const [anchorEl, setAnchorEl] = React.useState(null);
+  const [editVNetsOpen, setEditVNetsOpen] = React.useState(false);
+  const [editResvOpen, setEditResvOpen] = React.useState(false);
+  const [deleteBlockOpen, setDeleteBlockOpen] = React.useState(false);
+  const [anchorEl, setAnchorEl] = React.useState(null);
 
-	const selectedRow = selectionModel.length
-		? blocks.find((obj) => {
-				return obj.name === selectionModel[0];
-		  })
-		: null;
+  const isAdmin = useSelector(getAdminStatus);
 
-	const menuOpen = Boolean(anchorEl);
+  const selectedRow = selectionModel.length
+    ? blocks.find((obj) => {
+        return obj.name === selectionModel[0];
+      })
+    : null;
+
+  const menuOpen = Boolean(anchorEl);
 
   React.useEffect(() => {
     if(selected) {
@@ -96,108 +101,112 @@ export default function BlockDataGrid(props) {
       setBlocks([]);
       setPrevious(null);
     }
-	}, [selected]);
+  }, [selected]);
 
-	function CustomLoadingOverlay() {
-		return (
-			<GridOverlay>
-				<div style={{ position: "absolute", top: 0, width: "100%" }}>
-					<LinearProgress />
-				</div>
-			</GridOverlay>
-		);
-	}
+  function CustomLoadingOverlay() {
+    return (
+      <GridOverlay>
+        <div style={{ position: "absolute", top: 0, width: "100%" }}>
+          <LinearProgress />
+        </div>
+      </GridOverlay>
+    );
+  }
 
-	function CustomNoRowsOverlay() {
-		return (
-			<StyledGridOverlay>
+  function CustomNoRowsOverlay() {
+    return (
+      <StyledGridOverlay>
         { selected
           ? <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-              No IP Blocks Found
+              No Blocks Found in Selected Space
             </Typography>
           : <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-              Please Select an Space
+              Please Select a Space
             </Typography>
         }
-			</StyledGridOverlay>
-		);
-	}
+      </StyledGridOverlay>
+    );
+  }
 
-	const handleMenuClick = (event) => {
-		setAnchorEl(event.currentTarget);
-	};
+  const handleMenuClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
 
-	const handleMenuClose = () => {
-		setAnchorEl(null);
-	};
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
 
   const handleAddBlock = () => {
-		handleMenuClose();
-		setAddBlockOpen(true);
-	};
+    handleMenuClose();
+    setAddBlockOpen(true);
+  };
 
-	const handleEditVNets = () => {
-		handleMenuClose();
-		setEditVNetsOpen(true);
-	};
+  const handleEditVNets = () => {
+    handleMenuClose();
+    setEditVNetsOpen(true);
+  };
 
-	const handleEditResv = () => {
-		handleMenuClose();
-		setEditResvOpen(true);
-	};
+  const handleEditResv = () => {
+    handleMenuClose();
+    setEditResvOpen(true);
+  };
 
-	const handleDeleteBlock = () => {
-		handleMenuClose();
-		setDeleteBlockOpen(true);
-	};
+  const handleDeleteBlock = () => {
+    handleMenuClose();
+    setDeleteBlockOpen(true);
+  };
 
-	function onModelChange(newModel) {
-		if (JSON.stringify(newModel) === JSON.stringify(selectionModel)) {
-			setSelectionModel([]);
-		} else {
-			setSelectionModel(newModel);
-		}
-	}
+  function onModelChange(newModel) {
+    if (JSON.stringify(newModel) === JSON.stringify(selectionModel)) {
+      setSelectionModel([]);
+    } else {
+      setSelectionModel(newModel);
+    }
+  }
 
-	return (
-		<React.Fragment>
-      <AddBlock
-        open={addBlockOpen}
-        handleClose={() => setAddBlockOpen(false)}
-        space={selected ? selected.name : null}
-        blocks={selected ? selected.blocks : null}
-        refresh={() => refresh()}
-      />
-			<EditVnets
-        open={editVNetsOpen}
-        handleClose={() => setEditVNetsOpen(false)}
-        space={selected ? selected.name : null}
-        block={selectedRow ? selectedRow : null}
-        refresh={() => refresh()}
-        refreshingState={refreshing}
-      />
-			<EditReservations
+  return (
+    <React.Fragment>
+      { isAdmin &&
+        <React.Fragment>
+          <AddBlock
+            open={addBlockOpen}
+            handleClose={() => setAddBlockOpen(false)}
+            space={selected ? selected.name : null}
+            blocks={selected ? selected.blocks : null}
+            refresh={() => refresh()}
+          />
+          <EditVnets
+            open={editVNetsOpen}
+            handleClose={() => setEditVNetsOpen(false)}
+            space={selected ? selected.name : null}
+            block={selectedRow ? selectedRow : null}
+            refresh={() => refresh()}
+            refreshingState={refreshing}
+          />
+          <ConfirmDelete
+            open={deleteBlockOpen}
+            handleClose={() => setDeleteBlockOpen(false)}
+            space={selected ? selected.name : null}
+            block={selectedRow ? selectedRow.name : null}
+            refresh={() => refresh()}
+          />
+        </React.Fragment>
+      }
+      <EditReservations
         open={editResvOpen}
         handleClose={() => setEditResvOpen(false)}
         space={selected ? selected.name : null}
         block={selectedRow ? selectedRow.name : null}
       />
-			<ConfirmDelete
-        open={deleteBlockOpen}
-        handleClose={() => setDeleteBlockOpen(false)}
-        space={selected ? selected.name : null}
-        block={selectedRow ? selectedRow.name : null}
-        refresh={() => refresh()}
-      />
-			<GridHeader
-				style={{
-					borderBottom: "1px solid rgba(224, 224, 224, 1)",
-					backgroundColor: selectedRow ? "rgba(25, 118, 210, 0.12)" : "unset",
-				}}
-			>
-				<Box sx={{ width: "20%" }}></Box>
-				<GridTitle>{selectedRow ? `'${selectedRow.name}' selected` : "Blocks"}</GridTitle>
-				<Box sx={{ width: "20%", display: "flex", justifyContent: "flex-end" }}>
+      <GridHeader
+        style={{
+          borderBottom: "1px solid rgba(224, 224, 224, 1)",
+          backgroundColor: selectedRow ? "rgba(25, 118, 210, 0.12)" : "unset",
+        }}
+      >
+        <Box sx={{ width: "20%" }}></Box>
+        <GridTitle>{selectedRow ? `'${selectedRow.name}' selected` : "Blocks"}</GridTitle>
+        <Box sx={{ width: "20%", display: "flex", justifyContent: "flex-end" }}>
           <React.Fragment>
             <Tooltip title="Actions">
               <IconButton
@@ -253,24 +262,28 @@ export default function BlockDataGrid(props) {
                 },
               }}
             >
-              <MenuItem
-                onClick={handleAddBlock}
-                disabled={!selected}
-              >
-                <ListItemIcon>
-                  <GridViewIcon fontSize="small" />
-                </ListItemIcon>
-                Add Block
-              </MenuItem>
-              <MenuItem
-                onClick={handleEditVNets}
-                disabled={!selectedRow}
-              >
-                <ListItemIcon>
-                  <SettingsEthernetIcon fontSize="small" />
-                </ListItemIcon>
-                Virtual Networks
-              </MenuItem>
+              { isAdmin &&
+                <MenuItem
+                  onClick={handleAddBlock}
+                  disabled={!selected}
+                >
+                  <ListItemIcon>
+                    <GridViewIcon fontSize="small" />
+                  </ListItemIcon>
+                  Add Block
+                </MenuItem>
+              }
+              { isAdmin &&
+                <MenuItem
+                  onClick={handleEditVNets}
+                  disabled={!selectedRow}
+                >
+                  <ListItemIcon>
+                    <SettingsEthernetIcon fontSize="small" />
+                  </ListItemIcon>
+                  Virtual Networks
+                </MenuItem>
+              }
               <MenuItem
                 onClick={handleEditResv}
                 disabled={!selectedRow}
@@ -280,45 +293,49 @@ export default function BlockDataGrid(props) {
                 </ListItemIcon>
                 Reservations
               </MenuItem>
-              <Divider />
-              <MenuItem
-                onClick={handleDeleteBlock}
-                disabled={!selectedRow}
-              >
-                <ListItemIcon>
-                  <DeleteOutlineIcon fontSize="small" />
-                </ListItemIcon>
-                Delete
-              </MenuItem>
+              { isAdmin &&
+                <Divider />
+              }
+              { isAdmin &&
+                <MenuItem
+                  onClick={handleDeleteBlock}
+                  disabled={!selectedRow}
+                >
+                  <ListItemIcon>
+                    <DeleteOutlineIcon fontSize="small" />
+                  </ListItemIcon>
+                  Delete
+                </MenuItem>
+              }
             </Menu>
           </React.Fragment>
-				</Box>
-			</GridHeader>
-			<GridBody>
-				<DataGrid
-					disableColumnMenu
-					hideFooter
-					hideFooterPagination
-					hideFooterSelectedRowCount
-					density="compact"
+        </Box>
+      </GridHeader>
+      <GridBody>
+        <DataGrid
+          disableColumnMenu
+          hideFooter
+          hideFooterPagination
+          hideFooterSelectedRowCount
+          density="compact"
           getRowId={(row) => row.name}
-					rows={blocks}
-					columns={columns}
-					onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
-					selectionModel={selectionModel}
-					components={{
-						LoadingOverlay: CustomLoadingOverlay,
-						NoRowsOverlay: CustomNoRowsOverlay,
-					}}
-					sx={{
-						"&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus":
-							{
-								outline: "none",
-							},
-						border: "none",
-					}}
-				/>
-			</GridBody>
-		</React.Fragment>
-	);
+          rows={blocks}
+          columns={columns}
+          onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
+          selectionModel={selectionModel}
+          components={{
+            LoadingOverlay: CustomLoadingOverlay,
+            NoRowsOverlay: CustomNoRowsOverlay,
+          }}
+          sx={{
+            "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus":
+              {
+                outline: "none",
+              },
+            border: "none",
+          }}
+        />
+      </GridBody>
+    </React.Fragment>
+  );
 }

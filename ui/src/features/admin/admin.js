@@ -38,25 +38,27 @@ import {
   replaceAdmins
 } from "../ipam/ipamAPI";
 
+import { apiRequest } from "../../msal/authConfig";
+
 function CustomToolbar(props) {
   const { admins, loadedAdmins, setAdmins, selectionModel, refresh } = props;
 
-	const { instance, accounts } = useMsal();
+  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [open, setOpen] = React.useState(false);
   const [options, setOptions] = React.useState([]);
-	const [selected, setSelected] = React.useState(null);
+  const [selected, setSelected] = React.useState(null);
   const [sending, setSending] = React.useState(false);
 
-	const loading = open && options.length === 0;
+  const loading = open && options.length === 0;
   // const selectedAdmin = admins.find(obj => { return obj.id === selectionModel[0] });
   const changed = isEqual(admins, loadedAdmins);
 
-	React.useEffect(() => {
-		let active = true;
+  React.useEffect(() => {
+    let active = true;
 
-		function SearchUsers() {
+    function SearchUsers() {
       (async () => {
         const request = {
           scopes: ["Directory.Read.All"],
@@ -76,35 +78,35 @@ function CustomToolbar(props) {
           enqueueSnackbar(e.response.data.error, { variant: "error" });
         }
       })();
-		}
+    }
 
-		if (!loading) {
-			return undefined;
-		}
+    if (!loading) {
+      return undefined;
+    }
 
-		(async () => {
-			if (active) {
-				SearchUsers();
-			}
-		})();
+    (async () => {
+      if (active) {
+        SearchUsers();
+      }
+    })();
 
-		return () => {
-			active = false;
-		};
-	}, [loading, accounts, instance]);
+    return () => {
+      active = false;
+    };
+  }, [loading, accounts, instance]);
 
-	React.useEffect(() => {
-		if (!open) {
-			setOptions([]);
-		}
-	}, [open]);
+  React.useEffect(() => {
+    if (!open) {
+      setOptions([]);
+    }
+  }, [open]);
 
   function handleAdd(user) {
-		let newAdmin = {
-			name: user.displayName,
-			id: user.id,
-			email: user.userPrincipalName,
-		};
+    let newAdmin = {
+      name: user.displayName,
+      id: user.id,
+      email: user.userPrincipalName,
+    };
 
     if(!admins.find(obj => { return obj.id === user.id })) {
       setAdmins((admins) => [...admins, newAdmin]);
@@ -112,33 +114,33 @@ function CustomToolbar(props) {
       console.log("Admin already added!");
       enqueueSnackbar('Admin already added!', { variant: 'error' });
     }
-		
-		setSelected(null);
-	}
+    
+    setSelected(null);
+  }
 
   function onSave() {
     (async () => {
-			const request = {
-				scopes: ["https://management.azure.com/user_impersonation"],
-				account: accounts[0],
-			};
+      const request = {
+        scopes: apiRequest.scopes,
+        account: accounts[0],
+      };
 
-			try {
+      try {
         setSending(true);
-				const response = await instance.acquireTokenSilent(request);
-				const data = await replaceAdmins(response.accessToken, admins);
+        const response = await instance.acquireTokenSilent(request);
+        const data = await replaceAdmins(response.accessToken, admins);
         enqueueSnackbar("Successfully updated admins", { variant: "success" });
         refresh();
-			} catch (e) {
-				console.log("ERROR");
-				console.log("------------------");
-				console.log(e);
-				console.log("------------------");
+      } catch (e) {
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
         enqueueSnackbar(e.response.data.error, { variant: "error" });
-			} finally {
+      } finally {
         setSending(false);
       }
-		})();
+    })();
   }
 
   const popperStyle = {
@@ -233,7 +235,7 @@ export default function Administration() {
   const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
-	const [admins, setAdmins] = React.useState([]);
+  const [admins, setAdmins] = React.useState([]);
   const [loadedAdmins, setLoadedAdmins] = React.useState([]);
   const [selectionModel, setSelectionModel] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
@@ -247,14 +249,14 @@ export default function Administration() {
 
   React.useEffect(() => {
     refreshData();
-	}, []);
+  }, []);
 
   function refreshData() {
     (async () => {
-			const request = {
-				scopes: ["https://management.azure.com/user_impersonation"],
-				account: accounts[0],
-			};
+      const request = {
+        scopes: apiRequest.scopes,
+        account: accounts[0],
+      };
 
       try {
         setLoading(true);
@@ -271,7 +273,7 @@ export default function Administration() {
       } finally {
         setLoading(false);
       }
-		})();
+    })();
   }
 
   function handleDelete(id) {
@@ -346,16 +348,16 @@ export default function Administration() {
   }
 
   function CustomLoadingOverlay() {
-		return (
-			<GridOverlay>
-				<div style={{ position: "absolute", top: 0, width: "100%" }}>
-					<LinearProgress />
-				</div>
-			</GridOverlay>
-		);
-	}
+    return (
+      <GridOverlay>
+        <div style={{ position: "absolute", top: 0, width: "100%" }}>
+          <LinearProgress />
+        </div>
+      </GridOverlay>
+    );
+  }
 
-	return (
+  return (
     <Box sx={{ height: "calc(100vh - 64px)", width: "100%" }}>
       <Box sx={{ p: 3, height: "calc(100vh - 112px)", display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
         <Box height="100%" width="100%">
@@ -393,5 +395,5 @@ export default function Administration() {
         </Box>
       </Box>
     </Box>
-	);
+  );
 }

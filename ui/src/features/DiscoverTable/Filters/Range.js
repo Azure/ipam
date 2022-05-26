@@ -28,28 +28,28 @@ export default function RangeFilter(props) {
     didMount.current ? handleChange(changeData): didMount.current = true;
   }, [value]);
 
-	return (
-		<FormControl variant="standard" size="small" sx={{ margin: "0px 8px 0px 8px", width: 200 }}>
-			<Typography id="track-false-range-slider" gutterBottom>
-				{title}
-			</Typography>
-			<Slider
-				size="small"
-				min={Math.min(...data.map((x) => x[dataField]))}
-				max={Math.max(...data.map((x) => x[dataField]))}
+  return (
+    <FormControl variant="standard" size="small" sx={{ margin: "0px 8px 0px 8px", width: 200 }}>
+      <Typography id="track-false-range-slider" gutterBottom>
+        {title}
+      </Typography>
+      <Slider
+        size="small"
+        min={Math.min(...data.map((x) => x[dataField]))}
+        max={Math.max(...data.map((x) => x[dataField]))}
         step={step}
-				// step={null}
+        // step={null}
         // marks={data.map(item => ({ value: item[dataField] }))}
-				// getAriaLabel={() => label}
-				value={
-					value.length == 0
-						? [Math.min(...data.map((x) => x[dataField])), Math.max(...data.map((x) => x[dataField]))]
-						: value
-				}
-				onChange={(event) => setValue(event.target.value)}
-				valueLabelDisplay="auto"
-				// getAriaValueText={valuetext}
-			/>
-		</FormControl>
-	);
+        // getAriaLabel={() => label}
+        value={
+          value.length == 0
+            ? [Math.min(...data.map((x) => x[dataField])), Math.max(...data.map((x) => x[dataField]))]
+            : value
+        }
+        onChange={(event) => setValue(event.target.value)}
+        valueLabelDisplay="auto"
+        // getAriaValueText={valuetext}
+      />
+    </FormControl>
+  );
 }
