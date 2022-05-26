@@ -269,15 +269,16 @@ Function deployBicep {
     Write-Verbose -Message "Deploying bicep templates"
 
 	# Instantiate deployment parameter object
-	$tagsObject = $tags | ConvertFrom-Json
     $deploymentParameters = @{
         'engineAppId' = $global:engineApp.AppId
         'engineAppSecret' = $global:engineSecret.SecretText
         'namePrefix' = $namePrefix
-        'tags' = $tagsObject
         'uiAppId' = $global:uiApp.AppId
-
     }
+
+    $tagsParameter = $tags | ConvertFrom-Json -AsHashtable
+    
+    $deploymentParameters.Add('tags',$tagsParameter)
     
 	# Deploy IPAM bicep template
     $global:deployment = New-AzSubscriptionDeployment `
