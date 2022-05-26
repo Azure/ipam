@@ -163,13 +163,13 @@ export default function ItemDetails(props) {
         }
         <Fields>
           {map.fieldMap.map((field, index) => (
-            get(rowData, field.value) &&
-            <React.Fragment key={index} display={get(rowData, field.value) ?? 'none'}>
+            get(rowData, field.value) != null &&
+            <React.Fragment key={index}>
               <Typography variant="overline" sx={{ fontSize: 10, fontWeight: "bold", textAlign: "left", pl: 3 }}>
                 {field.name}:&nbsp;
               </Typography>
               <Typography noWrap variant="overline" sx={{ fontSize: 10, textAlign: "left", pl: 5 }}>
-                {get(rowData, field.value) ? get(rowData, field.value) : "N/A"}
+                {get(rowData, field.value) != null ? get(rowData, field.value) : "N/A"}
               </Typography>
             </React.Fragment>
           ))}
