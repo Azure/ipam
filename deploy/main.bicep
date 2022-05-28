@@ -8,7 +8,7 @@ param guid string = newGuid()
 param location string = deployment().location
 
 @description('Prefix for Resource Naming')
-param namePrefix string
+param namePrefix string = 'ipam'
 
 @description('IPAM-UI App Registration Client/App ID')
 param uiAppId string
@@ -21,7 +21,7 @@ param engineAppId string
 param engineAppSecret string
 
 @description('Tags')
-param tags object
+param tags object = {}
 
 // Resource naming variables
 var appServiceName = '${namePrefix}-${uniqueString(guid)}'

@@ -23,6 +23,15 @@ const Login = () => {
     }
   }, [isAuthenticated, inProgress, instance]);
 
+  // React.useEffect(() => {
+  //   instance.loginRedirect(loginRequest).catch((e) => {
+  //     console.log("LOGIN ERROR:");
+  //     console.log("--------------");
+  //     console.error(e);
+  //     console.log("--------------");
+  //   });
+  // }, []);
+
   return(null)
 };
 
