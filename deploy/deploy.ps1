@@ -74,26 +74,14 @@ param(
   [System.IO.FileInfo]$ParameterFile
 )
 
-# Intake and set global parameters
-# Param(
-#   [Parameter(Mandatory = $false)]
-#   [string]$Location = "westus3",
-#   [Parameter(Mandatory = $false)]
-#   [string]$UIAppName = "ipam-ui-app",
-#   [Parameter(Mandatory = $false)]
-#   [string]$EngineAppName = "ipam-engine-app",
-#   [Parameter(Mandatory = $false)]
-#   [string]$NamePrefix,
-#   [Parameter(Mandatory = $false)]
-#   [hashtable]$Tags
-# )
-
-$Env:SuppressAzurePowerShellBreakingChangeWarnings = $true
-
-$logFile = "./deploy_$(get-date -format `"yyyyMMddhhmmsstt`").log"
-
 # Set preference variables
 $ErrorActionPreference = "Stop"
+
+# Hide Azure PowerShell SDK Warnings
+$Env:SuppressAzurePowerShellBreakingChangeWarnings = $true
+
+# Set Log File Location
+$logFile = "./deploy_$(get-date -format `"yyyyMMddhhmmsstt`").log"
 
 Function Test-Location {
   Param(
@@ -102,6 +90,7 @@ Function Test-Location {
   )
 
   $validLocations = Get-AzLocation | Select-Object -ExpandProperty Location
+
   return $validLocations.Contains($Location)
 }
 
@@ -134,7 +123,7 @@ Function Deploy-IPAMApplications {
       )
     }
   )
-  
+
   $uiWebSettings = @{
     ImplicitGrantSetting = @{
       EnableAccessTokenIssuance = $true
@@ -151,58 +140,58 @@ Function Deploy-IPAMApplications {
     -Web $uiWebSettings
 
   $engineResourceAccess = [System.Collections.ArrayList]@(
-  @{
-    ResourceAppId = "00000003-0000-0000-c000-000000000000";
-    ResourceAccess = @(
-      @{
-        Id = "7427e0e9-2fba-42fe-b0c0-848c9e6a8182";
-        Type = "Scope"
-      },
-      @{
-        Id = "e1fe6dd8-ba31-4d61-89e7-88639da4683d";
-        Type = "Scope"
-      },
-      @{
-        Id = "37f7f235-527c-4136-accd-4a02d197296e";
-        Type = "Scope"
-      },
-      @{
-        Id = "14dad69e-099b-42c9-810b-d002981feec1";
-        Type = "Scope"
-      }
-    )
-  },
-  @{
-    ResourceAppId = "797f4846-ba00-4fd7-ba43-dac1f8f63013";
-    ResourceAccess = @(
-      @{
-        Id = "41094075-9dad-400e-a0bd-54e686782033";
-        Type = "Scope"
-      }
-    )
-  }
-)
-
-$engineApiGuid = New-Guid
-
-$engineApiSettings = @{
-  KnownClientApplication = @(
-    $uiApp.AppId
-  )
-  Oauth2PermissionScope = @(
-    @{ 
-      AdminConsentDescription = "Allows the IPAM UI to access IPAM Engine API as the signed-in user."
-      AdminConsentDisplayName = "Access IPAM Engine API"
-      Id = $engineApiGuid
-      IsEnabled = $true
-      Type = "User"
-      UserConsentDescription = "Allow the IPAM UI to access IPAM Engine API on your behalf."
-      UserConsentDisplayName = "Access IPAM Engine API"
-      Value = "access_as_user"
+    @{
+      ResourceAppId = "00000003-0000-0000-c000-000000000000";
+      ResourceAccess = @(
+        @{
+          Id = "7427e0e9-2fba-42fe-b0c0-848c9e6a8182";
+          Type = "Scope"
+        },
+        @{
+          Id = "e1fe6dd8-ba31-4d61-89e7-88639da4683d";
+          Type = "Scope"
+        },
+        @{
+          Id = "37f7f235-527c-4136-accd-4a02d197296e";
+          Type = "Scope"
+        },
+        @{
+          Id = "14dad69e-099b-42c9-810b-d002981feec1";
+          Type = "Scope"
+        }
+      )
+    },
+    @{
+      ResourceAppId = "797f4846-ba00-4fd7-ba43-dac1f8f63013";
+      ResourceAccess = @(
+        @{
+          Id = "41094075-9dad-400e-a0bd-54e686782033";
+          Type = "Scope"
+        }
+      )
     }
   )
-  RequestedAccessTokenVersion = 2
-}
+
+  $engineApiGuid = New-Guid
+
+  $engineApiSettings = @{
+    KnownClientApplication = @(
+      $uiApp.AppId
+    )
+    Oauth2PermissionScope = @(
+      @{ 
+        AdminConsentDescription = "Allows the IPAM UI to access IPAM Engine API as the signed-in user."
+        AdminConsentDisplayName = "Access IPAM Engine API"
+        Id = $engineApiGuid
+        IsEnabled = $true
+        Type = "User"
+        UserConsentDescription = "Allow the IPAM UI to access IPAM Engine API on your behalf."
+        UserConsentDisplayName = "Access IPAM Engine API"
+        Value = "access_as_user"
+      }
+    )
+    RequestedAccessTokenVersion = 2
+  }
 
   # Create IPAM Engine Application
   Write-Host "INFO: Creating Azure IPAM Engine Application" -ForegroundColor green
@@ -233,10 +222,10 @@ $engineApiSettings = @{
   Write-Host "INFO: Updating Azure IPAM UI Application Resource Access" -ForegroundColor green
   Write-Verbose -Message "Updating Azure IPAM UI Application Resource Access"
   Update-AzADApplication -ApplicationId $uiApp.AppId -RequiredResourceAccess $uiResourceAccess
-  
+
   $uiObject = Get-AzADApplication -ApplicationId $uiApp.AppId
   $engineObject = Get-AzADApplication -ApplicationId $engineApp.AppId
-  
+
   # Create IPAM UI Service Principal
   Write-Host "INFO: Creating Azure IPAM UI Service Principal" -ForegroundColor green
   Write-Verbose -Message "Creating Azure IPAM UI Service Principal"
@@ -281,7 +270,7 @@ Function Grant-AdminConsent {
       scopes = "openid User.Read Directory.Read.All"
     }
   )
-  
+
   $engineGraphScopes = [System.Collections.ArrayList]@(
     @{
       scopeId = "797f4846-ba00-4fd7-ba43-dac1f8f63013"
@@ -346,7 +335,7 @@ Function Grant-AdminConsent {
   foreach($scope in $engineGraphScopes) {
     $msGraphId = Get-AzADServicePrincipal `
       -ApplicationId $scope.scopeId
-  
+
     New-MgOauth2PermissionGrant `
       -ResourceId $msGraphId.Id `
       -Scope $scope.scopes `
