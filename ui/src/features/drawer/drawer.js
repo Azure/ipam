@@ -130,6 +130,7 @@ export default function NavDrawer() {
   const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
   const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = React.useState(null);
   const [graphData, setGraphData] = React.useState(null);
+  const [graphError, setGraphError] = React.useState(false);
   const [navChildOpen, setNavChildOpen] = React.useState({});
   const [drawerState, setDrawerState] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
@@ -221,19 +222,29 @@ export default function NavDrawer() {
   ];
 
   React.useEffect(() => {
-    const request = {
-      // ...loginRequest,
-      scopes: ["User.Read"],
-      account: accounts[0],
-      forceRefresh: true,
-    };
+    let graphTimer = setTimeout(() => {
+      const request = {
+        // ...loginRequest,
+        scopes: ["User.Read"],
+        account: accounts[0],
+        forceRefresh: true,
+      };
+  
+      (async() => {
+        try {
+          const response = await instance.acquireTokenSilent(request);
+          const graphResponse = await callMsGraph(response.accessToken);
+          await setGraphData(graphResponse);
+        } catch {
+          setGraphError(x => !x);
+        }
+      })();
+    }, 5000);
 
-    (async() => {
-      const response = await instance.acquireTokenSilent(request);
-      const graphResponse = await callMsGraph(response.accessToken);
-      await setGraphData(graphResponse);
-    })();
-  }, []);
+    return () => {
+      clearTimeout(graphTimer);
+    };
+  }, [graphError]);
 
   // React.useEffect(() => {
   //   const request = {

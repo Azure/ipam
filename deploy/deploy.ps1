@@ -109,15 +109,23 @@ Function Deploy-IPAMApplications {
       ResourceAppId = "00000003-0000-0000-c000-000000000000";
       ResourceAccess = @(
         @{
-          Id = "e1fe6dd8-ba31-4d61-89e7-88639da4683d";
+          Id = "37f7f235-527c-4136-accd-4a02d197296e"; # openid
           Type = "Scope"
         },
         @{
-          Id = "06da0dbc-49e2-44d2-8312-53f166ab848a";
+          Id = "14dad69e-099b-42c9-810b-d002981feec1"; # profile
           Type = "Scope"
         },
         @{
-          Id = "37f7f235-527c-4136-accd-4a02d197296e";
+          Id = "7427e0e9-2fba-42fe-b0c0-848c9e6a8182"; # offline_access
+          Type = "Scope"
+        },
+        @{
+          Id = "e1fe6dd8-ba31-4d61-89e7-88639da4683d"; # User.Read
+          Type = "Scope"
+        },
+        @{
+          Id = "06da0dbc-49e2-44d2-8312-53f166ab848a"; # Directory.Read.All
           Type = "Scope"
         }
       )
@@ -141,31 +149,10 @@ Function Deploy-IPAMApplications {
 
   $engineResourceAccess = [System.Collections.ArrayList]@(
     @{
-      ResourceAppId = "00000003-0000-0000-c000-000000000000";
-      ResourceAccess = @(
-        @{
-          Id = "7427e0e9-2fba-42fe-b0c0-848c9e6a8182";
-          Type = "Scope"
-        },
-        @{
-          Id = "e1fe6dd8-ba31-4d61-89e7-88639da4683d";
-          Type = "Scope"
-        },
-        @{
-          Id = "37f7f235-527c-4136-accd-4a02d197296e";
-          Type = "Scope"
-        },
-        @{
-          Id = "14dad69e-099b-42c9-810b-d002981feec1";
-          Type = "Scope"
-        }
-      )
-    },
-    @{
       ResourceAppId = "797f4846-ba00-4fd7-ba43-dac1f8f63013";
       ResourceAccess = @(
         @{
-          Id = "41094075-9dad-400e-a0bd-54e686782033";
+          Id = "41094075-9dad-400e-a0bd-54e686782033"; # user_impersonation
           Type = "Scope"
         }
       )
@@ -267,7 +254,7 @@ Function Grant-AdminConsent {
   $uiGraphScopes = [System.Collections.ArrayList]@(
     @{
       scopeId = "00000003-0000-0000-c000-000000000000"
-      scopes = "openid User.Read Directory.Read.All"
+      scopes = " openid profile offline_access User.Read Directory.Read.All"
     }
   )
 
@@ -275,10 +262,6 @@ Function Grant-AdminConsent {
     @{
       scopeId = "797f4846-ba00-4fd7-ba43-dac1f8f63013"
       scopes = "user_impersonation"
-    }
-    @{
-      scopeId = "00000003-0000-0000-c000-000000000000"
-      scopes = "offline_access openid profile User.Read"
     }
   )
 
