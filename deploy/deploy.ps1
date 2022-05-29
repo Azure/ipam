@@ -253,14 +253,14 @@ Function Grant-AdminConsent {
 
   $uiGraphScopes = [System.Collections.ArrayList]@(
     @{
-      scopeId = "00000003-0000-0000-c000-000000000000"
+      scopeId = "00000003-0000-0000-c000-000000000000" # Microsoft Graph
       scopes = " openid profile offline_access User.Read Directory.Read.All"
     }
   )
 
   $engineGraphScopes = [System.Collections.ArrayList]@(
     @{
-      scopeId = "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+      scopeId = "797f4846-ba00-4fd7-ba43-dac1f8f63013" # Azure Service Management
       scopes = "user_impersonation"
     }
   )
@@ -347,7 +347,7 @@ Function Save-Parameters {
   # Retrieve JSON object from sample parameter file
   $parametersObject = Get-Content main.parameters.example.json | ConvertFrom-Json
 
-  # update parameter values
+  # Update Parameter Values
   $parametersObject.parameters.uiAppId.value = $UIAppId
   $parametersObject.parameters.engineAppId.value = $EngineAppId
   $parametersObject.parameters.engineAppSecret.value = $EngineSecret
@@ -372,7 +372,7 @@ Function Import-Parameters {
   # Retrieve JSON object from sample parameter file
   $parametersObject = Get-Content $ParameterFile | ConvertFrom-Json
 
-  # update parameter values
+  # Read Values from Parameters
   $UIAppId = $parametersObject.parameters.uiAppId.value
   $EngineAppId = $parametersObject.parameters.engineAppId.value
   $EngineSecret = $parametersObject.parameters.engineAppSecret.value
