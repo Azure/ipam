@@ -106,7 +106,7 @@ Function Deploy-IPAMApplications {
 
   $uiResourceAccess = [System.Collections.ArrayList]@(
     @{
-      ResourceAppId = "00000003-0000-0000-c000-000000000000";
+      ResourceAppId = "00000003-0000-0000-c000-000000000000"; # Microsoft Graph
       ResourceAccess = @(
         @{
           Id = "37f7f235-527c-4136-accd-4a02d197296e"; # openid
@@ -149,7 +149,7 @@ Function Deploy-IPAMApplications {
 
   $engineResourceAccess = [System.Collections.ArrayList]@(
     @{
-      ResourceAppId = "797f4846-ba00-4fd7-ba43-dac1f8f63013";
+      ResourceAppId = "797f4846-ba00-4fd7-ba43-dac1f8f63013"; # Azure Service Management
       ResourceAccess = @(
         @{
           Id = "41094075-9dad-400e-a0bd-54e686782033"; # user_impersonation
