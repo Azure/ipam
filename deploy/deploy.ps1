@@ -57,6 +57,20 @@ param(
   [switch]
   $AppsOnly,
 
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Full')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'AppsOnly')]
+  [switch]
+  $NoConsent,
+
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Full')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'AppsOnly')]
+  [switch]
+  $SubscriptionScope,
+
   [Parameter(Mandatory = $true,
     ParameterSetName = 'TemplateOnly')]
   [ValidateScript({
@@ -101,7 +115,9 @@ Function Deploy-IPAMApplications {
     [Parameter(Mandatory=$true)]
     [string]$UIAppName,
     [Parameter(Mandatory=$true)]
-    [string]$TenantId
+    [string]$TenantId,
+    [Parameter(Mandatory=$false)]
+    [bool]$SubscriptionScope
   )
 
   $uiResourceAccess = [System.Collections.ArrayList]@(
@@ -218,12 +234,19 @@ Function Deploy-IPAMApplications {
   Write-Verbose -Message "Creating Azure IPAM UI Service Principal"
   New-AzADServicePrincipal -ApplicationObject $uiObject | Out-Null
 
+  if ($SubscriptionScope) {
+    $subscriptionId = $(Get-AzContext).Subscription.Id
+    $scope = "/subscriptions/$subscriptionId"
+  } else {
+    $scope = "/providers/Microsoft.Management/managementGroups/$TenantId"
+  }
+
   # Create IPAM Engine Service Principal
   Write-Host "INFO: Creating Azure IPAM Engine Service Principal" -ForegroundColor green
   Write-Verbose -Message "Creating Azure IPAM Engine Service Principal"
   New-AzADServicePrincipal -ApplicationObject $engineObject `
                            -Role "Reader" `
-                           -Scope "/providers/Microsoft.Management/managementGroups/$TenantId" `
+                           -Scope $scope `
                            | Out-Null
 
   # Create IPAM Engine Secret
@@ -480,11 +503,14 @@ try {
     $appDetails = Deploy-IPAMApplications `
       -UIAppName $UIAppName `
       -EngineAppName $EngineAppName `
-      -TenantId $tenantId
+      -TenantId $tenantId `
+      -SubscriptionScope $SubscriptionScope
 
-    Grant-AdminConsent `
-      -UIAppId $appDetails.UIAppId `
-      -EngineAppId $appDetails.EngineAppId
+    if (-not $NoConsent) {
+      Grant-AdminConsent `
+        -UIAppId $appDetails.UIAppId `
+        -EngineAppId $appDetails.EngineAppId
+    }
   }
 
   if ($PSCmdlet.ParameterSetName -eq 'AppsOnly') {
