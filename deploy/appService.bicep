@@ -56,6 +56,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
     serverFarmId: appServicePlan.id
     keyVaultReferenceIdentity: managedIdentityId
     siteConfig: {
+      alwaysOn: true
       linuxFxVersion: 'COMPOSE|${dockerCompose}'
       acrUseManagedIdentityCreds: true
       acrUserManagedIdentityID: managedIdentityClientId
@@ -77,7 +78,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
           value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-ID/)'
         }
         {
-          name: 'ENGINE_SECRET'
+          name: 'ENGINE_APP_SECRET'
           value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-SECRET/)'
         }
         {

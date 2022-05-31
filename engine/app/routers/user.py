@@ -140,7 +140,10 @@ async def get_user(
 
     admins = await cosmos_query("admins")
 
-    is_admin = next((x for x in admins['admins'] if x['id'] == target_user['id']), None)
+    if admins['admins']:
+      is_admin = next((x for x in admins['admins'] if x['id'] == target_user['id']), None)
+    else:
+      is_admin = True
 
     target_user['isAdmin'] = True if is_admin else False
 
