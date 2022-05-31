@@ -10,7 +10,7 @@
 
 # Intake and set global parameters
 Param(
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory=$true)]
     [string]
     $location="westus3"
 )

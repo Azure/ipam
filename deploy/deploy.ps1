@@ -11,11 +11,11 @@
 
 # Intake and set global parameters
 Param(
-	[Parameter(Mandatory=$false)]
+	[Parameter(Mandatory=$true)]
   	[string]$location="westus3",
-  	[Parameter(Mandatory=$false)]
-  	[string]$namePrefix="ipam",
   	[Parameter(Mandatory=$true)]
+  	[string]$namePrefix="ipam",
+  	[Parameter(Mandatory=$false)]
   	[string]$tags
 )
 $engineApiGuid = New-Guid
@@ -276,10 +276,13 @@ Function deployBicep {
         'uiAppId' = $global:uiApp.AppId
     }
 
-    $tagsParameter = $tags | ConvertFrom-Json -AsHashtable
+    # If tags are defined, add them to deployment parameters object
+    if ($tags) {
+        $tagsParameter = $tags | ConvertFrom-Json -AsHashtable
     
-    $deploymentParameters.Add('tags',$tagsParameter)
-    
+        $deploymentParameters.Add('tags',$tagsParameter)
+    }
+
 	# Deploy IPAM bicep template
     $global:deployment = New-AzSubscriptionDeployment `
     -Name "ipamInfraDeploy-$(Get-Date -Format `"yyyyMMddhhmmsstt`")" `
