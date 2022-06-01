@@ -38,7 +38,7 @@ param(
   [Parameter(Mandatory = $false,
     ParameterSetName = 'TemplateOnly')]
   [string]
-  $NamePRefix,
+  $NamePrefix,
 
   [Parameter(Mandatory = $false,
     ParameterSetName = 'Full')]
@@ -479,10 +479,10 @@ Function Update-UIApplication {
 
 try {
   if ($PSCmdlet.ParameterSetName -in ('Full', 'AppsOnly')) {
-      # Fetch Tenant ID
-      Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor green
-      Write-Verbose -Message "Fetching Tenant ID from Azure PowerShell SDK"
-      $tenantId = (Get-AzContext).Tenant.Id
+    # Fetch Tenant ID
+    Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor green
+    Write-Verbose -Message "Fetching Tenant ID from Azure PowerShell SDK"
+    $tenantId = (Get-AzContext).Tenant.Id
   }
 
   if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly')) {
