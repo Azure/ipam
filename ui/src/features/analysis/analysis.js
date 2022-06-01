@@ -5,6 +5,7 @@ import GlobalStyles from '@mui/material/GlobalStyles';
 import { useSnackbar } from "notistack";
 
 import { useMsal } from "@azure/msal-react";
+import { InteractionRequiredAuthError, InteractionStatus } from "@azure/msal-browser";
 
 import {
   Box,
@@ -37,7 +38,7 @@ const StyledDiv = styled('div')({
 });
 
 export default function AnalysisTool() {
-  const { instance, accounts } = useMsal();
+  const { instance, inProgress, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [open, setOpen] = React.useState(false);
@@ -50,25 +51,31 @@ export default function AnalysisTool() {
   const ref = React.useRef(null);
 
   React.useEffect(() => {
-    (async () => {
-      const request = {
-        scopes: apiRequest.scopes,
-        account: accounts[0],
-      };
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
 
-      try {
-        const response = await instance.acquireTokenSilent(request);
-        const data = await fetchTreeView(response.accessToken);
+    if (!options && inProgress === InteractionStatus.None) {
+      (async () => {
+        try {
+          const response = await instance.acquireTokenSilent(request);
+          const data = await fetchTreeView(response.accessToken);
 
-        setOptions(data);
-      } catch (e) {
-        console.log("ERROR");
-        console.log("------------------");
-        console.log(e);
-        console.log("------------------");
-        enqueueSnackbar("Error fetching Tree View", { variant: "error" });
-      }
-    })();
+          setOptions(data);
+        } catch (e) {
+          if (e instanceof InteractionRequiredAuthError) {
+            instance.acquireTokenRedirect(request);
+          } else {
+            console.log("ERROR");
+            console.log("------------------");
+            console.log(e);
+            console.log("------------------");
+            enqueueSnackbar("Error fetching Tree View", { variant: "error" });
+          }
+        }
+      })();
+    }
   }, []);
 
   React.useEffect(() => {

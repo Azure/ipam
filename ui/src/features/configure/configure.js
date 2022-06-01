@@ -2,7 +2,10 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
+import { useSnackbar } from "notistack";
+
 import { useMsal } from "@azure/msal-react";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
 import SpaceDataGrid from "./space/space";
 import BlockDataGrid from "./block/block";
@@ -58,6 +61,7 @@ const BottomSection = styled("div")(({ theme }) => ({
 
 export default function ConfigureIPAM() {
   const { instance, accounts } = useMsal();
+  const { enqueueSnackbar } = useSnackbar();
 
   const [refreshing, setRefreshing] = React.useState(false);
   const [selectedSpace, setSelectedSpace] = React.useState(null);
@@ -77,10 +81,22 @@ export default function ConfigureIPAM() {
     };
 
     (async() => {
-      const response = await instance.acquireTokenSilent(request);
-      setRefreshing(true);
-      await dispatch(fetchSpacesAsync(response.accessToken));
-      setRefreshing(false);
+      try {
+        const response = await instance.acquireTokenSilent(request);
+        setRefreshing(true);
+        await dispatch(fetchSpacesAsync(response.accessToken));
+        setRefreshing(false);
+      } catch (e) {
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar(e.response.data.error, { variant: "error" });
+        }
+      }
     })();
   }
 

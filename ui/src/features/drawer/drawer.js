@@ -1,6 +1,9 @@
 import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 
+import { useMsal } from "@azure/msal-react";
+import { InteractionRequiredAuthError, InteractionStatus } from "@azure/msal-browser";
+
 import { useSnackbar } from "notistack";
 
 import { styled, alpha } from "@mui/material/styles";
@@ -8,7 +11,6 @@ import { SvgIcon } from "@mui/material";
 
 import { Routes, Route, Link, Navigate } from "react-router-dom";
 
-import { useMsal } from "@azure/msal-react";
 import { callMsGraph } from "../../msal/graph";
 
 import {
@@ -124,7 +126,7 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 }));
 
 export default function NavDrawer() {
-  const { instance, accounts } = useMsal();
+  const { instance, inProgress, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
@@ -221,30 +223,59 @@ export default function NavDrawer() {
     ]
   ];
 
-  React.useEffect(() => {
-    let graphTimer = setTimeout(() => {
-      const request = {
-        // ...loginRequest,
-        scopes: ["User.Read"],
-        account: accounts[0],
-        forceRefresh: true,
-      };
+  // React.useEffect(() => {
+  //   let graphTimer = setTimeout(() => {
+  //     const request = {
+  //       // ...loginRequest,
+  //       scopes: ["User.Read"],
+  //       account: accounts[0],
+  //       forceRefresh: true,
+  //     };
   
+  //     (async() => {
+  //       try {
+  //         const response = await instance.acquireTokenSilent(request);
+  //         const graphResponse = await callMsGraph(response.accessToken);
+  //         await setGraphData(graphResponse);
+  //       } catch {
+  //         setGraphError(x => !x);
+  //       }
+  //     })();
+  //   }, 5000);
+
+  //   return () => {
+  //     clearTimeout(graphTimer);
+  //   };
+  // }, [graphError]);
+
+  React.useEffect(() => {
+    const request = {
+      // ...loginRequest,
+      scopes: ["User.Read"],
+      account: accounts[0],
+      forceRefresh: true,
+    };
+
+    if (!graphData && inProgress === InteractionStatus.None) {
       (async() => {
         try {
           const response = await instance.acquireTokenSilent(request);
           const graphResponse = await callMsGraph(response.accessToken);
           await setGraphData(graphResponse);
-        } catch {
-          setGraphError(x => !x);
+        } catch (e) {
+          if (e instanceof InteractionRequiredAuthError) {
+            instance.acquireTokenRedirect(request);
+          } else {
+            console.log("ERROR");
+            console.log("------------------");
+            console.log(e);
+            console.log("------------------");
+            // enqueueSnackbar(e.response.data.error, { variant: "error" });
+          }
         }
       })();
-    }, 5000);
-
-    return () => {
-      clearTimeout(graphTimer);
-    };
-  }, [graphError]);
+    }
+  }, [instance, accounts, inProgress, graphData]);
 
   // React.useEffect(() => {
   //   const request = {
@@ -363,23 +394,27 @@ export default function NavDrawer() {
   );
 
   function RequestToken() {
-    (async () => {
-      const request = {
-        scopes: apiRequest.scopes,
-        account: accounts[0],
-      };
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
 
+    (async () => {
       try {
         const response = await instance.acquireTokenSilent(request);
         navigator.clipboard.writeText(response.accessToken);
         handleMenuClose();
         enqueueSnackbar('Token copied to clipboard!', { variant: 'success' });
       } catch (e) {
-        console.log("ERROR");
-        console.log("------------------");
-        console.log(e);
-        console.log("------------------");
-        enqueueSnackbar("Error fetching access token", { variant: "error" });
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar("Error fetching access token", { variant: "error" });
+        }
       }
     })();
   }

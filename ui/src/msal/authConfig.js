@@ -16,9 +16,10 @@ export const msalConfig = {
 
 // Add scopes here for ID token to be used at Microsoft identity platform endpoints.
 export const loginRequest = {
-    scopes: [`api://${ENGINE_APP_ID}/.default`],
+    // scopes: [`api://${ENGINE_APP_ID}/.default`],
+    scopes: [`api://${ENGINE_APP_ID}/access_as_user`],
     // scopes: ["https://management.azure.com/user_impersonation"],
-    // extraScopesToConsent: ["User.Read", "Directory.Read.All"]
+    extraScopesToConsent: ["openid", "profile", "offline_access", "User.Read", "Directory.Read.All"]
 };
 
 // Add scopes here for ID token to be used at Microsoft identity platform endpoints.

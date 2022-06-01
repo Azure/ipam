@@ -4,6 +4,7 @@ import { styled } from "@mui/material/styles";
 import { useSnackbar } from "notistack";
 
 import { useMsal } from "@azure/msal-react";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
 import { DataGrid, GridOverlay } from "@mui/x-data-grid";
 
@@ -199,16 +200,16 @@ export default function EditReservations(props) {
   }, [timer, copied]);
 
   function refreshData() {
-    (async () => {
       const request = {
-        scopes: apiRequest.scopes,
-        account: accounts[0],
-      };
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
 
-      setReservations([]);
-      setSelectionModel([]);
-      setLoading(true);
+    setReservations([]);
+    setSelectionModel([]);
+    setLoading(true);
 
+    (async () => {
       if(space && block) {
         try {
           setRefreshing(true);
@@ -216,11 +217,15 @@ export default function EditReservations(props) {
           const data = await fetchBlockResv(response.accessToken, space, block);
           setReservations(data);
         } catch (e) {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar("Error fetching available IP Block reservations", { variant: "error" });
+          if (e instanceof InteractionRequiredAuthError) {
+            instance.acquireTokenRedirect(request);
+          } else {
+            console.log("ERROR");
+            console.log("------------------");
+            console.log(e);
+            console.log("------------------");
+            enqueueSnackbar("Error fetching available IP Block reservations", { variant: "error" });
+          }
         } finally {
           setRefreshing(false);
         }
@@ -233,12 +238,12 @@ export default function EditReservations(props) {
   }
 
   function onSubmit() {
-    (async () => {
-      const request = {
-        scopes: apiRequest.scopes,
-        account: accounts[0],
-      };
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
 
+    (async () => {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
@@ -247,11 +252,15 @@ export default function EditReservations(props) {
         enqueueSnackbar("Successfully deleted IP Block reservations", { variant: "success" });
         refreshData();
       } catch (e) {
-        console.log("ERROR");
-        console.log("------------------");
-        console.log(e);
-        console.log("------------------");
-        enqueueSnackbar(e.response.data.error, { variant: "error" });
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar(e.response.data.error, { variant: "error" });
+        }
       } finally {
         setSending(false);
       }

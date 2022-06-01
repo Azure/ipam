@@ -3,6 +3,7 @@ import * as React from "react";
 import { useSnackbar } from "notistack";
 
 import { useMsal } from "@azure/msal-react";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
 import {
   Box,
@@ -46,12 +47,12 @@ export default function AddBlock(props) {
       cidr: cidr.value
     };
   
-    (async () => {
-      const request = {
-        scopes: apiRequest.scopes,
-        account: accounts[0],
-      };
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
 
+    (async () => {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
@@ -59,11 +60,15 @@ export default function AddBlock(props) {
         refresh();
         onCancel();
       } catch (e) {
-        console.log("ERROR");
-        console.log("------------------");
-        console.log(e);
-        console.log("------------------");
-        enqueueSnackbar(e.response.data.error, { variant: "error" });
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar(e.response.data.error, { variant: "error" });
+        }
       } finally {
         setSending(false);
       }

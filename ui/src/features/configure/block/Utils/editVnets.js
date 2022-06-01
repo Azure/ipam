@@ -7,6 +7,7 @@ import { isEqual } from 'lodash';
 import { useSnackbar } from "notistack";
 
 import { useMsal } from "@azure/msal-react";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
 import { DataGrid, GridOverlay } from "@mui/x-data-grid";
 
@@ -74,17 +75,16 @@ export default function EditVnets(props) {
   }, [refreshingState]);
 
   function refreshData() {
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
+
+    setVNets([]);
+    setLoading(true);
+
     (async () => {
-      const request = {
-        scopes: apiRequest.scopes,
-        account: accounts[0],
-      };
-
-      setVNets([]);
-      setLoading(true);
-
       if(space && block) {
-        console.log(block);
         try {
           setRefreshing(true);
           const response = await instance.acquireTokenSilent(request);
@@ -92,11 +92,15 @@ export default function EditVnets(props) {
           setVNets(data);
           setSelectionModel(block['vnets']);
         } catch (e) {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar("Error fetching available IP Block networks", { variant: "error" });
+          if (e instanceof InteractionRequiredAuthError) {
+            instance.acquireTokenRedirect(request);
+          } else {
+            console.log("ERROR");
+            console.log("------------------");
+            console.log(e);
+            console.log("------------------");
+            enqueueSnackbar("Error fetching available IP Block networks", { variant: "error" });
+          }
         } finally {
           setRefreshing(false);
         }
@@ -114,12 +118,12 @@ export default function EditVnets(props) {
   }
 
   function onSubmit() {
-    (async () => {
-      const request = {
-        scopes: apiRequest.scopes,
-        account: accounts[0],
-      };
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
 
+    (async () => {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
@@ -129,11 +133,15 @@ export default function EditVnets(props) {
         refresh();
         refreshData();
       } catch (e) {
-        console.log("ERROR");
-        console.log("------------------");
-        console.log(e);
-        console.log("------------------");
-        enqueueSnackbar(e.response.data.error, { variant: "error" });
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar(e.response.data.error, { variant: "error" });
+        }
       } finally {
         setSending(false);
       }
