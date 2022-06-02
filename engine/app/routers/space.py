@@ -289,7 +289,7 @@ async def get_spaces(
 
                 for vnet in block['vnets']:
                     target_vnet = next((i for i in vnets if i['id'] == vnet), None)
-                    expanded_vnets.append(target_vnet)
+                    target_vnet and expanded_vnets.append(target_vnet)
 
                 block['vnets'] = expanded_vnets
 
@@ -304,7 +304,7 @@ async def get_spaces(
                         vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), vnet['prefixes']))
                     else:
                         target_vnet = next((i for i in vnets if i['id'] == vnet), None)
-                        vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), target_vnet['prefixes']))
+                        vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), target_vnet['prefixes'])) if target_vnet else []
 
                     for prefix in vnet_prefixes:
                         space['used'] += IPNetwork(prefix).size
@@ -1230,7 +1230,7 @@ async def create_block_reservation(
 
             for v in target_block['vnets']:
                 target = next((x for x in vnet_list if x['id'].lower() == v.lower()), None)
-                prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes']))
+                prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes'])) if target else []
                 block_all_cidrs += prefixes
 
             for r in target_block['resv']:
