@@ -1248,9 +1248,9 @@ async def create_block_reservation(
             next_cidr = list(available_block.subnet(req.size))[0]
 
             if "preferred_username" in decoded:
-              creator_id = decoded["preferred_username"]
+                creator_id = decoded["preferred_username"]
             else:
-              creator_id = f"spn:{decoded['oid']}"
+                creator_id = f"spn:{decoded['oid']}"
 
             new_cidr = {
                 "id": shortuuid.uuid(),
