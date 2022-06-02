@@ -88,7 +88,7 @@ class Reservation(BaseModel):
 
     id: str
     cidr: str
-    userId: EmailStr
+    userId: str #EmailStr
     createdOn: float
     status: str
 
