@@ -509,8 +509,10 @@ async def match_resv_to_vnets():
 
                             for v in block['vnets']:
                                 target_vnet = next((x for x in vnet_list if x['id'].lower() == v.lower()), None)
-                                target_cidr = next((x for x in target_vnet['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
-                                existing_block_cidrs.append(target_cidr)
+
+                                if target_vnet:
+                                    target_cidr = next((x for x in target_vnet['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
+                                    existing_block_cidrs.append(target_cidr)
 
                             vnet_cidr = next((x for x in vnet['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
 
