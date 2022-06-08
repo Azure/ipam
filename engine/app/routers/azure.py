@@ -24,6 +24,8 @@ from ipaddress import IPv4Network
 from netaddr import IPSet, IPNetwork
 from uuid import uuid4
 
+from sqlalchemy import true
+
 from app.dependencies import check_token_expired, get_admin
 from . import argquery
 
@@ -218,7 +220,7 @@ async def get_vnet(authorization: str = Header(None), admin: str = Depends(get_a
         # Python 3.9+
         # ip_blocks = [(block | {'parentSpace': space['name']}) for space in item['spaces'] for block in space['blocks']]
         ip_blocks = [{**block , **{'parentSpace': space['name']}} for space in item['spaces'] for block in space['blocks']]
-        ip_block = next((x for x in ip_blocks if vnet['id'] in x['vnets']), None)
+        ip_block = next((x for x in ip_blocks if vnet['id'] in [v['id'] for v in x['vnets']]), None)
 
         vnet['parentSpace'] = ip_block['parentSpace'] if ip_block else None
         vnet['parentBlock'] = ip_block['name'] if ip_block else None
@@ -414,7 +416,7 @@ async def multi(authorization: str = Header(None), admin: str = Depends(get_admi
                 space_item['value'] -= block_item['value']
 
                 vnets = [item for sublist in vnet_list for item in sublist]
-                block_vnets = list(filter(lambda x: x['id'].lower() in (map(lambda y: y.lower(), block['vnets'])), vnets))
+                block_vnets = list(filter(lambda x: x['id'].lower() in (map(lambda y: y['id'].lower(), block['vnets'])), vnets))
 
                 if len(block_vnets) > 0:
                     block_item['children'] = []
@@ -488,6 +490,14 @@ async def match_resv_to_vnets():
 
             for space in query['spaces']:
                 for block in space['blocks']:
+                    for vnet in block['vnets']:
+                      active = next((x for x in vnet_list if x['id'] == vnet['id']), None)
+
+                      if active:
+                        vnet['active'] = True
+                      else:
+                        vnet['active'] = False
+
                     for index, resv in enumerate(block['resv']):
                         if resv['id'] in stale_resv:
                             vnet = next((x for x in vnet_list if x['resv'] == resv['id']), None)
