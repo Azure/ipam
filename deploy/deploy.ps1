@@ -38,7 +38,7 @@ param(
   [Parameter(Mandatory = $false,
     ParameterSetName = 'TemplateOnly')]
   [string]
-  $NamePRefix,
+  $NamePrefix,
 
   [Parameter(Mandatory = $false,
     ParameterSetName = 'Full')]
@@ -193,6 +193,16 @@ Function Deploy-IPAMApplications {
         Value = "access_as_user"
       }
     )
+    # PreAuthorizedApplication = @(
+    #   @{
+    #     AppId = "1950a258-227b-4e31-a9cf-717495945fc2" # Azure PowerShell
+    #     DelegatedPermissionId = @( $engineApiGuid )
+    #   },
+    #   @{
+    #     AppId = "04b07795-8ddb-461a-bbee-02f9e1bf7b46" # Azure CLI
+    #     DelegatedPermissionId = @( $engineApiGuid )
+    #   }
+    # )
     RequestedAccessTokenVersion = 2
   }
 
@@ -479,10 +489,10 @@ Function Update-UIApplication {
 
 try {
   if ($PSCmdlet.ParameterSetName -in ('Full', 'AppsOnly')) {
-      # Fetch Tenant ID
-      Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor green
-      Write-Verbose -Message "Fetching Tenant ID from Azure PowerShell SDK"
-      $tenantId = (Get-AzContext).Tenant.Id
+    # Fetch Tenant ID
+    Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor green
+    Write-Verbose -Message "Fetching Tenant ID from Azure PowerShell SDK"
+    $tenantId = (Get-AzContext).Tenant.Id
   }
 
   if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly')) {

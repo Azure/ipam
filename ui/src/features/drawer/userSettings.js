@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { useSnackbar } from "notistack";
 
 import { useMsal } from "@azure/msal-react";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
 import {
   Box,
@@ -65,12 +66,12 @@ export default function UserSettings(props) {
       { "op": "replace", "path": "/apiRefresh", "value": refreshValue }
     ];
 
-    (async () => {
-      const request = {
-        scopes: apiRequest.scopes,
-        account: accounts[0],
-      };
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
 
+    (async () => {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
@@ -79,11 +80,15 @@ export default function UserSettings(props) {
         await getMeAsync(response.accessToken);
         handleClose();
       } catch (e) {
-        console.log("ERROR");
-        console.log("------------------");
-        console.log(e);
-        console.log("------------------");
-        enqueueSnackbar("Error updating refresh timeout", { variant: "error" });
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar("Error updating refresh timeout", { variant: "error" });
+        }
       } finally {
         setSending(false);
       }

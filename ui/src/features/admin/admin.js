@@ -2,6 +2,7 @@ import * as React from "react";
 import { styled } from '@mui/material/styles';
 
 import { useMsal } from "@azure/msal-react";
+import { InteractionRequiredAuthError, InteractionStatus } from "@azure/msal-browser";
 import { callMsGraphUsers } from "../../msal/graph";
 
 import { useSnackbar } from 'notistack';
@@ -43,15 +44,15 @@ import { apiRequest } from "../../msal/authConfig";
 function CustomToolbar(props) {
   const { admins, loadedAdmins, setAdmins, selectionModel, refresh } = props;
 
-  const { instance, accounts } = useMsal();
+  const { instance, inProgress, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [open, setOpen] = React.useState(false);
-  const [options, setOptions] = React.useState([]);
+  const [options, setOptions] = React.useState(null);
   const [selected, setSelected] = React.useState(null);
   const [sending, setSending] = React.useState(false);
 
-  const loading = open && options.length === 0;
+  const loading = open && !options
   // const selectedAdmin = admins.find(obj => { return obj.id === selectionModel[0] });
   const changed = isEqual(admins, loadedAdmins);
 
@@ -59,25 +60,31 @@ function CustomToolbar(props) {
     let active = true;
 
     function SearchUsers() {
-      (async () => {
-        const request = {
-          scopes: ["Directory.Read.All"],
-          account: accounts[0],
-        };
+      const request = {
+        scopes: ["Directory.Read.All"],
+        account: accounts[0],
+      };
   
-        try {
-          const response = await instance.acquireTokenSilent(request);
-          const userData = await callMsGraphUsers(response.accessToken);
-          setOptions(userData.value);
-          refresh();
-        } catch (e) {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar(e.response.data.error, { variant: "error" });
-        }
-      })();
+      if (!options && inProgress === InteractionStatus.None) {
+        (async () => {
+          try {
+            const response = await instance.acquireTokenSilent(request);
+            const userData = await callMsGraphUsers(response.accessToken);
+            setOptions(userData.value);
+            refresh();
+          } catch (e) {
+            if (e instanceof InteractionRequiredAuthError) {
+              instance.acquireTokenRedirect(request);
+            } else {
+              console.log("ERROR");
+              console.log("------------------");
+              console.log(e);
+              console.log("------------------");
+              enqueueSnackbar(e.response.data.error, { variant: "error" });
+            }
+          }
+        })();
+      }
     }
 
     if (!loading) {
@@ -97,7 +104,7 @@ function CustomToolbar(props) {
 
   React.useEffect(() => {
     if (!open) {
-      setOptions([]);
+      setOptions(null);
     }
   }, [open]);
 
@@ -119,12 +126,12 @@ function CustomToolbar(props) {
   }
 
   function onSave() {
-    (async () => {
-      const request = {
-        scopes: apiRequest.scopes,
-        account: accounts[0],
-      };
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
 
+    (async () => {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
@@ -132,11 +139,15 @@ function CustomToolbar(props) {
         enqueueSnackbar("Successfully updated admins", { variant: "success" });
         refresh();
       } catch (e) {
-        console.log("ERROR");
-        console.log("------------------");
-        console.log(e);
-        console.log("------------------");
-        enqueueSnackbar(e.response.data.error, { variant: "error" });
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar(e.response.data.error, { variant: "error" });
+        }
       } finally {
         setSending(false);
       }
@@ -185,7 +196,7 @@ function CustomToolbar(props) {
             }}
             isOptionEqualToValue={(option, value) => option.displayName === value.displayName}
             getOptionLabel={(option) => `${option.displayName} (${option.userPrincipalName})`}
-            options={options}
+            options={options || []}
             loading={loading}
             renderInput={(params) => (
               <TextField
@@ -252,12 +263,12 @@ export default function Administration() {
   }, []);
 
   function refreshData() {
-    (async () => {
-      const request = {
-        scopes: apiRequest.scopes,
-        account: accounts[0],
-      };
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
 
+    (async () => {
       try {
         setLoading(true);
         const response = await instance.acquireTokenSilent(request);
@@ -265,11 +276,15 @@ export default function Administration() {
         setAdmins(data);
         setLoadedAdmins(data);
       } catch (e) {
-        console.log("ERROR");
-        console.log("------------------");
-        console.log(e);
-        console.log("------------------");
-        enqueueSnackbar("Error fetching admins", { variant: "error" });
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar("Error fetching admins", { variant: "error" });
+        }
       } finally {
         setLoading(false);
       }

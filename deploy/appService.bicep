@@ -32,7 +32,9 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
   name: appServicePlanName
   location: location
   sku: {
-    name: 'B1'
+    name: 'P1v3'
+    size: 'P1v3'
+    tier: 'PremiumV3'
     capacity: 1
   }
   kind: 'linux'
@@ -58,8 +60,6 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
     siteConfig: {
       alwaysOn: true
       linuxFxVersion: 'COMPOSE|${dockerCompose}'
-      acrUseManagedIdentityCreds: true
-      acrUserManagedIdentityID: managedIdentityClientId
       appSettings: [
         {
           name: 'COSMOS_URL'

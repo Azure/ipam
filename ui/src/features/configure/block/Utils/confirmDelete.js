@@ -4,6 +4,7 @@ import { styled } from "@mui/material/styles";
 import { useSnackbar } from "notistack";
 
 import { useMsal } from "@azure/msal-react";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
 import {
   Box,
@@ -45,12 +46,12 @@ export default function ConfirmDelete(props) {
     if(force & !verify) {
       setVerify(true);
     } else {
+      const request = {
+        scopes: apiRequest.scopes,
+        account: accounts[0],
+      };
+
       (async () => {
-        const request = {
-          scopes: apiRequest.scopes,
-          account: accounts[0],
-        };
-  
         try {
           setSending(true);
           const response = await instance.acquireTokenSilent(request);
@@ -58,11 +59,15 @@ export default function ConfirmDelete(props) {
           refresh();
           handleCancel();
         } catch (e) {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e.response.data.error);
-          console.log("------------------");
-          enqueueSnackbar(e.response.data.error, { variant: "error" });
+          if (e instanceof InteractionRequiredAuthError) {
+            instance.acquireTokenRedirect(request);
+          } else {
+            console.log("ERROR");
+            console.log("------------------");
+            console.log(e.response.data.error);
+            console.log("------------------");
+            enqueueSnackbar(e.response.data.error, { variant: "error" });
+          }
         } finally {
           setSending(false);
         }

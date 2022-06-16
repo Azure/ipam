@@ -1,12 +1,12 @@
 import * as React from "react";
-import { useSelector } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
-import { isEqual } from 'lodash';
+import { isEqual, unset } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
 import { useMsal } from "@azure/msal-react";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
 import { DataGrid, GridOverlay } from "@mui/x-data-grid";
 
@@ -30,8 +30,6 @@ import {
   fetchBlockAvailable,
   replaceBlockNetworks
 } from "../../../ipam/ipamAPI";
-
-import { getRefreshing } from "../../../ipam/ipamSlice";
 
 import { apiRequest } from "../../../../msal/authConfig";
 
@@ -59,9 +57,7 @@ export default function EditVnets(props) {
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
-  const spacesRefreshing = useSelector(getRefreshing);
-
-  const unchanged = block ? isEqual(block['vnets'], selectionModel) : false;
+  const unchanged = block ? isEqual(block['vnets'].map(vnet => vnet.id).sort(), selectionModel.sort()) : false;
 
   React.useEffect(() => {
       refreshData();
@@ -69,34 +65,47 @@ export default function EditVnets(props) {
 
   React.useEffect(() => {
     if(space && block) {
-      !refreshingState && setSelectionModel(block['vnets']);
+      !refreshingState && setSelectionModel(block['vnets'].map(vnet => vnet.id));
     }
+
+    refreshingState && setLoading(true);
   }, [refreshingState]);
 
   function refreshData() {
-    (async () => {
-      const request = {
-        scopes: apiRequest.scopes,
-        account: accounts[0],
-      };
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
 
+    (async () => {
       setVNets([]);
       setLoading(true);
 
       if(space && block) {
-        console.log(block);
         try {
           setRefreshing(true);
           const response = await instance.acquireTokenSilent(request);
-          const data = await fetchBlockAvailable(response.accessToken, space, block.name);
+          var data = await fetchBlockAvailable(response.accessToken, space, block.name);
+          data.forEach((item) => {
+            item['active'] = true;
+          });
+          // const found = block['vnets'].map(vnet => vnet.id).filter(item => data.map(a => a.id).includes(item));
+          const missing = block['vnets'].map(vnet => vnet.id).filter(item => !data.map(a => a.id).includes(item));
+          missing.forEach((item) => {
+            data.push(mockVNet(item));
+          });
           setVNets(data);
-          setSelectionModel(block['vnets']);
+          setSelectionModel(block['vnets'].map(vnet => vnet.id));
         } catch (e) {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar("Error fetching available IP Block networks", { variant: "error" });
+          if (e instanceof InteractionRequiredAuthError) {
+            instance.acquireTokenRedirect(request);
+          } else {
+            console.log("ERROR");
+            console.log("------------------");
+            console.log(e);
+            console.log("------------------");
+            enqueueSnackbar("Error fetching available IP Block networks", { variant: "error" });
+          }
         } finally {
           setRefreshing(false);
         }
@@ -108,18 +117,42 @@ export default function EditVnets(props) {
     })();
   }
 
+  function mockVNet(id) {
+    const nameRegex = "(?<=/virtualNetworks/).*";
+    const rgRegex = "(?<=/resourceGroups/).*?(?=/)";
+    const subRegex = "(?<=/subscriptions/).*?(?=/)";
+  
+    const name = id.match(nameRegex)[0]
+    const resourceGroup = id.match(rgRegex)[0]
+    const subscription = id.match(subRegex)[0]
+  
+    const mockNet = {
+      name: name,
+      id: id,
+      prefixes: "ErrNotFound",
+      subnets: [],
+      resource_group: resourceGroup.toLowerCase(),
+      subscription_id: subscription,
+      tenant_id: null,
+      active: false
+    };
+  
+    return mockNet
+  }
+
   function manualRefresh() {
+    setLoading(true);
+    setVNets([]);
     refresh();
-    refreshData();
   }
 
   function onSubmit() {
-    (async () => {
-      const request = {
-        scopes: apiRequest.scopes,
-        account: accounts[0],
-      };
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
 
+    (async () => {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
@@ -127,22 +160,20 @@ export default function EditVnets(props) {
         handleClose();
         enqueueSnackbar("Successfully updated IP Block vNets", { variant: "success" });
         refresh();
-        refreshData();
       } catch (e) {
-        console.log("ERROR");
-        console.log("------------------");
-        console.log(e);
-        console.log("------------------");
-        enqueueSnackbar(e.response.data.error, { variant: "error" });
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar(e.response.data.error, { variant: "error" });
+        }
       } finally {
         setSending(false);
       }
     })();
-  }
-
-  function onModelChange(newModel) {
-    // Remove this function and simplify to the Data Grid
-    setSelectionModel(newModel);
   }
 
   function CustomLoadingOverlay() {
@@ -179,7 +210,24 @@ export default function EditVnets(props) {
           <DialogContentText>
             Select the Virtual Networks below which should be associated with the Block <Spotlight>'{block && block.name}'</Spotlight>
           </DialogContentText>
-          <Box sx={{ pt: 4, height: "300px" }}>
+          <Box
+            sx={{
+              pt: 4,
+              height: "300px",
+              '& .ipam-block-vnet-stale': {
+                bgcolor: "rgb(255, 230, 230) !important",
+                '&:hover': {
+                  bgcolor: "rgb(255, 220, 220) !important",
+                }
+              },
+              '& .ipam-block-vnet-normal': {
+                bgcolor: "white",
+                '&:hover': {
+                  bgcolor: "white",
+                }
+              }
+            }}
+          >
             <DataGrid
               checkboxSelection
               disableColumnMenu
@@ -190,8 +238,9 @@ export default function EditVnets(props) {
               rows={vNets}
               columns={columns}
               loading={loading || refreshingState}
-              onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
+              onSelectionModelChange={(newSelectionModel) => setSelectionModel(newSelectionModel)}
               selectionModel={selectionModel}
+              getRowClassName={(params) => `ipam-block-vnet-${!params.row.active ? 'stale' : 'normal'}`}
               components={{
                 LoadingOverlay: CustomLoadingOverlay,
                 // NoRowsOverlay: CustomNoRowsOverlay,

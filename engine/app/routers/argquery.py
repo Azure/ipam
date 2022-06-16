@@ -46,7 +46,7 @@ resources
     resources
     | where type =~ 'Microsoft.Network/virtualNetworks'
     | mv-expand subnet = todynamic(properties.subnets)
-    | extend subnet_details = pack("name", subnet.name, "prefix", tostring(subnet.properties.addressPrefix), "used", array_length(subnet.properties.ipConfigurations) + 5)
+    | extend subnet_details = pack("name", subnet.name, "prefix", tostring(subnet.properties.addressPrefix), "used", coalesce(array_length(subnet.properties.ipConfigurations), 0) + 5)
     | summarize bag = make_bag(subnet_details) by tostring(subnet.id), id
 ) on id
 | project-away id1

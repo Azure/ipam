@@ -28,7 +28,7 @@ export function fetchSpaces(token, utilization = false) {
     return data;
   })
   .catch(error => {
-    console.log("ERROR FETCHING IPSPACES FROM API");
+    console.log("ERROR FETCHING SPACES FROM API");
     console.log(error);
     throw error;
   });
@@ -45,7 +45,7 @@ export function fetchSpace(token, space) {
     })
   .then(response => response.data)
   .catch(error => {
-    console.log("ERROR FETCHING IPSPACES FROM API");
+    console.log("ERROR FETCHING SPACE FROM API");
     console.log(error);
     throw error;
   });
@@ -62,7 +62,7 @@ export function createSpace(token, body) {
     })
   .then(response => response.data)
   .catch(error => {
-    console.log("ERROR FETCHING IPSPACES FROM API");
+    console.log("ERROR CREATING SPACE VIA API");
     console.log(error);
     throw error;
   });
@@ -79,7 +79,7 @@ export function updateSpace(token, space, body) {
     })
   .then(response => response.data)
   .catch(error => {
-    console.log("ERROR UPDATING IPSPACE FROM API");
+    console.log("ERROR UPDATING SPACE VIA API");
     console.log(error);
     throw error;
   });
@@ -99,7 +99,7 @@ export function deleteSpace(token, space, force) {
     })
   .then(response => response.data)
   .catch(error => {
-    console.log("ERROR DELETING IPSPACE VIA API");
+    console.log("ERROR DELETING SPACE VIA API");
     console.log(error);
     throw error;
   });
@@ -137,7 +137,7 @@ export function createBlock(token, space, body) {
     })
   .then(response => response.data)
   .catch(error => {
-    console.log("ERROR CREATING IPBLOCK VIA API");
+    console.log("ERROR CREATING BLOCK VIA API");
     console.log(error);
     throw error;
   });
@@ -157,7 +157,7 @@ export function deleteBlock(token, space, block, force) {
     })
   .then(response => response.data)
   .catch(error => {
-    console.log("ERROR DELETING IPBLOCK VIA API");
+    console.log("ERROR DELETING BLOCK VIA API");
     console.log(error);
     throw error;
   });
@@ -177,7 +177,7 @@ export function fetchBlockAvailable(token, space, block) {
     })
   .then(response => response.data)
   .catch(error => {
-    console.log("ERROR FETCHING AVAILABLE IP BLOCK NETWORKS FROM API");
+    console.log("ERROR FETCHING AVAILABLE BLOCK NETWORKS FROM API");
     console.log(error);
     throw error;
   });
@@ -194,7 +194,7 @@ export function replaceBlockNetworks(token, space, block, body) {
     })
   .then(response => response.data)
   .catch(error => {
-    console.log("ERROR UPDATING IPBLOCK NETWORKS VIA API");
+    console.log("ERROR UPDATING BLOCK NETWORKS VIA API");
     console.log(error);
     throw error;
   });
@@ -211,7 +211,7 @@ export function fetchBlockResv(token, space, block) {
     })
   .then(response => response.data)
   .catch(error => {
-    console.log("ERROR FETCHING AVAILABLE IPBLOCK RESERVATIONS VIA API");
+    console.log("ERROR FETCHING AVAILABLE BLOCK RESERVATIONS VIA API");
     console.log(error);
     throw error;
   });
@@ -229,7 +229,7 @@ export function deleteBlockResvs(token, space, block, body) {
     })
   .then(response => response.data)
   .catch(error => {
-    console.log("ERROR DELETING IPBLOCK RESERVATIONS VIA API");
+    console.log("ERROR DELETING BLOCK RESERVATIONS VIA API");
     console.log(error);
     throw error;
   });
@@ -402,7 +402,7 @@ export function updateMe(token, body) {
     })
   .then(response => response.data)
   .catch(error => {
-    console.log("ERROR UPDATING ME FROM API");
+    console.log("ERROR UPDATING ME VIA API");
     console.log(error);
     throw error;
   });

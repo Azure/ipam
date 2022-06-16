@@ -6,6 +6,8 @@ import {
   useIsAuthenticated
 } from "@azure/msal-react";
 
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
+
 import {
   getRefreshInterval,
   refreshAllAsync,
@@ -20,7 +22,6 @@ function Refresh() {
   const { instance, accounts } = useMsal();
   const [intervalAllId, setIntervalAllId] = React.useState();
   const [intervalMeId, setIntervalMeId] = React.useState();
-  const isAuthenticated = useIsAuthenticated();
   const refreshInterval = useSelector(getRefreshInterval);
   const dispatch = useDispatch();
   const refreshAllRef = React.useRef();
@@ -33,17 +34,19 @@ function Refresh() {
     };
 
     (async() => {
-      const response = await instance.acquireTokenSilent(request).catch((e) => {
-        if (e.errorCode === "consent_required" || e.errorCode === "interaction_required" || e.errorCode === "login_required") {
-          instance.acquireTokenPopup(request).catch((e) => {
-            console.log("TOKEN ERROR:");
-            console.log("--------------");
-            console.error(e);
-            console.log("--------------");
-          });
+      try {
+        const response = await instance.acquireTokenSilent(request)
+        dispatch(refreshAllAsync(response.accessToken))
+      } catch (e) {
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
         }
-      });
-      dispatch(refreshAllAsync(response.accessToken))
+      }
     })();
   }, []);
 
@@ -54,17 +57,15 @@ function Refresh() {
     };
 
     (async() => {
-      const response = await instance.acquireTokenSilent(request).catch((e) => {
-        if (e.errorCode === "consent_required" || e.errorCode === "interaction_required" || e.errorCode === "login_required") {
-          instance.acquireTokenPopup(request).catch((e) => {
-            console.log("LOGIN ERROR:");
-            console.log("--------------");
-            console.error(e);
-            console.log("--------------");
-          });
-        }
-      });
-      dispatch(getMeAsync(response.accessToken))
+      try {
+        const response = await instance.acquireTokenSilent(request)
+        dispatch(getMeAsync(response.accessToken))
+      } catch (e) {
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+      }
     })();
   }, []);
 

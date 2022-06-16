@@ -13,6 +13,7 @@ import jwt
 import time
 import shortuuid
 import jsonpatch
+import logging
 from netaddr import IPSet, IPNetwork
 
 from app.dependencies import check_token_expired, get_admin
@@ -26,6 +27,11 @@ from app.routers.common.helper import (
     arg_query
 )
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+console = logging.StreamHandler()
+logger.addHandler(console)
+
 router = APIRouter(
     prefix="/spaces",
     tags=["spaces"],
@@ -36,6 +42,7 @@ class VNet(BaseModel):
     """DOCSTRING"""
 
     id: str
+    active: Optional[bool]
 
 class VNets(BaseModel):
     """DOCSTRING"""
@@ -88,7 +95,7 @@ class Reservation(BaseModel):
 
     id: str
     cidr: str
-    userId: EmailStr
+    userId: str #EmailStr
     createdOn: float
     status: str
 
@@ -97,7 +104,7 @@ class BlockBasic(BaseModel):
 
     name: str
     cidr: str
-    vnets: List[str]
+    vnets: List[VNet]
     resv: List[Reservation]
 
 class BlockBasicUtil(BaseModel):
@@ -105,7 +112,7 @@ class BlockBasicUtil(BaseModel):
 
     name: str
     cidr: str
-    vnets: List[str]
+    vnets: List[VNet]
     resv: List[Reservation]
     size: int
     used: int
@@ -115,7 +122,7 @@ class Block(BaseModel):
 
     name: str
     cidr: str
-    vnets: List[str]
+    vnets: List[VNet]
     resv: List[Reservation]
 
 class BlockExpand(BaseModel):
@@ -131,7 +138,7 @@ class BlockUtil(BaseModel):
 
     name: str
     cidr: str
-    vnets: List[str]
+    vnets: List[VNet]
     resv: List[Reservation]
     size: int
     used: int
@@ -288,8 +295,8 @@ async def get_spaces(
                 expanded_vnets = []
 
                 for vnet in block['vnets']:
-                    target_vnet = next((i for i in vnets if i['id'] == vnet), None)
-                    expanded_vnets.append(target_vnet)
+                    target_vnet = next((i for i in vnets if i['id'] == vnet['id']), None)
+                    target_vnet and expanded_vnets.append(target_vnet)
 
                 block['vnets'] = expanded_vnets
 
@@ -303,8 +310,8 @@ async def get_spaces(
                         vnet['size'] = 0
                         vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), vnet['prefixes']))
                     else:
-                        target_vnet = next((i for i in vnets if i['id'] == vnet), None)
-                        vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), target_vnet['prefixes']))
+                        target_vnet = next((i for i in vnets if i['id'] == vnet['id']), None)
+                        vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), target_vnet['prefixes'])) if target_vnet else []
 
                     for prefix in vnet_prefixes:
                         space['used'] += IPNetwork(prefix).size
@@ -422,8 +429,8 @@ async def get_space(
             expanded_vnets = []
 
             for vnet in block['vnets']:
-                target_vnet = next((i for i in vnets if i['id'] == vnet), None)
-                expanded_vnets.append(target_vnet)
+                target_vnet = next((i for i in vnets if i['id'] == vnet['id']), None)
+                target_vnet and expanded_vnets.append(target_vnet)
 
             block['vnets'] = expanded_vnets
 
@@ -437,8 +444,8 @@ async def get_space(
                     vnet['size'] = 0
                     vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), vnet['prefixes']))
                 else:
-                    target_vnet = next((i for i in vnets if i['id'] == vnet), None)
-                    vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), target_vnet['prefixes']))
+                    target_vnet = next((i for i in vnets if i['id'] == vnet['id']), None)
+                    vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), target_vnet['prefixes'])) if target_vnet else []
 
                 for prefix in vnet_prefixes:
                     target_space['used'] += IPNetwork(prefix).size
@@ -600,8 +607,8 @@ async def get_blocks(
             expanded_vnets = []
 
             for vnet in block['vnets']:
-                target_vnet = next((i for i in vnets if i['id'] == vnet), None)
-                expanded_vnets.append(target_vnet)
+                target_vnet = next((i for i in vnets if i['id'] == vnet['id']), None)
+                target_vnet and expanded_vnets.append(target_vnet)
 
             block['vnets'] = expanded_vnets
 
@@ -614,8 +621,8 @@ async def get_blocks(
                     vnet['size'] = 0
                     vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), vnet['prefixes']))
                 else:
-                    target_vnet = next((i for i in vnets if i['id'] == vnet), None)
-                    vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), target_vnet['prefixes']))
+                    target_vnet = next((i for i in vnets if i['id'] == vnet['id']), None)
+                    vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), target_vnet['prefixes'])) if target_vnet else []
 
                 for prefix in vnet_prefixes:
                     block['used'] += IPNetwork(prefix).size
@@ -736,13 +743,12 @@ async def get_block(
     if expand or utilization:
         vnets = await arg_query(authorization, is_admin, argquery.VNET)
 
-
     if expand:
         expanded_vnets = []
 
         for vnet in target_block['vnets']:
-            target_vnet = next((i for i in vnets if i['id'] == vnet), None)
-            expanded_vnets.append(target_vnet)
+            target_vnet = next((i for i in vnets if i['id'] == vnet['id']), None)
+            target_vnet and expanded_vnets.append(target_vnet)
 
         target_block['vnets'] = expanded_vnets
 
@@ -755,8 +761,8 @@ async def get_block(
                 vnet['size'] = 0
                 vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), vnet['prefixes']))
             else:
-                target_vnet = next((i for i in vnets if i['id'] == vnet), None)
-                vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target_vnet['prefixes']))
+                target_vnet = next((i for i in vnets if i['id'] == vnet['id']), None)
+                vnet_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target_vnet['prefixes'])) if target_vnet else []
 
             for prefix in vnet_prefixes:
                 target_block['used'] += IPNetwork(prefix).size
@@ -884,7 +890,7 @@ async def available_block_vnets(
         for block_iter in space_iter['blocks']:
             for vnet_iter in block_iter['vnets']:
                 if space_iter['name'] != space and block_iter['name'] != block:
-                    vnet_index = next((i for i, item in enumerate(available_vnets) if item['id'] == vnet_iter), None)
+                    vnet_index = next((i for i, item in enumerate(available_vnets) if item['id'] == vnet_iter['id']), None)
 
                     if vnet_index:
                         del available_vnets[vnet_index]
@@ -898,7 +904,7 @@ async def available_block_vnets(
     "/{space}/blocks/{block}/networks",
     response_model = Union[
         List[VNetExpand],
-        List[str]
+        List[VNet]
     ],
     status_code = 200
 )
@@ -932,8 +938,8 @@ async def available_block_vnets(
         vnet_list = await arg_query(authorization, True, argquery.VNET)
 
         for block_vnet in target_block['vnets']:
-            target_vnet = next((x for x in vnet_list if x['id'].lower() == block_vnet.lower()), None)
-            block_vnets.append(target_vnet)
+            target_vnet = next((x for x in vnet_list if x['id'].lower() == block_vnet['id'].lower()), None)
+            target_vnet and block_vnets.append(target_vnet)
 
         return block_vnets
     else:
@@ -973,6 +979,9 @@ async def create_block_vnet(
             if not target_block:
                 raise HTTPException(status_code=400, detail="Invalid block name.")
 
+            if vnet.id in [v['id'] for v in target_block['vnets']]:
+                raise HTTPException(status_code=400, detail="vNet already exists in block.")
+
             vnet_list = await arg_query(authorization, True, argquery.VNET)
 
             target_vnet = next((x for x in vnet_list if x['id'].lower() == vnet.id.lower()), None)
@@ -983,21 +992,24 @@ async def create_block_vnet(
             target_cidr = next((x for x in target_vnet['prefixes'] if IPNetwork(x) in IPNetwork(target_block['cidr'])), None)
 
             if not target_cidr:
-                raise HTTPException(status_code=400, detail="vNet CIDR not within Block CIDR.")
+                raise HTTPException(status_code=400, detail="vNet CIDR not within block CIDR.")
 
             block_vnet_cidrs = []
 
             for v in target_block['vnets']:
                 target = next((x for x in vnet_list if x['id'].lower() == v.lower()), None)
-                prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes']))
-                block_vnet_cidrs += prefixes
+
+                if target:
+                    prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes']))
+                    block_vnet_cidrs += prefixes
 
             cidr_overlap = IPSet(block_vnet_cidrs) & IPSet([target_cidr])
 
             if cidr_overlap:
                 raise HTTPException(status_code=400, detail="Block already contains vNet(s) within the CIDR range of target vNet.")
 
-            target_block['vnets'].append(vnet.id)
+            vnet.active = True
+            target_block['vnets'].append(vnet)
 
             await cosmos_upsert("spaces", item)
         except exceptions.CosmosAccessConditionFailedError:
@@ -1014,7 +1026,7 @@ async def create_block_vnet(
 # THE REQUEST BODY ITEM SHOULD MATCH THE BLOCK VALUE THAT IS BEING PATCHED
 @router.put(
     "/{space}/blocks/{block}/networks",
-    response_model = List[str],
+    response_model = List[VNet],
     status_code = 200
 )
 async def update_block_vnets(
@@ -1083,7 +1095,17 @@ async def update_block_vnets(
             if len(invalid_vnets) > 0:
                 raise HTTPException(status_code=400, detail="Invalid vNet ID(s): {}".format(invalid_vnets))
 
-            target_block['vnets'] = vnets
+            new_vnet_list = []
+
+            for vnet in vnets:
+              new_vnet = {
+                "id": vnet,
+                "active": True
+              }
+
+              new_vnet_list.append(new_vnet)
+
+            target_block['vnets'] = new_vnet_list
 
             await cosmos_upsert("spaces", item)
         except exceptions.CosmosAccessConditionFailedError:
@@ -1230,7 +1252,7 @@ async def create_block_reservation(
 
             for v in target_block['vnets']:
                 target = next((x for x in vnet_list if x['id'].lower() == v.lower()), None)
-                prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes']))
+                prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes'])) if target else []
                 block_all_cidrs += prefixes
 
             for r in target_block['resv']:
@@ -1247,10 +1269,15 @@ async def create_block_reservation(
 
             next_cidr = list(available_block.subnet(req.size))[0]
 
+            if "preferred_username" in decoded:
+                creator_id = decoded["preferred_username"]
+            else:
+                creator_id = f"spn:{decoded['oid']}"
+
             new_cidr = {
                 "id": shortuuid.uuid(),
                 "cidr": str(next_cidr),
-                "userId": decoded["preferred_username"],
+                "userId": creator_id,
                 "createdOn": (time.time() * 1000),
                 "status": "wait"
             }
