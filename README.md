@@ -23,48 +23,55 @@ Guidance on onboarding samples to docs.microsoft.com/samples: https://review.doc
 Taxonomies for products and languages: https://review.docs.microsoft.com/new-hope/information-architecture/metadata/taxonomies?branch=master
 -->
 
-IPAM is a lightweight solution developed on top of the Azure platform designed help Azure customers manage their IP Address space easily and effectively. The current iteration of the solution is completely serverless as it leverages App Service Plans and Cosmos DB for the heavy lifting. 
-
-[![Deploy To Azure](https://aka.ms/deploytoazurebutton)]
+IPAM is a lightweight solution developed on top of the Azure platform designed to help Azure customers manage their IP Address space easily and effectively. 
 
 ## Repo Contents
 
 | File/folder          | Description                                                   |
 |----------------------|---------------------------------------------------------------|
-| `modules/`           | Python Modules                                                |
+| `.devcontainer/`     | Dev container configuration                                   |
+| `.github/`           | Bug report & issue templates                                  |
+| `.vscode/`           | VSCode configuration                                          |
+| `deploy/`            | Infrastructure Bicep files & PowerShell deployment scripts    |
 | `docs/`              | Docsify Repo                                                  |
-| `bicep/`             | Infrastructure Bicep Templates & Portal UI Definition  |
+| `engine/`            | Engine application code                                       |
+| `ui/`                | UI application code                                           |
+| `.dockerignore`      | Docker related files to ignore                                |
 | `.gitignore`         | Untracked Files to Ignore                                     |
 | `CODE_OF_CONDUCT.md` | Microsoft Code of Conduct                                     |
+| `default.conf`       | ?????????????????????????                                     |
+| `default.dev.conf`   | ?????????????????????????                                     |
+| `docker-compose.prod.yml` | Production Docker Compose file                           |
+| `docker-compose.yml` | Development Docker Compose file                               |
+| `Dockerfile`         | Development Docker Compose file                               |
+| `init.sh`            | ???????????????????????????????                               |
 | `LICENSE`            | MIT License                                                   |
 | `README.md`          | This README File                                              |
 | `SECURITY.md`        | Microsoft Open Source Security Information & Details          |
+| `sshd_config`        | ???????????????????????????????                               |
+| `SUPPORT.md`         | Support contact information                                   |
+
 
 ## Documentation
-IPAM uses both [Docsify](https://docsify.js.org/) and [GitHub Pages](https://docs.github.com/en/github/working-with-github-pages) to present the project documentation, which can be found here:
-
-- **[Welcome to IPAM!](https://azure.github.io/ipam/)**
+IPAM uses both [Docsify](https://docsify.js.org/) and [GitHub Pages](https://docs.github.com/en/github/working-with-github-pages) to present the project documentation, which can be found [here](https://azure.github.io/ipam/)
 
 ## Questions or Comments for the team?
 The IPAM team welcomes questions and contributions from the community. We have set up a GitHub Discussions page [here](https://NEED_ACTUAL_LINK) to make it easy to engage with the IPAM team without opening an issue.
 
-
 ## FAQ
-**Why would I use IPAM?**
-
+**Why should I use IPAM?**
 You realize that you do not have a clear picture as to what is deployed into your Azure environment and connected to your private IP address space. Or, you would like a way to easily manage, assign, and track your private IP addess space usage!
 
 **What does the roadmap for IPAM look like?**
-
-We would like this to become a SaaS/PaaS product that will help all of our customers manage their IP Address Space. Maybe in the future this will break out to on premise environments and other cloud platforms.  
+- We are assessing leveraging Azure Container Apps for hosting the two containers that make up the IPAM application
+- We are ssessing support for multiple Tenants, as today the tool is designed with a single Tenant in mind
+- We are working on capturing IP address infromation for resources that support hybrid connectivity (ie Gateways)
 
 **Who are the awesome people that built this solution??**
-
-Matt, Harvey, Chris and Tyler are all Architects within Microsoft! We are always on the look out for interesting ways to help our customers overcome their challenges!
+Matt, Harvey, Chris and Tyler are all Architects at Microsoft! We are always on the look out for interesting ways to help our customers overcome their challenges!
 
 
 ## Contributing
-
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
 the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
