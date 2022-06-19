@@ -26,6 +26,8 @@ async def check_token_expired(request: Request):
     if(now >= int(decoded['exp'])):
         raise HTTPException(status_code=401, detail="Token has expired.")
 
+    request.state.tenant_id = decoded['tid']
+
     await check_admin(request, decoded['oid'])
 
 async def check_admin(request: Request, user_oid: str):
@@ -40,3 +42,6 @@ async def check_admin(request: Request, user_oid: str):
 
 async def get_admin(request: Request):
     return request.state.admin
+
+async def get_tenant_id(request: Request):
+    return request.state.tenant_id

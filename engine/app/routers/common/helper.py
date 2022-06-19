@@ -12,6 +12,7 @@ import azure.cosmos.exceptions as exceptions
 
 import os
 import jwt
+from functools import wraps
 
 import app.globals as globals
 
@@ -77,6 +78,54 @@ async def cosmos_query(target: str):
 
     return item
 
+async def cosmos_query_x(query: str, tenant_id: str):
+    """DOCSTRING"""
+
+    result_array = []
+
+    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+
+    database_name = "ipam-db-x"
+    database = cosmos_client.get_database_client(database_name)
+
+    container_name = "ipam-container"
+    container = database.get_container_client(container_name)
+
+    query_results = container.query_items(
+        query = query,
+        # enable_cross_partition_query=True,
+        partition_key = tenant_id
+    )
+
+    async for result in query_results:
+      result_array.append(result)
+
+    await cosmos_client.close()
+
+    return result_array
+
+async def cosmos_upsert_x(data):
+    """DOCSTRING"""
+
+    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+
+    database_name = "ipam-db-x"
+    database = cosmos_client.get_database_client(database_name)
+
+    container_name = "ipam-container"
+    container = database.get_container_client(container_name)
+
+    try:
+        await container.upsert_item(data)
+    except:
+        raise
+    finally:
+        await cosmos_client.close()
+
+    await cosmos_client.close()
+
+    return
+
 async def cosmos_upsert(target: str, data):
     """DOCSTRING"""
 
@@ -100,6 +149,78 @@ async def cosmos_upsert(target: str, data):
         await cosmos_client.close()
 
     return
+
+async def cosmos_replace_x(old, new):
+    """DOCSTRING"""
+
+    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+
+    database_name = "ipam-db-x"
+    database = cosmos_client.get_database_client(database_name)
+
+    container_name = "ipam-container"
+    container = database.get_container_client(container_name)
+
+    try:
+        await container.replace_item(
+            item = old,
+            body = new,
+            match_condition = MatchConditions.IfNotModified,
+            etag = old['_etag']
+        )
+    except:
+        raise
+    finally:
+        await cosmos_client.close()
+
+    await cosmos_client.close()
+
+    return
+
+async def cosmos_delete_x(item, tenant_id: str):
+    """DOCSTRING"""
+
+    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+
+    database_name = "ipam-db-x"
+    database = cosmos_client.get_database_client(database_name)
+
+    container_name = "ipam-container"
+    container = database.get_container_client(container_name)
+
+    try:
+        await container.delete_item(
+            item = item,
+            partition_key = tenant_id
+        )
+    except:
+        raise
+    finally:
+        await cosmos_client.close()
+
+    await cosmos_client.close()
+
+    return
+
+def cosmos_retry(error_msg, max_retry = 5):
+    """DOCSTRING"""
+
+    def cosmos_retry_decorator(func):
+        @wraps(func)
+        async def func_with_retries(*args, **kwargs):
+            _tries = max_retry
+
+            while _tries > 0:
+                try:
+                    return await func(*args, **kwargs)
+                except exceptions.CosmosAccessConditionFailedError:
+                    _tries -= 1
+
+                    if _tries == 0:
+                        raise HTTPException(status_code=500, detail=error_msg)
+                    
+        return func_with_retries
+    return cosmos_retry_decorator
 
 async def arg_query(auth, admin, query):
     """DOCSTRING"""

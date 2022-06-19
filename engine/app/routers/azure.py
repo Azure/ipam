@@ -11,26 +11,38 @@ from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
 import azure.cosmos.exceptions as exceptions
 
 import re
+import copy
 import asyncio
 import logging
 from ipaddress import IPv4Network
 from netaddr import IPSet, IPNetwork
 from uuid import uuid4
 
-from app.dependencies import check_token_expired, get_admin
+from sqlalchemy import true
+
+from app.dependencies import (
+  check_token_expired,
+  get_admin,
+  get_tenant_id
+)
+
 from . import argquery
 
 from app.routers.common.helper import (
     get_client_credentials,
     get_obo_credentials,
-    cosmos_query,
-    cosmos_upsert,
+    cosmos_query_x,
+    cosmos_upsert_x,
+    cosmos_replace_x,
+    cosmos_retry,
     arg_query
 )
 
 from app.routers.space import (
     get_spaces
 )
+
+import app.globals as globals
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -202,13 +214,14 @@ async def subscription(
 )
 async def get_vnet(
   authorization: str = Header(None),
-  admin: str = Depends(get_admin)
+  admin: str = Depends(get_admin),
+  tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a list of Azure Virtual Networks.
     """
 
-    item = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
     vnet_list = await arg_query(authorization, admin, argquery.VNET)
 
@@ -230,15 +243,15 @@ async def get_vnet(
         vnet['used'] = total_used
 
         # Python 3.9+
-        # ip_blocks = [(block | {'parentSpace': space['name']}) for space in item['spaces'] for block in space['blocks']]
-        ip_blocks = [{**block , **{'parentSpace': space['name']}} for space in item['spaces'] for block in space['blocks']]
+        # ip_blocks = [(block | {'parentSpace': space['name']}) for space in space_query for block in space['blocks']]
+        ip_blocks = [{**block , **{'parentSpace': space['name']}} for space in space_query for block in space['blocks']]
         ip_block = next((x for x in ip_blocks if vnet['id'] in [v['id'] for v in x['vnets']]), None)
 
         vnet['parentSpace'] = ip_block['parentSpace'] if ip_block else None
         vnet['parentBlock'] = ip_block['name'] if ip_block else None
 
         updated_vnet_list.append(vnet)
-    
+  
     return updated_vnet_list
 
 @router.get(
@@ -470,7 +483,8 @@ async def multi(
 )
 async def multi(
   authorization: str = Header(None),
-  admin: str = Depends(get_admin)
+  admin: str = Depends(get_admin),
+  tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a hierarchical tree view of Spaces, Blocks, Virtual Networks, Subnets, and Endpoints.
@@ -482,7 +496,7 @@ async def multi(
     subnet_list = []
     endpoint_list = []
 
-    tasks.append(asyncio.create_task(multi_helper(get_spaces, space_list, False, True, authorization, True)))
+    tasks.append(asyncio.create_task(multi_helper(get_spaces, space_list, False, True, authorization, tenant_id, True)))
     tasks.append(asyncio.create_task(multi_helper(get_vnet, vnet_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(get_subnet, subnet_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(pe, endpoint_list, authorization, admin)))
@@ -577,76 +591,72 @@ async def multi(
 
     return tree
 
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error updating reservation status!"
+)
 async def match_resv_to_vnets():
     vnet_list = await arg_query(None, True, argquery.VNET)
     stale_resv = list(x['resv'] for x in vnet_list if x['resv'] != None)
 
-    current_try = 0
-    max_retry = 5
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space'", globals.TENANT_ID)
 
-    while True:
-        try:
-            query = await cosmos_query("spaces")
+    for space in space_query:
+        original_space = copy.deepcopy(space)
 
-            for space in query['spaces']:
-                for block in space['blocks']:
-                    for vnet in block['vnets']:
-                        active = next((x for x in vnet_list if x['id'] == vnet['id']), None)
+        for block in space['blocks']:
+            for vnet in block['vnets']:
+              active = next((x for x in vnet_list if x['id'] == vnet['id']), None)
 
-                        if active:
-                            vnet['active'] = True
-                        else:
-                            vnet['active'] = False
+              if active:
+                vnet['active'] = True
+              else:
+                vnet['active'] = False
 
-                    for index, resv in enumerate(block['resv']):
-                        if resv['id'] in stale_resv:
-                            vnet = next((x for x in vnet_list if x['resv'] == resv['id']), None)
+            for index, resv in enumerate(block['resv']):
+                if resv['id'] in stale_resv:
+                    vnet = next((x for x in vnet_list if x['resv'] == resv['id']), None)
 
-                            # print("RESV: {}".format(vnet['resv']))
-                            # print("BLOCK {}".format(block['name']))
-                            # print("VNET {}".format(vnet['id']))
-                            # print("INDEX: {}".format(index))
+                    # print("RESV: {}".format(vnet['resv']))
+                    # print("BLOCK {}".format(block['name']))
+                    # print("VNET {}".format(vnet['id']))
+                    # print("INDEX: {}".format(index))
 
-                            stale_resv.remove(resv['id'])
-                            resv['status'] = "wait"
+                    stale_resv.remove(resv['id'])
 
-                            cidr_match = resv['cidr'] in vnet['prefixes']
+                    cidr_match = resv['cidr'] in vnet['prefixes']
 
-                            if not cidr_match:
-                                # print("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
-                                resv['status'] = "warnCIDRMismatch"
+                    if not cidr_match:
+                        # print("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
+                        resv['status'] = "warnCIDRMismatch"
 
-                            existing_block_cidrs = []
+                    existing_block_cidrs = []
 
-                            for v in block['vnets']:
-                                target_vnet = next((x for x in vnet_list if x['id'].lower() == v['id'].lower()), None)
+                    for v in block['vnets']:
+                        target_vnet = next((x for x in vnet_list if x['id'].lower() == v['id'].lower()), None)
 
-                                if target_vnet:
-                                    target_cidr = next((x for x in target_vnet['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
-                                    existing_block_cidrs.append(target_cidr)
+                        if target_vnet:
+                            target_cidr = next((x for x in target_vnet['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
+                            existing_block_cidrs.append(target_cidr)
 
-                            vnet_cidr = next((x for x in vnet['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
+                    vnet_cidr = next((x for x in vnet['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
 
-                            if vnet_cidr in existing_block_cidrs:
-                                # print("A vNET with the assigned CIDR has already been associated with the target IP Block.")
-                                resv['status'] = "errCIDRExists"
+                    if vnet_cidr in existing_block_cidrs:
+                        # print("A vNET with the assigned CIDR has already been associated with the target IP Block.")
+                        resv['status'] = "errCIDRExists"
 
-                            if resv['status'] == "wait":
-                                # print("vNET association complete, adding vNET to Block.")
-                                block['vnets'].append({
-                                  "id": vnet['id'],
-                                  "active": True
-                                })
-                                del block['resv'][index]
-            await cosmos_upsert("spaces", query)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                print("Error updating reservation status!")
-        else:
-            break
+                    if resv['status'] == "wait":
+                        block['vnets'].append(
+                            {
+                                "id": vnet['id'],
+                                "active": True
+                            }
+                        )
+                        del block['resv'][index]
+                    else:
+                        resv['status'] = "wait"
+
+        await cosmos_replace_x(original_space, space)
 
     # print("STALE:")
     # print(stale_resv)

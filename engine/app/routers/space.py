@@ -1,5 +1,6 @@
+from ast import Break
 from fastapi import APIRouter, Depends, Request, Response, HTTPException, Header, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.encoders import jsonable_encoder
 
@@ -10,19 +11,31 @@ import azure.cosmos.exceptions as exceptions
 import re
 import jwt
 import time
+import uuid
+import copy
 import shortuuid
 import jsonpatch
 import logging
 from netaddr import IPSet, IPNetwork
 
-from app.dependencies import check_token_expired, get_admin
+from app.dependencies import (
+  check_token_expired,
+  get_admin,
+  get_tenant_id
+)
+
 from app.models import *
 from . import argquery
 
 from app.routers.common.helper import (
     get_username_from_jwt,
     cosmos_query,
+    cosmos_query_x,
+    cosmos_upsert_x,
+    cosmos_replace_x,
+    cosmos_delete_x,
     cosmos_upsert,
+    cosmos_retry,
     arg_query
 )
 
@@ -83,6 +96,7 @@ async def get_spaces(
     expand: bool = False,
     utilization: bool = False,
     authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -97,9 +111,9 @@ async def get_spaces(
     if expand or utilization:
         vnets = await arg_query(authorization, True, argquery.VNET)
 
-    spaces = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
-    for space in spaces['spaces']:
+    for space in space_query:
         if utilization:
             space['size'] = 0
             space['used'] = 0
@@ -146,11 +160,11 @@ async def get_spaces(
 
     if not is_admin:
         if utilization:
-            return [SpaceBasicUtil(**item) for item in spaces['spaces']]
+            return [SpaceBasicUtil(**item) for item in space_query]
         else:
-            return [SpaceBasic(**item) for item in spaces['spaces']]
+            return [SpaceBasic(**item) for item in space_query]
     else:
-        return spaces['spaces']
+        return space_query
 
 @router.post(
     "",
@@ -158,8 +172,14 @@ async def get_spaces(
     response_model = Space,
     status_code = 201
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error creating space, please try again."
+)
 async def create_space(
     space: SpaceReq,
+    authorization: str = Header(None),
+    tenant_id: str =  Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -169,38 +189,25 @@ async def create_space(
     - **desc**: A description for the Space
     """
 
-    current_try = 0
-    max_retry = 5
-
     if not is_admin:
         raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
-    while True:
-        try:
-            item = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
-            duplicate = next((x for x in item['spaces'] if x['name'].lower() == space.name.lower()), None)
+    duplicate = next((x for x in space_query if x['name'].lower() == space.name.lower()), None)
 
-            if duplicate:
-                raise HTTPException(status_code=400, detail="Space name must be unique.")
+    if duplicate:
+        raise HTTPException(status_code=400, detail="Space name must be unique.")
 
-            new_space = {
-                **space.dict(),
-                "vnets": [],
-                "blocks": []
-            }
+    new_space = {
+        # "id": uuid.uuid4(),
+        "type": "space",
+        "tenant_id": tenant_id,
+        **space.dict(),
+        "blocks": []
+    }
 
-            item['spaces'].append(jsonable_encoder(new_space))
-
-            await cosmos_upsert("spaces", item)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error creating space, please try again.")
-        else:
-            break
+    await cosmos_upsert_x(jsonable_encoder(new_space))
 
     return new_space
 
@@ -222,6 +229,7 @@ async def get_space(
     expand: bool = False,
     utilization: bool = False,
     authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -233,11 +241,11 @@ async def get_space(
     if expand and not is_admin:
         raise HTTPException(status_code=403, detail="Expand parameter can only be used by admins.")
 
-    spaces = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
-    target_space = next((x for x in spaces['spaces'] if x['name'] == space), None)
-
-    if not target_space:
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     if expand or utilization:
@@ -301,9 +309,14 @@ async def get_space(
     response_model = Space,
     status_code = 200
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error updating space, please try again."
+)
 async def update_space(
     space: str,
     updates: SpaceUpdate,
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -321,88 +334,64 @@ async def update_space(
     - **/desc**
     """
 
-    current_try = 0
-    max_retry = 5
-
     if not is_admin:
         raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
-    while True:
-        try:
-            item = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
-            target_space = next((x for x in item['spaces'] if x['name'].lower() == space.lower()), None)
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
 
-            if not target_space:
-                raise HTTPException(status_code=400, detail="Invalid space name.")
+    try:
+        patch = jsonpatch.JsonPatch(updates)
+    except jsonpatch.InvalidJsonPatch:
+        raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
 
-            try:
-                patch = jsonpatch.JsonPatch(updates)
-            except jsonpatch.InvalidJsonPatch:
-                raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
+    scrubbed_patch = jsonpatch.JsonPatch(await scrub_space_patch(patch))
+    update_space = scrubbed_patch.apply(target_space)
 
-            scrubbed_patch = jsonpatch.JsonPatch(await scrub_space_patch(patch))
-            scrubbed_patch.apply(target_space, in_place = True)
+    await cosmos_replace_x(target_space, update_space)
 
-            await cosmos_upsert("spaces", item)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error updating space, please try again.")
-        else:
-            break
-
-    return target_space
+    return update_space
 
 @router.delete(
     "/{space}",
     summary = "Delete a Space",
     status_code = 200
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error deleting space, please try again."
+)
 async def delete_space(
     space: str,
     force: Optional[bool] = False,
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
     Remove a specific Space.
     """
 
-    current_try = 0
-    max_retry = 5
-
     if not is_admin:
         raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
-    while True:
-        try:
-            item = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
-            target_space = next((x for x in item['spaces'] if x['name'].lower() == space.lower()), None)
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
 
-            if not target_space:
-                raise HTTPException(status_code=400, detail="Invalid space name.")
+    if not force:
+        if len(target_space['blocks']) > 0:
+            raise HTTPException(status_code=400, detail="Cannot delete space while it contains blocks.")
 
-            if not force:
-                if len(target_space['blocks']) > 0:
-                    raise HTTPException(status_code=400, detail="Cannot delete space while it contains blocks.")
+    await cosmos_delete_x(target_space, tenant_id)
 
-            index = next((i for i, item in enumerate(item['spaces']) if item['name'] == space), None)
-            del item['spaces'][index]
-
-            await cosmos_upsert("spaces", item)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error deleting space, please try again.")
-        else:
-            break
-
-    return item['spaces']
+    return PlainTextResponse(status_code=status.HTTP_200_OK)
 
 @router.get(
     "/{space}/blocks",
@@ -422,6 +411,7 @@ async def get_blocks(
     expand: bool = False,
     utilization: bool = False,
     authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -433,11 +423,11 @@ async def get_blocks(
     if expand and not is_admin:
         raise HTTPException(status_code=403, detail="Expand parameter can only be used by admins.")
 
-    spaces = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
-    target_space = next((x for x in spaces['spaces'] if x['name'] == space), None)
-
-    if not target_space:
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     block_list = target_space['blocks']
@@ -497,9 +487,14 @@ async def get_blocks(
     response_model = Block,
     status_code = 201
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error creating block, please try again."
+)
 async def create_block(
     space: str,
     block: BlockReq,
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -509,44 +504,32 @@ async def create_block(
     - **cidr**: IPv4 CIDR Range
     """
 
-    current_try = 0
-    max_retry = 5
-
     if not is_admin:
         raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
-    while True:
-        try:
-            item = await cosmos_query("spaces")
-            target = next((x for x in item['spaces'] if x['name'].lower() == space.lower()), None)
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
-            if not target:
-                raise HTTPException(status_code=400, detail="Invalid space name.")
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
 
-            block_cidrs = IPSet([x['cidr'] for x in target['blocks']])
+    block_cidrs = IPSet([x['cidr'] for x in target_space['blocks']])
 
-            overlap = bool(IPSet([str(block.cidr)]) & block_cidrs)
+    overlap = bool(IPSet([str(block.cidr)]) & block_cidrs)
 
-            if overlap:
-                raise HTTPException(status_code=400, detail="New block cannot overlap existing blocks.")
+    if overlap:
+        raise HTTPException(status_code=400, detail="New block cannot overlap existing blocks.")
 
-            new_block = {
-                **block.dict(),
-                "vnets": [],
-                "resv": []
-            }
+    new_block = {
+        **block.dict(),
+        "vnets": [],
+        "resv": []
+    }
 
-            target['blocks'].append(jsonable_encoder(new_block))
+    target_space['blocks'].append(jsonable_encoder(new_block))
 
-            await cosmos_upsert("spaces", item)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error creating block, please try again.")
-        else:
-            break
+    await cosmos_replace_x(space_query[0], target_space)
 
     return new_block
 
@@ -569,6 +552,7 @@ async def get_block(
     expand: bool = False,
     utilization: bool = False,
     authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -580,11 +564,11 @@ async def get_block(
     if expand and not is_admin:
         raise HTTPException(status_code=403, detail="Expand parameter can only be used by admins.")
 
-    item = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
-    target_space = next((x for x in item['spaces'] if x['name'].lower() == space.lower()), None)
-
-    if not target_space:
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -645,54 +629,46 @@ async def get_block(
     summary = "Delete a Block",
     status_code = 200
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error deleting block, please try again."
+)
 async def delete_block(
     space: str,
     block: str,
     force: Optional[bool] = False,
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
     Remove a specific Block.
     """
 
-    current_try = 0
-    max_retry = 5
-
     if not is_admin:
         raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
-    while True:
-        try:
-            item = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
-            target_space = next((x for x in item['spaces'] if x['name'].lower() == space.lower()), None)
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
 
-            if not target_space:
-                raise HTTPException(status_code=400, detail="Invalid space name.")
+    target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
 
-            target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
+    if not target_block:
+        raise HTTPException(status_code=400, detail="Invalid block name.")
 
-            if not target_block:
-                raise HTTPException(status_code=400, detail="Invalid block name.")
+    if not force:
+        if len(target_block['vnets']) > 0 or len(target_block['resv']) > 0:
+            raise HTTPException(status_code=400, detail="Cannot delete block while it contains vNets or reservations.")
 
-            if not force:
-                if len(target_block['vnets']) > 0 or len(target_block['resv']) > 0:
-                    raise HTTPException(status_code=400, detail="Cannot delete block while it contains vNets or reservations.")
+    index = next((i for i, item in enumerate(target_space['blocks']) if item['name'] == block), None)
+    del target_space['blocks'][index]
 
-            index = next((i for i, item in enumerate(target_space['blocks']) if item['name'] == block), None)
-            del target_space['blocks'][index]
+    await cosmos_replace_x(space_query[0], target_space)
 
-            await cosmos_upsert("spaces", item)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error deleting block, please try again.")
-        else:
-            break
-
-    return target_space
+    return PlainTextResponse(status_code=status.HTTP_200_OK)
 
 @router.get(
     "/{space}/blocks/{block}/available",
@@ -708,6 +684,7 @@ async def available_block_vnets(
     block: str,
     expand: bool = False,
     authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -719,9 +696,9 @@ async def available_block_vnets(
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    item = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
-    target_space = next((x for x in item['spaces'] if x['name'].lower() == space.lower()), None)
+    target_space = next((x for x in space_query if x['name'].lower() == space.lower()), None)
 
     if not target_space:
         raise HTTPException(status_code=400, detail="Invalid space name.")
@@ -744,7 +721,7 @@ async def available_block_vnets(
     # assigned_vnets = [''.join(vnet) for space in item['spaces'] for block in space['blocks'] for vnet in block['vnets']]
     # unassigned_vnets = list(set(available_vnets) - set(assigned_vnets)) + list(set(assigned_vnets) - set(available_vnets))
 
-    for space_iter in item['spaces']:
+    for space_iter in space_query:
         for block_iter in space_iter['blocks']:
             for vnet_iter in block_iter['vnets']:
                 if space_iter['name'] != space and block_iter['name'] != block:
@@ -772,6 +749,7 @@ async def available_block_vnets(
     block: str,
     expand: bool = False,
     authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -783,11 +761,11 @@ async def available_block_vnets(
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    item = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
-    target_space = next((x for x in item['spaces'] if x['name'].lower() == space.lower()), None)
-
-    if not target_space:
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -812,11 +790,16 @@ async def available_block_vnets(
     response_model = BlockBasic,
     status_code = 201
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error adding vNet to block, please try again."
+)
 async def create_block_vnet(
     space: str,
     block: str,
     vnet: VNet,
     authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -825,67 +808,54 @@ async def create_block_vnet(
     - **id**: Azure Resource ID
     """
 
-    current_try = 0
-    max_retry = 5
-
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    while True:
-        try:
-            item = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
-            target_space = next((x for x in item['spaces'] if x['name'].lower() == space.lower()), None)
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
 
-            if not target_space:
-                raise HTTPException(status_code=400, detail="Invalid space name.")
+    target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
 
-            target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
+    if not target_block:
+        raise HTTPException(status_code=400, detail="Invalid block name.")
 
-            if not target_block:
-                raise HTTPException(status_code=400, detail="Invalid block name.")
+    if vnet.id in [v['id'] for v in target_block['vnets']]:
+        raise HTTPException(status_code=400, detail="vNet already exists in block.")
 
-            if vnet.id in [v['id'] for v in target_block['vnets']]:
-                raise HTTPException(status_code=400, detail="vNet already exists in block.")
+    vnet_list = await arg_query(authorization, True, argquery.VNET)
 
-            vnet_list = await arg_query(authorization, True, argquery.VNET)
+    target_vnet = next((x for x in vnet_list if x['id'].lower() == vnet.id.lower()), None)
 
-            target_vnet = next((x for x in vnet_list if x['id'].lower() == vnet.id.lower()), None)
+    if not target_vnet:
+        raise HTTPException(status_code=400, detail="Invalid vNet ID.")
 
-            if not target_vnet:
-                raise HTTPException(status_code=400, detail="Invalid vNet ID.")
+    target_cidr = next((x for x in target_vnet['prefixes'] if IPNetwork(x) in IPNetwork(target_block['cidr'])), None)
 
-            target_cidr = next((x for x in target_vnet['prefixes'] if IPNetwork(x) in IPNetwork(target_block['cidr'])), None)
+    if not target_cidr:
+        raise HTTPException(status_code=400, detail="vNet CIDR not within block CIDR.")
 
-            if not target_cidr:
-                raise HTTPException(status_code=400, detail="vNet CIDR not within block CIDR.")
+    block_vnet_cidrs = []
 
-            block_vnet_cidrs = []
+    for v in target_block['vnets']:
+        target = next((x for x in vnet_list if x['id'].lower() == v.lower()), None)
 
-            for v in target_block['vnets']:
-                target = next((x for x in vnet_list if x['id'].lower() == v.lower()), None)
+        if target:
+            prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes']))
+            block_vnet_cidrs += prefixes
 
-                if target:
-                    prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes']))
-                    block_vnet_cidrs += prefixes
+    cidr_overlap = IPSet(block_vnet_cidrs) & IPSet([target_cidr])
 
-            cidr_overlap = IPSet(block_vnet_cidrs) & IPSet([target_cidr])
+    if cidr_overlap:
+        raise HTTPException(status_code=400, detail="Block already contains vNet(s) within the CIDR range of target vNet.")
 
-            if cidr_overlap:
-                raise HTTPException(status_code=400, detail="Block already contains vNet(s) within the CIDR range of target vNet.")
+    vnet.active = True
+    target_block['vnets'].append(vnet)
 
-            vnet.active = True
-            target_block['vnets'].append(jsonable_encoder(vnet))
-
-            await cosmos_upsert("spaces", item)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error adding vNet to block, please try again.")
-        else:
-            break
+    await cosmos_replace_x(space_query[0], target_space)
 
     return target_block
 
@@ -896,11 +866,16 @@ async def create_block_vnet(
     response_model = List[VNet],
     status_code = 200
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error updating block vNets, please try again."
+)
 async def update_block_vnets(
     space: str,
     block: str,
     vnets: VNetsUpdate,
     authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -910,84 +885,71 @@ async def update_block_vnets(
         - **&lt;str&gt;**: Azure Resource ID
     """
 
-    current_try = 0
-    max_retry = 5
-
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    while True:
-        try:
-            item = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
-            target_space = next((x for x in item['spaces'] if x['name'].lower() == space.lower()), None)
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
 
-            if not target_space:
-                raise HTTPException(status_code=400, detail="Invalid space name.")
+    target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
 
-            target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
+    if not target_block:
+        raise HTTPException(status_code=400, detail="Invalid block name.")
 
-            if not target_block:
-                raise HTTPException(status_code=400, detail="Invalid block name.")
+    unique_vnets = len(vnets) == len(set(vnets))
 
-            unique_vnets = len(vnets) == len(set(vnets))
+    if not unique_vnets:
+        raise HTTPException(status_code=400, detail="List contains duplicate vNets.")
 
-            if not unique_vnets:
-                raise HTTPException(status_code=400, detail="List contains duplicate vNets.")
+    vnet_list = await arg_query(authorization, True, argquery.VNET)
 
-            vnet_list = await arg_query(authorization, True, argquery.VNET)
+    invalid_vnets = []
+    outside_block_cidr = []
+    vnet_ipset = IPSet([])
+    vnet_overlap = False
 
-            invalid_vnets = []
-            outside_block_cidr = []
-            vnet_ipset = IPSet([])
-            vnet_overlap = False
+    for v in vnets:
+        target_vnet = next((x for x in vnet_list if x['id'].lower() == v.lower()), None)
 
-            for v in vnets:
-                target_vnet = next((x for x in vnet_list if x['id'].lower() == v.lower()), None)
-
-                if not target_vnet:
-                    invalid_vnets.append(v)
-                else:
-                    target_cidr = next((x for x in target_vnet['prefixes'] if IPNetwork(x) in IPNetwork(target_block['cidr'])), None)
-
-                    if not target_cidr:
-                        outside_block_cidr.append(v)
-                    else:
-                        if not vnet_ipset & IPSet([target_cidr]):
-                            vnet_ipset.add(target_cidr)
-                        else:
-                            vnet_overlap = True
-
-            if vnet_overlap:
-                raise HTTPException(status_code=400, detail="vNet list contains overlapping CIDRs.")
-
-            if len(outside_block_cidr) > 0:
-                raise HTTPException(status_code=400, detail="vNet CIDR(s) not within Block CIDR: {}".format(outside_block_cidr))
-
-            if len(invalid_vnets) > 0:
-                raise HTTPException(status_code=400, detail="Invalid vNet ID(s): {}".format(invalid_vnets))
-
-            new_vnet_list = []
-
-            for vnet in vnets:
-              new_vnet = {
-                "id": vnet,
-                "active": True
-              }
-
-              new_vnet_list.append(new_vnet)
-
-            target_block['vnets'] = new_vnet_list
-
-            await cosmos_upsert("spaces", item)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error updating block vNets, please try again.")
+        if not target_vnet:
+            invalid_vnets.append(v)
         else:
-            break
+            target_cidr = next((x for x in target_vnet['prefixes'] if IPNetwork(x) in IPNetwork(target_block['cidr'])), None)
+
+            if not target_cidr:
+                outside_block_cidr.append(v)
+            else:
+                if not vnet_ipset & IPSet([target_cidr]):
+                    vnet_ipset.add(target_cidr)
+                else:
+                    vnet_overlap = True
+
+    if vnet_overlap:
+        raise HTTPException(status_code=400, detail="vNet list contains overlapping CIDRs.")
+
+    if len(outside_block_cidr) > 0:
+        raise HTTPException(status_code=400, detail="vNet CIDR(s) not within Block CIDR: {}".format(outside_block_cidr))
+
+    if len(invalid_vnets) > 0:
+        raise HTTPException(status_code=400, detail="Invalid vNet ID(s): {}".format(invalid_vnets))
+
+    new_vnet_list = []
+
+    for vnet in vnets:
+      new_vnet = {
+        "id": vnet,
+        "active": True
+      }
+
+      new_vnet_list.append(new_vnet)
+
+    target_block['vnets'] = new_vnet_list
+
+    await cosmos_replace_x(space_query[0], target_space)
 
     return target_block['vnets']
 
@@ -997,10 +959,15 @@ async def update_block_vnets(
     response_model = BlockBasic,
     status_code = 200
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error removing block vNet(s), please try again."
+)
 async def delete_block_vnets(
     space: str,
     block: str,
     req: VNets,
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -1009,53 +976,40 @@ async def delete_block_vnets(
     - **[&lt;str&gt;]**: Array of Azure Resource ID's
     """
 
-    current_try = 0
-    max_retry = 5
-
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    while True:
-        try:
-            item = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
-            target_space = next((x for x in item['spaces'] if x['name'].lower() == space.lower()), None)
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
 
-            if not target_space:
-                raise HTTPException(status_code=400, detail="Invalid space name.")
+    target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
 
-            target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
+    if not target_block:
+        raise HTTPException(status_code=400, detail="Invalid block name.")
 
-            if not target_block:
-                raise HTTPException(status_code=400, detail="Invalid block name.")
+    unique_vnets = len(set(req.ids)) == len(req.ids)
 
-            unique_vnets = len(set(req.ids)) == len(req.ids)
+    if not unique_vnets:
+        raise HTTPException(status_code=400, detail="List contains one or more duplicate vNet id's.")
 
-            if not unique_vnets:
-                raise HTTPException(status_code=400, detail="List contains one or more duplicate vNet id's.")
+    current_vnets = list(x['id'] for x in target_block['vnets'])
+    ids_exist = all(elem in current_vnets for elem in req.ids)
 
-            current_vnets = list(x['id'] for x in target_block['vnets'])
-            ids_exist = all(elem in current_vnets for elem in req.ids)
+    if not ids_exist:
+        raise HTTPException(status_code=400, detail="List contains one or more invalid vNet id's.")
+        # OR VNET IDS THAT DON'T BELONG TO THE CURRENT BLOCK
 
-            if not ids_exist:
-                raise HTTPException(status_code=400, detail="List contains one or more invalid vNet id's.")
-                # OR VNET IDS THAT DON'T BELONG TO THE CURRENT BLOCK
+    for id in req.ids:
+        index = next((i for i, item in enumerate(target_block['vnets']) if item['id'] == id), None)
+        del target_block['vnets'][index]
 
-            for id in req.ids:
-                index = next((i for i, item in enumerate(target_block['vnets']) if item['id'] == id), None)
-                del target_block['vnets'][index]
+    await cosmos_replace_x(space_query[0], target_space)
 
-            await cosmos_upsert("spaces", item)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error removing block vNet(s), please try again.")
-        else:
-            break
-
-    return target_block
+    return PlainTextResponse(status_code=status.HTTP_200_OK)
 
 @router.get(
     "/{space}/blocks/{block}/reservations",
@@ -1067,6 +1021,7 @@ async def get_block_reservations(
     space: str,
     block: str,
     authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -1075,11 +1030,11 @@ async def get_block_reservations(
 
     user_assertion = authorization.split(' ')[1]
 
-    item = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
-    target_space = next((x for x in item['spaces'] if x['name'].lower() == space.lower()), None)
-
-    if not target_space:
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -1099,11 +1054,16 @@ async def get_block_reservations(
     response_model = Reservation,
     status_code = 201
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error creating block reservation, please try again."
+)
 async def create_block_reservation(
     space: str,
     block: str,
     req: CIDRReq,
-    authorization: str = Header(None)
+    authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Create a CIDR Reservation for the target Block with the following information:
@@ -1114,72 +1074,59 @@ async def create_block_reservation(
     user_assertion = authorization.split(' ')[1]
     decoded = jwt.decode(user_assertion, options={"verify_signature": False})
 
-    current_try = 0
-    max_retry = 5
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
-    while True:
-        try:
-            item = await cosmos_query("spaces")
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
 
-            target_space = next((x for x in item['spaces'] if x['name'].lower() == space.lower()), None)
+    target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
 
-            if not target_space:
-                raise HTTPException(status_code=400, detail="Invalid space name.")
+    if not target_block:
+        raise HTTPException(status_code=400, detail="Invalid block name.")
 
-            target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
+    vnet_list = await arg_query(authorization, True, argquery.VNET)
 
-            if not target_block:
-                raise HTTPException(status_code=400, detail="Invalid block name.")
+    block_all_cidrs = []
 
-            vnet_list = await arg_query(authorization, True, argquery.VNET)
+    for v in target_block['vnets']:
+        target = next((x for x in vnet_list if x['id'].lower() == v['id'].lower()), None)
+        prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes'])) if target else []
+        block_all_cidrs += prefixes
 
-            block_all_cidrs = []
+    for r in target_block['resv']:
+        block_all_cidrs.append(r['cidr'])
 
-            for v in target_block['vnets']:
-                target = next((x for x in vnet_list if x['id'].lower() == v['id'].lower()), None)
-                prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes'])) if target else []
-                block_all_cidrs += prefixes
+    block_set = IPSet([target_block['cidr']])
+    reserved_set = IPSet(block_all_cidrs)
+    available_set = block_set ^ reserved_set
 
-            for r in target_block['resv']:
-                block_all_cidrs.append(r['cidr'])
+    available_block = next((net for net in list(available_set.iter_cidrs()) if net.prefixlen <= req.size), None)
 
-            block_set = IPSet([target_block['cidr']])
-            reserved_set = IPSet(block_all_cidrs)
-            available_set = block_set ^ reserved_set
+    if not available_block:
+        raise HTTPException(status_code=500, detail="Subnet of requested size unavailable in target block.")
 
-            available_block = next((net for net in list(available_set.iter_cidrs()) if net.prefixlen <= req.size), None)
+    next_cidr = list(available_block.subnet(req.size))[0]
 
-            if not available_block:
-                raise HTTPException(status_code=500, detail="Subnet of requested size unavailable in target block.")
+    if "preferred_username" in decoded:
+        creator_id = decoded["preferred_username"]
+    else:
+        creator_id = f"spn:{decoded['oid']}"
 
-            next_cidr = list(available_block.subnet(req.size))[0]
+    new_cidr = {
+        "id": shortuuid.uuid(),
+        "cidr": str(next_cidr),
+        "userId": creator_id,
+        "createdOn": (time.time() * 1000),
+        "status": "wait"
+    }
 
-            if "preferred_username" in decoded:
-                creator_id = decoded["preferred_username"]
-            else:
-                creator_id = f"spn:{decoded['oid']}"
+    target_block['resv'].append(new_cidr)
 
-            new_cidr = {
-                "id": shortuuid.uuid(),
-                "cidr": str(next_cidr),
-                "userId": creator_id,
-                "createdOn": time.time(),
-                "status": "wait"
-            }
+    # NEED TO RETURN GUID FOR USER TO APPEND TO AZURE TAG ON VNET
 
-            target_block['resv'].append(new_cidr)
-
-            # NEED TO RETURN GUID FOR USER TO APPEND TO AZURE TAG ON VNET
-    
-            await cosmos_upsert("spaces", item)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error creating block reservation, please try again.")
-        else:
-            break
+    await cosmos_replace_x(space_query[0], target_space)
 
     return new_cidr
 
@@ -1188,66 +1135,58 @@ async def create_block_reservation(
     summary = "Delete CIDR Reservation",
     status_code = 200
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error removing block reservation(s), please try again."
+)
 async def delete_block_reservations(
     space: str,
     block: str,
     req: DeleteResvReq,
     authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
     Remove a CIDR Reservation for the target Block.
     """
 
-    current_try = 0
-    max_retry = 5
-
     user_assertion = authorization.split(' ')[1]
     user_name = get_username_from_jwt(user_assertion)
 
-    while True:
-        try:
-            item = await cosmos_query("spaces")
+    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
-            target_space = next((x for x in item['spaces'] if x['name'].lower() == space.lower()), None)
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
 
-            if not target_space:
-                raise HTTPException(status_code=400, detail="Invalid space name.")
+    target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
 
-            target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
+    if not target_block:
+        raise HTTPException(status_code=400, detail="Invalid block name.")
 
-            if not target_block:
-                raise HTTPException(status_code=400, detail="Invalid block name.")
+    unique_ids = len(set(req)) == len(req)
 
-            unique_ids = len(set(req)) == len(req)
+    if not unique_ids:
+        raise HTTPException(status_code=400, detail="List contains one or more duplicate id's.")
 
-            if not unique_ids:
-                raise HTTPException(status_code=400, detail="List contains one or more duplicate id's.")
+    current_reservations = list(o['id'] for o in target_block['resv'])
+    ids_exist = all(elem in current_reservations for elem in req)
 
-            current_reservations = list(o['id'] for o in target_block['resv'])
-            ids_exist = all(elem in current_reservations for elem in req)
+    if not ids_exist:
+        raise HTTPException(status_code=400, detail="List contains one or more invalid id's.")
 
-            if not ids_exist:
-                raise HTTPException(status_code=400, detail="List contains one or more invalid id's.")
+    if not is_admin:
+        not_owned = list(filter(lambda x: x['id'] in req and x['userId'] != user_name, target_block['resv']))
 
-            if not is_admin:
-                not_owned = list(filter(lambda x: x['id'] in req and x['userId'] != user_name, target_block['resv']))
+        if not_owned:
+            raise HTTPException(status_code=403, detail="Users can only delete their own reservations.")
 
-                if not_owned:
-                    raise HTTPException(status_code=403, detail="Users can only delete their own reservations.")
+    for id in req:
+        index = next((i for i, item in enumerate(target_block['resv']) if item['id'] == id), None)
+        del target_block['resv'][index]
 
-            for id in req:
-                index = next((i for i, item in enumerate(target_block['resv']) if item['id'] == id), None)
-                del target_block['resv'][index]
+    await cosmos_replace_x(space_query[0], target_space)
 
-            await cosmos_upsert("spaces", item)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error removing block reservation(s), please try again.")
-        else:
-            break
-
-    return target_block
+    return PlainTextResponse(status_code=status.HTTP_200_OK)
