@@ -1,11 +1,14 @@
 // Global parameters
 targetScope = 'subscription'
 
-@description('Landing Zone Prefix')
-param landingZonePrefix string
+@description('CIDR Block Size')
+param cidrSize int
 
 @description('GUID for Resource Naming')
 param guid string = newGuid()
+
+@description('Landing Zone Prefix')
+param landingZonePrefix string
 
 @description('Deployment Location')
 param location string = deployment().location
@@ -13,50 +16,33 @@ param location string = deployment().location
 @description('API Scope for Access Token')
 param ipamApiScope string
 
+@description('IPAM Space')
+param ipamBlock string
+
 @description('Azure IPAM Endpoint')
 param ipamEndpoint string
 
 @description('IPAM Space')
 param ipamSpace string
 
-@description('IPAM Space')
-param ipamBlock string
-
 // Resource naming variables
-var logAnalyticsWorkspaceName = '${landingZonePrefix}-law-${uniqueString(guid)}'
 var managedIdentityName = '${landingZonePrefix}-mi-${uniqueString(guid)}'
 var networkSvcsResourceGroupName = '${landingZonePrefix}NetworkSvcs-rg-${uniqueString(guid)}'
-var sharedSvcsResourceGroupName = '${landingZonePrefix}SharedSvcs-rg-${uniqueString(guid)}'
 var vnetName = '${landingZonePrefix}-vnet-${uniqueString(guid)}'
 
 
-//Resource Groups
-resource sharedSvcsResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  location: location
-  name: sharedSvcsResourceGroupName
-}
-
+//Resource Group
 resource networkSvcsResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   location: location
   name: networkSvcsResourceGroupName
 }
 
-// Managed Identity for Secure Access to KeyVault
+// Managed Identity
 module managedIdentity 'managedIdentity.bicep' = {
   name: 'managedIdentityModule'
-  scope: sharedSvcsResourceGroup
+  scope: networkSvcsResourceGroup
   params: {
     managedIdentityName: managedIdentityName
-    location: location
-  }
-}
-
-// Log Analytics Workspace
-module logAnalytics 'logAnalytics.bicep' = {
-  name: 'logAnalyticsModule'
-  scope: sharedSvcsResourceGroup
-  params: {
-    logAnalyticsWorkspaceName: logAnalyticsWorkspaceName
     location: location
   }
 }
@@ -66,6 +52,7 @@ module fetchAddressPrefix 'fetchAddressPrefix.bicep' = {
   name: 'fetchAddressPrefixModule'
   scope: networkSvcsResourceGroup
   params: {
+    cidrSize: cidrSize
     ipamApiScope: ipamApiScope
     ipamBlock: ipamBlock
     ipamEndpoint: ipamEndpoint

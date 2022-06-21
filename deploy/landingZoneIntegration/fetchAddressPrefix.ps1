@@ -1,7 +1,7 @@
 $accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl $Env:IPAM_API_SCOPE).Token -AsPlainText
 
 $body = @{
-    'size' = 16
+    'size' = $Env:CIDR_SIZE
 } | ConvertTo-Json
 
 $headers = @{

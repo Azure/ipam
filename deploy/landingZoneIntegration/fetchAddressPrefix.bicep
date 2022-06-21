@@ -1,11 +1,11 @@
-@description('Deployment Location')
-param location string = resourceGroup().location
-
-@description('Managed Identity Id')
-param managedIdentityId string
+@description('CIDR Block Size')
+param cidrSize int
 
 @description('API Scope for Access Token')
 param ipamApiScope string
+
+@description('IPAM Space')
+param ipamBlock string
 
 @description('API Scope for Access Token')
 param ipamEndpoint string
@@ -13,8 +13,11 @@ param ipamEndpoint string
 @description('IPAM Space')
 param ipamSpace string
 
-@description('IPAM Space')
-param ipamBlock string
+@description('Deployment Location')
+param location string = resourceGroup().location
+
+@description('Managed Identity Id')
+param managedIdentityId string
 
 var ipamUrl = '${ipamEndpoint}/api/spaces/${ipamSpace}/blocks/${ipamBlock}/reservations'
 
@@ -40,12 +43,16 @@ resource fetchNetworkPrefix 'Microsoft.Resources/deploymentScripts@2020-10-01' =
         name: 'IPAM_URL'
         value: ipamUrl
       }
+      {
+        name: 'CIDR_SIZE'
+        value: cidrSize
+      }
     ]
     scriptContent: '''
       $accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl $Env:IPAM_API_SCOPE).Token -AsPlainText
  
       $body = @{
-          'size' = 16
+          'size' = $Env:CIDR_SIZE
       } | ConvertTo-Json
       
       $headers = @{
