@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 
 from azure.identity.aio import OnBehalfOfCredential, ClientSecretCredential
-from azure.core.exceptions import ClientAuthenticationError, HttpResponseError
+from azure.core.exceptions import ClientAuthenticationError, HttpResponseError, ServiceRequestError
 from azure.mgmt.resourcegraph.aio import ResourceGraphClient
 from azure.mgmt.resourcegraph.models import *
 
@@ -99,8 +99,6 @@ async def cosmos_upsert(target: str, data):
     finally:
         await cosmos_client.close()
 
-    await cosmos_client.close()
-
     return
 
 async def arg_query(auth, admin, query):
@@ -115,13 +113,11 @@ async def arg_query(auth, admin, query):
     try:
         results = await arg_query_helper(creds, query)
     except ClientAuthenticationError:
-        await creds.close()
         raise HTTPException(status_code=401, detail="Token has expired.")
     except HttpResponseError as e:
-        await creds.close()
         raise HTTPException(status_code=403, detail="Access denied.")
-
-    await creds.close()
+    finally:
+        await creds.close()
 
     return results
 
@@ -135,8 +131,8 @@ async def arg_query_client(query):
     except ClientAuthenticationError:
         await client_creds.close()
         raise HTTPException(status_code=401, detail="Token has expired.")
-
-    await client_creds.close()
+    finally:
+        await client_creds.close()
 
     return results
 
@@ -152,8 +148,8 @@ async def arg_query_obo(auth, query):
     except ClientAuthenticationError:
         await obo_creds.close()
         raise HTTPException(status_code=401, detail="Token has expired.")
-
-    await obo_creds.close()
+    finally:
+        await obo_creds.close()
 
     return results
 
@@ -170,8 +166,11 @@ async def arg_query_helper(credentials, query):
         )
     )
 
-    poll = await resource_graph_client.resources(query)
-
-    await resource_graph_client.close()
+    try:
+        poll = await resource_graph_client.resources(query)
+    except ServiceRequestError:
+        raise HTTPException(status_code=500, detail="Error communicating with Azure.")
+    finally:
+        await resource_graph_client.close()
 
     return poll.data

@@ -3,28 +3,19 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.encoders import jsonable_encoder
 
-from pydantic import BaseModel, constr
-from typing import Optional, List
-
-from azure.identity.aio import OnBehalfOfCredential, ClientSecretCredential
 from azure.core.exceptions import ClientAuthenticationError, HttpResponseError
 from azure.mgmt.compute.aio import ComputeManagementClient
 from azure.mgmt.network.aio import NetworkManagementClient
 from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
-from azure.mgmt.resourcegraph.aio import ResourceGraphClient
-from azure.mgmt.resourcegraph.models import *
 
-from azure.core import MatchConditions
-from azure.cosmos.aio import CosmosClient
 import azure.cosmos.exceptions as exceptions
 
 import re
 import asyncio
+import logging
 from ipaddress import IPv4Network
 from netaddr import IPSet, IPNetwork
 from uuid import uuid4
-
-from sqlalchemy import true
 
 from app.dependencies import check_token_expired, get_admin
 from . import argquery
@@ -40,6 +31,11 @@ from app.routers.common.helper import (
 from app.routers.space import (
     get_spaces
 )
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+console = logging.StreamHandler()
+logger.addHandler(console)
 
 router = APIRouter(
     prefix="/azure",
@@ -184,17 +180,33 @@ async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
 
     await network_client.close()
 
-@router.get("/subscription")
-async def subscription(authorization: str = Header(None), admin: str = Depends(get_admin)):
-    """DOCSTRING"""
+@router.get(
+  "/subscription",
+  summary = "Get All Subscriptions"
+)
+async def subscription(
+  authorization: str = Header(None),
+  admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Azure subscriptions.
+    """
 
     subscription_list = await arg_query(authorization, admin, argquery.SUBSCRIPTION)
 
     return subscription_list
 
-@router.get("/vnet")
-async def get_vnet(authorization: str = Header(None), admin: str = Depends(get_admin)):
-    """DOCSTRING"""
+@router.get(
+  "/vnet",
+  summary = "Get All Virtual Networks"
+)
+async def get_vnet(
+  authorization: str = Header(None),
+  admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Azure Virtual Networks.
+    """
 
     item = await cosmos_query("spaces")
 
@@ -229,9 +241,17 @@ async def get_vnet(authorization: str = Header(None), admin: str = Depends(get_a
     
     return updated_vnet_list
 
-@router.get("/subnet")
-async def get_subnet(authorization: str = Header(None), admin: str = Depends(get_admin)):
-    """DOCSTRING"""
+@router.get(
+  "/subnet",
+  summary = "Get All Subnets"
+)
+async def get_subnet(
+  authorization: str = Header(None),
+  admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Azure Subnets.
+    """
 
     SUBNET_TYPE_MAP = [
         {
@@ -282,66 +302,130 @@ async def get_subnet(authorization: str = Header(None), admin: str = Depends(get
 
     return updated_subnet_list
 
-@router.get("/pe")
-async def pe(authorization: str = Header(None), admin: str = Depends(get_admin)):
-    """DOCSTRING"""
+@router.get(
+  "/pe",
+  summary = "Get All Private Endpoints"
+)
+async def pe(
+  authorization: str = Header(None),
+  admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Azure Private Endpoints.
+    """
 
     pe_list = await arg_query(authorization, admin, argquery.PRIVATE_ENDPOINT)
 
     return pe_list
 
-@router.get("/vm")
-async def vm(authorization: str = Header(None), admin: str = Depends(get_admin)):
-    """DOCSTRING"""
+@router.get(
+  "/vm",
+  summary = "Get All Virtual Machines"
+)
+async def vm(
+  authorization: str = Header(None),
+  admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Azure Virtual Machines
+    """
 
     vm_list = await arg_query(authorization, admin, argquery.VIRTUAL_MACHINE)
 
     return vm_list
 
-@router.get("/vmss")
-async def vmss(authorization: str = Header(None), admin: str = Depends(get_admin)):
-    """DOCSTRING"""
+@router.get(
+  "/vmss",
+  summary = "Get All VM Scale Sets"
+)
+async def vmss(
+  authorization: str = Header(None),
+  admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Azure VM Scale Sets.
+    """
 
     # vmss_list = await get_vmss(authorization, admin)
     vmss_list = await arg_query(authorization, admin, argquery.VM_SCALE_SET)
 
     return vmss_list
 
-@router.get("/fwvnet")
-async def fwvnet(authorization: str = Header(None), admin: str = Depends(get_admin)):
-    """DOCSTRING"""
+@router.get(
+  "/fwvnet",
+  summary = "Get All vNet Firewalls"
+)
+async def fwvnet(
+  authorization: str = Header(None),
+  admin: str = Depends(get_admin)
+):
+    """
+    Get a list of vNet integrated Azure Firewalls.
+    """
 
     vm_list = await arg_query(authorization, admin, argquery.FIREWALL_VNET)
 
     return vm_list
 
-@router.get("/fwvhub")
-async def fwvhub(authorization: str = Header(None), admin: str = Depends(get_admin)):
-    """DOCSTRING"""
+@router.get(
+  "/fwvhub",
+  summary = "Get all vWAN Hub Firewalls"
+)
+async def fwvhub(
+  authorization: str = Header(None),
+  admin: str = Depends(get_admin)
+):
+    """
+    Get a list of all vWAN Hub integrated Azure Firewalls.
+    """
 
     vm_list = await arg_query(authorization, admin, argquery.FIREWALL_VHUB)
 
     return vm_list
 
-@router.get("/bastion")
-async def bastion(authorization: str = Header(None), admin: str = Depends(get_admin)):
-    """DOCSTRING"""
+@router.get(
+  "/bastion",
+  summary = "Get All Bastion Hosts"
+)
+async def bastion(
+  authorization: str = Header(None),
+  admin: str = Depends(get_admin)
+):
+    """
+    Get a list of all Azure Bastions hosts.
+    """
 
     vm_list = await arg_query(authorization, admin, argquery.BASTION)
 
     return vm_list
 
-@router.get("/appgw")
-async def appgw(authorization: str = Header(None), admin: str = Depends(get_admin)):
-    """DOCSTRING"""
+@router.get(
+  "/appgw",
+  summary = "Get All Application Gateways"
+)
+async def appgw(
+  authorization: str = Header(None),
+  admin: str = Depends(get_admin)
+):
+    """
+    Get a list of all Azure Application Gateways.
+    """
 
     vm_list = await arg_query(authorization, admin, argquery.APP_GATEWAY)
 
     return vm_list
 
-@router.get("/apim")
-async def apim(authorization: str = Header(None), admin: str = Depends(get_admin)):
-    """DOCSTRING"""
+@router.get(
+  "/apim",
+  summary = "Get All API Management Instances"
+)
+async def apim(
+  authorization: str = Header(None),
+  admin: str = Depends(get_admin)
+):
+    """
+    Get a list of all Azure API Management instances.
+    """
 
     vm_list = await arg_query(authorization, admin, argquery.APIM)
 
@@ -353,9 +437,17 @@ async def multi_helper(func, list, *args):
     results = await func(*args)
     list.append(results)
 
-@router.get("/multi")
-async def multi(authorization: str = Header(None), admin: str = Depends(get_admin)):
-    """DOCSTRING"""
+@router.get(
+  "/multi",
+  summary = "Get All Endpoints"
+)
+async def multi(
+  authorization: str = Header(None),
+  admin: str = Depends(get_admin)
+):
+    """
+    Get a consolidated list of all Azure endpoints.
+    """
 
     tasks = []
     result_list = []
@@ -372,9 +464,17 @@ async def multi(authorization: str = Header(None), admin: str = Depends(get_admi
 
     return [item for sublist in result_list for item in sublist]
 
-@router.get("/tree")
-async def multi(authorization: str = Header(None), admin: str = Depends(get_admin)):
-    """DOCSTRING"""
+@router.get(
+  "/tree",
+  summary = "Get Space Tree View"
+)
+async def multi(
+  authorization: str = Header(None),
+  admin: str = Depends(get_admin)
+):
+    """
+    Get a hierarchical tree view of Spaces, Blocks, Virtual Networks, Subnets, and Endpoints.
+    """
 
     tasks = []
     space_list=[]
@@ -491,12 +591,12 @@ async def match_resv_to_vnets():
             for space in query['spaces']:
                 for block in space['blocks']:
                     for vnet in block['vnets']:
-                      active = next((x for x in vnet_list if x['id'] == vnet['id']), None)
+                        active = next((x for x in vnet_list if x['id'] == vnet['id']), None)
 
-                      if active:
-                        vnet['active'] = True
-                      else:
-                        vnet['active'] = False
+                        if active:
+                            vnet['active'] = True
+                        else:
+                            vnet['active'] = False
 
                     for index, resv in enumerate(block['resv']):
                         if resv['id'] in stale_resv:
@@ -508,6 +608,7 @@ async def match_resv_to_vnets():
                             # print("INDEX: {}".format(index))
 
                             stale_resv.remove(resv['id'])
+                            resv['status'] = "wait"
 
                             cidr_match = resv['cidr'] in vnet['prefixes']
 
@@ -518,7 +619,7 @@ async def match_resv_to_vnets():
                             existing_block_cidrs = []
 
                             for v in block['vnets']:
-                                target_vnet = next((x for x in vnet_list if x['id'].lower() == v.lower()), None)
+                                target_vnet = next((x for x in vnet_list if x['id'].lower() == v['id'].lower()), None)
 
                                 if target_vnet:
                                     target_cidr = next((x for x in target_vnet['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
@@ -531,11 +632,12 @@ async def match_resv_to_vnets():
                                 resv['status'] = "errCIDRExists"
 
                             if resv['status'] == "wait":
-                                block['vnets'].append(vnet['id'])
+                                # print("vNET association complete, adding vNET to Block.")
+                                block['vnets'].append({
+                                  "id": vnet['id'],
+                                  "active": True
+                                })
                                 del block['resv'][index]
-                        else:
-                            resv['status'] = "wait"
-
             await cosmos_upsert("spaces", query)
         except exceptions.CosmosAccessConditionFailedError:
             if current_try < max_retry:

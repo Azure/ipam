@@ -3,7 +3,6 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.encoders import jsonable_encoder
 
-from pydantic import BaseModel, EmailStr, constr
 from typing import Optional, List, Union, Any
 
 import azure.cosmos.exceptions as exceptions
@@ -17,7 +16,7 @@ import logging
 from netaddr import IPSet, IPNetwork
 
 from app.dependencies import check_token_expired, get_admin
-from app.models import VNet, SpaceReq, SpaceRes, BlockReq, BlockRes
+from app.models import *
 from . import argquery
 
 from app.routers.common.helper import (
@@ -37,194 +36,6 @@ router = APIRouter(
     tags=["spaces"],
     dependencies=[Depends(check_token_expired)]
 )
-
-class VNet(BaseModel):
-    """DOCSTRING"""
-
-    id: str
-    active: Optional[bool]
-
-class VNets(BaseModel):
-    """DOCSTRING"""
-
-    ids: List[str]
-
-class VNetsUpdate(List[str]):
-    """DOCSTRING"""
-
-class Subnet(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    prefix: str
-
-class SubnetUtil(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    prefix: str
-    size: int
-    used: int
-
-class VNetExpand(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    id: str
-    prefixes: List[str]
-    subnets: List[Subnet]
-    resource_group: str
-    subscription_id: str
-    tenant_id: str
-
-class VNetExpandUtil(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    id: str
-    prefixes: List[str]
-    subnets: List[SubnetUtil]
-    resource_group: str
-    subscription_id: str
-    tenant_id: str
-    size: int
-    used: int
-
-class Reservation(BaseModel):
-    """DOCSTRING"""
-
-    id: str
-    cidr: str
-    userId: str #EmailStr
-    createdOn: float
-    status: str
-
-class BlockBasic(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    cidr: str
-    vnets: List[VNet]
-    resv: List[Reservation]
-
-class BlockBasicUtil(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    cidr: str
-    vnets: List[VNet]
-    resv: List[Reservation]
-    size: int
-    used: int
-
-class Block(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    cidr: str
-    vnets: List[VNet]
-    resv: List[Reservation]
-
-class BlockExpand(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    cidr: str
-    vnets: List[VNetExpand]
-    resv: List[Reservation]
-
-class BlockUtil(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    cidr: str
-    vnets: List[VNet]
-    resv: List[Reservation]
-    size: int
-    used: int
-
-class BlockExpandUtil(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    cidr: str
-    vnets: List[VNetExpandUtil]
-    resv: List[Reservation]
-    size: int
-    used: int
-
-class SpaceBasic(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    desc: str
-    blocks: List[BlockBasic]
-
-class SpaceBasicUtil(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    desc: str
-    blocks: List[BlockBasicUtil]
-    size: int
-    used: int
-
-class Space(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    desc: str
-    blocks: List[Block]
-
-class SpaceExpand(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    desc: str
-    blocks: List[BlockExpand]
-
-class SpaceUtil(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    desc: str
-    blocks: List[BlockUtil]
-    size: int
-    used: int
-
-class SpaceExpandUtil(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    desc: str
-    blocks: List[BlockExpandUtil]
-    size: int
-    used: int
-
-class JSONPatch(BaseModel):
-    """DOCSTRING"""
-
-    op: str
-    path: str
-    value: Any
-
-class SpaceUpdate(List[JSONPatch]):
-    """DOCSTRING"""
-
-# class SpaceUpdate(BaseModel):
-#     """DOCSTRING"""
-
-#     name: Optional[str]
-#     desc: Optional[str]
-#     # Add limits for name & size length/valid chars
-
-class CIDRReq(BaseModel):
-    """DOCSTRING"""
-
-    size: int
-
-class DeleteResvReq(List[str]):
-    """DOCSTRING"""
 
 async def scrub_space_patch(patch):
     scrubbed_patch = []
@@ -257,6 +68,7 @@ async def scrub_space_patch(patch):
 
 @router.get(
     "",
+    summary = "Get All Spaces",
     response_model = Union[
         List[SpaceExpandUtil],
         List[SpaceExpand],
@@ -273,7 +85,9 @@ async def get_spaces(
     authorization: str = Header(None),
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Get a list of all Spaces.
+    """
 
     user_assertion = authorization.split(' ')[1]
 
@@ -340,6 +154,7 @@ async def get_spaces(
 
 @router.post(
     "",
+    summary = "Create New Space",
     response_model = Space,
     status_code = 201
 )
@@ -347,7 +162,12 @@ async def create_space(
     space: SpaceReq,
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Create an new Space with the following details:
+
+    - **name**: Name of the Space
+    - **desc**: A description for the Space
+    """
 
     current_try = 0
     max_retry = 5
@@ -386,6 +206,7 @@ async def create_space(
 
 @router.get(
     "/{space}",
+    summary = "Get Space Details",
     response_model = Union[
         SpaceExpandUtil,
         SpaceExpand,
@@ -403,7 +224,9 @@ async def get_space(
     authorization: str = Header(None),
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Get the details of a specific Space.
+    """
 
     user_assertion = authorization.split(' ')[1]
 
@@ -474,6 +297,7 @@ async def get_space(
 
 @router.patch(
     "/{space}",
+    summary = "Update Space Details",
     response_model = Space,
     status_code = 200
 )
@@ -482,7 +306,20 @@ async def update_space(
     updates: SpaceUpdate,
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Update a Space with a JSON patch:
+
+    - **[&lt;JSON Patch&gt;]**: Array of JSON Patches
+
+    &nbsp;
+
+    Allowed operations:
+    - **replace**
+
+    Allowed paths:
+    - **/name**
+    - **/desc**
+    """
 
     current_try = 0
     max_retry = 5
@@ -521,6 +358,7 @@ async def update_space(
 
 @router.delete(
     "/{space}",
+    summary = "Delete a Space",
     status_code = 200
 )
 async def delete_space(
@@ -528,7 +366,9 @@ async def delete_space(
     force: Optional[bool] = False,
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Remove a specific Space.
+    """
 
     current_try = 0
     max_retry = 5
@@ -566,6 +406,7 @@ async def delete_space(
 
 @router.get(
     "/{space}/blocks",
+    summary = "Get all Blocks within a Space",
     response_model = Union[
         List[BlockExpandUtil],
         List[BlockExpand],
@@ -583,7 +424,9 @@ async def get_blocks(
     authorization: str = Header(None),
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Get a list of all Blocks within a specific Space.
+    """
 
     user_assertion = authorization.split(' ')[1]
 
@@ -650,6 +493,7 @@ async def get_blocks(
 
 @router.post(
     "/{space}/blocks",
+    summary = "Create a new Block",
     response_model = Block,
     status_code = 201
 )
@@ -658,7 +502,12 @@ async def create_block(
     block: BlockReq,
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Create an new Block within a Space with the following details:
+
+    - **name**: Name of the Block
+    - **cidr**: IPv4 CIDR Range
+    """
 
     current_try = 0
     max_retry = 5
@@ -703,6 +552,7 @@ async def create_block(
 
 @router.get(
     "/{space}/blocks/{block}",
+    summary = "Get Block Details",
     response_model = Union[
         BlockExpandUtil,
         BlockExpand,
@@ -721,7 +571,9 @@ async def get_block(
     authorization: str = Header(None),
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Get the details of a specific Block.
+    """
 
     user_assertion = authorization.split(' ')[1]
 
@@ -790,6 +642,7 @@ async def get_block(
 
 @router.delete(
     "/{space}/blocks/{block}",
+    summary = "Delete a Block",
     status_code = 200
 )
 async def delete_block(
@@ -798,7 +651,9 @@ async def delete_block(
     force: Optional[bool] = False,
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Remove a specific Block.
+    """
 
     current_try = 0
     max_retry = 5
@@ -841,6 +696,7 @@ async def delete_block(
 
 @router.get(
     "/{space}/blocks/{block}/available",
+    summary = "List Available Block Virtual Networks",
     response_model = Union[
         List[VNetExpand],
         List[str]
@@ -854,7 +710,9 @@ async def available_block_vnets(
     authorization: str = Header(None),
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Get a list of virtual networks which can be associated to the target Block.
+    """
 
     available_vnets = []
 
@@ -902,6 +760,7 @@ async def available_block_vnets(
 
 @router.get(
     "/{space}/blocks/{block}/networks",
+    summary = "List Block Virtual Networks",
     response_model = Union[
         List[VNetExpand],
         List[VNet]
@@ -915,7 +774,9 @@ async def available_block_vnets(
     authorization: str = Header(None),
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Get a list of virtual networks which are currently associated to the target Block.
+    """
 
     block_vnets = []
 
@@ -947,7 +808,8 @@ async def available_block_vnets(
 
 @router.post(
     "/{space}/blocks/{block}/networks",
-    response_model = BlockRes,
+    summary = "Add Block Virtual Network",
+    response_model = BlockBasic,
     status_code = 201
 )
 async def create_block_vnet(
@@ -957,7 +819,11 @@ async def create_block_vnet(
     authorization: str = Header(None),
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Associate a virtual network to the target Block with the following information:
+
+    - **id**: Azure Resource ID
+    """
 
     current_try = 0
     max_retry = 5
@@ -1009,7 +875,7 @@ async def create_block_vnet(
                 raise HTTPException(status_code=400, detail="Block already contains vNet(s) within the CIDR range of target vNet.")
 
             vnet.active = True
-            target_block['vnets'].append(vnet)
+            target_block['vnets'].append(jsonable_encoder(vnet))
 
             await cosmos_upsert("spaces", item)
         except exceptions.CosmosAccessConditionFailedError:
@@ -1026,6 +892,7 @@ async def create_block_vnet(
 # THE REQUEST BODY ITEM SHOULD MATCH THE BLOCK VALUE THAT IS BEING PATCHED
 @router.put(
     "/{space}/blocks/{block}/networks",
+    summary = "Replace Block Virtual Networks",
     response_model = List[VNet],
     status_code = 200
 )
@@ -1036,7 +903,12 @@ async def update_block_vnets(
     authorization: str = Header(None),
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Replace the list of virtual networks currently associated to the target Block with the following information:
+
+    - Array **[]** of:
+        - **&lt;str&gt;**: Azure Resource ID
+    """
 
     current_try = 0
     max_retry = 5
@@ -1121,7 +993,8 @@ async def update_block_vnets(
 
 @router.delete(
     "/{space}/blocks/{block}/networks",
-    response_model = BlockRes,
+    summary = "Remove Block Virtual Networks",
+    response_model = BlockBasic,
     status_code = 200
 )
 async def delete_block_vnets(
@@ -1130,7 +1003,11 @@ async def delete_block_vnets(
     req: VNets,
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Remove one or more virtual networks currently associated to the target Block with the following information:
+
+    - **[&lt;str&gt;]**: Array of Azure Resource ID's
+    """
 
     current_try = 0
     max_retry = 5
@@ -1157,7 +1034,7 @@ async def delete_block_vnets(
             if not unique_vnets:
                 raise HTTPException(status_code=400, detail="List contains one or more duplicate vNet id's.")
 
-            current_vnets = list(x for x in target_block['vnets'])
+            current_vnets = list(x['id'] for x in target_block['vnets'])
             ids_exist = all(elem in current_vnets for elem in req.ids)
 
             if not ids_exist:
@@ -1165,7 +1042,7 @@ async def delete_block_vnets(
                 # OR VNET IDS THAT DON'T BELONG TO THE CURRENT BLOCK
 
             for id in req.ids:
-                index = next((i for i, item in enumerate(target_block['vnets']) if item == id), None)
+                index = next((i for i, item in enumerate(target_block['vnets']) if item['id'] == id), None)
                 del target_block['vnets'][index]
 
             await cosmos_upsert("spaces", item)
@@ -1182,6 +1059,7 @@ async def delete_block_vnets(
 
 @router.get(
     "/{space}/blocks/{block}/reservations",
+    summary = "Get Block Reservations",
     response_model = List[Reservation],
     status_code = 200
 )
@@ -1191,7 +1069,9 @@ async def get_block_reservations(
     authorization: str = Header(None),
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Get a list of CIDR Reservations for the target Block.
+    """
 
     user_assertion = authorization.split(' ')[1]
 
@@ -1215,6 +1095,7 @@ async def get_block_reservations(
 
 @router.post(
     "/{space}/blocks/{block}/reservations",
+    summary = "Create CIDR Reservation",
     response_model = Reservation,
     status_code = 201
 )
@@ -1224,7 +1105,11 @@ async def create_block_reservation(
     req: CIDRReq,
     authorization: str = Header(None)
 ):
-    """DOCSTRING"""
+    """
+    Create a CIDR Reservation for the target Block with the following information:
+
+    - **size**: Subnet mask bits
+    """
 
     user_assertion = authorization.split(' ')[1]
     decoded = jwt.decode(user_assertion, options={"verify_signature": False})
@@ -1251,7 +1136,7 @@ async def create_block_reservation(
             block_all_cidrs = []
 
             for v in target_block['vnets']:
-                target = next((x for x in vnet_list if x['id'].lower() == v.lower()), None)
+                target = next((x for x in vnet_list if x['id'].lower() == v['id'].lower()), None)
                 prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes'])) if target else []
                 block_all_cidrs += prefixes
 
@@ -1278,7 +1163,7 @@ async def create_block_reservation(
                 "id": shortuuid.uuid(),
                 "cidr": str(next_cidr),
                 "userId": creator_id,
-                "createdOn": (time.time() * 1000),
+                "createdOn": time.time(),
                 "status": "wait"
             }
 
@@ -1300,6 +1185,7 @@ async def create_block_reservation(
 
 @router.delete(
     "/{space}/blocks/{block}/reservations",
+    summary = "Delete CIDR Reservation",
     status_code = 200
 )
 async def delete_block_reservations(
@@ -1309,7 +1195,9 @@ async def delete_block_reservations(
     authorization: str = Header(None),
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Remove a CIDR Reservation for the target Block.
+    """
 
     current_try = 0
     max_retry = 5

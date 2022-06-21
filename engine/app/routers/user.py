@@ -74,12 +74,17 @@ async def scrub_patch(patch):
 
 @router.get(
     "",
+    summary = "Get All Users",
     response_model = List[User],
     status_code = 200
 )
 async def get_users(
     is_admin: str = Depends(get_admin)
 ):
+    """
+    Get a list of IPAM Users.
+    """
+
     user_list = []
 
     if not is_admin:
@@ -102,12 +107,17 @@ async def get_users(
 
 @router.get(
     "/me",
+    summary = "Get My User Details",
     response_model = User,
     status_code = 200
 )
 async def get_user(
     authorization: str = Header(None)
 ):
+    """
+    Get your IPAM user details.
+    """
+
     user_assertion = authorization.split(' ')[1]
     userId = get_user_id_from_jwt(user_assertion)
 
@@ -151,6 +161,7 @@ async def get_user(
 
 @router.patch(
     "/me",
+    summary = "Update User Details",
     response_model = User,
     status_code=200
 )
@@ -158,7 +169,19 @@ async def update_user(
     updates: UserUpdate,
     authorization: str = Header(None)
 ):
-    """DOCSTRING"""
+    """
+    Update a User with a JSON patch:
+
+    - **[&lt;JSON Patch&gt;]**: Array of JSON Patches
+
+    &nbsp;
+
+    Allowed operations:
+    - **replace**
+
+    Allowed paths:
+    - **/apiRefresh**
+    """
 
     current_try = 0
     max_retry = 5
