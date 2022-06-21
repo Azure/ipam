@@ -1,7 +1,8 @@
 from pydantic import BaseModel, ValidationError, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Any
 
 from netaddr import IPSet, IPNetwork, IPAddress
+# from ipaddress import IPv4Network, IPv4Address
 from datetime import datetime
 import json
 
@@ -67,47 +68,74 @@ class IPv4Address(str):
     def __repr__(self):
         return f'IPAddress({super().__repr__()})'
 
-class VNet(BaseModel):
-    """DOCSTRING"""
+# class VNet(BaseModel):
+#     """DOCSTRING"""
 
-    vnet: str
+#     vnet: str
 
-class IPReservation(BaseModel):
-    """DOCSTRING"""
+# class IPReservation(BaseModel):
+#     """DOCSTRING"""
 
-    cidr: IPv4Address
-    userId: EmailStr
-    createdOn: datetime
+#     cidr: IPv4Address
+#     userId: EmailStr
+#     createdOn: datetime
 
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.timestamp(),
-            IPAddress: lambda v: str(v),
-        }
+#     class Config:
+#         json_encoders = {
+#             datetime: lambda v: v.timestamp(),
+#             IPAddress: lambda v: str(v),
+#         }
 
-class BlockReq(BaseModel):
-    """DOCSTRING"""
+# class Reservation(BaseModel):
+#     """DOCSTRING"""
 
-    name: str
-    cidr: IPv4Network
+#     id: str
+#     cidr: str
+#     userId: str #EmailStr
+#     createdOn: float
+#     status: str
 
-    class Config:
-        json_encoders = {
-            IPNetwork: lambda v: str(v),
-        }
+# class BlockReq(BaseModel):
+#     """DOCSTRING"""
 
-class BlockRes(BaseModel):
-    """DOCSTRING"""
+#     name: str
+#     cidr: IPv4Network
 
-    name: str
-    cidr: IPv4Network
-    vnets: List
-    resv: List
+#     class Config:
+#         json_encoders = {
+#             IPNetwork: lambda v: str(v),
+#         }
 
-    class Config:
-        json_encoders = {
-            IPNetwork: lambda v: str(v),
-        }
+# class BlockRes(BaseModel):
+#     """DOCSTRING"""
+
+#     name: str
+#     cidr: IPv4Network
+#     vnets: List
+#     resv: List
+
+#     class Config:
+#         json_encoders = {
+#             IPNetwork: lambda v: str(v),
+#         }
+
+# class SpaceReq(BaseModel):
+#     """DOCSTRING"""
+
+#     name: str
+#     desc: str
+
+# class SpaceRes(BaseModel):
+#     """DOCSTRING"""
+
+#     name: str
+#     desc: str
+#     vnets: List[str]
+#     blocks: List[BlockRes]
+
+######################
+#   REQUEST MODELS   #
+######################
 
 class SpaceReq(BaseModel):
     """DOCSTRING"""
@@ -115,46 +143,193 @@ class SpaceReq(BaseModel):
     name: str
     desc: str
 
-class SpaceRes(BaseModel):
+class BlockReq(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    cidr: IPv4Network
+
+class JSONPatch(BaseModel):
+    """DOCSTRING"""
+
+    op: str
+    path: str
+    value: Any
+
+class SpaceUpdate(List[JSONPatch]):
+    """DOCSTRING"""
+
+class VNetsUpdate(List[str]):
+    """DOCSTRING"""
+
+class CIDRReq(BaseModel):
+    """DOCSTRING"""
+
+    size: int
+
+class DeleteResvReq(List[str]):
+    """DOCSTRING"""
+
+#######################
+#   RESPONSE MODELS   #
+#######################
+
+class VNet(BaseModel):
+    """DOCSTRING"""
+
+    id: str
+    active: Optional[bool]
+
+class VNets(BaseModel):
+    """DOCSTRING"""
+
+    ids: List[str]
+
+class Subnet(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    prefix: str
+
+class SubnetUtil(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    prefix: str
+    size: int
+    used: int
+
+class VNetExpand(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    id: str
+    prefixes: List[str]
+    subnets: List[Subnet]
+    resource_group: str
+    subscription_id: str
+    tenant_id: str
+
+class VNetExpandUtil(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    id: str
+    prefixes: List[str]
+    subnets: List[SubnetUtil]
+    resource_group: str
+    subscription_id: str
+    tenant_id: str
+    size: int
+    used: int
+
+class Reservation(BaseModel):
+    """DOCSTRING"""
+
+    id: str
+    cidr: str
+    userId: str
+    createdOn: float
+    status: str
+
+class BlockBasic(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    cidr: str
+    vnets: List[VNet]
+    resv: List[Reservation]
+
+class BlockBasicUtil(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    cidr: str
+    vnets: List[VNet]
+    resv: List[Reservation]
+    size: int
+    used: int
+
+class Block(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    cidr: str
+    vnets: List[VNet]
+    resv: List[Reservation]
+
+class BlockExpand(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    cidr: str
+    vnets: List[VNetExpand]
+    resv: List[Reservation]
+
+class BlockUtil(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    cidr: str
+    vnets: List[VNet]
+    resv: List[Reservation]
+    size: int
+    used: int
+
+class BlockExpandUtil(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    cidr: str
+    vnets: List[VNetExpandUtil]
+    resv: List[Reservation]
+    size: int
+    used: int
+
+class SpaceBasic(BaseModel):
     """DOCSTRING"""
 
     name: str
     desc: str
-    vnets: List[str]
-    blocks: List[BlockRes]
+    blocks: List[BlockBasic]
 
-if __name__ == "__main__":
-    # json_reservation = json.dumps(IPReservation.schema(), indent=4)
-    # print(json_reservation)
+class SpaceBasicUtil(BaseModel):
+    """DOCSTRING"""
 
-    rData = {
-        "cidr": "10.0.0.1",
-        "userId": "matt@elnica6yahoo.onmicrosoft.com",
-        "createdOn": datetime.now().timestamp()
-    }
+    name: str
+    desc: str
+    blocks: List[BlockBasicUtil]
+    size: int
+    used: int
 
-    rA = IPReservation(**rData)
+class Space(BaseModel):
+    """DOCSTRING"""
 
-    print(rA.json())
+    name: str
+    desc: str
+    blocks: List[Block]
 
-    # json_block = json.dumps(BlockReq.schema(), indent=4)
-    # print(json_block)
+class SpaceExpand(BaseModel):
+    """DOCSTRING"""
 
-    # dataA = {
-    #     "name": "AzureBlockA",
-    #     "cidr": "10.0.0.0/24"
-    # }
+    name: str
+    desc: str
+    blocks: List[BlockExpand]
 
-    # xA = BlockReq(**dataA)
+class SpaceUtil(BaseModel):
+    """DOCSTRING"""
 
-    # print(xA)
+    name: str
+    desc: str
+    blocks: List[BlockUtil]
+    size: int
+    used: int
 
-    # dataB = {
-    #     "name": "AzureBlockB",
-    #     "cidr": "10.0.0.x/24"
-    # }
+class SpaceExpandUtil(BaseModel):
+    """DOCSTRING"""
 
-    # try:
-    #     xB = BlockReq(**dataB)
-    # except ValidationError as e:
-    #     print("Error creating Model class...")
+    name: str
+    desc: str
+    blocks: List[BlockExpandUtil]
+    size: int
+    used: int

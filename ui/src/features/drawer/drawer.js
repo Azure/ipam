@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 
 import { useMsal } from "@azure/msal-react";
 import { InteractionRequiredAuthError, InteractionStatus } from "@azure/msal-browser";
@@ -49,10 +49,6 @@ import {
   ExpandMore,
   Settings as SettingsIcon,
 } from "@mui/icons-material";
-
-import {
-  refreshAllAsync
-} from '../../features/ipam/ipamSlice';
 
 import Home from "../../img/Home";
 import Discover from "../../img/Discover";
@@ -132,12 +128,10 @@ export default function NavDrawer() {
   const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
   const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = React.useState(null);
   const [graphData, setGraphData] = React.useState(null);
-  const [graphError, setGraphError] = React.useState(false);
   const [navChildOpen, setNavChildOpen] = React.useState({});
   const [drawerState, setDrawerState] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const isAdmin = useSelector(getAdminStatus);
-  const dispatch = useDispatch();
 
   const isMenuOpen = Boolean(menuAnchorEl);
   const isMobileMenuOpen = Boolean(mobileMenuAnchorEl);
@@ -223,31 +217,6 @@ export default function NavDrawer() {
     ]
   ];
 
-  // React.useEffect(() => {
-  //   let graphTimer = setTimeout(() => {
-  //     const request = {
-  //       // ...loginRequest,
-  //       scopes: ["User.Read"],
-  //       account: accounts[0],
-  //       forceRefresh: true,
-  //     };
-  
-  //     (async() => {
-  //       try {
-  //         const response = await instance.acquireTokenSilent(request);
-  //         const graphResponse = await callMsGraph(response.accessToken);
-  //         await setGraphData(graphResponse);
-  //       } catch {
-  //         setGraphError(x => !x);
-  //       }
-  //     })();
-  //   }, 5000);
-
-  //   return () => {
-  //     clearTimeout(graphTimer);
-  //   };
-  // }, [graphError]);
-
   React.useEffect(() => {
     const request = {
       // ...loginRequest,
@@ -276,18 +245,6 @@ export default function NavDrawer() {
       })();
     }
   }, [instance, accounts, inProgress, graphData]);
-
-  // React.useEffect(() => {
-  //   const request = {
-  //     scopes: ["api://de6cc43c-c275-46fc-9d9e-89b82fa930ec/access_as_user"],
-  //     account: accounts[0],
-  //   };
-
-  //   (async() => {
-  //     const response = await instance.acquireTokenSilent(request);
-  //     dispatch(refreshAllAsync(response.accessToken))
-  //   })();
-  // }, []);
 
   React.useEffect(() => {
     // Handler to call on window resize

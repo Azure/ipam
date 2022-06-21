@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 
 import { useSnackbar } from "notistack";
 
@@ -55,6 +55,8 @@ export default function UserSettings(props) {
   const [sending, setSending] = React.useState(false);
   const refreshInterval = useSelector(getRefreshInterval);
 
+  const dispatch = useDispatch();
+
   const changed = (refreshInterval == refreshValue) ? false : true;
 
   React.useEffect(()=>{
@@ -77,7 +79,7 @@ export default function UserSettings(props) {
         const response = await instance.acquireTokenSilent(request);
         const data = await updateMe(response.accessToken, body);
         enqueueSnackbar("User settings updated", { variant: "success" });
-        await getMeAsync(response.accessToken);
+        dispatch(getMeAsync(response.accessToken));
         handleClose();
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {

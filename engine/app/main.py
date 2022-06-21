@@ -4,14 +4,11 @@ from fastapi.responses import JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.templating import Jinja2Templates
 from fastapi_restful.tasks import repeat_every
 
 from azure.cosmos.aio import CosmosClient
 from azure.cosmos import PartitionKey
 from azure.cosmos.exceptions import CosmosResourceExistsError
-
-from typing import Optional, Union, Tuple
 
 from app.routers import azure, admin, user, space
 
@@ -28,10 +25,22 @@ logger.setLevel(logging.INFO)
 console = logging.StreamHandler()
 logger.addHandler(console)
 
+description = """
+Azure IPAM is a lightweight solution developed on top of the Azure platform designed to help Azure customers manage their enterprise IP Address space easily and effectively.
+"""
+
 app = FastAPI(
-    openapi_url="/api/openapi.json",
-    docs_url="/api/docs",
-    redoc_url="/api/docs"
+    title = "Azure IPAM",
+    description = description,
+    version = "0.1.0",
+    contact = {
+        "name": "Azure IPAM Team",
+        "url": "https://github.com/azure/ipam",
+        "email": "ipam@microsoft.com",
+    },
+    openapi_url = "/api/openapi.json",
+    docs_url = "/api/docs",
+    redoc_url = "/api/docs"
 )
 
 app.include_router(

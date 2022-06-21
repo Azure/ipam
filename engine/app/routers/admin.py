@@ -34,11 +34,16 @@ class Admin(BaseModel):
         }
 
 @router.get(
-    ""
+    "",
+    summary = "Get All Admins"
 )
 async def get_admins(
     is_admin: str = Depends(get_admin)
 ):
+    """
+    Get a list of all IPAM admins.
+    """
+
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
@@ -48,13 +53,20 @@ async def get_admins(
 
 @router.post(
     "",
+    summary = "Create IPAM Admin",
     status_code=201
 )
 async def create_admin(
     admin: Admin,
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Create an new IPAM Administrator with the following details:
+
+    - **name**: Full name of the Administrator
+    - **email**: Email address for the Administrator
+    - **id**: Azure AD ObjectID for the Administrator user
+    """
 
     current_try = 0
     max_retry = 5
@@ -87,13 +99,16 @@ async def create_admin(
 
 @router.delete(
     "/{objectId}",
+    summary = "Delete IPAM Admin",
     status_code=200
 )
 async def delete_admin(
     objectId: UUID,
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Remove a specific IPAM Administrator
+    """
 
     current_try = 0
     max_retry = 5
@@ -126,13 +141,21 @@ async def delete_admin(
 
 @router.put(
     "",
+    summary = "Replace IPAM Admins",
     status_code=200
 )
 async def update_admins(
     admin_list: List[Admin],
     is_admin: str = Depends(get_admin)
 ):
-    """DOCSTRING"""
+    """
+    Replace the list of IPAM Administrators with the following details:
+
+    - Array **[]** of:
+        - **name**: Full name of the Administrator
+        - **email**: Email address for the Administrator
+        - **id**: Azure AD ObjectID for the Administrator user
+    """
 
     current_try = 0
     max_retry = 5

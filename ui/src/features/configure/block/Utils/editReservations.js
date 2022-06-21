@@ -75,7 +75,7 @@ export default function EditReservations(props) {
   const columns = [
     { field: "cidr", headerName: "CIDR", headerAlign: "left", align: "left", flex: 0.5 },
     { field: "userId", headerName: "User ID", headerAlign: "left", align: "left", flex: 1 },
-    { field: "createdOn", headerName: "Created Date", headerAlign: "left", align: "left", flex: 0.75, renderCell: (params) => new Date(params.value).toLocaleString() },
+    { field: "createdOn", headerName: "Created Date", headerAlign: "left", align: "left", flex: 0.75, renderCell: (params) => new Date(params.value * 1000).toLocaleString() },
     { field: "status", headerName: "Status", headerAlign: "center", align: "center", width: 75, renderCell: renderStatus },
     { field: "id", headerName: "", headerAlign: "center", align: "center", width: 25, renderCell: renderId }
   ];
