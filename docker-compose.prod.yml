@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  ipam-ui:
+    environment:
+      REACT_APP_UI_ID: ${UI_APP_ID}
+      REACT_APP_ENGINE_ID: ${ENGINE_APP_ID}
+      REACT_APP_TENANT_ID: ${TENANT_ID}
+    image: azureipam.azurecr.io/ipam-ui:latest
+  ipam-engine:
+    environment:
+      CLIENT_ID: ${ENGINE_APP_ID}
+      CLIENT_SECRET: ${ENGINE_APP_SECRET}
+      TENANT_ID: ${TENANT_ID}
+      COSMOS_URL: ${COSMOS_URL}
+      COSMOS_KEY: ${COSMOS_KEY}
+      KEYVAULT_URL: ${KEYVAULT_URL}
+    image: azureipam.azurecr.io/ipam-engine:latest
+  nginx-proxy:
+    image: nginx:alpine
+    volumes: 
+      - nginx:/etc/nginx/conf.d
+    ports:
+      - "80:80"

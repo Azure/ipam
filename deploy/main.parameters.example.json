@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "namePrefix": {
+      "value": "<AZURE RESOURCE NAME PREFIX>"
+    },
+    "tags": {
+      "value": {
+        "<TAG NAME 1>": "<TAG VALUE 1>",
+        "<TAG NAME 2>": "<TAG VALUE 2>"
+      }
+    },
+    "uiAppId": {
+      "value": "<UI APP REGISTRATION APP/CLIENT ID>"
+    },
+    "engineAppId": {
+      "value": "<ENGINE APP REGISTRATION APP/CLIENT ID>"
+    },
+    "engineAppSecret": {
+      "value": "<ENGINE APP REGISTRATION CLIENT SECRET>"
+    }
+  }
+}
