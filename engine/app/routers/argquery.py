@@ -9,7 +9,13 @@ resources
 SUBSCRIPTION = """
 ResourceContainers
 | where type =~ 'microsoft.resources/subscriptions'
-| project name, id, tenant_id = tenantId, subscription_id = subscriptionId
+| extend quotaId = properties.subscriptionPolicies.quotaId
+| extend type = case(
+    quotaId startswith "EnterpriseAgreement", "Enterprise Agreement",
+    quotaId startswith "MSDNDevTest", "Dev/Test",
+    "Unknown"
+)
+| project name, id, type, subscription_id = subscriptionId, tenant_id = tenantId
 """
 
 SPACE = """

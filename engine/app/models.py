@@ -2,8 +2,8 @@ from pydantic import BaseModel, ValidationError, EmailStr
 from typing import Optional, List, Any
 
 from netaddr import IPSet, IPNetwork, IPAddress
-# from ipaddress import IPv4Network, IPv4Address
 from datetime import datetime
+from uuid import UUID
 import json
 
 class IPv4Network(str):
@@ -67,71 +67,6 @@ class IPv4Address(str):
 
     def __repr__(self):
         return f'IPAddress({super().__repr__()})'
-
-# class VNet(BaseModel):
-#     """DOCSTRING"""
-
-#     vnet: str
-
-# class IPReservation(BaseModel):
-#     """DOCSTRING"""
-
-#     cidr: IPv4Address
-#     userId: EmailStr
-#     createdOn: datetime
-
-#     class Config:
-#         json_encoders = {
-#             datetime: lambda v: v.timestamp(),
-#             IPAddress: lambda v: str(v),
-#         }
-
-# class Reservation(BaseModel):
-#     """DOCSTRING"""
-
-#     id: str
-#     cidr: str
-#     userId: str #EmailStr
-#     createdOn: float
-#     status: str
-
-# class BlockReq(BaseModel):
-#     """DOCSTRING"""
-
-#     name: str
-#     cidr: IPv4Network
-
-#     class Config:
-#         json_encoders = {
-#             IPNetwork: lambda v: str(v),
-#         }
-
-# class BlockRes(BaseModel):
-#     """DOCSTRING"""
-
-#     name: str
-#     cidr: IPv4Network
-#     vnets: List
-#     resv: List
-
-#     class Config:
-#         json_encoders = {
-#             IPNetwork: lambda v: str(v),
-#         }
-
-# class SpaceReq(BaseModel):
-#     """DOCSTRING"""
-
-#     name: str
-#     desc: str
-
-# class SpaceRes(BaseModel):
-#     """DOCSTRING"""
-
-#     name: str
-#     desc: str
-#     vnets: List[str]
-#     blocks: List[BlockRes]
 
 ######################
 #   REQUEST MODELS   #
@@ -333,3 +268,43 @@ class SpaceExpandUtil(BaseModel):
     blocks: List[BlockExpandUtil]
     size: int
     used: int
+
+####################
+#   ADMIN MODELS   #
+####################
+
+class Admin(BaseModel):
+    name: str
+    email: EmailStr
+    id: UUID
+
+    class Config:
+        json_encoders = {
+            UUID: lambda v: str(v),
+        }
+
+###################
+#   USER MODELS   #
+###################
+
+class User(BaseModel):
+    """DOCSTRING"""
+
+    id: UUID
+    apiRefresh: int
+    isAdmin: bool
+
+    class Config:
+        json_encoders = {
+            UUID: lambda v: str(v),
+        }
+
+class JSONPatch(BaseModel):
+    """DOCSTRING"""
+
+    op: str
+    path: str
+    value: Any
+
+class UserUpdate(List[JSONPatch]):
+    """DOCSTRING"""

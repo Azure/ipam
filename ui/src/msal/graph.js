@@ -35,23 +35,51 @@ export async function callMsGraphUsers(accessToken) {
         .catch((error) => console.log(error));
 }
 
-export async function callMsGraphUsersFilter(accessToken, search) {
-    const headers = new Headers();
-    const bearer = `Bearer ${accessToken}`;
+export async function callMsGraphUsersFilter(accessToken, nameFilter = "") {
+  const headers = new Headers();
+  const bearer = `Bearer ${accessToken}`;
 
-    headers.append("Authorization", bearer);
+  var endpoint = graphConfig.graphUsersEndpoint + "?";
 
-    const options = {
-        method: "GET",
-        headers: headers,
-    };
+  headers.append("Authorization", bearer);
+  headers.append("ConsistencyLevel", "eventual");
 
-    let filter = `?$filter=startsWith(userPrincipalName,'${search}') OR startsWith(displayName, '${search}')`
+  const options = {
+      method: "GET",
+      headers: headers,
+  };
 
-    return fetch((graphConfig.graphUsersEndpoint + filter), options)
-        .then((response) => response.json())
-        .catch((error) => console.log(error));
+  if (nameFilter != "") {
+    endpoint += `$filter=startsWith(userPrincipalName,'${nameFilter}') OR startsWith(displayName, '${nameFilter}')&`;
+  }
+
+  endpoint += "$orderby=displayName&$count=true";
+
+  return fetch(endpoint, options)
+      .then((response) => response.json())
+      .catch((error) => console.log(error));
 }
+
+// export async function callMsGraphUsersFilter(accessToken, search) {
+//     const headers = new Headers();
+//     const bearer = `Bearer ${accessToken}`;
+
+//     headers.append("Authorization", bearer);
+//     headers.append("ConsistencyLevel", "eventual");
+
+//     const options = {
+//         method: "GET",
+//         headers: headers,
+//     };
+
+//     let filter = `?$filter=startsWith(userPrincipalName,'${search}') OR startsWith(displayName, '${search}')`
+
+//     let sort = "&$orderby=displayName&$count=true";
+
+//     return fetch((graphConfig.graphUsersEndpoint + filter + sort), options)
+//         .then((response) => response.json())
+//         .catch((error) => console.log(error));
+// }
 
 export async function callMsGraphPhoto(accessToken) {
     const headers = new Headers();

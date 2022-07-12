@@ -30,11 +30,9 @@ from . import argquery
 from app.routers.common.helper import (
     get_username_from_jwt,
     cosmos_query,
-    cosmos_query_x,
-    cosmos_upsert_x,
-    cosmos_replace_x,
-    cosmos_delete_x,
     cosmos_upsert,
+    cosmos_replace,
+    cosmos_delete,
     cosmos_retry,
     arg_query
 )
@@ -111,7 +109,7 @@ async def get_spaces(
     if expand or utilization:
         vnets = await arg_query(authorization, True, argquery.VNET)
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
     for space in space_query:
         if utilization:
@@ -192,7 +190,7 @@ async def create_space(
     if not is_admin:
         raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
     duplicate = next((x for x in space_query if x['name'].lower() == space.name.lower()), None)
 
@@ -200,14 +198,14 @@ async def create_space(
         raise HTTPException(status_code=400, detail="Space name must be unique.")
 
     new_space = {
-        # "id": uuid.uuid4(),
+        "id": uuid.uuid4(),
         "type": "space",
         "tenant_id": tenant_id,
         **space.dict(),
         "blocks": []
     }
 
-    await cosmos_upsert_x(jsonable_encoder(new_space))
+    await cosmos_upsert(jsonable_encoder(new_space))
 
     return new_space
 
@@ -241,7 +239,7 @@ async def get_space(
     if expand and not is_admin:
         raise HTTPException(status_code=403, detail="Expand parameter can only be used by admins.")
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -337,7 +335,7 @@ async def update_space(
     if not is_admin:
         raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -352,7 +350,7 @@ async def update_space(
     scrubbed_patch = jsonpatch.JsonPatch(await scrub_space_patch(patch))
     update_space = scrubbed_patch.apply(target_space)
 
-    await cosmos_replace_x(target_space, update_space)
+    await cosmos_replace(target_space, update_space)
 
     return update_space
 
@@ -378,7 +376,7 @@ async def delete_space(
     if not is_admin:
         raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -389,7 +387,7 @@ async def delete_space(
         if len(target_space['blocks']) > 0:
             raise HTTPException(status_code=400, detail="Cannot delete space while it contains blocks.")
 
-    await cosmos_delete_x(target_space, tenant_id)
+    await cosmos_delete(target_space, tenant_id)
 
     return PlainTextResponse(status_code=status.HTTP_200_OK)
 
@@ -423,7 +421,7 @@ async def get_blocks(
     if expand and not is_admin:
         raise HTTPException(status_code=403, detail="Expand parameter can only be used by admins.")
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -507,7 +505,7 @@ async def create_block(
     if not is_admin:
         raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -529,7 +527,7 @@ async def create_block(
 
     target_space['blocks'].append(jsonable_encoder(new_block))
 
-    await cosmos_replace_x(space_query[0], target_space)
+    await cosmos_replace(space_query[0], target_space)
 
     return new_block
 
@@ -564,7 +562,7 @@ async def get_block(
     if expand and not is_admin:
         raise HTTPException(status_code=403, detail="Expand parameter can only be used by admins.")
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -647,7 +645,7 @@ async def delete_block(
     if not is_admin:
         raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -666,7 +664,7 @@ async def delete_block(
     index = next((i for i, item in enumerate(target_space['blocks']) if item['name'] == block), None)
     del target_space['blocks'][index]
 
-    await cosmos_replace_x(space_query[0], target_space)
+    await cosmos_replace(space_query[0], target_space)
 
     return PlainTextResponse(status_code=status.HTTP_200_OK)
 
@@ -696,7 +694,7 @@ async def available_block_vnets(
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
     target_space = next((x for x in space_query if x['name'].lower() == space.lower()), None)
 
@@ -761,7 +759,7 @@ async def available_block_vnets(
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -811,7 +809,7 @@ async def create_block_vnet(
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -853,9 +851,9 @@ async def create_block_vnet(
         raise HTTPException(status_code=400, detail="Block already contains vNet(s) within the CIDR range of target vNet.")
 
     vnet.active = True
-    target_block['vnets'].append(vnet)
+    target_block['vnets'].append(jsonable_encoder(vnet))
 
-    await cosmos_replace_x(space_query[0], target_space)
+    await cosmos_replace(space_query[0], target_space)
 
     return target_block
 
@@ -888,7 +886,7 @@ async def update_block_vnets(
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -949,7 +947,7 @@ async def update_block_vnets(
 
     target_block['vnets'] = new_vnet_list
 
-    await cosmos_replace_x(space_query[0], target_space)
+    await cosmos_replace(space_query[0], target_space)
 
     return target_block['vnets']
 
@@ -966,7 +964,7 @@ async def update_block_vnets(
 async def delete_block_vnets(
     space: str,
     block: str,
-    req: VNets,
+    req: VNetsUpdate,
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -979,7 +977,7 @@ async def delete_block_vnets(
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -991,23 +989,23 @@ async def delete_block_vnets(
     if not target_block:
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
-    unique_vnets = len(set(req.ids)) == len(req.ids)
+    unique_vnets = len(set(req)) == len(req)
 
     if not unique_vnets:
         raise HTTPException(status_code=400, detail="List contains one or more duplicate vNet id's.")
 
     current_vnets = list(x['id'] for x in target_block['vnets'])
-    ids_exist = all(elem in current_vnets for elem in req.ids)
+    ids_exist = all(elem in current_vnets for elem in req)
 
     if not ids_exist:
         raise HTTPException(status_code=400, detail="List contains one or more invalid vNet id's.")
         # OR VNET IDS THAT DON'T BELONG TO THE CURRENT BLOCK
 
-    for id in req.ids:
+    for id in req:
         index = next((i for i, item in enumerate(target_block['vnets']) if item['id'] == id), None)
         del target_block['vnets'][index]
 
-    await cosmos_replace_x(space_query[0], target_space)
+    await cosmos_replace(space_query[0], target_space)
 
     return PlainTextResponse(status_code=status.HTTP_200_OK)
 
@@ -1030,7 +1028,7 @@ async def get_block_reservations(
 
     user_assertion = authorization.split(' ')[1]
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1074,7 +1072,7 @@ async def create_block_reservation(
     user_assertion = authorization.split(' ')[1]
     decoded = jwt.decode(user_assertion, options={"verify_signature": False})
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1118,7 +1116,7 @@ async def create_block_reservation(
         "id": shortuuid.uuid(),
         "cidr": str(next_cidr),
         "userId": creator_id,
-        "createdOn": (time.time() * 1000),
+        "createdOn": time.time(),
         "status": "wait"
     }
 
@@ -1126,7 +1124,7 @@ async def create_block_reservation(
 
     # NEED TO RETURN GUID FOR USER TO APPEND TO AZURE TAG ON VNET
 
-    await cosmos_replace_x(space_query[0], target_space)
+    await cosmos_replace(space_query[0], target_space)
 
     return new_cidr
 
@@ -1148,13 +1146,15 @@ async def delete_block_reservations(
     is_admin: str = Depends(get_admin)
 ):
     """
-    Remove a CIDR Reservation for the target Block.
+    Remove one or more CIDR Reservations for the target Block.
+
+    - **[&lt;str&gt;]**: Array of CIDR Reservation ID's
     """
 
     user_assertion = authorization.split(' ')[1]
     user_name = get_username_from_jwt(user_assertion)
 
-    space_query = await cosmos_query_x("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1187,6 +1187,6 @@ async def delete_block_reservations(
         index = next((i for i, item in enumerate(target_block['resv']) if item['id'] == id), None)
         del target_block['resv'][index]
 
-    await cosmos_replace_x(space_query[0], target_space)
+    await cosmos_replace(space_query[0], target_space)
 
     return PlainTextResponse(status_code=status.HTTP_200_OK)

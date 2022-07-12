@@ -235,6 +235,23 @@ export function deleteBlockResvs(token, space, block, body) {
   });
 }
 
+export function fetchSubscriptions(token) {
+  var url = new URL(`${ENGINE_URL}/api/azure/subscription`);
+
+  return axios
+    .get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+  .then(response => response.data)
+  .catch(error => {
+    console.log("ERROR FETCHING SUBSCRIPTIONS FROM API");
+    console.log(error);
+    throw error;
+  });
+}
+
 export function fetchVNets(token) {
   var url = new URL(`${ENGINE_URL}/api/azure/vnet`);
 

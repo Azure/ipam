@@ -14,6 +14,8 @@ import os
 import jwt
 from functools import wraps
 
+from requests import options
+
 import app.globals as globals
 
 SCOPE = "https://management.azure.com/user_impersonation"
@@ -62,23 +64,47 @@ async def get_obo_credentials(assertion):
 
     return credential
 
-async def cosmos_query(target: str):
-    """DOCSTRING"""
-    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+# async def cosmos_query(target: str):
+#     """DOCSTRING"""
+#     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
-    database_name = "ipam-db"
-    database = cosmos_client.get_database_client(database_name)
+#     database_name = "ipam-db"
+#     database = cosmos_client.get_database_client(database_name)
 
-    container_name = "ipam-container"
-    container = database.get_container_client(container_name)
+#     container_name = "ipam-container"
+#     container = database.get_container_client(container_name)
 
-    item = await container.read_item(target, partition_key=target)
+#     item = await container.read_item(target, partition_key=target)
 
-    await cosmos_client.close()
+#     await cosmos_client.close()
 
-    return item
+#     return item
 
-async def cosmos_query_x(query: str, tenant_id: str):
+# async def cosmos_upsert(target: str, data):
+#     """DOCSTRING"""
+
+#     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+
+#     database_name = "ipam-db"
+#     database = cosmos_client.get_database_client(database_name)
+
+#     container_name = "ipam-container"
+#     container = database.get_container_client(container_name)
+
+#     try:
+#         await container.upsert_item(
+#             data,
+#             match_condition=MatchConditions.IfNotModified,
+#             etag=data['_etag']
+#         )
+#     except:
+#         raise
+#     finally:
+#         await cosmos_client.close()
+
+#     return
+
+async def cosmos_query(query: str, tenant_id: str):
     """DOCSTRING"""
 
     result_array = []
@@ -98,13 +124,13 @@ async def cosmos_query_x(query: str, tenant_id: str):
     )
 
     async for result in query_results:
-      result_array.append(result)
+        result_array.append(result)
 
     await cosmos_client.close()
 
     return result_array
 
-async def cosmos_upsert_x(data):
+async def cosmos_upsert(data):
     """DOCSTRING"""
 
     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
@@ -116,7 +142,7 @@ async def cosmos_upsert_x(data):
     container = database.get_container_client(container_name)
 
     try:
-        await container.upsert_item(data)
+        res = await container.upsert_item(data)
     except:
         raise
     finally:
@@ -124,33 +150,9 @@ async def cosmos_upsert_x(data):
 
     await cosmos_client.close()
 
-    return
+    return res
 
-async def cosmos_upsert(target: str, data):
-    """DOCSTRING"""
-
-    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
-
-    database_name = "ipam-db"
-    database = cosmos_client.get_database_client(database_name)
-
-    container_name = "ipam-container"
-    container = database.get_container_client(container_name)
-
-    try:
-        await container.upsert_item(
-            data,
-            match_condition=MatchConditions.IfNotModified,
-            etag=data['_etag']
-        )
-    except:
-        raise
-    finally:
-        await cosmos_client.close()
-
-    return
-
-async def cosmos_replace_x(old, new):
+async def cosmos_replace(old, new):
     """DOCSTRING"""
 
     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
@@ -177,7 +179,7 @@ async def cosmos_replace_x(old, new):
 
     return
 
-async def cosmos_delete_x(item, tenant_id: str):
+async def cosmos_delete(item, tenant_id: str):
     """DOCSTRING"""
 
     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
@@ -277,21 +279,33 @@ async def arg_query_obo(auth, query):
 async def arg_query_helper(credentials, query):
     """DOCSTRING"""
 
+    results = []
+
     resource_graph_client = ResourceGraphClient(credentials)
 
-    query = QueryRequest(
-        query=query,
-        management_groups=[globals.TENANT_ID],
-        options=QueryRequestOptions(
-            result_format=ResultFormat.object_array
-        )
-    )
-
     try:
-        poll = await resource_graph_client.resources(query)
+        skip_token = None
+
+        while True:
+            query = QueryRequest(
+                query=query,
+                management_groups=[globals.TENANT_ID],
+                options=QueryRequestOptions(
+                    result_format=ResultFormat.object_array,
+                    skip_token=skip_token
+                )
+            )
+
+            poll = await resource_graph_client.resources(query)
+            results = results + poll.data
+
+            if poll.skip_token:
+                skip_token = poll.skip_token
+            else:
+                break
     except ServiceRequestError:
         raise HTTPException(status_code=500, detail="Error communicating with Azure.")
     finally:
         await resource_graph_client.close()
 
-    return poll.data
+    return results

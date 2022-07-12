@@ -4,6 +4,7 @@ from azure.cosmos.aio import CosmosClient
 
 import jwt
 import time
+import copy
 
 from app.routers.common.helper import (
     cosmos_query
@@ -28,13 +29,18 @@ async def check_token_expired(request: Request):
 
     request.state.tenant_id = decoded['tid']
 
-    await check_admin(request, decoded['oid'])
+    await check_admin(request, decoded['oid'], decoded['tid'])
 
-async def check_admin(request: Request, user_oid: str):
-    item = await cosmos_query("admins")
+async def check_admin(request: Request, user_oid: str, user_tid: str):
+    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", user_tid)
 
-    if item['admins']:
-        is_admin = next((x for x in item['admins'] if user_oid == x['id']), None)
+    if admin_query:
+        admin_data = copy.deepcopy(admin_query[0])
+
+        if admin_data['admins']:
+            is_admin = next((x for x in admin_data['admins'] if user_oid == x['id']), None)
+        else:
+            is_admin = True
     else:
         is_admin = True
 

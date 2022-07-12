@@ -3,18 +3,28 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.encoders import jsonable_encoder
 
+import azure.cosmos.exceptions as exceptions
+
 from pydantic import BaseModel, EmailStr, constr
 from typing import Optional, List
 
-import azure.cosmos.exceptions as exceptions
+import copy
+import uuid
 
-from app.dependencies import check_token_expired, get_admin
+from app.dependencies import (
+  check_token_expired,
+  get_admin,
+  get_tenant_id
+)
 
-from uuid import UUID
+from app.models import *
 
 from app.routers.common.helper import (
     cosmos_query,
-    cosmos_upsert
+    cosmos_upsert,
+    cosmos_replace,
+    cosmos_delete,
+    cosmos_retry
 )
 
 router = APIRouter(
@@ -23,21 +33,12 @@ router = APIRouter(
     dependencies=[Depends(check_token_expired)]
 )
 
-class Admin(BaseModel):
-    name: str
-    email: EmailStr
-    id: UUID
-
-    class Config:
-        json_encoders = {
-            UUID: lambda v: str(v),
-        }
-
 @router.get(
     "",
     summary = "Get All Admins"
 )
 async def get_admins(
+  tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -47,17 +48,27 @@ async def get_admins(
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    item = await cosmos_query("admins")
+    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
-    return item['admins']
+    if admin_query:
+        admin_data = copy.deepcopy(admin_query[0])
+
+        return admin_data['admins']
+    else:
+        return []
 
 @router.post(
     "",
     summary = "Create IPAM Admin",
     status_code=201
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error creating admin, please try again."
+)
 async def create_admin(
     admin: Admin,
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -68,32 +79,32 @@ async def create_admin(
     - **id**: Azure AD ObjectID for the Administrator user
     """
 
-    current_try = 0
-    max_retry = 5
-
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    while True:
-        try:
-            item = await cosmos_query("admins")
+    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
-            target_admin = next((x for x in item['admins'] if x['id'] == admin.id), None)
+    if not admin_query:
+        admin_data = {
+          "id": uuid.uuid4(),
+          "type": "admin",
+          "tenant_id": tenant_id,
+          "admins": [admin],
+          "excluded": []
+        }
 
-            if target_admin:
-                raise HTTPException(status_code=400, detail="User is already an admin.")
+        await cosmos_upsert(jsonable_encoder(admin_data))
+    else:
+        admin_data = copy.deepcopy(admin_query[0])
 
-            item['admins'].append(jsonable_encoder(admin))
+        target_admin = next((x for x in admin_data['admins'] if x['id'] == admin.id), None)
 
-            await cosmos_upsert("admins", item)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error creating admin, please try again.")
-        else:
-            break
+        if target_admin:
+            raise HTTPException(status_code=400, detail="User is already an admin.")
+
+        admin_data['admins'].append(jsonable_encoder(admin))
+
+        await cosmos_replace(admin_query[0], admin_data)
 
     return Response(status_code=status.HTTP_201_CREATED)
 
@@ -102,40 +113,33 @@ async def create_admin(
     summary = "Delete IPAM Admin",
     status_code=200
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error removing admin, please try again."
+)
 async def delete_admin(
     objectId: UUID,
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
     Remove a specific IPAM Administrator
     """
 
-    current_try = 0
-    max_retry = 5
-
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    while True:
-        try:
-            item = await cosmos_query("admins")
+    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
+    admin_data = copy.deepcopy(admin_query[0])
 
-            admin_index = next((i for i, admin in enumerate(item['admins']) if admin['id'] == str(objectId)), None)
+    admin_index = next((i for i, admin in enumerate(admin_data['admins']) if admin['id'] == str(objectId)), None)
 
-            if not admin_index:
-                raise HTTPException(status_code=400, detail="Invalid admin objectId.")
+    if admin_index is None:
+        raise HTTPException(status_code=400, detail="Invalid admin objectId.")
 
-            del item['admins'][admin_index]
+    del admin_data['admins'][admin_index]
 
-            await cosmos_upsert("admins", item)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error removing admin, please try again.")
-        else:
-            break
+    await cosmos_replace(admin_query[0], admin_data)
 
     return Response(status_code=status.HTTP_200_OK)
 
@@ -144,8 +148,13 @@ async def delete_admin(
     summary = "Replace IPAM Admins",
     status_code=200
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error updating admins, please try again."
+)
 async def update_admins(
     admin_list: List[Admin],
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -157,31 +166,32 @@ async def update_admins(
         - **id**: Azure AD ObjectID for the Administrator user
     """
 
-    current_try = 0
-    max_retry = 5
-
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    while True:
-        try:
-            item = await cosmos_query("admins")
+    id_list = [x.id for x in admin_list]
+    unique_admins = len(set(id_list)) == len(admin_list)
 
-            id_list = [x.id for x in admin_list]
-            unique_admins = len(set(id_list)) == len(admin_list)
+    if not unique_admins:
+        raise HTTPException(status_code=400, detail="List contains one or more duplicate objectId's.")
 
-            if not unique_admins:
-                raise HTTPException(status_code=400, detail="List contains one or more duplicate objectId's.")
+    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
-            item['admins'] = jsonable_encoder(admin_list)
-            await cosmos_upsert("admins", item)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error updating admins, please try again.")
-        else:
-            break
+    if not admin_query:
+        admin_data = {
+          "id": uuid.uuid4(),
+          "type": "admin",
+          "tenant_id": tenant_id,
+          "admins": admin_list,
+          "excluded": []
+        }
+
+        await cosmos_upsert(jsonable_encoder(admin_data))
+    else:
+        admin_data = copy.deepcopy(admin_query[0])
+
+        admin_data['admins'] = jsonable_encoder(admin_list)
+        
+        await cosmos_replace(admin_query[0], admin_data)
 
     return PlainTextResponse(status_code=status.HTTP_200_OK)
