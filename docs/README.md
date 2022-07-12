@@ -14,7 +14,7 @@ IPAM was developed to give customers a simple, straightforward way to manage the
 ![IPAM Architecture](./images/ipam_architecture.png ':size=60%')
 
 ### IPAM Infrastructure
-There are two major components to the IPAM solution. The first is the two container images that make up the IPAM application. These containers are maintained and hosted by the IPAM team. They are housed in a publicly accessible Azure Container Registry. The deployment workflow knows where and how to retrieve the container images. That being said, the application code is available in this project, so you can build your own container images if you'd like. More on that in the [deployment section](../deployment.README.md). The second component of the solution is the infrastructure to run the application which is maintained and hosted by you. This component is made up of the following: 
+There are two major components to the IPAM solution. The first is the two container images that make up the IPAM application. These containers are maintained and hosted by the IPAM team. They are housed in a publicly accessible Azure Container Registry. The deployment workflow knows where and how to retrieve the container images. That being said, the application code is available in this project, so you can build your own container images if you'd like. More on that in the [deployment section](./deployment/README.md). The second component of the solution is the infrastructure to run the application which is maintained and hosted by you. This component is made up of the following: 
 
 - **App Registrations**
   - two App Registrations are deployed as part of the solution:
