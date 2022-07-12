@@ -7,5 +7,3 @@
 
 [GitHub](https://github.com/Azure/ipam)
 [Get Started](/README.md)
-
-<!-- background image -->
