@@ -1,7 +1,7 @@
 ## IPAM Architecture Overview
-IPAM is designed and architected based on the 5 pillars of the [Microsoft Azure Well Architected Framework](https://docs.microsoft.com/en-us/azure/architecture/framework/). 
+IPAM was developed to give customers a simple, straightforward way to manage their IP address space in Azure.  IPAM enables end-to-end planning, deploying, managing and monitoring of your IP address space, with an intuitive user experience. IPAM automatically discovers IP address utilization in your Azure tenant and enables you to manage it all from a central user interface. You can also interface with IPAM programatically via a REST API to facilitate IP address management at scale via Infrastructure as Code. IPAM is designed and architected based on the 5 pillars of the [Microsoft Azure Well Architected Framework](https://docs.microsoft.com/en-us/azure/architecture/framework/). 
 
-![IPAM Architecture](../images/ipam_architecture.png)
+![IPAM Architecture](../images/ipam_architecture.png ':size=60%')
 
 ### IPAM Infrastructure
 There are two major components to the IPAM solution. The first is the two container images that make up the IPAM application. These containers are maintained and hosted by the IPAM team. They are housed in a publicly accessible Azure Container Registry. The deployment workflow knows where and how to retrieve the container images. That being said, the application code is available in this project, so you can build your own container images if you'd like. More on that in the [deployment section](../deployment.README.md). The second component of the solution is the infrastructure to run the application which is maintained and hosted by you. This component is made up of the following: 
@@ -31,3 +31,14 @@ There are two major components to the IPAM solution. The first is the two contai
 - **User Assigned Managed Identity**
   - used by App Service to retrieve secrets from Key Vault and NGINX configuration data from the Storage Account
 
+## How IPAM Works
+
+As mentioned above, the IPAM application is made up of two containers, one that runs the front end user interface, and the other that runs the backend engine. We designed IPAM as such to accomodate the following use cases...
+- A user interface is not needed or you plan on providing your own user interface
+- You plan on interfacing with IPAM exclusively via the REST API.
+- You plan on running the backend engine in a lighter weight fashion such as Azure Funtions or Azure Container Instances
+
+### The User Interface Container
+The front end is written in [Node.js](https://nodejs.org/en/) and we leverage the [React JavaScript Library](https://reactjs.org/) for the user interface. It handles interfacing with Azure AD from an Authentication/Authorization to ensure data presented is based on the user's Azure RBAC context. 
+
+### The Backend Engine Container

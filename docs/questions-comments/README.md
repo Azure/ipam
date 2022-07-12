@@ -1,0 +1,2 @@
+## Questions or Comments
+The IPAM team welcomes engagement and contributions from the community. We have set up a GitHub Discussions page [here](https://github.com/Azure/ipam/discussions) to make it easy to engage with the IPAM team without opening an issue.

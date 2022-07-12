@@ -9,5 +9,3 @@
 [Get Started](/README.md)
 
 <!-- background image -->
-
-![](./images/background1.png)
