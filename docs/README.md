@@ -52,3 +52,4 @@ As mentioned above, the IPAM application is made up of two containers, one that 
 The front end is written in [Node.js](https://nodejs.org/en/) and we leverage the [React JavaScript Library](https://reactjs.org/) for the user interface. It handles interfacing with Azure AD from an Authentication/Authorization to ensure data presented is based on the user's Azure RBAC context. 
 
 ### The Backend Engine Container
+The engine is written in [Python](https://www.python.org/) and we leverage the [FastAPI Framework](https://fastapi.tiangolo.com/) for building the APIs. It handles interfacing with Azure Resource Graph on the user's behalf to perform all Azure Networking Resource related calls. 
