@@ -655,6 +655,8 @@ async def match_resv_to_vnets():
                             }
                         )
                         del block['resv'][index]
+                else:
+                    resv['status'] = "wait"
 
         await cosmos_replace(original_space, space)
 
