@@ -2,7 +2,7 @@
 
 * Getting Started
 
-* [Architecture](/architecture/README.md)
+* [Welcome](/README.md)
 * [Deployment](/deployment/README.md)
 * [How-To](/how-to/README.md)
 * [API](/api/README.md)

@@ -1,4 +1,4 @@
-## IPAM Architecture Overview
+## IPAM Overview and Architecture
 IPAM was developed to give customers a simple, straightforward way to manage their IP address space in Azure.  IPAM enables end-to-end planning, deploying, managing and monitoring of your IP address space, with an intuitive user experience. IPAM automatically discovers IP address utilization in your Azure tenant and enables you to manage it all from a central user interface. You can also interface with IPAM programatically via a REST API to facilitate IP address management at scale via Infrastructure as Code. IPAM is designed and architected based on the 5 pillars of the [Microsoft Azure Well Architected Framework](https://docs.microsoft.com/en-us/azure/architecture/framework/). 
 
 ![IPAM Architecture](../images/ipam_architecture.png ':size=60%')
