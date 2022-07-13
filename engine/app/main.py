@@ -15,7 +15,7 @@ import os
 import logging
 from pathlib import Path
 
-import app.globals as globals
+from app.globals import globals
 
 BUILD_DIR = os.path.join(os.getcwd(), "app", "build")
 
@@ -120,13 +120,6 @@ if os.path.isdir(BUILD_DIR):
 
 @app.on_event("startup")
 async def set_globals():
-    globals.CLIENT_ID = os.environ.get('CLIENT_ID')
-    globals.CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
-    globals.TENANT_ID = os.environ.get('TENANT_ID')
-    globals.COSMOS_URL = os.environ.get('COSMOS_URL')
-    globals.COSMOS_KEY = os.environ.get('COSMOS_KEY')
-    globals.KEYVAULT_URL = os.environ.get('KEYVAULT_URL')
-
     client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = 'ipam-db'
@@ -148,30 +141,6 @@ async def set_globals():
             id = container_name,
             partition_key = PartitionKey(path = "/id")
         )
-
-        logger.info('Creating Spaces Item...')
-        await container.upsert_item(
-            {
-                'id': 'spaces',
-                'spaces': []
-            }
-        )
-
-        logger.info('Creating Admins Item...')
-        await container.upsert_item(
-            {
-                'id': 'admins',
-                'admins': []
-            }
-        )
-
-        logger.info('Creating Users Item...')
-        await container.upsert_item(
-            {
-                'id': 'users',
-                'users': []
-            }
-        )
     except CosmosResourceExistsError:
         logger.warning('Container exists! Using existing container...')
         container = database.get_container_client(container_name)
@@ -182,7 +151,8 @@ async def set_globals():
 @app.on_event("startup")
 @repeat_every(seconds = 60, wait_first = True) # , wait_first=True
 async def find_reservations() -> None:
-    await azure.match_resv_to_vnets()
+    if not os.environ.get("FUNCTIONS_WORKER_RUNTIME"):
+        await azure.match_resv_to_vnets()
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):

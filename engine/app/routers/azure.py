@@ -42,7 +42,7 @@ from app.routers.space import (
     get_spaces
 )
 
-import app.globals as globals
+from app.globals import globals
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -629,6 +629,7 @@ async def match_resv_to_vnets():
 
                     if not cidr_match:
                         # print("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
+                        # logging.info("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
                         resv['status'] = "warnCIDRMismatch"
 
                     existing_block_cidrs = []
@@ -644,10 +645,12 @@ async def match_resv_to_vnets():
 
                     if vnet_cidr in existing_block_cidrs:
                         # print("A vNET with the assigned CIDR has already been associated with the target IP Block.")
+                        # logging.info("A vNET with the assigned CIDR has already been associated with the target IP Block.")
                         resv['status'] = "errCIDRExists"
 
                     if resv['status'] == "wait":
                         # print("vNET is being added to IP Block...")
+                        # logging.info("vNET is being added to IP Block...")
                         block['vnets'].append(
                             {
                                 "id": vnet['id'],
@@ -656,6 +659,8 @@ async def match_resv_to_vnets():
                         )
                         del block['resv'][index]
                 else:
+                    # print("Resetting status to 'wait'.")
+                    # logging.info("Resetting status to 'wait'.")
                     resv['status'] = "wait"
 
         await cosmos_replace(original_space, space)

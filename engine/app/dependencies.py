@@ -1,7 +1,5 @@
 from fastapi import Request, HTTPException
 
-from azure.cosmos.aio import CosmosClient
-
 import jwt
 import time
 import copy

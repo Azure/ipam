@@ -16,7 +16,7 @@ from functools import wraps
 
 from requests import options
 
-import app.globals as globals
+from app.globals import globals
 
 SCOPE = "https://management.azure.com/user_impersonation"
 
