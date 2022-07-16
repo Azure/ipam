@@ -274,6 +274,8 @@ class SpaceExpandUtil(BaseModel):
 ####################
 
 class Admin(BaseModel):
+    """DOCSTRING"""
+
     name: str
     email: EmailStr
     id: UUID
@@ -282,6 +284,12 @@ class Admin(BaseModel):
         json_encoders = {
             UUID: lambda v: str(v),
         }
+
+class Subscription(UUID):
+    """DOCSTRING"""
+
+class Exclusions(List[UUID]):
+    """DOCSTRING"""
 
 ###################
 #   USER MODELS   #

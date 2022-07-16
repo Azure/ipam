@@ -19,9 +19,9 @@ import logging
 from netaddr import IPSet, IPNetwork
 
 from app.dependencies import (
-  check_token_expired,
-  get_admin,
-  get_tenant_id
+    check_token_expired,
+    get_admin,
+    get_tenant_id
 )
 
 from app.models import *
@@ -839,7 +839,7 @@ async def create_block_vnet(
     block_vnet_cidrs = []
 
     for v in target_block['vnets']:
-        target = next((x for x in vnet_list if x['id'].lower() == v.lower()), None)
+        target = next((x for x in vnet_list if x['id'].lower() == v['id'].lower()), None)
 
         if target:
             prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes']))

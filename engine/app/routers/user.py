@@ -9,9 +9,9 @@ from typing import Optional, List, Any
 import azure.cosmos.exceptions as exceptions
 
 from app.dependencies import (
-  check_token_expired,
-  get_admin,
-  get_tenant_id
+    check_token_expired,
+    get_admin,
+    get_tenant_id
 )
 
 import re
@@ -39,13 +39,13 @@ router = APIRouter(
 
 async def new_user(user_id, tenant_id):
     new_user = {
-      "id": uuid.uuid4(),
-      "type": "user",
-      "tenant_id": tenant_id,
-      "data": {
-        "id": user_id,
-        "apiRefresh": 5
-      }
+        "id": uuid.uuid4(),
+        "type": "user",
+        "tenant_id": tenant_id,
+        "data": {
+          "id": user_id,
+          "apiRefresh": 5
+        }
     }
 
     query_results = await cosmos_upsert(jsonable_encoder(new_user))
