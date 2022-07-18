@@ -22,7 +22,11 @@ import {
   SaveAlt
 } from "@mui/icons-material";
 
-import { fetchSubscriptions } from "../ipam/ipamAPI";
+import {
+  fetchSubscriptions,
+  getExclusions,
+  replaceExclusions
+} from "../ipam/ipamAPI";
 
 import { apiRequest } from "../../msal/authConfig";
 
@@ -148,6 +152,7 @@ function GridSection(props) {
         <GridBody>
           <DataGrid
             disableColumnMenu
+            // disableSelectionOnClick
             hideFooter
             hideFooterPagination
             hideFooterSelectedRowCount
@@ -207,9 +212,30 @@ export default function ManageExclusions() {
       try {
         setLoading(true);
         const response = await instance.acquireTokenSilent(request);
-        const data = await fetchSubscriptions(response.accessToken);
 
-        setIncluded(data);
+        const stack = [
+          (async () => await fetchSubscriptions(response.accessToken))(),
+          (async () => await getExclusions(response.accessToken))()
+        ];
+
+        Promise.all(stack).then((results) => {
+          var includedSubs = results[0];
+          var excludedSubs = [];
+
+          results[1].forEach(exclusion => {
+            includedSubs = includedSubs.filter(object => {
+              return object.subscription_id !== exclusion;
+            });
+
+            const excludeObj = results[0].find(element => element.subscription_id == exclusion);
+
+            excludedSubs = [...excludedSubs, excludeObj];
+          });
+
+          setIncluded(includedSubs);
+          setExcluded(excludedSubs);
+          setLoadedExclusions(excludedSubs);
+        });
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
           instance.acquireTokenRedirect(request);
@@ -218,7 +244,7 @@ export default function ManageExclusions() {
           console.log("------------------");
           console.log(e);
           console.log("------------------");
-          enqueueSnackbar("Error fetching Subscriptions", { variant: "error" });
+          enqueueSnackbar("Error fetching subscriptions/exclusions", { variant: "error" });
         }
       } finally {
         setLoading(false);
@@ -246,6 +272,36 @@ export default function ManageExclusions() {
     setIncluded(included => [...included, elem]);
   }
 
+  function onSave() {
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
+
+    (async () => {
+      try {
+        setSending(true);
+        let update = excluded.map(item => item.subscription_id);
+        const response = await instance.acquireTokenSilent(request);
+        const data = await replaceExclusions(response.accessToken, update);
+        enqueueSnackbar("Successfully updated exclusions", { variant: "success" });
+        setLoadedExclusions(excluded);
+      } catch (e) {
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar(e.response.data.error, { variant: "error" });
+        }
+      } finally {
+        setSending(false);
+      }
+    })();
+  }
+
   return (
     <Wrapper>
       <MainBody>
@@ -259,10 +315,10 @@ export default function ManageExclusions() {
                 aria-label="upload picture"
                 component="span"
                 style={{
-                  visibility: unchanged ? 'hidden' : 'visible',
-                  disabled: sending
+                  visibility: unchanged ? 'hidden' : 'visible'
                 }}
-                onClick={() => console.log("CLICK")}
+                disabled={sending}
+                onClick={onSave}
               >
                 <SaveAlt />
               </IconButton>

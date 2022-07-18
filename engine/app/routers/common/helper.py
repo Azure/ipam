@@ -111,10 +111,10 @@ async def cosmos_query(query: str, tenant_id: str):
 
     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
-    database_name = "ipam-db-x"
+    database_name = "ipam-db"
     database = cosmos_client.get_database_client(database_name)
 
-    container_name = "ipam-container"
+    container_name = "ipam-ctr"
     container = database.get_container_client(container_name)
 
     query_results = container.query_items(
@@ -135,10 +135,10 @@ async def cosmos_upsert(data):
 
     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
-    database_name = "ipam-db-x"
+    database_name = "ipam-db"
     database = cosmos_client.get_database_client(database_name)
 
-    container_name = "ipam-container"
+    container_name = "ipam-ctr"
     container = database.get_container_client(container_name)
 
     try:
@@ -157,10 +157,10 @@ async def cosmos_replace(old, new):
 
     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
-    database_name = "ipam-db-x"
+    database_name = "ipam-db"
     database = cosmos_client.get_database_client(database_name)
 
-    container_name = "ipam-container"
+    container_name = "ipam-ctr"
     container = database.get_container_client(container_name)
 
     try:
@@ -184,10 +184,10 @@ async def cosmos_delete(item, tenant_id: str):
 
     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
-    database_name = "ipam-db-x"
+    database_name = "ipam-db"
     database = cosmos_client.get_database_client(database_name)
 
-    container_name = "ipam-container"
+    container_name = "ipam-ctr"
     container = database.get_container_client(container_name)
 
     try:
@@ -229,15 +229,30 @@ async def arg_query(auth, admin, query):
 
     if admin:
         creds = await get_client_credentials()
+        tenant_id = globals.TENANT_ID
     else:
         user_assertion=auth.split(' ')[1]
         creds = await get_obo_credentials(user_assertion)
+        tenant_id = get_tenant_from_jwt(user_assertion)
+
+    exclusions_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
+
+    if exclusions_query:
+        exclusions_array = exclusions_query[0]['exclusions']
+
+        if exclusions_array:
+            exclusions = "(" + str(exclusions_array)[1:-1] + ")"
+        else:
+            exclusions = "('')"
+    else:
+        exclusions = "('')"
 
     try:
-        results = await arg_query_helper(creds, query)
+        results = await arg_query_helper(creds, query.format(exclusions))
     except ClientAuthenticationError:
         raise HTTPException(status_code=401, detail="Token has expired.")
     except HttpResponseError as e:
+        print(exclusions)
         raise HTTPException(status_code=403, detail="Access denied.")
     finally:
         await creds.close()

@@ -4,18 +4,24 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_restful.tasks import repeat_every
+from fastapi.encoders import jsonable_encoder
 
 from azure.cosmos.aio import CosmosClient
 from azure.cosmos import PartitionKey
-from azure.cosmos.exceptions import CosmosResourceExistsError
+from azure.cosmos.exceptions import CosmosResourceExistsError, CosmosResourceNotFoundError
 
 from app.routers import azure, admin, user, space
 
 import os
+import uuid
 import logging
 from pathlib import Path
 
 from app.globals import globals
+
+from app.routers.common.helper import (
+    cosmos_upsert
+)
 
 BUILD_DIR = os.path.join(os.getcwd(), "app", "build")
 
@@ -118,6 +124,80 @@ if os.path.isdir(BUILD_DIR):
 
         return FileResponse(BUILD_DIR + "/index.html")
 
+async def db_upgrade():
+    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+
+    database_name = "ipam-db"
+    database = cosmos_client.get_database_client(database_name)
+
+    container_name = "ipam-container"
+    container = database.get_container_client(container_name)
+
+    try:
+        spaces_query = await container.read_item("spacesx", partition_key="spacesx")
+
+        for space in spaces_query['spaces']:
+            if 'vnets' in space:
+                del space['vnets']
+
+            new_space = {
+                "id": uuid.uuid4(),
+                "type": "space",
+                "tenant_id": globals.TENANT_ID,
+                **space
+            }
+
+            await cosmos_upsert(jsonable_encoder(new_space))
+
+        await container.delete_item("spacesx", partition_key = "spacesx")
+
+        logger.info('Spaces database conversion complete!')
+    except CosmosResourceNotFoundError:
+        logger.info('No existing spaces to convert...')
+        pass
+
+    try:
+        users_query = await container.read_item("usersx", partition_key="usersx")
+
+        for user in users_query['users']:
+            new_user = {
+                "id": uuid.uuid4(),
+                "type": "user",
+                "tenant_id": globals.TENANT_ID,
+                "data": user
+            }
+
+            await cosmos_upsert(jsonable_encoder(new_user))
+
+        await container.delete_item("usersx", partition_key = "usersx")
+
+        logger.info('Users database conversion complete!')
+    except CosmosResourceNotFoundError:
+        logger.info('No existing users to convert...')
+        pass
+
+    try:
+        admins_query = await container.read_item("adminsx", partition_key="adminsx")
+
+        admin_data = {
+            "id": uuid.uuid4(),
+            "type": "admin",
+            "tenant_id": globals.TENANT_ID,
+            "admins": admins_query['admins'],
+            "exclusions": []
+        }
+
+        await cosmos_upsert(jsonable_encoder(admin_data))
+
+        await container.delete_item("adminsx", partition_key = "adminsx")
+
+        logger.info('Admins database conversion complete!')
+    except CosmosResourceNotFoundError:
+        logger.info('No existing admins to convert...')
+        pass
+
+    await cosmos_client.close()
+
 @app.on_event("startup")
 async def set_globals():
     client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
@@ -133,19 +213,21 @@ async def set_globals():
         logger.warning('Database exists! Using existing database...')
         database = client.get_database_client(database_name)
 
-    container_name = 'ipam-container'
+    container_name = 'ipam-ctr'
 
     try:
         logger.info('Creating Container...')
         container = await database.create_container(
             id = container_name,
-            partition_key = PartitionKey(path = "/id")
+            partition_key = PartitionKey(path = "/tenant_id")
         )
     except CosmosResourceExistsError:
         logger.warning('Container exists! Using existing container...')
         container = database.get_container_client(container_name)
 
     await client.close()
+
+    await db_upgrade()
 
 # https://github.com/yuval9313/FastApi-RESTful/issues/138
 @app.on_event("startup")

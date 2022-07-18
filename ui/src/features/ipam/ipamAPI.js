@@ -391,6 +391,40 @@ export function replaceAdmins(token, body) {
   });
 }
 
+export function getExclusions(token) {
+  const url = new URL(`${ENGINE_URL}/api/admins/exclusions`);
+
+  return axios
+    .get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+    })
+  .then(response => response.data)
+  .catch(error => {
+    console.log("ERROR FETCHING EXCLUSIONS VIA API");
+    console.log(error);
+    throw error;
+  });
+}
+
+export function replaceExclusions(token, body) {
+  const url = new URL(`${ENGINE_URL}/api/admins/exclusions`);
+
+  return axios
+    .put(url, body, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+    })
+  .then(response => response.data)
+  .catch(error => {
+    console.log("ERROR UPDATING EXCLUSIONS VIA API");
+    console.log(error);
+    throw error;
+  });
+}
+
 export function getMe(token) {
   const url = new URL(`${ENGINE_URL}/api/users/me`);
 
