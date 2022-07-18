@@ -235,6 +235,7 @@ export default function ManageExclusions() {
           setIncluded(includedSubs);
           setExcluded(excludedSubs);
           setLoadedExclusions(excludedSubs);
+          setLoading(false);
         });
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
@@ -246,7 +247,7 @@ export default function ManageExclusions() {
           console.log("------------------");
           enqueueSnackbar("Error fetching subscriptions/exclusions", { variant: "error" });
         }
-      } finally {
+
         setLoading(false);
       }
     })();
@@ -343,7 +344,7 @@ export default function ManageExclusions() {
             // columns={columns.map((x) => ({...x, renderCell: renderInclude}))}
             columns={columns}
             rows={excluded}
-            loading={false}
+            loading={loading}
             onClick={subscriptionInclude}
           />
         </BottomSection>

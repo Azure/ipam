@@ -6,7 +6,7 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 
-import Administration from '../admin/admin2';
+import Administration from '../admin/admin';
 import ManageExclusions from '../exclusions/exclusions';
 
 function TabPanel(props) {

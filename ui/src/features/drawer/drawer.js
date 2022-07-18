@@ -72,7 +72,6 @@ import DiscoverTabs from "../tabs/discoverTabs";
 import AnalyzeTabs from "../tabs/analyzeTabs";
 import AdminTabs from "../tabs/adminTabs";
 // import AnalysisTool from "../analysis/analysis";
-import Administration from "../admin/admin2";
 import ConfigureIPAM from "../configure/configure";
 
 import Refresh from "./refresh";
