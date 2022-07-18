@@ -193,7 +193,7 @@ Function Deploy-IPAMApplications {
         Value = "access_as_user"
       }
     )
-    # PreAuthorizedApplication = @(
+    # PreAuthorizedApplication = @( # Allow Azure PowerShell/CLI to obtain access tokens
     #   @{
     #     AppId = "1950a258-227b-4e31-a9cf-717495945fc2" # Azure PowerShell
     #     DelegatedPermissionId = @( $engineApiGuid )
