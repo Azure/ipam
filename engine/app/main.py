@@ -134,7 +134,7 @@ async def db_upgrade():
     container = database.get_container_client(container_name)
 
     try:
-        spaces_query = await container.read_item("spacesx", partition_key="spacesx")
+        spaces_query = await container.read_item("spaces", partition_key="spaces")
 
         for space in spaces_query['spaces']:
             if 'vnets' in space:
@@ -149,7 +149,7 @@ async def db_upgrade():
 
             await cosmos_upsert(jsonable_encoder(new_space))
 
-        await container.delete_item("spacesx", partition_key = "spacesx")
+        await container.delete_item("spaces", partition_key = "spaces")
 
         logger.info('Spaces database conversion complete!')
     except CosmosResourceNotFoundError:
@@ -157,7 +157,7 @@ async def db_upgrade():
         pass
 
     try:
-        users_query = await container.read_item("usersx", partition_key="usersx")
+        users_query = await container.read_item("users", partition_key="users")
 
         for user in users_query['users']:
             new_user = {
@@ -169,7 +169,7 @@ async def db_upgrade():
 
             await cosmos_upsert(jsonable_encoder(new_user))
 
-        await container.delete_item("usersx", partition_key = "usersx")
+        await container.delete_item("users", partition_key = "users")
 
         logger.info('Users database conversion complete!')
     except CosmosResourceNotFoundError:
@@ -177,7 +177,7 @@ async def db_upgrade():
         pass
 
     try:
-        admins_query = await container.read_item("adminsx", partition_key="adminsx")
+        admins_query = await container.read_item("admins", partition_key="admins")
 
         admin_data = {
             "id": uuid.uuid4(),
@@ -189,7 +189,7 @@ async def db_upgrade():
 
         await cosmos_upsert(jsonable_encoder(admin_data))
 
-        await container.delete_item("adminsx", partition_key = "adminsx")
+        await container.delete_item("admins", partition_key = "admins")
 
         logger.info('Admins database conversion complete!')
     except CosmosResourceNotFoundError:
@@ -202,7 +202,7 @@ async def db_upgrade():
 async def set_globals():
     client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
-    database_name = 'ipam-db'
+    database_name = globals.DATABASE_NAME
 
     try:
         logger.info('Creating Database...')
@@ -213,7 +213,7 @@ async def set_globals():
         logger.warning('Database exists! Using existing database...')
         database = client.get_database_client(database_name)
 
-    container_name = 'ipam-ctr'
+    container_name = globals.CONTAINER_NAME
 
     try:
         logger.info('Creating Container...')

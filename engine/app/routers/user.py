@@ -21,6 +21,10 @@ import copy
 
 from app.models import *
 
+from app.routers.admin import (
+    new_admin_db
+)
+
 from app.routers.common.helper import (
     get_username_from_jwt,
     get_user_id_from_jwt,
@@ -140,6 +144,9 @@ async def get_user(
     user_data = copy.deepcopy(user_query[0])
 
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
+
+    if not admin_query:
+        admin_query = [await new_admin_db([], [], tenant_id)]
 
     admins = admin_query[0]
 

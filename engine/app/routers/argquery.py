@@ -230,16 +230,16 @@ resources
 | where type =~ 'Microsoft.Network/applicationGateways'
 | where subscriptionId !in~ {}
 | mv-expand ipConfig = properties.frontendIPConfigurations
-| where isnotempty(ipConfig.properties.publicIPAddress)
-| project tenant_id = tenantId, name, id, size = properties.sku.tier, resource_group = resourceGroup, subscription_id = subscriptionId, public_ip_id = ipConfig.properties.publicIPAddress.id, public_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod
-| extend public_ip_id = tostring(public_ip_id)
+| where isnotempty(ipConfig.properties.privateIPAddress)
+| project name, tenant_id = tenantId, id, size = properties.sku.tier, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip = ipConfig.properties.privateIPAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, subnet_id = ipConfig.properties.subnet.id
+| extend subnet_id = tolower(tostring(subnet_id))
 | join kind = leftouter (
     resources
     | where type =~ 'Microsoft.Network/applicationGateways'
     | mv-expand ipConfig = properties.frontendIPConfigurations
-    | where isnotempty(ipConfig.properties.privateIPAddress)
-    | project name, private_ip = ipConfig.properties.privateIPAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, subnet_id = ipConfig.properties.subnet.id
-    | extend subnet_id = tolower(tostring(subnet_id))
+    | where isnotempty(ipConfig.properties.publicIPAddress)
+    | project name, public_ip_id = ipConfig.properties.publicIPAddress.id, public_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod
+    | extend public_ip_id = tostring(public_ip_id)
 ) on name
 | project-away name1
 | join kind = leftouter (

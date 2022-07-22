@@ -64,46 +64,6 @@ async def get_obo_credentials(assertion):
 
     return credential
 
-# async def cosmos_query(target: str):
-#     """DOCSTRING"""
-#     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
-
-#     database_name = "ipam-db"
-#     database = cosmos_client.get_database_client(database_name)
-
-#     container_name = "ipam-container"
-#     container = database.get_container_client(container_name)
-
-#     item = await container.read_item(target, partition_key=target)
-
-#     await cosmos_client.close()
-
-#     return item
-
-# async def cosmos_upsert(target: str, data):
-#     """DOCSTRING"""
-
-#     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
-
-#     database_name = "ipam-db"
-#     database = cosmos_client.get_database_client(database_name)
-
-#     container_name = "ipam-container"
-#     container = database.get_container_client(container_name)
-
-#     try:
-#         await container.upsert_item(
-#             data,
-#             match_condition=MatchConditions.IfNotModified,
-#             etag=data['_etag']
-#         )
-#     except:
-#         raise
-#     finally:
-#         await cosmos_client.close()
-
-#     return
-
 async def cosmos_query(query: str, tenant_id: str):
     """DOCSTRING"""
 
@@ -111,10 +71,10 @@ async def cosmos_query(query: str, tenant_id: str):
 
     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
-    database_name = "ipam-db"
+    database_name = globals.DATABASE_NAME
     database = cosmos_client.get_database_client(database_name)
 
-    container_name = "ipam-ctr"
+    container_name = globals.CONTAINER_NAME
     container = database.get_container_client(container_name)
 
     query_results = container.query_items(
@@ -135,10 +95,10 @@ async def cosmos_upsert(data):
 
     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
-    database_name = "ipam-db"
+    database_name = globals.DATABASE_NAME
     database = cosmos_client.get_database_client(database_name)
 
-    container_name = "ipam-ctr"
+    container_name = globals.CONTAINER_NAME
     container = database.get_container_client(container_name)
 
     try:
@@ -157,10 +117,10 @@ async def cosmos_replace(old, new):
 
     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
-    database_name = "ipam-db"
+    database_name = globals.DATABASE_NAME
     database = cosmos_client.get_database_client(database_name)
 
-    container_name = "ipam-ctr"
+    container_name = globals.CONTAINER_NAME
     container = database.get_container_client(container_name)
 
     try:
@@ -184,10 +144,10 @@ async def cosmos_delete(item, tenant_id: str):
 
     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
-    database_name = "ipam-db"
+    database_name = globals.DATABASE_NAME
     database = cosmos_client.get_database_client(database_name)
 
-    container_name = "ipam-ctr"
+    container_name = globals.CONTAINER_NAME
     container = database.get_container_client(container_name)
 
     try:
