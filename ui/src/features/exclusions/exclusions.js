@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
 import { useSnackbar } from "notistack";
@@ -27,6 +28,10 @@ import {
   getExclusions,
   replaceExclusions
 } from "../ipam/ipamAPI";
+
+import {
+  refreshAllAsync
+} from '../ipam/ipamSlice';
 
 import { apiRequest } from "../../msal/authConfig";
 
@@ -200,6 +205,8 @@ export default function ManageExclusions() {
   const [loadedExclusions, setLoadedExclusions] = React.useState([]);
   const [sending, setSending] = React.useState(false);
 
+  const dispatch = useDispatch();
+
   const unchanged = isEqual(excluded, loadedExclusions);
 
   React.useEffect(() => {
@@ -287,6 +294,7 @@ export default function ManageExclusions() {
         const data = await replaceExclusions(response.accessToken, update);
         enqueueSnackbar("Successfully updated exclusions", { variant: "success" });
         setLoadedExclusions(excluded);
+        dispatch(refreshAllAsync(response.accessToken))
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
           instance.acquireTokenRedirect(request);

@@ -67,8 +67,6 @@ async def get_obo_credentials(assertion):
 async def cosmos_query(query: str, tenant_id: str):
     """DOCSTRING"""
 
-    result_array = []
-
     cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
@@ -83,8 +81,7 @@ async def cosmos_query(query: str, tenant_id: str):
         partition_key = tenant_id
     )
 
-    async for result in query_results:
-        result_array.append(result)
+    result_array = [result async for result in query_results]
 
     await cosmos_client.close()
 
@@ -212,7 +209,6 @@ async def arg_query(auth, admin, query):
     except ClientAuthenticationError:
         raise HTTPException(status_code=401, detail="Token has expired.")
     except HttpResponseError as e:
-        print(exclusions)
         raise HTTPException(status_code=403, detail="Access denied.")
     finally:
         await creds.close()
@@ -262,7 +258,7 @@ async def arg_query_helper(credentials, query):
         skip_token = None
 
         while True:
-            query = QueryRequest(
+            query_request = QueryRequest(
                 query=query,
                 management_groups=[globals.TENANT_ID],
                 options=QueryRequestOptions(
@@ -271,14 +267,15 @@ async def arg_query_helper(credentials, query):
                 )
             )
 
-            poll = await resource_graph_client.resources(query)
+            poll = await resource_graph_client.resources(query_request)
             results = results + poll.data
 
             if poll.skip_token:
                 skip_token = poll.skip_token
             else:
                 break
-    except ServiceRequestError:
+    except ServiceRequestError as e:
+        print(e)
         raise HTTPException(status_code=500, detail="Error communicating with Azure.")
     finally:
         await resource_graph_client.close()
