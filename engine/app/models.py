@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ValidationError, EmailStr
+from pydantic import BaseModel, ValidationError, EmailStr, root_validator
 from typing import Optional, List, Any
 
 from netaddr import IPSet, IPNetwork, IPAddress
@@ -166,6 +166,13 @@ class Reservation(BaseModel):
     userId: str
     createdOn: float
     status: str
+    tag: Optional[dict]
+
+    @root_validator
+    def format_tag(cls, values) -> dict:
+      values["tag"] = { "X-IPAM-RES-ID": values["id"]}
+      
+      return values
 
 class BlockBasic(BaseModel):
     """DOCSTRING"""

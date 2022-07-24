@@ -30,8 +30,8 @@ from app.routers.common.helper import (
 )
 
 router = APIRouter(
-    prefix="/admins",
-    tags=["admins"],
+    prefix="/admin",
+    tags=["admin"],
     dependencies=[Depends(check_token_expired)]
 )
 
@@ -49,7 +49,7 @@ async def new_admin_db(admin_list, exclusion_list, tenant_id):
     return query_results
 
 @router.get(
-    "",
+    "/admins",
     summary = "Get All Admins",
     response_model = List[Admin],
     status_code = 200
@@ -75,7 +75,7 @@ async def get_admins(
         return []
 
 @router.post(
-    "",
+    "/admins",
     summary = "Create IPAM Admin",
     status_code=201
 )
@@ -118,7 +118,7 @@ async def create_admin(
     return Response(status_code=status.HTTP_201_CREATED)
 
 @router.put(
-    "",
+    "/admins",
     summary = "Replace IPAM Admins",
     status_code=200
 )
@@ -163,7 +163,7 @@ async def update_admins(
     return PlainTextResponse(status_code=status.HTTP_200_OK)
 
 @router.delete(
-    "/{objectId}",
+    "/admins/{objectId}",
     summary = "Delete IPAM Admin",
     status_code=200
 )

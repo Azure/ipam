@@ -358,7 +358,7 @@ export function fetchTreeView(token) {
 }
 
 export function getAdmins(token) {
-  const url = new URL(`${ENGINE_URL}/api/admins`);
+  const url = new URL(`${ENGINE_URL}/api/admin/admins`);
 
   return axios
     .get(url, {
@@ -375,7 +375,7 @@ export function getAdmins(token) {
 }
 
 export function replaceAdmins(token, body) {
-  const url = new URL(`${ENGINE_URL}/api/admins`);
+  const url = new URL(`${ENGINE_URL}/api/admin/admins`);
 
   return axios
     .put(url, body, {
@@ -392,7 +392,7 @@ export function replaceAdmins(token, body) {
 }
 
 export function getExclusions(token) {
-  const url = new URL(`${ENGINE_URL}/api/admins/exclusions`);
+  const url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
 
   return axios
     .get(url, {
@@ -409,7 +409,7 @@ export function getExclusions(token) {
 }
 
 export function replaceExclusions(token, body) {
-  const url = new URL(`${ENGINE_URL}/api/admins/exclusions`);
+  const url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
 
   return axios
     .put(url, body, {
