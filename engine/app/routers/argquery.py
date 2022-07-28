@@ -67,7 +67,7 @@ resources
 | where subscriptionId !in~ {}
 | mv-expand subnet = todynamic(properties.subnets)
 | extend subnet_size = array_length(subnet.properties.ipConfigurations)
-| project name = subnet.name, id = subnet.id, prefix = subnet.properties.addressPrefix,resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), appgw_config = subnet.properties.applicationGatewayIPConfigurations
+| project name = subnet.name, id = subnet.id, prefix = subnet.properties.addressPrefix, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), appgw_config = subnet.properties.applicationGatewayIPConfigurations
 """
 
 PRIVATE_ENDPOINT = """
