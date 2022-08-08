@@ -251,6 +251,16 @@ export default function EditVnets(props) {
                     outline: "none",
                   }
               }}
+              initialState={{
+                sorting: {
+                  sortModel: [
+                    {
+                      field: 'name',
+                      sort: 'asc',
+                    },
+                  ],
+                },
+              }}
             />
           </Box>
         </DialogContent>

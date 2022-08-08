@@ -235,6 +235,23 @@ export function deleteBlockResvs(token, space, block, body) {
   });
 }
 
+export function fetchSubscriptions(token) {
+  var url = new URL(`${ENGINE_URL}/api/azure/subscription`);
+
+  return axios
+    .get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+  .then(response => response.data)
+  .catch(error => {
+    console.log("ERROR FETCHING SUBSCRIPTIONS FROM API");
+    console.log(error);
+    throw error;
+  });
+}
+
 export function fetchVNets(token) {
   var url = new URL(`${ENGINE_URL}/api/azure/vnet`);
 
@@ -341,7 +358,7 @@ export function fetchTreeView(token) {
 }
 
 export function getAdmins(token) {
-  const url = new URL(`${ENGINE_URL}/api/admins`);
+  const url = new URL(`${ENGINE_URL}/api/admin/admins`);
 
   return axios
     .get(url, {
@@ -358,7 +375,7 @@ export function getAdmins(token) {
 }
 
 export function replaceAdmins(token, body) {
-  const url = new URL(`${ENGINE_URL}/api/admins`);
+  const url = new URL(`${ENGINE_URL}/api/admin/admins`);
 
   return axios
     .put(url, body, {
@@ -369,6 +386,40 @@ export function replaceAdmins(token, body) {
   .then(response => response.data)
   .catch(error => {
     console.log("ERROR UPDATING ADMINS VIA API");
+    console.log(error);
+    throw error;
+  });
+}
+
+export function getExclusions(token) {
+  const url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
+
+  return axios
+    .get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+    })
+  .then(response => response.data)
+  .catch(error => {
+    console.log("ERROR FETCHING EXCLUSIONS VIA API");
+    console.log(error);
+    throw error;
+  });
+}
+
+export function replaceExclusions(token, body) {
+  const url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
+
+  return axios
+    .put(url, body, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+    })
+  .then(response => response.data)
+  .catch(error => {
+    console.log("ERROR UPDATING EXCLUSIONS VIA API");
     console.log(error);
     throw error;
   });

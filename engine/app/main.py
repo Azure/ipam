@@ -1,22 +1,27 @@
-from audioop import tostereo
 from fastapi import FastAPI, Request, HTTPException, Header
 from fastapi.responses import JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_restful.tasks import repeat_every
+from fastapi.encoders import jsonable_encoder
 
 from azure.cosmos.aio import CosmosClient
 from azure.cosmos import PartitionKey
-from azure.cosmos.exceptions import CosmosResourceExistsError
+from azure.cosmos.exceptions import CosmosResourceExistsError, CosmosResourceNotFoundError
 
 from app.routers import azure, admin, user, space
 
 import os
+import uuid
 import logging
 from pathlib import Path
 
-import app.globals as globals
+from app.globals import globals
+
+from app.routers.common.helper import (
+    cosmos_upsert
+)
 
 BUILD_DIR = os.path.join(os.getcwd(), "app", "build")
 
@@ -119,18 +124,85 @@ if os.path.isdir(BUILD_DIR):
 
         return FileResponse(BUILD_DIR + "/index.html")
 
+async def db_upgrade():
+    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+
+    database_name = "ipam-db"
+    database = cosmos_client.get_database_client(database_name)
+
+    container_name = "ipam-container"
+    container = database.get_container_client(container_name)
+
+    try:
+        spaces_query = await container.read_item("spaces", partition_key="spaces")
+
+        for space in spaces_query['spaces']:
+            if 'vnets' in space:
+                del space['vnets']
+
+            new_space = {
+                "id": uuid.uuid4(),
+                "type": "space",
+                "tenant_id": globals.TENANT_ID,
+                **space
+            }
+
+            await cosmos_upsert(jsonable_encoder(new_space))
+
+        await container.delete_item("spaces", partition_key = "spaces")
+
+        logger.info('Spaces database conversion complete!')
+    except CosmosResourceNotFoundError:
+        logger.info('No existing spaces to convert...')
+        pass
+
+    try:
+        users_query = await container.read_item("users", partition_key="users")
+
+        for user in users_query['users']:
+            new_user = {
+                "id": uuid.uuid4(),
+                "type": "user",
+                "tenant_id": globals.TENANT_ID,
+                "data": user
+            }
+
+            await cosmos_upsert(jsonable_encoder(new_user))
+
+        await container.delete_item("users", partition_key = "users")
+
+        logger.info('Users database conversion complete!')
+    except CosmosResourceNotFoundError:
+        logger.info('No existing users to convert...')
+        pass
+
+    try:
+        admins_query = await container.read_item("admins", partition_key="admins")
+
+        admin_data = {
+            "id": uuid.uuid4(),
+            "type": "admin",
+            "tenant_id": globals.TENANT_ID,
+            "admins": admins_query['admins'],
+            "exclusions": []
+        }
+
+        await cosmos_upsert(jsonable_encoder(admin_data))
+
+        await container.delete_item("admins", partition_key = "admins")
+
+        logger.info('Admins database conversion complete!')
+    except CosmosResourceNotFoundError:
+        logger.info('No existing admins to convert...')
+        pass
+
+    await cosmos_client.close()
+
 @app.on_event("startup")
 async def set_globals():
-    globals.CLIENT_ID = os.environ.get('CLIENT_ID')
-    globals.CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
-    globals.TENANT_ID = os.environ.get('TENANT_ID')
-    globals.COSMOS_URL = os.environ.get('COSMOS_URL')
-    globals.COSMOS_KEY = os.environ.get('COSMOS_KEY')
-    globals.KEYVAULT_URL = os.environ.get('KEYVAULT_URL')
-
     client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
-    database_name = 'ipam-db'
+    database_name = globals.DATABASE_NAME
 
     try:
         logger.info('Creating Database...')
@@ -141,37 +213,13 @@ async def set_globals():
         logger.warning('Database exists! Using existing database...')
         database = client.get_database_client(database_name)
 
-    container_name = 'ipam-container'
+    container_name = globals.CONTAINER_NAME
 
     try:
         logger.info('Creating Container...')
         container = await database.create_container(
             id = container_name,
-            partition_key = PartitionKey(path = "/id")
-        )
-
-        logger.info('Creating Spaces Item...')
-        await container.upsert_item(
-            {
-                'id': 'spaces',
-                'spaces': []
-            }
-        )
-
-        logger.info('Creating Admins Item...')
-        await container.upsert_item(
-            {
-                'id': 'admins',
-                'admins': []
-            }
-        )
-
-        logger.info('Creating Users Item...')
-        await container.upsert_item(
-            {
-                'id': 'users',
-                'users': []
-            }
+            partition_key = PartitionKey(path = "/tenant_id")
         )
     except CosmosResourceExistsError:
         logger.warning('Container exists! Using existing container...')
@@ -179,11 +227,14 @@ async def set_globals():
 
     await client.close()
 
+    await db_upgrade()
+
 # https://github.com/yuval9313/FastApi-RESTful/issues/138
 @app.on_event("startup")
 @repeat_every(seconds = 60, wait_first = True) # , wait_first=True
 async def find_reservations() -> None:
-    await azure.match_resv_to_vnets()
+    if not os.environ.get("FUNCTIONS_WORKER_RUNTIME"):
+        await azure.match_resv_to_vnets()
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):

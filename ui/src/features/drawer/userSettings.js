@@ -15,6 +15,9 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Switch,
+  Stack,
+  Typography
 } from "@mui/material";
 
 import {
@@ -104,9 +107,19 @@ export default function UserSettings(props) {
           Settings
         </DialogTitle>
         <DialogContent>
+          {/*
+          <DialogContentText>
+            IP Usage Format:
+          </DialogContentText>
+          <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", p: 1 }}>
+              <Typography>Standard</Typography>
+              <Switch inputProps={{ 'aria-label': 'ant design' }} />
+              <Typography>Azure</Typography>
+          </Box>
           <DialogContentText>
             Data refresh interval (minutes):
           </DialogContentText>
+          */}
           <Box sx={{ p: 1 }}>
             <Slider
               aria-label="Restricted values"

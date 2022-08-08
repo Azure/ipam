@@ -3,11 +3,11 @@ import { styled } from '@mui/material/styles';
 
 import { useMsal } from "@azure/msal-react";
 import { InteractionRequiredAuthError, InteractionStatus } from "@azure/msal-browser";
-import { callMsGraphUsers } from "../../msal/graph";
+import { callMsGraphUsersFilter } from "../../msal/graph";
 
 import { useSnackbar } from 'notistack';
 
-import { isEqual } from 'lodash';
+import { isEqual, throttle } from 'lodash';
 
 import {
   DataGrid,
@@ -42,71 +42,65 @@ import {
 import { apiRequest } from "../../msal/authConfig";
 
 function CustomToolbar(props) {
-  const { admins, loadedAdmins, setAdmins, selectionModel, refresh } = props;
+  const { admins, loadedAdmins, setAdmins, selectionModel, refresh, refreshing } = props;
 
   const { instance, inProgress, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [open, setOpen] = React.useState(false);
   const [options, setOptions] = React.useState(null);
+  const [input, setInput] = React.useState("");
   const [selected, setSelected] = React.useState(null);
   const [sending, setSending] = React.useState(false);
 
   const loading = open && !options
-  // const selectedAdmin = admins.find(obj => { return obj.id === selectionModel[0] });
-  const changed = isEqual(admins, loadedAdmins);
+  const unchanged = isEqual(admins, loadedAdmins);
+
+  function SearchUsers(nameFilter) {
+    const request = {
+      scopes: ["Directory.Read.All"],
+      account: accounts[0],
+    };
+
+    (async () => {
+      try {
+        setOptions(null);
+        const response = await instance.acquireTokenSilent(request);
+        const userData = await callMsGraphUsersFilter(response.accessToken, nameFilter);
+        setOptions(userData.value);
+      } catch (e) {
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar(e.response.data.error, { variant: "error" });
+        }
+      }
+    })();
+  }
+
+  const fetchUsers = React.useMemo(() => throttle((input) => SearchUsers(input), 500), []);
 
   React.useEffect(() => {
     let active = true;
 
-    function SearchUsers() {
-      const request = {
-        scopes: ["Directory.Read.All"],
-        account: accounts[0],
-      };
-  
-      if (!options && inProgress === InteractionStatus.None) {
-        (async () => {
-          try {
-            const response = await instance.acquireTokenSilent(request);
-            const userData = await callMsGraphUsers(response.accessToken);
-            setOptions(userData.value);
-            refresh();
-          } catch (e) {
-            if (e instanceof InteractionRequiredAuthError) {
-              instance.acquireTokenRedirect(request);
-            } else {
-              console.log("ERROR");
-              console.log("------------------");
-              console.log(e);
-              console.log("------------------");
-              enqueueSnackbar(e.response.data.error, { variant: "error" });
-            }
-          }
-        })();
-      }
+    if (active) {
+      fetchUsers(input);
     }
-
-    if (!loading) {
-      return undefined;
-    }
-
-    (async () => {
-      if (active) {
-        SearchUsers();
-      }
-    })();
 
     return () => {
       active = false;
     };
-  }, [loading, accounts, instance]);
+  }, [input, fetchUsers]);
 
   React.useEffect(() => {
     if (!open) {
       setOptions(null);
     }
-  }, [open]);
+  }, [input, open]);
 
   function handleAdd(user) {
     let newAdmin = {
@@ -191,6 +185,9 @@ function CustomToolbar(props) {
             onClose={() => {
               setOpen(false);
             }}
+            onInputChange={(event, newInput) => {
+              setInput(newInput);
+            }}
             onChange={(event, newValue) => {
               newValue ? handleAdd(newValue) : setSelected(null);
             }}
@@ -228,9 +225,9 @@ function CustomToolbar(props) {
               aria-label="upload picture"
               component="span"
               style={{
-                visibility: changed ? 'hidden' : 'visible',
-                disabled: sending
+                visibility: unchanged ? 'hidden' : 'visible'
               }}
+              disabled={sending || refreshing}
               onClick={onSave}
             >
               <SaveAlt />
@@ -263,6 +260,7 @@ export default function Administration() {
   }, []);
 
   function refreshData() {
+    console.log("REFRESHING...");
     const request = {
       scopes: apiRequest.scopes,
       account: accounts[0],
@@ -291,23 +289,7 @@ export default function Administration() {
     })();
   }
 
-  function handleDelete(id) {
-    // const index = admins.findIndex(x => {
-    //   return x.id === id;
-    // });
-
-    setAdmins(admins.filter(x => x.id !== id));
-  }
-
-  function renderDelete(params) {
-    const onClick = (e) => {
-      e.stopPropagation();
-      console.log("CLICK: " + params.row.id);
-      // setSelectionModel([params.value]);
-      // setRowData(params.row);
-      // setMenuExpand(true);
-    };
-  
+  function renderDelete(params) {  
     const flexCenter = {
       display: "flex",
       alignItems: "center",
@@ -326,7 +308,7 @@ export default function Administration() {
             disableFocusRipple
             disableTouchRipple
             disableRipple
-            onClick={() => handleDelete(params.row.id)}
+            onClick={() => setAdmins(admins.filter(x => x.id !== params.row.id))}
           >
             <HighlightOff />
           </IconButton>
@@ -373,42 +355,39 @@ export default function Administration() {
   }
 
   return (
-    <Box sx={{ height: "calc(100vh - 64px)", width: "100%" }}>
-      <Box sx={{ p: 3, height: "calc(100vh - 112px)", display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-        <Box height="100%" width="100%">
-          <DataGrid
-            disableColumnMenu
-            hideFooter
-            hideFooterPagination
-            hideFooterSelectedRowCount
-            rows={admins}
-            columns={columns}
-            loading={loading}
-            onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
-            setSelectionModel={selectionModel}
-            components={{
-              Toolbar: CustomToolbar,
-              NoRowsOverlay: CustomNoRowsOverlay,
-              LoadingOverlay: CustomLoadingOverlay,
-            }}
-            componentsProps={{
-              toolbar: {
-                admins: admins,
-                loadedAdmins: loadedAdmins,
-                setAdmins, setAdmins,
-                selectionModel: selectionModel,
-                refresh: refreshData
-              }
-            }}
-            sx={{
-              "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus-within":
-                {
-                  outline: "none",
-                },
-            }}
-          />
-        </Box>
-      </Box>
+    <Box sx={{ flexGrow: 1, height: "100%" }}>
+      <DataGrid
+        disableColumnMenu
+        hideFooter
+        hideFooterPagination
+        hideFooterSelectedRowCount
+        rows={admins}
+        columns={columns}
+        loading={loading}
+        onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
+        setSelectionModel={selectionModel}
+        components={{
+          Toolbar: CustomToolbar,
+          NoRowsOverlay: CustomNoRowsOverlay,
+          LoadingOverlay: CustomLoadingOverlay,
+        }}
+        componentsProps={{
+          toolbar: {
+            admins: admins,
+            loadedAdmins: loadedAdmins,
+            setAdmins, setAdmins,
+            selectionModel: selectionModel,
+            refresh: refreshData,
+            refreshing: loading
+          }
+        }}
+        sx={{
+          "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus-within":
+            {
+              outline: "none",
+            },
+        }}
+      />
     </Box>
   );
 }

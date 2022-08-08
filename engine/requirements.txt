@@ -18,3 +18,5 @@ azure-mgmt-resource
 azure-mgmt-resourcegraph
 azure-keyvault-secrets
 azure-cosmos==4.3.0
+azure-functions
+nest_asyncio

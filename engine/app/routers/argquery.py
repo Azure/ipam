@@ -9,7 +9,13 @@ resources
 SUBSCRIPTION = """
 ResourceContainers
 | where type =~ 'microsoft.resources/subscriptions'
-| project name, id, tenant_id = tenantId, subscription_id = subscriptionId
+| extend quotaId = properties.subscriptionPolicies.quotaId
+| extend type = case(
+    quotaId startswith "EnterpriseAgreement", "Enterprise Agreement",
+    quotaId startswith "MSDNDevTest", "Dev/Test",
+    "Unknown"
+)
+| project name, id, type, subscription_id = subscriptionId, tenant_id = tenantId
 """
 
 SPACE = """
@@ -41,7 +47,8 @@ resources
 VNET="""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
-| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes = properties.addressSpace.addressPrefixes, resv = tostring(tags["ipam-res-id"])
+| where subscriptionId !in~ {}
+| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes = properties.addressSpace.addressPrefixes, resv = tostring(coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id']))
 | join kind = leftouter(
     resources
     | where type =~ 'Microsoft.Network/virtualNetworks'
@@ -57,14 +64,16 @@ resources
 SUBNET = """
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
+| where subscriptionId !in~ {}
 | mv-expand subnet = todynamic(properties.subnets)
 | extend subnet_size = array_length(subnet.properties.ipConfigurations)
-| project name = subnet.name, id = subnet.id, prefix = subnet.properties.addressPrefix,resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), appgw_config = subnet.properties.applicationGatewayIPConfigurations
+| project name = subnet.name, id = subnet.id, prefix = subnet.properties.addressPrefix, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), appgw_config = subnet.properties.applicationGatewayIPConfigurations
 """
 
 PRIVATE_ENDPOINT = """
 resources
 | where type =~ 'microsoft.network/networkinterfaces'
+| where subscriptionId !in~ {}
 | where isnotempty(properties.privateEndpoint)
 | mv-expand ipconfig = properties.ipConfigurations
 | project pe_id = tostring(properties.privateEndpoint.id), subnet_id = tolower(tostring(ipconfig.properties.subnet.id)), group_id = ipconfig.properties.privateLinkConnectionProperties.groupId, private_ip = ipconfig.properties.privateIPAddress
@@ -89,6 +98,7 @@ resources
 VIRTUAL_MACHINE = """
 resources
 | where type =~ 'microsoft.compute/virtualmachines'
+| where subscriptionId !in~ {}
 | extend nics = array_length(properties.networkProfile.networkInterfaces)
 | mv-expand nic = properties.networkProfile.networkInterfaces
 | project tenant_id = tenantId, id = id, name = name, size = properties.hardwareProfile.vmSize, resource_group = resourceGroup, subscription_id = subscriptionId, nic_id = nic.id
@@ -122,6 +132,7 @@ resources
 VM_SCALE_SET = """
 ComputeResources 
 | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines"
+| where subscriptionId !in~ {}
 | project name, tostring(id), resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId
 | join kind = leftouter ( 
     ComputeResources
@@ -146,6 +157,7 @@ ComputeResources
 FIREWALL_VNET = """
 resources
 | where type =~ 'Microsoft.Network/azureFirewalls'
+| where subscriptionId !in~ {}
 | where properties.sku.name =~ 'AZFW_VNet'
 | extend ipConfigs = array_length(properties.ipConfigurations)
 | mv-expand ipConfig = properties.ipConfigurations
@@ -173,6 +185,7 @@ resources
 FIREWALL_VHUB = """
 resources
 | where type =~ 'Microsoft.Network/azureFirewalls'
+| where subscriptionId !in~ {}
 | where properties.sku.name =~ 'AZFW_Hub'
 | project name = name, id = id, size = properties.sku.tier, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip_address = properties.hubIPAddresses.privateIPAddress, virtual_hub_id = properties.virtualHub.id, tenant_id = tenantId
 | join kind = leftouter (
@@ -188,6 +201,7 @@ resources
 BASTION = """
 resources
 | where type =~ 'Microsoft.Network/bastionHosts'
+| where subscriptionId !in~ {}
 | extend ipConfigs = array_length(properties.ipConfigurations)
 | mv-expand ipConfig = properties.ipConfigurations
 | project tenant_id = tenantId, id = id, name = name, size = sku.name, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip = dynamic(null), private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, subnet_id = ipConfig.properties.subnet.id, public_ip_id = ipConfig.properties.publicIPAddress.id
@@ -214,17 +228,18 @@ resources
 APP_GATEWAY = """
 resources
 | where type =~ 'Microsoft.Network/applicationGateways'
+| where subscriptionId !in~ {}
 | mv-expand ipConfig = properties.frontendIPConfigurations
-| where isnotempty(ipConfig.properties.publicIPAddress)
-| project tenant_id = tenantId, name, id, size = properties.sku.tier, resource_group = resourceGroup, subscription_id = subscriptionId, public_ip_id = ipConfig.properties.publicIPAddress.id, public_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod
-| extend public_ip_id = tostring(public_ip_id)
+| where isnotempty(ipConfig.properties.privateIPAddress)
+| project name, tenant_id = tenantId, id, size = properties.sku.tier, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip = ipConfig.properties.privateIPAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, subnet_id = ipConfig.properties.subnet.id
+| extend subnet_id = tolower(tostring(subnet_id))
 | join kind = leftouter (
     resources
     | where type =~ 'Microsoft.Network/applicationGateways'
     | mv-expand ipConfig = properties.frontendIPConfigurations
-    | where isnotempty(ipConfig.properties.privateIPAddress)
-    | project name, private_ip = ipConfig.properties.privateIPAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, subnet_id = ipConfig.properties.subnet.id
-    | extend subnet_id = tolower(tostring(subnet_id))
+    | where isnotempty(ipConfig.properties.publicIPAddress)
+    | project name, public_ip_id = ipConfig.properties.publicIPAddress.id, public_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod
+    | extend public_ip_id = tostring(public_ip_id)
 ) on name
 | project-away name1
 | join kind = leftouter (
@@ -249,6 +264,7 @@ resources
 APIM = """
 resources
 | where type =~ 'Microsoft.ApiManagement/service'
+| where subscriptionId !in~ {}
 | where properties.provisioningState =~ 'Succeeded'
 | mv-expand privateIP = properties.privateIPAddresses, publicIP = properties.publicIPAddresses
 | project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip = privateIP, public_ip = publicIP, subnet_id = properties.virtualNetworkConfiguration.subnetResourceId, tenant_id = tenantId, vnet_type = properties.virtualNetworkType
