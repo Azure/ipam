@@ -67,6 +67,13 @@ param(
   [Parameter(Mandatory = $false,
     ParameterSetName = 'Full')]
   [Parameter(Mandatory = $false,
+    ParameterSetName = 'TemplateOnly')]
+  [switch]
+  $AsFunction,
+
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Full')]
+  [Parameter(Mandatory = $false,
     ParameterSetName = 'AppsOnly')]
   [switch]
   $SubscriptionScope,
@@ -433,6 +440,8 @@ Function Deploy-Bicep {
     [Parameter(Mandatory=$false)]
     [string]$NamePrefix,
     [Parameter(Mandatory=$false)]
+    [boolean]$AsFunction,
+    [Parameter(Mandatory=$false)]
     [hashtable]$Tags
   )
 
@@ -448,6 +457,10 @@ Function Deploy-Bicep {
 
   if($NamePrefix) {
     $deploymentParameters.Add('namePrefix', $NamePrefix)
+  }
+
+  if($AsFunction) {
+    $deploymentParameters.Add('deployAsFunc', $AsFunction)
   }
 
   if($Tags) {
@@ -535,6 +548,7 @@ try {
   if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly')) {
     $deployment = Deploy-Bicep @appDetails `
       -NamePrefix $NamePrefix `
+      -AsFunction $AsFunction `
       -Tags $Tags
   }
 

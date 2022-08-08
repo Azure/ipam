@@ -10,6 +10,9 @@ param location string = deployment().location
 @description('Prefix for Resource Naming')
 param namePrefix string = 'ipam'
 
+@description('Flag to Deploy IPAM as a Function')
+param deployAsFunc bool = false
+
 @description('IPAM-UI App Registration Client/App ID')
 param uiAppId string
 
@@ -51,7 +54,7 @@ module managedIdentity 'managedIdentity.bicep' = {
 }
 
 // KeyVault for Secure Values
-module keyVault 'keyVault.bicep' ={
+module keyVault 'keyVault.bicep' = {
   name: 'keyVaultModule'
   scope: resourceGroup
   params: {
@@ -84,11 +87,12 @@ module storageAccount 'storageAccount.bicep' = {
     storageAccountName: storageName
     principalId: managedIdentity.outputs.principalId
     managedIdentityId: managedIdentity.outputs.id
+    deployAsFunc: deployAsFunc
   }
 }
 
 // App Service w/ Docker Compose + CI
-module appService 'appService.bicep' = {
+module appService 'appService.bicep' = if (!deployAsFunc) {
   scope: resourceGroup
   name: 'appServiceModule'
   params: {
@@ -98,6 +102,21 @@ module appService 'appService.bicep' = {
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     managedIdentityClientId: managedIdentity.outputs.clientId
+    managedIdentityId: managedIdentity.outputs.id
+    storageAccountName: storageAccount.outputs.name
+  }
+}
+
+// Function App
+module functionApp 'functionApp.bicep' = if (deployAsFunc) {
+  scope: resourceGroup
+  name: 'functionAppModule'
+  params: {
+    location: location
+    functionAppPlanName: appServicePlanName
+    functionAppName: appServiceName
+    keyVaultUri: keyVault.outputs.keyVaultUri
+    cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     managedIdentityId: managedIdentity.outputs.id
     storageAccountName: storageAccount.outputs.name
   }

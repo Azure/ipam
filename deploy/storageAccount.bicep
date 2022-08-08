@@ -16,6 +16,9 @@ param roleAssignmentName string = newGuid()
 @description('Storage Account Name')
 param storageAccountName string
 
+@description('Flag to Deploy IPAM as a Function')
+param deployAsFunc bool
+
 var storageBlobDataContributor = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 var storageBlobDataContributorId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributor)
 
@@ -32,11 +35,11 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-06-01' = {
   }
 }
 
-resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2021-06-01' = {
+resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2021-06-01' = if (!deployAsFunc) {
   name: '${storageAccount.name}/default/${containerName}'
 }
 
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (!deployAsFunc) {
   name: roleAssignmentName
   scope: blobContainer
   properties: {
@@ -46,7 +49,7 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-prev
   }
 }
 
-resource copyNginxConfig 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
+resource copyNginxConfig 'Microsoft.Resources/deploymentScripts@2020-10-01' = if (!deployAsFunc) {
   name: 'copyNginxConfig'
   location: location
   kind: 'AzurePowerShell'
