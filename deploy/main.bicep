@@ -30,7 +30,10 @@ param tags object = {}
 var appServiceName = '${namePrefix}-${uniqueString(guid)}'
 var appServicePlanName = '${namePrefix}-asp-${uniqueString(guid)}'
 var cosmosAccountName = '${namePrefix}-dbacct-${uniqueString(guid)}'
+var cosmosContainerName = '${namePrefix}-ctr'
+var cosmosDatabaseName = '${namePrefix}-db'
 var keyVaultName = '${namePrefix}-kv-${uniqueString(guid)}'
+var workspaceName = '${namePrefix}-law-${uniqueString(guid)}'
 var managedIdentityName = '${namePrefix}-mi-${uniqueString(guid)}'
 var resourceGroupName = '${namePrefix}-rg-${uniqueString(guid)}'
 var storageName = '${namePrefix}stg${uniqueString(guid)}'
@@ -41,6 +44,16 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   location: location
   name: resourceGroupName
   tags: tags
+}
+
+// Log Analytics Workspace
+module logAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' ={
+  name: 'logAnalyticsWorkspaceModule'
+  scope: resourceGroup
+  params: {
+    workspaceName: workspaceName
+    location: location
+  }
 }
 
 // Managed Identity for Secure Access to KeyVault
@@ -64,6 +77,7 @@ module keyVault 'keyVault.bicep' = {
     uiAppId: uiAppId
     engineAppId: engineAppId
     engineAppSecret: engineAppSecret
+    workspaceId: logAnalyticsWorkspace.outputs.workspaceId
   }
 }
 
@@ -74,7 +88,10 @@ module cosmos 'cosmos.bicep' = {
   params: {
     location: location
     cosmosAccountName: cosmosAccountName
+    cosmosContainerName: cosmosContainerName
+    cosmosDatabaseName: cosmosDatabaseName
     keyVaultName: keyVault.outputs.keyVaultName
+    workspaceId: logAnalyticsWorkspace.outputs.workspaceId
   }
 }
 
@@ -87,6 +104,7 @@ module storageAccount 'storageAccount.bicep' = {
     storageAccountName: storageName
     principalId: managedIdentity.outputs.principalId
     managedIdentityId: managedIdentity.outputs.id
+    workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     deployAsFunc: deployAsFunc
   }
 }
@@ -101,9 +119,9 @@ module appService 'appService.bicep' = if (!deployAsFunc) {
     appServiceName: appServiceName
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
-    managedIdentityClientId: managedIdentity.outputs.clientId
     managedIdentityId: managedIdentity.outputs.id
     storageAccountName: storageAccount.outputs.name
+    workspaceId: logAnalyticsWorkspace.outputs.workspaceId
   }
 }
 
@@ -119,8 +137,9 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     managedIdentityId: managedIdentity.outputs.id
     storageAccountName: storageAccount.outputs.name
+    workspaceId: logAnalyticsWorkspace.outputs.workspaceId
   }
 }
 
 // Outputs
-output appServiceHostName string = appService.outputs.appServiceHostName
+output appServiceHostName string = deployAsFunc ? functionApp.outputs.functionAppHostName : appService.outputs.appServiceHostName

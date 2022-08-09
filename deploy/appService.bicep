@@ -13,14 +13,14 @@ param keyVaultUri string
 @description('Deployment Location')
 param location string = resourceGroup().location
 
-@description('Managed Identity ClientId')
-param managedIdentityClientId string
-
 @description('Managed Identity Id')
 param managedIdentityId string
 
 @description('Storage Account Name')
 param storageAccountName string
+
+@description('Log Analytics Worskpace ID')
+param workspaceId string
 
 var dockerCompose = loadFileAsBase64('../docker-compose.prod.yml')
 
@@ -132,6 +132,108 @@ resource appConfigLogs 'Microsoft.Web/sites/config@2021-02-01' = {
         retentionInMb: 50
       }
     }
+  }
+}
+
+resource diagnosticSettingsPlan 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'diagSettings'
+  scope: appServicePlan
+  properties: {
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
+    workspaceId: workspaceId
+  }
+}
+
+resource diagnosticSettingsApp 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'diagSettings'
+  scope: appService
+  properties: {
+    logs: [
+      {
+        category: 'AppServiceAntivirusScanAuditLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+      {
+        category: 'AppServiceHTTPLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+      {
+        category: 'AppServiceConsoleLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+      {
+        category: 'AppServiceAppLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+      {
+        category: 'AppServiceFileAuditLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+      {
+        category: 'AppServiceAuditLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+      {
+        category: 'AppServiceIPSecAuditLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+      {
+        category: 'AppServicePlatformLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
+    workspaceId: workspaceId
   }
 }
 

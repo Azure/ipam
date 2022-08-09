@@ -19,6 +19,9 @@ param managedIdentityId string
 @description('Storage Account Name')
 param storageAccountName string
 
+@description('Log Analytics Workspace ID')
+param workspaceId string
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-06-01' existing = {
   name: storageAccountName
 }
@@ -28,11 +31,9 @@ resource functionAppPlan 'Microsoft.Web/serverfarms@2021-02-01' = {
   location: location
   sku: {
     name: 'EP1'
-    size: 'EP1'
     tier: 'ElasticPremium'
-    capacity: 1
   }
-  kind: 'linux'
+  kind: 'elastic'
   properties: {
     reserved: true
   }
@@ -53,7 +54,6 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
     serverFarmId: functionAppPlan.id
     keyVaultReferenceIdentity: managedIdentityId
     siteConfig: {
-      alwaysOn: true
       linuxFxVersion: 'azureipam.azurecr.io/ipam-func:latest'
       appSettings: [
         {
@@ -105,6 +105,26 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
   }
 }
 
+resource appConfigLogs 'Microsoft.Web/sites/config@2021-02-01' = {
+  name: 'logs'
+  parent: functionApp
+  properties: {
+    detailedErrorMessages: {
+      enabled: true
+    }
+    failedRequestsTracing: {
+      enabled: true
+    }
+    httpLogs: {
+      fileSystem: {
+        enabled: true
+        retentionInDays: 7
+        retentionInMb: 50
+      }
+    }
+  }
+}
+
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
   name: functionAppName
   location: location
@@ -112,6 +132,53 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
   properties: {
     Application_Type: 'web'
     Request_Source: 'rest'
+    WorkspaceResourceId: workspaceId
+  }
+}
+
+resource diagnosticSettingsPlan 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'diagSettings'
+  scope: functionAppPlan
+  properties: {
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
+    workspaceId: workspaceId
+  }
+}
+
+resource diagnosticSettingsApp 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'diagSettings'
+  scope: functionApp
+  properties: {
+    logs: [
+      {
+        category: 'FunctionAppLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false 
+        }
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
+    workspaceId: workspaceId
   }
 }
 
