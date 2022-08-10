@@ -18,7 +18,7 @@ from requests import options
 
 from app.globals import globals
 
-SCOPE = "https://management.azure.com/user_impersonation"
+# SCOPE = "https://management.azure.com/user_impersonation"
 
 def get_tenant_from_jwt(token):
     """DOCSTRING"""
@@ -45,7 +45,7 @@ async def get_obo_token(assertion):
     """DOCSTRING"""
 
     credential = OnBehalfOfCredential(globals.TENANT_ID, globals.CLIENT_ID, client_secret=globals.CLIENT_SECRET, user_assertion=assertion)
-    obo_token = await credential.get_token(SCOPE)
+    obo_token = await credential.get_token(globals.AZURE_ARM_URL)
     await credential.close()
 
     return obo_token

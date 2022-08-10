@@ -13,6 +13,9 @@ param keyVaultUri string
 @description('Deployment Location')
 param location string = resourceGroup().location
 
+@description('Azure Cloud Enviroment')
+param azureCloud string = 'AZURE_PUBLIC'
+
 @description('Managed Identity Id')
 param managedIdentityId string
 
@@ -56,6 +59,10 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
     siteConfig: {
       linuxFxVersion: 'azureipam.azurecr.io/ipam-func:latest'
       appSettings: [
+        {
+          name: 'AZURE_ENV'
+          value: azureCloud
+        }
         {
           name: 'COSMOS_URL'
           value: cosmosDbUri

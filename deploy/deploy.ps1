@@ -95,6 +95,13 @@ param(
   [System.IO.FileInfo]$ParameterFile
 )
 
+$AZURE_ENV_MAP = @{
+  AzureCloud        = "AZURE_PUBLIC"
+  AzureUSGovernment = "AZURE_US_GOV"
+  AzureGermanCloud  = "AZURE_GERMANY"
+  AzureChinaCloud   = "AZURE_CHINA"
+}
+
 # Set preference variables
 $ErrorActionPreference = "Stop"
 
@@ -440,6 +447,8 @@ Function Deploy-Bicep {
     [Parameter(Mandatory=$false)]
     [string]$NamePrefix,
     [Parameter(Mandatory=$false)]
+    [string]$AzureCloud,
+    [Parameter(Mandatory=$false)]
     [boolean]$AsFunction,
     [Parameter(Mandatory=$false)]
     [hashtable]$Tags
@@ -457,6 +466,10 @@ Function Deploy-Bicep {
 
   if($NamePrefix) {
     $deploymentParameters.Add('namePrefix', $NamePrefix)
+  }
+
+  if($AzureCloud) {
+    $deploymentParameters.Add('azureCloud', $AzureCloud)
   }
 
   if($AsFunction) {
@@ -506,6 +519,7 @@ try {
     Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor green
     Write-Verbose -Message "Fetching Tenant ID from Azure PowerShell SDK"
     $tenantId = (Get-AzContext).Tenant.Id
+    $azureCloud = (Get-AzContext).Environment.Name
   }
 
   if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly')) {
@@ -548,6 +562,7 @@ try {
   if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly')) {
     $deployment = Deploy-Bicep @appDetails `
       -NamePrefix $NamePrefix `
+      -AzureCloud $azureCloud `
       -AsFunction $AsFunction `
       -Tags $Tags
   }

@@ -10,6 +10,9 @@ param location string = deployment().location
 @description('Prefix for Resource Naming')
 param namePrefix string = 'ipam'
 
+@description('Azure Cloud Enviroment')
+param azureCloud string = 'AZURE_PUBLIC'
+
 @description('Flag to Deploy IPAM as a Function')
 param deployAsFunc bool = false
 
@@ -115,6 +118,7 @@ module appService 'appService.bicep' = if (!deployAsFunc) {
   name: 'appServiceModule'
   params: {
     location: location
+    azureCloud: azureCloud
     appServicePlanName: appServicePlanName
     appServiceName: appServiceName
     keyVaultUri: keyVault.outputs.keyVaultUri
@@ -131,6 +135,7 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
   name: 'functionAppModule'
   params: {
     location: location
+    azureCloud: azureCloud
     functionAppPlanName: appServicePlanName
     functionAppName: appServiceName
     keyVaultUri: keyVault.outputs.keyVaultUri

@@ -13,6 +13,9 @@ param keyVaultUri string
 @description('Deployment Location')
 param location string = resourceGroup().location
 
+@description('Azure Cloud Enviroment')
+param azureCloud string = 'AZURE_PUBLIC'
+
 @description('Managed Identity Id')
 param managedIdentityId string
 
@@ -61,6 +64,10 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
       alwaysOn: true
       linuxFxVersion: 'COMPOSE|${dockerCompose}'
       appSettings: [
+        {
+          name: 'AZURE_ENV'
+          value: azureCloud
+        }
         {
           name: 'COSMOS_URL'
           value: cosmosDbUri

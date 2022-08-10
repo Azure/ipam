@@ -1,5 +1,12 @@
 import os
 
+AZURE_ENV_MAP = {
+    "AZURE_PUBLIC": "management.azure.com",
+    "AZURE_US_GOV": "management.usgovcloudapi.net",
+    "AZURE_GERMANY": "management.microsoftazure.de",
+    "AZURE_CHINA": "management.chinacloudapi.cn"
+}
+
 class Globals:
     @property
     def CLIENT_ID(self):
@@ -24,6 +31,14 @@ class Globals:
     @property
     def KEYVAULT_URL(self):
         return os.environ.get('KEYVAULT_URL')
+
+    @property
+    def AZURE_ARM_URL(self):
+        azure_env = os.environ.get('AZURE_ENV')
+
+        azure_arm_url = AZURE_ENV_MAP[azure_env] if azure_env in AZURE_ENV_MAP else AZURE_ENV_MAP['AZURE_PUBLIC']
+
+        return "https://{}/user_impersonation".format(azure_arm_url)
 
     @property
     def DATABASE_NAME(self):
