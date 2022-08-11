@@ -519,7 +519,7 @@ try {
     Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor green
     Write-Verbose -Message "Fetching Tenant ID from Azure PowerShell SDK"
     $tenantId = (Get-AzContext).Tenant.Id
-    $azureCloud = (Get-AzContext).Environment.Name
+    $azureCloud = $AZURE_ENV_MAP[(Get-AzContext).Environment.Name]
   }
 
   if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly')) {
