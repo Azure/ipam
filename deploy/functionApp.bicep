@@ -45,7 +45,7 @@ resource functionAppPlan 'Microsoft.Web/serverfarms@2021-02-01' = {
 resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
   name: functionAppName
   location: location
-  kind: 'functionapp,linux,container'
+  kind: 'functionapp,linux'
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
@@ -57,7 +57,7 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
     serverFarmId: functionAppPlan.id
     keyVaultReferenceIdentity: managedIdentityId
     siteConfig: {
-      linuxFxVersion: 'azureipam.azurecr.io/ipam-func:latest'
+      linuxFxVersion: 'DOCKER|azureipam.azurecr.io/ipam-func:latest'
       appSettings: [
         {
           name: 'AZURE_ENV'
@@ -86,6 +86,14 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
         {
           name: 'KEYVAULT_URL'
           value: keyVaultUri
+        }
+        {
+          name: 'DOCKER_ENABLE_CI'
+          value: 'true'
+        }
+        {
+          name: 'DOCKER_REGISTRY_SERVER_URL'
+          value: 'https://index.docker.io/v1'
         }
         {
           name: 'AzureWebJobsStorage'
