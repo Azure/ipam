@@ -278,7 +278,7 @@ async def arg_query_helper(credentials, query):
         while True:
             query_request = QueryRequest(
                 query=query,
-                management_groups=[globals.TENANT_ID],
+                management_groups=[globals.ROOT_MGMT_GROUP],
                 options=QueryRequestOptions(
                     result_format=ResultFormat.object_array,
                     skip_token=skip_token

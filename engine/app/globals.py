@@ -54,7 +54,7 @@ class Globals:
         return os.environ.get('KEYVAULT_URL')
 
     @property
-    def MGMT_GROUP(self):
+    def ROOT_MGMT_GROUP(self):
         return self.root_mgmt_group
 
     @property
