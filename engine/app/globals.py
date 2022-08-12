@@ -1,10 +1,10 @@
 import os
 
-from azure.identity import AzureAuthorityHosts
+from azure.identity import ClientSecretCredential
+from azure.core.exceptions import HttpResponseError
+from azure.mgmt.managementgroups import ManagementGroupsAPI
 
-from app.routers.common.helper import (
-    get_mgmt_group_name
-)
+from azure.identity import AzureAuthorityHosts
 
 AZURE_ENV_MAP = {
     'AZURE_PUBLIC': {
@@ -27,7 +27,11 @@ AZURE_ENV_MAP = {
 
 class Globals:
     def __init__(self):
-        self.root_mgmt_group = get_mgmt_group_name(os.environ.get('TENANT_ID'))
+        client_creds = ClientSecretCredential(self.TENANT_ID, self.CLIENT_ID, self.CLIENT_SECRET, authority=self.AUTHORITY_HOST)
+        mgmt_group_api = ManagementGroupsAPI(client_creds)
+        target_group = mgmt_group_api.management_groups.get(os.environ.get('TENANT_ID'))
+
+        self.root_mgmt_group = target_group.name
 
     @property
     def CLIENT_ID(self):

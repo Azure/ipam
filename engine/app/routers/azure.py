@@ -359,8 +359,8 @@ async def vmss(
     Get a list of Azure VM Scale Sets.
     """
 
-    # vmss_list = await get_vmss(authorization, admin)
-    vmss_list = await arg_query(authorization, admin, argquery.VM_SCALE_SET)
+    vmss_list = await get_vmss(authorization, admin)
+    # vmss_list = await arg_query(authorization, admin, argquery.VM_SCALE_SET)
 
     return vmss_list
 
@@ -559,6 +559,7 @@ async def multi(
                                 vnet_item['value'] -= subnet_item['value']
 
                                 endpoints = [item for sublist in endpoint_list for item in sublist]
+                                print(endpoints)
                                 subnet_endpoints = list(filter(lambda x: x['subnet_id'].lower() == subnet['id'].lower(), endpoints))
                                 unique_subnet_endpoints = list({x['id']: x for x in subnet_endpoints}.values())
 
