@@ -5,6 +5,7 @@ from azure.identity.aio import OnBehalfOfCredential, ClientSecretCredential
 from azure.core.exceptions import ClientAuthenticationError, HttpResponseError, ServiceRequestError
 from azure.mgmt.resourcegraph.aio import ResourceGraphClient
 from azure.mgmt.resourcegraph.models import *
+from azure.mgmt.managementgroups.aio import ManagementGroupsAPI
 
 from azure.core import MatchConditions
 from azure.cosmos.aio import CosmosClient
@@ -53,16 +54,32 @@ async def get_obo_token(assertion):
 async def get_client_credentials():
     """DOCSTRING"""
 
-    credential = ClientSecretCredential(globals.TENANT_ID, globals.CLIENT_ID, globals.CLIENT_SECRET)
+    credential = ClientSecretCredential(globals.TENANT_ID, globals.CLIENT_ID, globals.CLIENT_SECRET, authority=globals.AUTHORITY_HOST)
 
     return credential
 
 async def get_obo_credentials(assertion):
     """DOCSTRING"""
 
-    credential = OnBehalfOfCredential(globals.TENANT_ID, globals.CLIENT_ID, client_secret=globals.CLIENT_SECRET, user_assertion=assertion)
+    credential = OnBehalfOfCredential(globals.TENANT_ID, globals.CLIENT_ID, client_secret=globals.CLIENT_SECRET, user_assertion=assertion, authority=globals.AUTHORITY_HOST)
 
     return credential
+
+async def get_mgmt_group_name(tenant_id):
+    """DOCSTRING"""
+
+    client_creds = await get_client_credentials()
+    mgmt_group_api = ManagementGroupsAPI(client_creds)
+
+    try:
+        result = await mgmt_group_api.management_groups.get(tenant_id)
+    except HttpResponseError:
+        raise HTTPException(status_code=500, detail="Error fetching management group name.")
+    finally:
+        await mgmt_group_api.close()
+        await client_creds.close()
+
+    return results
 
 async def cosmos_query(query: str, tenant_id: str):
     """DOCSTRING"""
@@ -209,6 +226,7 @@ async def arg_query(auth, admin, query):
     except ClientAuthenticationError:
         raise HTTPException(status_code=401, detail="Token has expired.")
     except HttpResponseError as e:
+        print(e)
         raise HTTPException(status_code=403, detail="Access denied.")
     finally:
         await creds.close()

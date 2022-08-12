@@ -108,6 +108,10 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
           value: toLower(functionAppName)
         }
         {
+          name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+          value: 'false'
+        }
+        {
           name: 'FUNCTIONS_EXTENSION_VERSION'
           value: '~4'
         }
