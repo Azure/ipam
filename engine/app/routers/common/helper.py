@@ -45,8 +45,10 @@ def get_user_id_from_jwt(token):
 async def get_obo_token(assertion):
     """DOCSTRING"""
 
+    azure_arm_url = 'https://{}/user_impersonation'.format(globals.AZURE_ARM_URL)
+
     credential = OnBehalfOfCredential(globals.TENANT_ID, globals.CLIENT_ID, client_secret=globals.CLIENT_SECRET, user_assertion=assertion)
-    obo_token = await credential.get_token(globals.AZURE_ARM_URL)
+    obo_token = await credential.get_token(azure_arm_url)
     await credential.close()
 
     return obo_token
@@ -226,6 +228,8 @@ async def arg_query(auth, admin, query):
     except ClientAuthenticationError:
         raise HTTPException(status_code=401, detail="Token has expired.")
     except HttpResponseError as e:
+        print("IsAdmin: {}".format(admin))
+        print(e)
         raise HTTPException(status_code=403, detail="Access denied.")
     finally:
         await creds.close()
@@ -269,7 +273,14 @@ async def arg_query_helper(credentials, query):
 
     results = []
 
-    resource_graph_client = ResourceGraphClient(credentials)
+    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
+    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+
+    resource_graph_client = ResourceGraphClient(
+        credential=credentials,
+        base_url=azure_arm_url,
+        credential_scopes=[azure_arm_scope]
+    )
 
     try:
         skip_token = None
@@ -277,7 +288,7 @@ async def arg_query_helper(credentials, query):
         while True:
             query_request = QueryRequest(
                 query=query,
-                management_groups=[globals.ROOT_MGMT_GROUP],
+                # management_groups=[globals.TENANT_ID],
                 options=QueryRequestOptions(
                     result_format=ResultFormat.object_array,
                     skip_token=skip_token
