@@ -7,7 +7,8 @@ import {
   DataGrid,
   GridOverlay,
   GridToolbarContainer,
-  GridToolbarColumnsButton
+  GridToolbarColumnsButton,
+  GridToolbarFilterButton
 } from "@mui/x-data-grid";
 
 import {
@@ -68,12 +69,12 @@ export default function DiscoverTable(props) {
 
   if (!columns.find( x => x['field'] === 'id' )) {
     columns.push(
-      { field: "id", headerName: "", headerAlign: "right", align: "right", width: 25, sortable: false, renderCell: renderExpand }
+      { field: "id", headerName: "", headerAlign: "right", align: "right", width: 25, filterable: false, sortable: false, renderCell: renderExpand }
     );
   } else {
     columns.pop();
     columns.push(
-      { field: "id", headerName: "", headerAlign: "right", align: "right", width: 25, sortable: false, renderCell: renderExpand }
+      { field: "id", headerName: "", headerAlign: "right", align: "right", width: 25, filterable: false, sortable: false, renderCell: renderExpand }
     );
   }
 
@@ -213,8 +214,11 @@ export default function DiscoverTable(props) {
           justifyContent="center"
           style={{ borderBottom: "1px solid rgba(224, 224, 224, 1)", backgroundColor: selectedRow ? "rgba(25, 118, 210, 0.12)" : "unset" }}
         >
-          <Box width="300px" display="flex" justifyContent="flex-start" alignItems="center">
+          <Box width="400px" display="flex" justifyContent="flex-start" alignItems="center">
             <GridToolbarColumnsButton
+              sx={{ ml: 2 }}
+            />
+            <GridToolbarFilterButton
               sx={{ ml: 2 }}
             />
           </Box>
@@ -223,8 +227,8 @@ export default function DiscoverTable(props) {
               {selectedRow ? `'${selectedRow.name}' selected` : `${config.title}s`}
             </Typography>
           </Box>
-          <Box width="300px" display="flex" justifyContent="flex-end" alignItems="center">
-            <Tooltip title="Filter">
+          <Box width="400px" display="flex" justifyContent="flex-end" alignItems="center">
+            {/* <Tooltip title="Filter">
               <IconButton
                 ref={anchorEl}
                 color="primary"
@@ -244,7 +248,7 @@ export default function DiscoverTable(props) {
               filterSettings={filterSettings}
               handleClose={handleMenuClose}
               state={filterMenuState}
-            />
+            /> */}
           </Box>
         </Box>
       </GridToolbarContainer>
@@ -258,8 +262,10 @@ export default function DiscoverTable(props) {
         <DataGrid
           disableSelectionOnClick
           disableColumnMenu
-          hideFooter
-          hideFooterPagination
+          // hideFooter
+          // hideFooterPagination
+          pagination
+          autoPageSize
           hideFooterSelectedRowCount
           density="compact"
           rows={filteredData}
@@ -289,7 +295,11 @@ export default function DiscoverTable(props) {
             "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus-within":
               {
                 outline: "none",
-              }
+              },
+            // "&.MuiDataGrid-root .MuiDataGrid-footerContainer":
+            //   {
+            //     minHeight: "59.5px",
+            //   }
           }}
         />
       </Box>

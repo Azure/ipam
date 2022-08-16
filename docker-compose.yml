@@ -7,6 +7,7 @@ services:
       args:
         PORT: 80
     environment:
+      REACT_APP_AZURE_ENV: ${AZURE_ENV}
       REACT_APP_UI_ID: ${UI_APP_ID}
       REACT_APP_ENGINE_ID: ${ENGINE_APP_ID}
       REACT_APP_TENANT_ID: ${TENANT_ID}

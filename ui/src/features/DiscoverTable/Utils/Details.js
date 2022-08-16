@@ -17,6 +17,8 @@ import {
 
 import CloseIcon from '@mui/icons-material/Close';
 
+import { AZURE_PORTAL } from "../../../global/azureClouds";
+
 import { TableContext } from "../TableContext";
 
 const theme = createTheme({
@@ -178,7 +180,7 @@ export default function ItemDetails(props) {
           <React.Fragment>
             <Divider />
             <Link>
-              <Button variant="text" size="small" onClick={() => window.open(`https://portal.azure.com/#@${rowData.tenant_id}/resource/${rowData.id}`, "_blank")}>VIEW IN PORTAL</Button>
+              <Button variant="text" size="small" onClick={() => window.open(`https://${AZURE_PORTAL}/#@${rowData.tenant_id}/resource/${rowData.id}`, "_blank")}>VIEW IN PORTAL</Button>
             </Link>
           </React.Fragment>
         }

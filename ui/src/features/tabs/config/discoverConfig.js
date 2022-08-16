@@ -38,11 +38,11 @@ export const spaces = {
     idFunc: (row) => row.name
   },
   columns: [
-    { field: "name", headerName: "Space Name", headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "utilization", headerName: "Utilization", headerAlign: "left", align: "left", flex: 0.5, renderCell: renderProgress },
-    { field: "desc", headerName: "Description", headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "size", headerName: "Total IP's", headerAlign: "right", align: "right", flex: 0.35 },
-    { field: "used", headerName: "Allocated IP's", headerAlign: "right", align: "right", flex: 0.45 },
+    { field: "name", headerName: "Space Name", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
+    { field: "utilization", headerName: "Utilization", type: 'number', headerAlign: "left", align: "left", flex: 0.5, renderCell: renderProgress },
+    { field: "desc", headerName: "Description", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
+    { field: "size", headerName: "Total IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.35 },
+    { field: "used", headerName: "Allocated IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.45 },
   ],
   filterSettings: [
     { type: "select", title: "Space Name", dataField: "name" },
@@ -67,12 +67,12 @@ export const blocks = {
     idFunc: (row) => row.id
   },
   columns: [
-    { field: "name", headerName: "Block Name", headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "utilization", headerName: "Utilization", headerAlign: "left", align: "left", flex: 0.5, renderCell: renderProgress },
-    { field: "parentSpace", headerName: "Space", headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "size", headerName: "Total IP's", headerAlign: "right", align: "right", flex: 0.35 },
-    { field: "used", headerName: "Allocated IP's", headerAlign: "right", align: "right", flex: 0.45 },
-    { field: "cidr", headerName: "CIDR Block", headerAlign: "right", align: "right", flex: 0.75 },
+    { field: "name", headerName: "Block Name", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
+    { field: "utilization", headerName: "Utilization", type: 'number', headerAlign: "left", align: "left", flex: 0.5, renderCell: renderProgress },
+    { field: "parentSpace", headerName: "Space", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
+    { field: "size", headerName: "Total IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.35 },
+    { field: "used", headerName: "Allocated IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.45 },
+    { field: "cidr", headerName: "CIDR Block", type: 'string', headerAlign: "right", align: "right", flex: 0.75 },
   ],
   filterSettings: [
     { type: "select", title: "Block Name", dataField: "name" },
@@ -99,12 +99,12 @@ export const vnets = {
     idFunc: (row) => row.id
   },
   columns: [
-    { field: "name", headerName: "vNet Name", headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "utilization", headerName: "Utilization", headerAlign: "left", align: "left", flex: 0.5, renderCell: renderProgress },
-    { field: "parentBlock", headerName: "Block", headerAlign: "left", align: "left", flex: 0.85, renderCell: (params) => params.value ?? "<Unassigned>" },
-    { field: "size", headerName: "Total IP's", headerAlign: "right", align: "right", flex: 0.35 },
-    { field: "used", headerName: "Allocated IP's", headerAlign: "right", align: "right", flex: 0.45 },
-    { field: "prefixes", headerName: "IP Space", headerAlign: "right", align: "right", flex: 0.75 },
+    { field: "name", headerName: "vNet Name", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
+    { field: "utilization", headerName: "Utilization", type: 'number', headerAlign: "left", align: "left", flex: 0.5, renderCell: renderProgress },
+    { field: "parentBlock", headerName: "Block", type: 'string', headerAlign: "left", align: "left", flex: 0.85, renderCell: (params) => params.value ?? "<Unassigned>" },
+    { field: "size", headerName: "Total IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.35 },
+    { field: "used", headerName: "Allocated IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.45 },
+    { field: "prefixes", headerName: "IP Space", type: 'string', headerAlign: "right", align: "right", flex: 0.75 },
   ],
   filterSettings: [
     { type: "select", title: "vNet Name", dataField: "name" },
@@ -137,12 +137,12 @@ export const subnets = {
     idFunc: (row) => row.id
   },
   columns: [
-    { field: "name", headerName: "Subnet Name", headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "utilization", headerName: "Utilization", headerAlign: "left", align: "left", flex: 0.5, renderCell: renderProgress },
-    { field: "vnet_name", headerName: "Parent vNet", headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "size", headerName: "Total IP's", headerAlign: "right", align: "right", flex: 0.35 },
-    { field: "used", headerName: "Assigned IP's", headerAlign: "right", align: "right", flex: 0.45 },
-    { field: "prefix", headerName: "IP Space", headerAlign: "right", align: "right", flex: 0.75 },
+    { field: "name", headerName: "Subnet Name", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
+    { field: "utilization", headerName: "Utilization", type: 'number', headerAlign: "left", align: "left", flex: 0.5, renderCell: renderProgress },
+    { field: "vnet_name", headerName: "Parent vNet", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
+    { field: "size", headerName: "Total IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.35 },
+    { field: "used", headerName: "Assigned IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.45 },
+    { field: "prefix", headerName: "IP Space", type: 'string', headerAlign: "right", align: "right", flex: 0.75 },
   ],
   filterSettings: [
     { type: "select", title: "Subnet Name", dataField: "name" },
@@ -175,11 +175,11 @@ export const endpoints = {
     idFunc: (row) => `${row.id}@$${row.private_ip}`
   },
   columns: [
-    { field: "name", headerName: "Endpoint Name", headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "vnet_name", headerName: "Parent vNet", headerAlign: "left", align: "left", flex: 0.5 },
-    { field: "subnet_name", headerName: "Parent Subnet", headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "resource_group", headerName: "Resource Group", headerAlign: "left", align: "left", flex: 0.35 },
-    { field: "private_ip", headerName: "Private IP", headerAlign: "right", align: "right", flex: 0.75, valueGetter: (params) => params.value || "N/A" },
+    { field: "name", headerName: "Endpoint Name", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
+    { field: "vnet_name", headerName: "Parent vNet", type: 'string', headerAlign: "left", align: "left", flex: 0.5 },
+    { field: "subnet_name", headerName: "Parent Subnet", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
+    { field: "resource_group", headerName: "Resource Group", type: 'string', headerAlign: "left", align: "left", flex: 0.35 },
+    { field: "private_ip", headerName: "Private IP", type: 'string', headerAlign: "right", align: "right", flex: 0.75, valueGetter: (params) => params.value || "N/A" },
   ],
   filterSettings: [
     { type: "select", title: "Resource Group", dataField: "resource_group" },
