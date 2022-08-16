@@ -158,8 +158,10 @@ function GridSection(props) {
           <DataGrid
             disableColumnMenu
             // disableSelectionOnClick
-            hideFooter
-            hideFooterPagination
+            // hideFooter
+            // hideFooterPagination
+            pagination
+            autoPageSize
             hideFooterSelectedRowCount
             density="compact"
             rows={rows}
