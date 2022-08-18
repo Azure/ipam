@@ -123,7 +123,7 @@ async def get_users(
 )
 @cosmos_retry(
     max_retry = 5,
-    error_msg = "Error creating user, please try again."
+    error_msg = "Error fetching user, please try again."
 )
 async def get_user(
     authorization: str = Header(None),

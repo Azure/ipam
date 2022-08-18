@@ -9,8 +9,7 @@ import {
   GridToolbarContainer,
   GridToolbarColumnsButton,
   GridToolbarFilterButton,
-  GridToolbarExport,
-  GridCsvExportOptions
+  GridToolbarExport
 } from "@mui/x-data-grid";
 
 import {
@@ -72,12 +71,12 @@ export default function DiscoverTable(props) {
 
   if (!columns.find( x => x['field'] === 'id' )) {
     columns.push(
-      { field: "id", headerName: "", headerAlign: "right", align: "right", width: 25, filterable: false, sortable: false, renderCell: renderExpand }
+      { field: "id", headerName: "", headerAlign: "right", align: "right", width: 25, filterable: false, sortable: false, disableExport: true, renderCell: renderExpand }
     );
   } else {
     columns.pop();
     columns.push(
-      { field: "id", headerName: "", headerAlign: "right", align: "right", width: 25, filterable: false, sortable: false, renderCell: renderExpand }
+      { field: "id", headerName: "", headerAlign: "right", align: "right", width: 25, filterable: false, sortable: false, disableExport: true, renderCell: renderExpand }
     );
   }
 
@@ -226,6 +225,9 @@ export default function DiscoverTable(props) {
             />
             <GridToolbarExport
               sx={{ ml: 1 }}
+              printOptions={{
+                disableToolbarButton: true
+              }}
             />
           </Box>
           <Box sx={{ width: "100%", alignSelf: "center", textAlign: "center" }}>
