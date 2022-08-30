@@ -44,21 +44,50 @@ resources
 # | project name, id, prefixes, subnets, resource_group, subscription_id, tenant_id
 # """
 
-VNET="""
+# VNET = """
+# resources
+# | where type =~ 'Microsoft.Network/virtualNetworks'
+# | where subscriptionId !in~ {}
+# | project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes = properties.addressSpace.addressPrefixes, resv = tostring(coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id']))
+# | join kind = leftouter(
+#     resources
+#     | where type =~ 'Microsoft.Network/virtualNetworks'
+#     | mv-expand subnet = todynamic(properties.subnets)
+#     | extend subnet_details = pack("name", subnet.name, "prefix", tostring(subnet.properties.addressPrefix), "used", coalesce(array_length(subnet.properties.ipConfigurations), 0) + 5)
+#     | summarize subnet_bag = make_bag(subnet_details) by tostring(subnet.id), id
+# ) on id
+# | join kind = leftouter(
+#     resources
+#     | where type =~ 'Microsoft.Network/virtualNetworks'
+#     | mv-expand peering = properties.virtualNetworkPeerings
+#     | extend peering_details = pack("name", peering.name, "remote_network", peering.properties.remoteVirtualNetwork.id, "state", peering.properties.peeringState)
+#     | summarize peering_bag = make_bag(peering_details) by tostring(peering.id), id
+# ) on id
+# | summarize subnets = make_list(subnet_bag), peerings = make_list(peering_bag) by id, name, tostring(prefixes), resource_group, subscription_id, tenant_id, resv
+# | project name, id, todynamic(prefixes), subnets, peerings, resource_group, subscription_id, tenant_id, todynamic(resv)
+# """
+
+VNET = """
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
-| where subscriptionId !in~ {}
 | project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes = properties.addressSpace.addressPrefixes, resv = tostring(coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id']))
 | join kind = leftouter(
     resources
     | where type =~ 'Microsoft.Network/virtualNetworks'
     | mv-expand subnet = todynamic(properties.subnets)
     | extend subnet_details = pack("name", subnet.name, "prefix", tostring(subnet.properties.addressPrefix), "used", coalesce(array_length(subnet.properties.ipConfigurations), 0) + 5)
-    | summarize bag = make_bag(subnet_details) by tostring(subnet.id), id
+    | summarize subnet_bag = make_bag(subnet_details) by tostring(subnet.id), id
 ) on id
-| project-away id1
-| summarize subnets = make_list(bag) by id, name, tostring(prefixes), resource_group, subscription_id, tenant_id, resv
-| project name, id, todynamic(prefixes), subnets, resource_group, subscription_id, tenant_id, todynamic(resv)
+| join kind = leftouter(
+    resources
+    | where type =~ 'Microsoft.Network/virtualNetworks'
+    | mv-expand peering = todynamic(properties.virtualNetworkPeerings)
+    | extend peering_details = pack("name", peering.name, "remote_network", peering.properties.remoteVirtualNetwork.id, "state", peering.properties.peeringState)
+    | summarize peering_bag = make_bag(peering_details) by tostring(peering.id), id
+) on id
+| summarize subnets = make_list(subnet_bag) by id, tostring(peering_bag), name, tostring(prefixes), resource_group, subscription_id, tenant_id, resv
+| summarize peerings = make_list(todynamic(peering_bag)) by id, name, tostring(subnets), tostring(prefixes), resource_group, subscription_id, tenant_id, resv
+| project name, id, todynamic(prefixes), todynamic(subnets), peerings, resource_group, subscription_id, tenant_id, todynamic(resv)
 """
 
 SUBNET = """

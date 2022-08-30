@@ -131,7 +131,9 @@ Function Deploy-IPAMApplications {
     [Parameter(Mandatory=$true)]
     [string]$TenantId,
     [Parameter(Mandatory=$false)]
-    [bool]$SubscriptionScope
+    [bool]$SubscriptionScope,
+    [Parameter(Mandatory=$false)]
+    [bool]$AsFunction
   ) 
 
   $uiResourceAccess = [System.Collections.ArrayList]@(
@@ -169,13 +171,15 @@ Function Deploy-IPAMApplications {
     }
   }
 
-  # Create IPAM UI Application
-  Write-Host "INFO: Creating Azure IPAM UI Application" -ForegroundColor green
-  Write-Verbose -Message "Creating Azure IPAM UI Application"
-  $uiApp = New-AzADApplication `
-    -DisplayName $UiAppName `
-    -SPARedirectUri "https://replace-this-value.azurewebsites.net" `
-    -Web $uiWebSettings
+  # Create IPAM UI Application (If not deployed as a Function App)
+  if(-not $AsFunction) {
+    Write-Host "INFO: Creating Azure IPAM UI Application" -ForegroundColor green
+    Write-Verbose -Message "Creating Azure IPAM UI Application"
+    $uiApp = New-AzADApplication `
+      -DisplayName $UiAppName `
+      -SPARedirectUri "https://replace-this-value.azurewebsites.net" `
+      -Web $uiWebSettings
+  }
 
   $engineResourceAccess = [System.Collections.ArrayList]@(
     @{
@@ -191,10 +195,11 @@ Function Deploy-IPAMApplications {
 
   $engineApiGuid = New-Guid
 
+  $knownClientApplication = @(
+    $uiApp.AppId
+  )
+
   $engineApiSettings = @{
-    KnownClientApplication = @(
-      $uiApp.AppId
-    )
     Oauth2PermissionScope = @(
       @{ 
         AdminConsentDescription = "Allows the IPAM UI to access IPAM Engine API as the signed-in user."
@@ -207,17 +212,22 @@ Function Deploy-IPAMApplications {
         Value = "access_as_user"
       }
     )
-    # PreAuthorizedApplication = @( # Allow Azure PowerShell/CLI to obtain access tokens
-    #   @{
-    #     AppId = "1950a258-227b-4e31-a9cf-717495945fc2" # Azure PowerShell
-    #     DelegatedPermissionId = @( $engineApiGuid )
-    #   },
-    #   @{
-    #     AppId = "04b07795-8ddb-461a-bbee-02f9e1bf7b46" # Azure CLI
-    #     DelegatedPermissionId = @( $engineApiGuid )
-    #   }
-    # )
+    PreAuthorizedApplication = @( # Allow Azure PowerShell/CLI to obtain access tokens
+      @{
+        AppId = "1950a258-227b-4e31-a9cf-717495945fc2" # Azure PowerShell
+        DelegatedPermissionId = @( $engineApiGuid )
+      },
+      @{
+        AppId = "04b07795-8ddb-461a-bbee-02f9e1bf7b46" # Azure CLI
+        DelegatedPermissionId = @( $engineApiGuid )
+      }
+    )
     RequestedAccessTokenVersion = 2
+  }
+
+  # Add the UI App as a Known Client App (If not deployed as Function App)
+  if(-not $AsFunction) {
+    $engineApiSettings.Add("KnownClientApplication", $knownClientApplication)
   }
 
   # Create IPAM Engine Application
@@ -228,41 +238,47 @@ Function Deploy-IPAMApplications {
     -Api $engineApiSettings `
     -RequiredResourceAccess $engineResourceAccess
 
-  # Update IPAM Engine API endpoint
-  Write-Host "INFO: Updating Azure IPAM Engine API Endpoint" -ForegroundColor green
-  Write-Verbose -Message "Updating Azure IPAM UI Engine API Endpoint"
-  Update-AzADApplication -ApplicationId $engineApp.AppId -IdentifierUri "api://$($engineApp.AppId)"
+  # Update IPAM Engine API Endpoint (If not deployed as Function App)
+  if(-not $AsFunction) {
+    Write-Host "INFO: Updating Azure IPAM Engine API Endpoint" -ForegroundColor green
+    Write-Verbose -Message "Updating Azure IPAM UI Engine API Endpoint"
+    Update-AzADApplication -ApplicationId $engineApp.AppId -IdentifierUri "api://$($engineApp.AppId)"
 
-  $uiEngineApiAccess =@{
-    ResourceAppId = $engineApp.AppId
-    ResourceAccess = @(
-      @{
-        Id = $engineApiGuid
-        Type = "Scope"
-      }
-    )
+    $uiEngineApiAccess =@{
+      ResourceAppId = $engineApp.AppId
+      ResourceAccess = @(
+        @{
+          Id = $engineApiGuid
+          Type = "Scope"
+        }
+      )
+    }
+
+    $uiResourceAccess.Add($uiEngineApiAccess) | Out-Null
   }
 
-  $uiResourceAccess.Add($uiEngineApiAccess) | Out-Null
+  # Update IPAM UI Application Resource Access (If not deployed as Function App)
+  if(-not $AsFunction) {
+    Write-Host "INFO: Updating Azure IPAM UI Application Resource Access" -ForegroundColor green
+    Write-Verbose -Message "Updating Azure IPAM UI Application Resource Access"
+    Update-AzADApplication -ApplicationId $uiApp.AppId -RequiredResourceAccess $uiResourceAccess
 
-  # Update IPAM UI Application Resource Access
-  Write-Host "INFO: Updating Azure IPAM UI Application Resource Access" -ForegroundColor green
-  Write-Verbose -Message "Updating Azure IPAM UI Application Resource Access"
-  Update-AzADApplication -ApplicationId $uiApp.AppId -RequiredResourceAccess $uiResourceAccess
+    $uiObject = Get-AzADApplication -ApplicationId $uiApp.AppId
+    $engineObject = Get-AzADApplication -ApplicationId $engineApp.AppId
+  }
 
-  $uiObject = Get-AzADApplication -ApplicationId $uiApp.AppId
-  $engineObject = Get-AzADApplication -ApplicationId $engineApp.AppId
+  # Create IPAM UI Service Principal (If not deployed as Function App)
+  if(-not $AsFunction) {
+    Write-Host "INFO: Creating Azure IPAM UI Service Principal" -ForegroundColor green
+    Write-Verbose -Message "Creating Azure IPAM UI Service Principal"
+    New-AzADServicePrincipal -ApplicationObject $uiObject | Out-Null
 
-  # Create IPAM UI Service Principal
-  Write-Host "INFO: Creating Azure IPAM UI Service Principal" -ForegroundColor green
-  Write-Verbose -Message "Creating Azure IPAM UI Service Principal"
-  New-AzADServicePrincipal -ApplicationObject $uiObject | Out-Null
-
-  if ($SubscriptionScope) {
-    $subscriptionId = $(Get-AzContext).Subscription.Id
-    $scope = "/subscriptions/$subscriptionId"
-  } else {
-    $scope = "/providers/Microsoft.Management/managementGroups/$TenantId"
+    if ($SubscriptionScope) {
+      $subscriptionId = $(Get-AzContext).Subscription.Id
+      $scope = "/subscriptions/$subscriptionId"
+    } else {
+      $scope = "/providers/Microsoft.Management/managementGroups/$TenantId"
+    }
   }
 
   # Create IPAM Engine Service Principal
@@ -282,9 +298,13 @@ Function Deploy-IPAMApplications {
   Write-Verbose -Message "Azure IPAM Engine & UI Applications/Service Principals created successfully"
 
   $appDetails = @{
-    UIAppId      = $uiApp.AppId
     EngineAppId  = $engineApp.AppId
     EngineSecret = $engineSecret.SecretText
+  }
+
+  # Add UI AppID to AppDetails (If not deployed as Function App)
+  if(-not $AsFunction) {
+    $appDetails.Add("UIAppId", $uiApp.AppId)
   }
 
   return $appDetails
@@ -292,10 +312,12 @@ Function Deploy-IPAMApplications {
 
 Function Grant-AdminConsent {
   Param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory=$false)]
     [string]$UIAppId,
     [Parameter(Mandatory=$true)]
-    [string]$EngineAppId
+    [string]$EngineAppId,
+    [Parameter(Mandatory=$false)]
+    [bool]$AsFunction
   )
 
   $uiGraphScopes = [System.Collections.ArrayList]@(
@@ -320,48 +342,54 @@ Function Grant-AdminConsent {
   Write-Verbose -Message "Logging in to Microsoft Graph"
   Connect-MgGraph -AccessToken $accesstoken | Out-Null
 
-  # Fetch Azure IPAM UI Service Principal
-  $uiSpn = Get-AzADServicePrincipal `
-    -ApplicationId $UIAppId
+  # Fetch Azure IPAM UI Service Principal (If not deployed as Function App)
+  if(-not $AsFunction) {
+    $uiSpn = Get-AzADServicePrincipal `
+      -ApplicationId $UIAppId
+  }
 
   # Fetch Azure IPAM Engine Service Principal
   $engineSpn = Get-AzADServicePrincipal `
     -ApplicationId $EngineAppId
 
-  # Grant admin consent for Microsoft Graph API permissions assigned to IPAM UI application
-  Write-Host "INFO: Granting admin consent for Microsoft Graph API permissions assigned to IPAM UI Application" -ForegroundColor Green
-  Write-Verbose -Message "Granting admin consent for Microsoft Graph API permissions assigned to IPAM UI Application"
-  foreach($scope in $uiGraphScopes) {
-    $msGraphId = Get-AzADServicePrincipal `
-      -ApplicationId $scope.scopeId
-  
+  # Grant admin consent for Microsoft Graph API permissions assigned to IPAM UI application (If not deployed as Function App)
+  if(-not $AsFunction) {
+    Write-Host "INFO: Granting admin consent for Microsoft Graph API permissions assigned to IPAM UI application" -ForegroundColor Green
+    Write-Verbose -Message "Granting admin consent for Microsoft Graph API permissions assigned to IPAM UI application"
+    foreach($scope in $uiGraphScopes) {
+      $msGraphId = Get-AzADServicePrincipal `
+        -ApplicationId $scope.scopeId
+    
+      New-MgOauth2PermissionGrant `
+        -ResourceId $msGraphId.Id `
+        -Scope $scope.scopes `
+        -ClientId $uiSpn.Id `
+        -ConsentType AllPrincipals `
+        | Out-Null
+    }
+
+    Write-Host "INFO: Admin consent for Microsoft Graph API permissions granted successfully" -ForegroundColor green
+    Write-Verbose -Message "Admin consent for Microsoft Graph API permissions granted successfully"
+  }
+
+  # Grant admin consent to the IPAM UI application for exposed API from the IPAM Engine application (If not deployed as a Function App)
+  if(-not $AsFunction) {
+    Write-Host "INFO: Granting admin consent to the IPAM UI application for exposed API from the IPAM Engine application" -ForegroundColor Green
+    Write-Verbose -Message "Granting admin consent to the IPAM UI application for exposed API from the IPAM Engine application"
     New-MgOauth2PermissionGrant `
-      -ResourceId $msGraphId.Id `
-      -Scope $scope.scopes `
+      -ResourceId $engineSpn.Id `
+      -Scope "access_as_user" `
       -ClientId $uiSpn.Id `
       -ConsentType AllPrincipals `
       | Out-Null
+
+    Write-Host "INFO: Admin consent for IPAM Engine exposed API granted successfully" -ForegroundColor green
+    Write-Verbose -Message "Admin consent for IPAM Engine exposed API granted successfully"
   }
 
-  Write-Host "INFO: Admin consent for Microsoft Graph API permissions granted successfully" -ForegroundColor green
-  Write-Verbose -Message "Admin consent for Microsoft Graph API permissions granted successfully"
-
-  # Grant admin consent for Azure Service Management API permissions assigned to IPAM application
-  Write-Host "INFO: Granting admin consent for Azure Service Management API permissions assigned to IPAM Engine Application" -ForegroundColor Green
-  Write-Verbose -Message "Granting admin consent for Azure Service Management API permissions assigned to IPAM Engine Application"
-  New-MgOauth2PermissionGrant `
-    -ResourceId $engineSpn.Id `
-    -Scope "access_as_user" `
-    -ClientId $uiSpn.Id `
-    -ConsentType AllPrincipals `
-    | Out-Null
-
-  Write-Host "INFO: Admin consent for Azure Service Management API permissions granted successfully" -ForegroundColor green
-  Write-Verbose -Message "Admin consent for Azure Service Management API API permissions granted successfully"
-
-  # Grant admin consent for Microsoft Graph API permissions assigned to IPAM engine application
-  Write-Host "INFO: Granting admin consent for Microsoft Graph API permissions assigned to IPAM Engine Application" -ForegroundColor Green
-  Write-Verbose -Message "Granting admin consent for Microsoft Graph API permissions assigned to IPAM Engine Application"
+  # Grant admin consent for Azure Service Management API permissions assigned to IPAM Engine application
+  Write-Host "INFO: Granting admin consent for Azure Service Management API permissions assigned to IPAM Engine application" -ForegroundColor Green
+  Write-Verbose -Message "Granting admin consent for Azure Service Management API permissions assigned to IPAM Engine application"
   foreach($scope in $engineGraphScopes) {
     $msGraphId = Get-AzADServicePrincipal `
       -ApplicationId $scope.scopeId
@@ -374,8 +402,8 @@ Function Grant-AdminConsent {
       | Out-Null
   }
 
-  Write-Host "INFO: Admin consent for Microsoft Graph API permissions granted successfully" -ForegroundColor green
-  Write-Verbose -Message "Admin consent for Microsoft Graph API permissions granted successfully"
+  Write-Host "INFO: Admin consent for Azure Service Management API permissions granted successfully" -ForegroundColor green
+  Write-Verbose -Message "Admin consent for Azure Service Management API permissions granted successfully"
 }
 
 Function Save-Parameters {
@@ -385,7 +413,9 @@ Function Save-Parameters {
     [Parameter(Mandatory=$true)]
     [string]$EngineAppId,
     [Parameter(Mandatory=$true)]
-    [string]$EngineSecret
+    [string]$EngineSecret,
+    [Parameter(Mandatory=$false)]
+    [bool]$AsFunction
   )
 
   Write-Host "INFO: Populating Bicep parameter file for infrastructure deployment" -ForegroundColor Green
@@ -395,10 +425,16 @@ Function Save-Parameters {
   $parametersObject = Get-Content main.parameters.example.json | ConvertFrom-Json
 
   # Update Parameter Values
-  $parametersObject.parameters.uiAppId.value = $UIAppId
   $parametersObject.parameters.engineAppId.value = $EngineAppId
   $parametersObject.parameters.engineAppSecret.value = $EngineSecret
-  $parametersObject.parameters = $parametersObject.parameters | Select-Object * -ExcludeProperty namePrefix, tags
+  $parametersObject.parameters.deployAsFunc.value = $AsFunction
+
+  if(-not $AsFunction) {
+    $parametersObject.parameters.uiAppId.value = $UIAppId
+    $parametersObject.parameters = $parametersObject.parameters | Select-Object * -ExcludeProperty namePrefix, tags
+  } else {
+    $parametersObject.parameters = $parametersObject.parameters | Select-Object * -ExcludeProperty uiAppId, namePrefix, tags
+  }
 
   # Output updated parameter file for Bicep deployment
   $parametersObject | ConvertTo-Json -Depth 4 | Out-File -FilePath main.parameters.json
@@ -423,6 +459,7 @@ Function Import-Parameters {
   $UIAppId = $parametersObject.parameters.uiAppId.value
   $EngineAppId = $parametersObject.parameters.engineAppId.value
   $EngineSecret = $parametersObject.parameters.engineAppSecret.value
+  $script:AsFunction = $parametersObject.parameters.deployAsFunc.value
 
   Write-Host "INFO: Successfully import Bicep parameter values" -ForegroundColor green
   Write-Verbose -Message "Successfully import Bicep parameter values"
@@ -541,17 +578,25 @@ try {
       -UIAppName $UIAppName `
       -EngineAppName $EngineAppName `
       -TenantId $tenantId `
-      -SubscriptionScope $SubscriptionScope
+      -SubscriptionScope $SubscriptionScope `
+      -AsFunction $AsFunction
 
     if (-not $NoConsent) {
-      Grant-AdminConsent `
-        -UIAppId $appDetails.UIAppId `
-        -EngineAppId $appDetails.EngineAppId
+      $consentDetails = @{
+        EngineAppId = $appDetails.EngineAppId
+        AsFunction = $AsFunction
+      }
+
+      if(-not $AsFunction) {
+        $consentDetails.Add("UIAppId", $appDetails.UIAppId)
+      }
+
+      Grant-AdminConsent @consentDetails
     }
   }
 
   if ($PSCmdlet.ParameterSetName -eq 'AppsOnly') {
-    Save-Parameters @appDetails
+    Save-Parameters @appDetails -AsFunction $AsFunction
   }
 
   if ($PSCmdlet.ParameterSetName -eq 'TemplateOnly') {
@@ -568,9 +613,11 @@ try {
   }
 
   if ($PSCmdlet.ParameterSetName -eq 'Full') {
-    Update-UIApplication `
-      -UIAppId $appDetails.UIAppId `
-      -Endpoint $deployment.Outputs["appServiceHostName"].Value
+    if(-not $AsFunction) {
+      Update-UIApplication `
+        -UIAppId $appDetails.UIAppId `
+        -Endpoint $deployment.Outputs["appServiceHostName"].Value
+    }
   }
 
   Write-Host "INFO: Azure IPAM Solution deployed successfully" -ForegroundColor green

@@ -17,7 +17,7 @@ param azureCloud string = 'AZURE_PUBLIC'
 param deployAsFunc bool = false
 
 @description('IPAM-UI App Registration Client/App ID')
-param uiAppId string
+param uiAppId string = '00000000-0000-0000-0000-000000000000'
 
 @description('IPAM-Engine App Registration Client/App ID')
 param engineAppId string
