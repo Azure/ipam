@@ -16,6 +16,8 @@ param(
     ParameterSetName = 'Full')]
   [Parameter(Mandatory = $true,
     ParameterSetName = 'TemplateOnly')]
+  [Parameter(Mandatory = $true,
+    ParameterSetName = 'Function')]
   [string]
   $Location,
 
@@ -30,6 +32,10 @@ param(
     ParameterSetName = 'Full')]
   [Parameter(Mandatory = $false,
     ParameterSetName = 'AppsOnly')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'FuncAppsOnly')]
   [string]
   $EngineAppName = 'ipam-engine-app',
 
@@ -37,6 +43,8 @@ param(
     ParameterSetName = 'Full')]
   [Parameter(Mandatory = $false,
     ParameterSetName = 'TemplateOnly')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Function')]
   [string]
   $NamePrefix,
 
@@ -44,6 +52,8 @@ param(
     ParameterSetName = 'Full')]
   [Parameter(Mandatory = $false,
     ParameterSetName = 'TemplateOnly')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Function')]
   [hashtable]
   $Tags,
 
@@ -52,8 +62,10 @@ param(
   [switch]
   $TemplateOnly,
 
-  [Parameter(Mandatory = $false,
+  [Parameter(Mandatory = $true,
     ParameterSetName = 'AppsOnly')]
+  [Parameter(Mandatory = $true,
+    ParameterSetName = 'FuncAppsOnly')]
   [switch]
   $AppsOnly,
 
@@ -61,22 +73,19 @@ param(
     ParameterSetName = 'Full')]
   [Parameter(Mandatory = $false,
     ParameterSetName = 'AppsOnly')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'FuncAppsOnly')]
   [switch]
   $NoConsent,
 
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Full')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'TemplateOnly')]
+  [Parameter(Mandatory = $true,
+    ParameterSetName = 'Function')]
+  [Parameter(Mandatory = $true,
+    ParameterSetName = 'FuncAppsOnly')]
   [switch]
   $AsFunction,
-
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Full')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'AppsOnly')]
-  [switch]
-  $SubscriptionScope,
 
   [Parameter(Mandatory = $true,
     ParameterSetName = 'TemplateOnly')]
@@ -124,14 +133,12 @@ Function Test-Location {
 
 Function Deploy-IPAMApplications {
   Param(
-    [Parameter(Mandatory=$true)]
-    [string]$EngineAppName,
-    [Parameter(Mandatory=$true)]
-    [string]$UIAppName,
+    [Parameter(Mandatory=$false)]
+    [string]$EngineAppName = 'ipam-engine-app',
+    [Parameter(Mandatory=$false)]
+    [string]$UIAppName = 'ipam-ui-app',
     [Parameter(Mandatory=$true)]
     [string]$TenantId,
-    [Parameter(Mandatory=$false)]
-    [bool]$SubscriptionScope,
     [Parameter(Mandatory=$false)]
     [bool]$AsFunction
   ) 
@@ -172,8 +179,8 @@ Function Deploy-IPAMApplications {
   }
 
   # Create IPAM UI Application (If not deployed as a Function App)
-  if(-not $AsFunction) {
-    Write-Host "INFO: Creating Azure IPAM UI Application" -ForegroundColor green
+  if (-not $AsFunction) {
+    Write-Host "INFO: Creating Azure IPAM UI Application" -ForegroundColor Green
     Write-Verbose -Message "Creating Azure IPAM UI Application"
     $uiApp = New-AzADApplication `
       -DisplayName $UiAppName `
@@ -226,12 +233,12 @@ Function Deploy-IPAMApplications {
   }
 
   # Add the UI App as a Known Client App (If not deployed as Function App)
-  if(-not $AsFunction) {
+  if (-not $AsFunction) {
     $engineApiSettings.Add("KnownClientApplication", $knownClientApplication)
   }
 
   # Create IPAM Engine Application
-  Write-Host "INFO: Creating Azure IPAM Engine Application" -ForegroundColor green
+  Write-Host "INFO: Creating Azure IPAM Engine Application" -ForegroundColor Green
   Write-Verbose -Message "Creating Azure IPAM Engine Application"
   $engineApp = New-AzADApplication `
     -DisplayName $EngineAppName `
@@ -239,8 +246,8 @@ Function Deploy-IPAMApplications {
     -RequiredResourceAccess $engineResourceAccess
 
   # Update IPAM Engine API Endpoint (If not deployed as Function App)
-  if(-not $AsFunction) {
-    Write-Host "INFO: Updating Azure IPAM Engine API Endpoint" -ForegroundColor green
+  if (-not $AsFunction) {
+    Write-Host "INFO: Updating Azure IPAM Engine API Endpoint" -ForegroundColor Green
     Write-Verbose -Message "Updating Azure IPAM UI Engine API Endpoint"
     Update-AzADApplication -ApplicationId $engineApp.AppId -IdentifierUri "api://$($engineApp.AppId)"
 
@@ -258,31 +265,27 @@ Function Deploy-IPAMApplications {
   }
 
   # Update IPAM UI Application Resource Access (If not deployed as Function App)
-  if(-not $AsFunction) {
-    Write-Host "INFO: Updating Azure IPAM UI Application Resource Access" -ForegroundColor green
+  if (-not $AsFunction) {
+    Write-Host "INFO: Updating Azure IPAM UI Application Resource Access" -ForegroundColor Green
     Write-Verbose -Message "Updating Azure IPAM UI Application Resource Access"
     Update-AzADApplication -ApplicationId $uiApp.AppId -RequiredResourceAccess $uiResourceAccess
 
     $uiObject = Get-AzADApplication -ApplicationId $uiApp.AppId
-    $engineObject = Get-AzADApplication -ApplicationId $engineApp.AppId
   }
+  
+  $engineObject = Get-AzADApplication -ApplicationId $engineApp.AppId
 
   # Create IPAM UI Service Principal (If not deployed as Function App)
-  if(-not $AsFunction) {
-    Write-Host "INFO: Creating Azure IPAM UI Service Principal" -ForegroundColor green
+  if (-not $AsFunction) {
+    Write-Host "INFO: Creating Azure IPAM UI Service Principal" -ForegroundColor Green
     Write-Verbose -Message "Creating Azure IPAM UI Service Principal"
     New-AzADServicePrincipal -ApplicationObject $uiObject | Out-Null
-
-    if ($SubscriptionScope) {
-      $subscriptionId = $(Get-AzContext).Subscription.Id
-      $scope = "/subscriptions/$subscriptionId"
-    } else {
-      $scope = "/providers/Microsoft.Management/managementGroups/$TenantId"
-    }
   }
 
+  $scope = "/providers/Microsoft.Management/managementGroups/$TenantId"
+
   # Create IPAM Engine Service Principal
-  Write-Host "INFO: Creating Azure IPAM Engine Service Principal" -ForegroundColor green
+  Write-Host "INFO: Creating Azure IPAM Engine Service Principal" -ForegroundColor Green
   Write-Verbose -Message "Creating Azure IPAM Engine Service Principal"
   New-AzADServicePrincipal -ApplicationObject $engineObject `
                            -Role "Reader" `
@@ -290,11 +293,11 @@ Function Deploy-IPAMApplications {
                            | Out-Null
 
   # Create IPAM Engine Secret
-  Write-Host "INFO: Creating Azure IPAM Engine Secret" -ForegroundColor green
+  Write-Host "INFO: Creating Azure IPAM Engine Secret" -ForegroundColor Green
   Write-Verbose -Message "Creating Azure IPAM Engine Secret"
   $engineSecret = New-AzADAppCredential -ApplicationObject $engineObject -StartDate (Get-Date) -EndDate (Get-Date).AddYears(2)
 
-  Write-Host "INFO: Azure IPAM Engine & UI Applications/Service Principals created successfully" -ForegroundColor green
+  Write-Host "INFO: Azure IPAM Engine & UI Applications/Service Principals created successfully" -ForegroundColor Green
   Write-Verbose -Message "Azure IPAM Engine & UI Applications/Service Principals created successfully"
 
   $appDetails = @{
@@ -303,7 +306,7 @@ Function Deploy-IPAMApplications {
   }
 
   # Add UI AppID to AppDetails (If not deployed as Function App)
-  if(-not $AsFunction) {
+  if (-not $AsFunction) {
     $appDetails.Add("UIAppId", $uiApp.AppId)
   }
 
@@ -338,12 +341,12 @@ Function Grant-AdminConsent {
   $accesstoken = (Get-AzAccessToken -Resource "https://graph.microsoft.com/").Token
 
   # Connect to Microsoft Graph
-  Write-Host "INFO: Logging in to Microsoft Graph" -ForegroundColor green
+  Write-Host "INFO: Logging in to Microsoft Graph" -ForegroundColor Green
   Write-Verbose -Message "Logging in to Microsoft Graph"
   Connect-MgGraph -AccessToken $accesstoken | Out-Null
 
   # Fetch Azure IPAM UI Service Principal (If not deployed as Function App)
-  if(-not $AsFunction) {
+  if (-not $AsFunction) {
     $uiSpn = Get-AzADServicePrincipal `
       -ApplicationId $UIAppId
   }
@@ -353,7 +356,7 @@ Function Grant-AdminConsent {
     -ApplicationId $EngineAppId
 
   # Grant admin consent for Microsoft Graph API permissions assigned to IPAM UI application (If not deployed as Function App)
-  if(-not $AsFunction) {
+  if (-not $AsFunction) {
     Write-Host "INFO: Granting admin consent for Microsoft Graph API permissions assigned to IPAM UI application" -ForegroundColor Green
     Write-Verbose -Message "Granting admin consent for Microsoft Graph API permissions assigned to IPAM UI application"
     foreach($scope in $uiGraphScopes) {
@@ -368,12 +371,12 @@ Function Grant-AdminConsent {
         | Out-Null
     }
 
-    Write-Host "INFO: Admin consent for Microsoft Graph API permissions granted successfully" -ForegroundColor green
+    Write-Host "INFO: Admin consent for Microsoft Graph API permissions granted successfully" -ForegroundColor Green
     Write-Verbose -Message "Admin consent for Microsoft Graph API permissions granted successfully"
   }
 
   # Grant admin consent to the IPAM UI application for exposed API from the IPAM Engine application (If not deployed as a Function App)
-  if(-not $AsFunction) {
+  if (-not $AsFunction) {
     Write-Host "INFO: Granting admin consent to the IPAM UI application for exposed API from the IPAM Engine application" -ForegroundColor Green
     Write-Verbose -Message "Granting admin consent to the IPAM UI application for exposed API from the IPAM Engine application"
     New-MgOauth2PermissionGrant `
@@ -383,7 +386,7 @@ Function Grant-AdminConsent {
       -ConsentType AllPrincipals `
       | Out-Null
 
-    Write-Host "INFO: Admin consent for IPAM Engine exposed API granted successfully" -ForegroundColor green
+    Write-Host "INFO: Admin consent for IPAM Engine exposed API granted successfully" -ForegroundColor Green
     Write-Verbose -Message "Admin consent for IPAM Engine exposed API granted successfully"
   }
 
@@ -402,14 +405,14 @@ Function Grant-AdminConsent {
       | Out-Null
   }
 
-  Write-Host "INFO: Admin consent for Azure Service Management API permissions granted successfully" -ForegroundColor green
+  Write-Host "INFO: Admin consent for Azure Service Management API permissions granted successfully" -ForegroundColor Green
   Write-Verbose -Message "Admin consent for Azure Service Management API permissions granted successfully"
 }
 
 Function Save-Parameters {
   Param(
-    [Parameter(Mandatory=$true)]
-    [string]$UIAppId,
+    [Parameter(Mandatory=$false)]
+    [string]$UIAppId = '00000000-0000-0000-000000000000',
     [Parameter(Mandatory=$true)]
     [string]$EngineAppId,
     [Parameter(Mandatory=$true)]
@@ -429,7 +432,7 @@ Function Save-Parameters {
   $parametersObject.parameters.engineAppSecret.value = $EngineSecret
   $parametersObject.parameters.deployAsFunc.value = $AsFunction
 
-  if(-not $AsFunction) {
+  if (-not $AsFunction) {
     $parametersObject.parameters.uiAppId.value = $UIAppId
     $parametersObject.parameters = $parametersObject.parameters | Select-Object * -ExcludeProperty namePrefix, tags
   } else {
@@ -439,7 +442,7 @@ Function Save-Parameters {
   # Output updated parameter file for Bicep deployment
   $parametersObject | ConvertTo-Json -Depth 4 | Out-File -FilePath main.parameters.json
 
-  Write-Host "INFO: Bicep parameter file populated successfully" -ForegroundColor green
+  Write-Host "INFO: Bicep parameter file populated successfully" -ForegroundColor Green
   Write-Verbose -Message "Bicep parameter file populated successfully"
 }
 
@@ -461,8 +464,10 @@ Function Import-Parameters {
   $EngineSecret = $parametersObject.parameters.engineAppSecret.value
   $script:AsFunction = $parametersObject.parameters.deployAsFunc.value
 
-  Write-Host "INFO: Successfully import Bicep parameter values" -ForegroundColor green
-  Write-Verbose -Message "Successfully import Bicep parameter values"
+  $deployType = $script:AsFunction ? 'Function' : 'Full'
+
+  Write-Host "INFO: Successfully import Bicep parameter values for $deployType deployment" -ForegroundColor Green
+  Write-Verbose -Message "Successfully import Bicep parameter values for $deployType deployment"
 
   $appDetails = @{
     UIAppId      = $UIAppId
@@ -475,8 +480,8 @@ Function Import-Parameters {
 
 Function Deploy-Bicep {
   Param(
-    [Parameter(Mandatory=$true)]
-    [string]$UIAppId,
+    [Parameter(Mandatory=$false)]
+    [string]$UIAppId = '00000000-0000-0000-0000-000000000000',
     [Parameter(Mandatory=$true)]
     [string]$EngineAppId,
     [Parameter(Mandatory=$true)]
@@ -491,7 +496,7 @@ Function Deploy-Bicep {
     [hashtable]$Tags
   )
 
-  Write-Host "INFO: Deploying IPAM bicep templates" -ForegroundColor green
+  Write-Host "INFO: Deploying IPAM bicep templates" -ForegroundColor Green
   Write-Verbose -Message "Deploying bicep templates"
 
   # Instantiate deployment parameter object
@@ -524,7 +529,7 @@ Function Deploy-Bicep {
     -TemplateFile main.bicep `
     -TemplateParameterObject $deploymentParameters
 
-  Write-Host "INFO: IPAM bicep templates deployed successfully" -ForegroundColor green
+  Write-Host "INFO: IPAM bicep templates deployed successfully" -ForegroundColor Green
   Write-Verbose -Message "IPAM bicep template deployed successfully"
 
   return $deployment
@@ -538,7 +543,7 @@ Function Update-UIApplication {
     [string]$Endpoint
   )
 
-  Write-Host "INFO: Updating UI Application with SPA configuration" -ForegroundColor green
+  Write-Host "INFO: Updating UI Application with SPA configuration" -ForegroundColor Green
   Write-Verbose -Message "Updating UI Application with SPA configuration"
 
   $appServiceEndpoint = "https://$Endpoint"
@@ -546,26 +551,33 @@ Function Update-UIApplication {
   # Update UI Application with single-page application configuration
   Update-AzADApplication -ApplicationId $UIAppId -SPARedirectUri $appServiceEndpoint 
 
-  Write-Host "INFO: UI Application SPA configuration update complete" -ForegroundColor green
+  Write-Host "INFO: UI Application SPA configuration update complete" -ForegroundColor Green
   Write-Verbose -Message "UI Application SPA configuration update complete"
 }
 
+Write-Host
+Write-Host "NOTE: IPAM Deployment Type: $($PSCmdlet.ParameterSetName)" -ForegroundColor Magenta
+
 try {
-  if ($PSCmdlet.ParameterSetName -in ('Full', 'AppsOnly')) {
+  if ($PSCmdlet.ParameterSetName -in ('Full', 'AppsOnly', 'Function', 'FuncAppsOnly')) {
     # Fetch Tenant ID
-    Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor green
+    Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor Green
     Write-Verbose -Message "Fetching Tenant ID from Azure PowerShell SDK"
     $tenantId = (Get-AzContext).Tenant.Id
-    $azureCloud = $AZURE_ENV_MAP[(Get-AzContext).Environment.Name]
   }
 
-  if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly')) {
+  if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly', 'Function', 'FuncTemplateOnly')) {
+    # Fetch Azure Cloud Type
+    Write-Host "INFO: Fetching Azure Cloud type from Azure PowerShell SDK" -ForegroundColor Green
+    Write-Verbose -Message "Fetching Azure Cloud type from Azure PowerShell SDK"
+    $azureCloud = $AZURE_ENV_MAP[(Get-AzContext).Environment.Name]
+
     # Validate Azure Region
-    Write-Host "INFO: Validating Azure Region selected for deployment" -ForegroundColor green
+    Write-Host "INFO: Validating Azure Region selected for deployment" -ForegroundColor Green
     Write-Verbose -Message "Validating Azure Region selected for deployment"
 
     if (Test-Location -Location $Location) {
-      Write-Host "INFO: Azure Region validated successfully" -ForegroundColor green
+      Write-Host "INFO: Azure Region validated successfully" -ForegroundColor Green
       Write-Verbose -Message "Azure Region validated successfully"
     } else {
       Write-Host "ERROR: Location provided is not a valid Azure Region!" -ForegroundColor red
@@ -573,12 +585,11 @@ try {
     }
   }
 
-  if ($PSCmdlet.ParameterSetName -in ('Full', 'AppsOnly')) {
+  if ($PSCmdlet.ParameterSetName -in ('Full', 'AppsOnly', 'Function', 'FuncAppsOnly')) {
     $appDetails = Deploy-IPAMApplications `
       -UIAppName $UIAppName `
       -EngineAppName $EngineAppName `
       -TenantId $tenantId `
-      -SubscriptionScope $SubscriptionScope `
       -AsFunction $AsFunction
 
     if (-not $NoConsent) {
@@ -587,7 +598,7 @@ try {
         AsFunction = $AsFunction
       }
 
-      if(-not $AsFunction) {
+      if ($PSCmdlet.ParameterSetName -in ('Full', 'AppsOnly')) {
         $consentDetails.Add("UIAppId", $appDetails.UIAppId)
       }
 
@@ -595,16 +606,16 @@ try {
     }
   }
 
-  if ($PSCmdlet.ParameterSetName -eq 'AppsOnly') {
+  if ($PSCmdlet.ParameterSetName -in ('AppsOnly', 'FuncAppsOnly')) {
     Save-Parameters @appDetails -AsFunction $AsFunction
   }
 
-  if ($PSCmdlet.ParameterSetName -eq 'TemplateOnly') {
+  if ($PSCmdlet.ParameterSetName -in ('TemplateOnly', 'FuncTemplateOnly')) {
     $appDetails = Import-Parameters `
       -ParameterFile $ParameterFile
   }
 
-  if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly')) {
+  if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly', 'Function', 'FuncTemplateOnly')) {
     $deployment = Deploy-Bicep @appDetails `
       -NamePrefix $NamePrefix `
       -AzureCloud $azureCloud `
@@ -613,15 +624,32 @@ try {
   }
 
   if ($PSCmdlet.ParameterSetName -eq 'Full') {
-    if(-not $AsFunction) {
-      Update-UIApplication `
-        -UIAppId $appDetails.UIAppId `
-        -Endpoint $deployment.Outputs["appServiceHostName"].Value
-    }
+    Update-UIApplication `
+      -UIAppId $appDetails.UIAppId `
+      -Endpoint $deployment.Outputs["appServiceHostName"].Value
   }
 
-  Write-Host "INFO: Azure IPAM Solution deployed successfully" -ForegroundColor green
+  Write-Host "INFO: Azure IPAM Solution deployed successfully" -ForegroundColor Green
   Write-Verbose -Message "Azure IPAM Solution deployed successfully"
+
+  # ADD OUTPUT HERE TO INFORM USERS TO UPDATE UI APP HOSTNAME W/ TEMPLATEONLY DEPLOYMENT
+  # https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/d71404fa-ee4c-41ae-ab40-62265574ad32
+
+  if ($($PSCmdlet.ParameterSetName -eq 'TemplateOnly') -and $(-not $AsFunction)) {
+    $updateUrl = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/$($appDetails.UIAppId)"
+    $updateAddr = "https://$($deployment.Outputs["appServiceHostName"].Value)"
+
+    Write-Host
+    Write-Host "POST DEPLOYMENT TASKS:" -ForegroundColor Yellow
+    Write-Host "##############################################" -ForegroundColor Yellow
+    Write-Host "Navigate In Browser To:" -ForegroundColor Cyan
+    Write-Host $updateUrl -ForegroundColor White
+    Write-Host "Change 'Redirect URI' To:" -ForegroundColor Cyan
+    Write-Host $updateAddr -ForegroundColor White
+    Write-Host "##############################################" -ForegroundColor Yellow
+  }
+
+  Write-Host
 }
 catch {
   $_ | Out-File -FilePath $logFile -Append
