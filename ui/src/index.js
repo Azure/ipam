@@ -6,12 +6,12 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import './index.css';
 
-const container = document.getElementById('root');
-const root = createRoot(container);
-
 import { PublicClientApplication } from "@azure/msal-browser";
 import { MsalProvider } from "@azure/msal-react";
 import { msalConfig } from "./msal/authConfig";
+
+const container = document.getElementById('root');
+const root = createRoot(container);
 
 const msalInstance = new PublicClientApplication(msalConfig);
 
