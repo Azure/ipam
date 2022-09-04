@@ -70,11 +70,17 @@ export default function ConfigureIPAM() {
 
   const dispatch = useDispatch();
 
+  var loaded = false;
+
   React.useEffect(() => {
-    refresh();
+    if(!loaded) {
+      refresh();
+      loaded = true;
+    }
   }, []);
 
   function refresh() {
+    console.log("REFRESH SPACES");
     const request = {
       scopes: apiRequest.scopes,
       account: accounts[0],

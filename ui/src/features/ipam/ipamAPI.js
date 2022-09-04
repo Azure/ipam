@@ -1,7 +1,5 @@
 import axios from 'axios';
 
-// const ENGINE_URL = 'localhost:8000'
-// const ENGINE_URL = 'localhost:3000'
 const ENGINE_URL = window.location.origin
 
 export function fetchSpaces(token, utilization = false) {
@@ -17,16 +15,6 @@ export function fetchSpaces(token, utilization = false) {
       }
     })
   .then(response => response.data)
-  .then((data) => {
-    data.forEach(space => {
-      if(utilization) {
-        space['available'] = (space.size - space.used);
-        space['utilization'] = Math.round((space.used / space.size) * 100) || 0;
-      }
-    });
-
-    return data;
-  })
   .catch(error => {
     console.log("ERROR FETCHING SPACES FROM API");
     console.log(error);
@@ -104,27 +92,6 @@ export function deleteSpace(token, space, force) {
     throw error;
   });
 }
-
-// export function fetchBlocks(token) {
-//   const headers = [
-//     ['Authorization', `Bearer ${token}`]
-//   ];
-
-//   return fetch('${ENGINE_URL}/api/block?detail=true', { headers })
-//   .then((response) => response.json()
-//   .then((data) => {
-//     data.forEach(block => {
-//       block['available'] = (block.size - block.used);
-//       block['utilization'] = Math.round((block.used / block.size) * 100);
-//       block['id'] = `${block.name}@${block.parentSpace}`;
-//     });
-
-//     return data;
-//   }))
-//   .catch((error) => {
-//     console.log("ERROR FETCHING IP BLOCKS FROM API");
-//   });
-// }
 
 export function createBlock(token, space, body) {
   const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks`);
@@ -262,28 +229,12 @@ export function fetchVNets(token) {
       }
     })
   .then(response => response.data)
-  .then((data) => {
-    data.forEach(vnet => {
-      vnet['available'] = (vnet.size - vnet.used);
-      vnet['utilization'] = Math.round((vnet.used / vnet.size) * 100);
-      vnet['prefixes'] = vnet.prefixes.join(", ");
-    });
-
-    return data;
-  })
   .catch(error => {
     console.log("ERROR FETCHING VNETS FROM API");
     console.log(error);
     throw error;
   });
 }
-
-const subnetMap = {
-  AFW: "Azure Firewall",
-  VGW: "Virtual Network Gateway",
-  BAS: "Azure Bastion",
-  AGW: "Application Gateway"
-};
 
 export function fetchSubnets(token) {
   var url = new URL(`${ENGINE_URL}/api/azure/subnet`);
@@ -295,15 +246,6 @@ export function fetchSubnets(token) {
       }
     })
   .then(response => response.data)
-  .then((data) => {
-    data.forEach(subnet => {
-      subnet['available'] = (subnet.size - subnet.used);
-      subnet['utilization'] = Math.round((subnet.used / subnet.size) * 100);
-      subnet['type'] = subnetMap[subnet['type']];
-    });
-
-    return data;
-  })
   .catch(error => {
     console.log("ERROR FETCHING SUBNETS FROM API");
     console.log(error);
@@ -333,7 +275,7 @@ export function refreshAll(token) {
     (async () => await fetchSpaces(token, true))(),
     // (async () => await fetchBlocks(token))(),
     (async () => await fetchVNets(token))(),
-    (async () => await fetchSubnets(token))(),
+    // (async () => await fetchSubnets(token))(),
     (async () => await fetchEndpoints(token))()
   ];
 

@@ -173,14 +173,14 @@ export default function BlockDataGrid(props) {
             handleClose={() => setAddBlockOpen(false)}
             space={selected ? selected.name : null}
             blocks={selected ? selected.blocks : null}
-            refresh={() => refresh()}
+            refresh={refresh}
           />
           <EditVnets
             open={editVNetsOpen}
             handleClose={() => setEditVNetsOpen(false)}
             space={selected ? selected.name : null}
             block={selectedRow ? selectedRow : null}
-            refresh={() => refresh()}
+            refresh={refresh}
             refreshingState={refreshing}
           />
           <ConfirmDelete
@@ -188,7 +188,7 @@ export default function BlockDataGrid(props) {
             handleClose={() => setDeleteBlockOpen(false)}
             space={selected ? selected.name : null}
             block={selectedRow ? selectedRow.name : null}
-            refresh={() => refresh()}
+            refresh={refresh}
           />
         </React.Fragment>
       }

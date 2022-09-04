@@ -260,7 +260,6 @@ export default function Administration() {
   }, []);
 
   function refreshData() {
-    console.log("REFRESHING...");
     const request = {
       scopes: apiRequest.scopes,
       account: accounts[0],

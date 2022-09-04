@@ -83,8 +83,6 @@ export default function DiscoverTable(props) {
   function renderExpand(params) {  
     const onClick = (e) => {
       e.stopPropagation();
-      console.log("CLICK!");
-      // setSelectionModel([params.value]);
       setRowData(params.row);
       setMenuExpand(true);
     };
