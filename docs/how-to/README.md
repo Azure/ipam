@@ -7,9 +7,20 @@ IPAM leverages the [Microsoft Authentication Library (MSAL)](https://docs.micros
 
 IPAM has the concept of an **IPAM Administrator**. Upon initial deployment, you can define who within your Azure AD Tenant should be designated as an IPAM Administrator via the **Admin** section of the menu blade.
 
-![IPAM home page](../images/ipam_administrator.png)
+![IPAM administrators](../images/ipam_administrator.png)
 
 IPAM Administrators have the ability to configure IPAM with "Spaces" and "Blocks" via the **Configure** section of the menu blade (more on that later). When logging in as an IPAM Administrator, MSAL is bypassed and the Engine Service Principal provides the RBAC permission (Reader at the Tenant Root) to view all IP address management related resources across the entire Azure Tenant.
+
+![IPAM administrators config](../images/ipam_administrators_config.png)
+
+### Subscription Exlusion/Inclusion
+From an administration standpoint, you have the ability to exclude/include subscriptions in your view. To do so, expand the **Admin** section of the menu blade and select **Subscriptions**.
+
+![IPAM administrators](../images/ipam_administrator.png)
+
+From this screen, you can select Subscriptions from the **Included Subscriptions** section to exclude, or select Subscriptions from the **Excluded Subscriptions** section to include.
+
+![IPAM administrators subscriptions](../images/ipam_admin_subscriptions.png)
 
 ### Spaces
 ![IPAM spaces](../images/spaces.png)
@@ -47,6 +58,8 @@ Select the VNET you'd like to associate and click **Apply**.
 ![IPAM associate vnets](../images/virtual_network_association_details.png)
 
 ### Reservations
+
+Currently, IP CIDR block reservations are not supported via the UI, but are supported programatically via the API. Please the **Example API calls** section for more information on how to greate IP address block reservations.
 
 ### VNETs, Subnets, and Endpoints
 

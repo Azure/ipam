@@ -15,10 +15,14 @@ To successfully deploy the solution, the following prerequisites must be met:
 
 
 ### Deploying the Solution:
-The IPAM solution is deployed via a PowerShell deployment script, `deploy.ps1`,  found in the `deploy` directory of the project. The infrastructure stack is defined via Azure Bicep files. The deployment can be performed via your local machine or from the development container found in the project. You have the following 3 options for deployment:
+The IPAM solution is deployed via a PowerShell deployment script, `deploy.ps1`,  found in the `deploy` directory of the project. The infrastructure stack is defined via Azure Bicep files. The deployment can be performed via your local machine or from the development container found in the project. You have the following options for deployment:
 - deploy app registrations only
 - deploy infrastructure stack only
+  - UI and engine containers hosted in App Service or...
+  - engine container hosted in a Function
 - deploy the entire solution (app registrations + infrastructure stack)
+  - UI and engine containers hosted in App Service or...
+  - engine container hosted in a Function
 
 The above mentioned deployment options were provided in the event that you do not have the necessary permissions in Azure AD to deploy app registrations. This way, you can have your Azure AD administrator deploy the app registrations and then you can perform the infrastructure deployment. If you do have the necessary permissions in Azure AD, then you have the option to deploy the entire solution on your own. 
 
@@ -33,15 +37,13 @@ You have the ability to pass optional flags to the deployment script:
   - -UIAppName "ipam-ui-example" (changes the name of the UI app registration)
   - -EngineAppName "ipam-engine-example" (changes the name of the Engine app registration)
   - -NoConsent (skips granting admin consent of the ui & engine app registrations)
-  - -SubscriptionScope (attaches the engine service principal as a reader to the current subscription from Get-AzContext instead of the Tenant root)
 
 ```ps1
 ./deploy.ps1 `
   -AppsOnly `
   -UIAppName "my-ui-app-reg" `
   -EngineAppName "my-engine-app-reg" `
-  -NoConsent `
-  -SubscriptionScope
+  -NoConsent
 ```
 As part of the app registration deployment, a `main.parameters.json` file is generated with pre-populated parameters for the app registration IDs as well as the engine app registration secret. This parameter file will then be used to perform the infrastructure deployment.
 
@@ -58,6 +60,7 @@ To deploy infrastructure only, ensure you have the auto-generated `main.paramete
 You have the ability to pass optional flags to the deployment script:
   - -Tags @{​​​​​​​tagKey1 = 'tagValue1'; tagKey2 = 'tagValue2'}​​​​​​​​ (attaches the hashtable as tags on the deployed IPAM resource group)
   - -NamePrefix "testipam" (replaces the default resource prefix of "ipam" with an alternative prefix)
+  - -AsFunction (deploys the engine cotainer only to an Azure Function)
 
 ```ps1
 ./deploy.ps1 `
@@ -65,7 +68,8 @@ You have the ability to pass optional flags to the deployment script:
   -ParameterFile ./main.parameters.json `
   -TemplateOnly `
   -Tags @{owner = 'ipamadmin@example.com'; environment = 'development'} `
-  -NamePrefix "devipam"
+  -NamePrefix "devipam" `
+  -AsFunction
 ```
 ### Full Deployment
 To deploy the full solution, run the following from within the `deploy` directory:
@@ -78,9 +82,9 @@ You have the ability to pass optional flags to the deployment script:
   - -UIAppName "ipam-ui-example" (changes the name of the UI app registration)
   - -EngineAppName "ipam-engine-example" (changes the name of the Engine app registration)
   - -NoConsent (skips granting admin consent of the ui & engine app registrations)
-  - -SubscriptionScope (attaches the engine service principal as a reader to the current subscription from Get-AzContext instead of the Tenant root)
   - -Tags @{​​​​​​​tagKey1 = 'tagValue1'; tagKey2 = 'tagValue2'}​​​​​​​​ (attaches the hashtable as tags on the deployed IPAM resource group)
   - -NamePrefix "testipam" (replaces the default resource prefix of "ipam" with an alternative prefix)
+    - -AsFunction (deploys the engine cotainer only to an Azure Function)
 
 
 ```ps1
@@ -89,7 +93,7 @@ You have the ability to pass optional flags to the deployment script:
   -UIAppName "my-ui-app-reg" `
   -EngineAppName "my-engine-app-reg" `
   -NoConsent `
-  -SubscriptionScope `
   -Tags @{owner = 'ipamadmin@example.com'; environment = 'development'} `
-  -NamePrefix "devipam"
+  -NamePrefix "devipam" `
+  -AsFunction
 ```

@@ -11,10 +11,10 @@ Taxonomies for products and languages: https://review.docs.microsoft.com/new-hop
 ## IPAM Overview and Architecture
 IPAM was developed to give customers a simple, straightforward way to manage their IP address space in Azure.  IPAM enables end-to-end planning, deploying, managing and monitoring of your IP address space, with an intuitive user experience. IPAM automatically discovers IP address utilization in your Azure tenant and enables you to manage it all from a central user interface. You can also interface with IPAM programatically via a REST API to facilitate IP address management at scale via Infrastructure as Code. IPAM is designed and architected based on the 5 pillars of the [Microsoft Azure Well Architected Framework](https://docs.microsoft.com/en-us/azure/architecture/framework/). 
 
-![IPAM Architecture](./images/ipam_architecture.png ':size=60%')
+![IPAM Architecture](./images/ipam_architecture.png ':size=70%')
 
 ### IPAM Infrastructure
-There are two major components to the IPAM solution. The first is the two container images that make up the IPAM application. These containers are maintained and hosted by the IPAM team. They are housed in a publicly accessible Azure Container Registry. The deployment workflow knows where and how to retrieve the container images. That being said, the application code is available in this project, so you can build your own container images if you'd like. More on that in the [deployment section](./deployment/README.md). The second component of the solution is the infrastructure to run the application which is maintained and hosted by you. This component is made up of the following: 
+There are two major components to the IPAM solution. The first is the two container images that make up the IPAM application. These containers are maintained and hosted by the IPAM team. They are housed in a publicly accessible Azure Container Registry. The deployment workflow knows where and how to retrieve the container images. That being said, the application code is available in this project, so you can build your own container images if you'd like. More on that in the [Contributing](./contributing/README.md) section. The second component of the solution is the infrastructure to run the application which is maintained and hosted by you. This component is made up of the following: 
 
 - **App Registrations**
   - two App Registrations are deployed as part of the solution:
@@ -28,7 +28,9 @@ There are two major components to the IPAM solution. The first is the two contai
 - **Resource Group** 
   - to house all Azure infrastructure related resources
 - **App Service Plan with App Service**
-  - to run the two containers that make up the IPAM application
+  - to run the two containers that make up the IPAM application or...
+- **App Service Plan with Function App**
+  - to run the backend engine container as an Azure Function
 - **Storage Account with Blob Container**
   - to store NGINX related configuration data
 - **Cosmos DB**
