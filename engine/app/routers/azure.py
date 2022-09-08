@@ -58,9 +58,16 @@ router = APIRouter(
 async def get_subscriptions_sdk(credentials):
     """DOCSTRING"""
 
+    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
+    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+
     subscriptions = []
 
-    subscription_client = SubscriptionClient(credentials)
+    subscription_client = SubscriptionClient(
+      credential=credentials,
+      base_url=azure_arm_url,
+      credential_scopes=[azure_arm_scope]
+    )
 
     async for poll in subscription_client.subscriptions.list():
         sub = {
@@ -111,7 +118,15 @@ async def get_vmss_list_sdk(credentials, subscriptions):
 async def get_vmss_list_sdk_helper(credentials, subscription, list):
     """DOCSTRING"""
 
-    compute_client = ComputeManagementClient(credentials, subscription['subscription_id'])
+    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
+    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+
+    compute_client = ComputeManagementClient(
+      credential=credentials,
+      subscription_id=subscription['subscription_id'],
+      base_url=azure_arm_url,
+      credential_scopes=[azure_arm_scope]
+    )
 
     try:
         async for poll in compute_client.virtual_machine_scale_sets.list_all():
@@ -153,7 +168,15 @@ async def get_vmss_interfaces_sdk(credentials, vmss_list):
 async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
     """DOCSTRING"""
 
-    network_client = NetworkManagementClient(credentials, vmss['subscription']['subscription_id'])
+    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
+    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+
+    network_client = NetworkManagementClient(
+      credential=credentials,
+      subscription_id=vmss['subscription']['subscription_id'],
+      base_url=azure_arm_url,
+      credential_scopes=[azure_arm_scope]
+    )
 
     async for poll in network_client.network_interfaces.list_virtual_machine_scale_set_network_interfaces(vmss['resource_group_name'], vmss['name']):
         for ip_config in poll.ip_configurations:
@@ -266,32 +289,32 @@ async def get_subnet(
     Get a list of Azure Subnets.
     """
 
-    SUBNET_TYPE_MAP = [
-        {
-            "field": "name",
-            "oper": "==",
-            "value": "AzureFirewallSubnet",
-            "type": "AFW"
-        },
-                {
-            "field": "name",
-            "oper": "==",
-            "value": "GatewaySubnet",
-            "type": "VGW"
-        },
-        {
-            "field": "name",
-            "oper": "==",
-            "value": "AzureBastionSubnet",
-            "type": "BAS"
-        },
-        {
-            "field": "appgw_config",
-            "oper": "is not",
-            "value": None,
-            "type": "AGW"
-        }
-    ]
+    # SUBNET_TYPE_MAP = [
+    #     {
+    #         "field": "name",
+    #         "oper": "==",
+    #         "value": "AzureFirewallSubnet",
+    #         "type": "AFW"
+    #     },
+    #             {
+    #         "field": "name",
+    #         "oper": "==",
+    #         "value": "GatewaySubnet",
+    #         "type": "VGW"
+    #     },
+    #     {
+    #         "field": "name",
+    #         "oper": "==",
+    #         "value": "AzureBastionSubnet",
+    #         "type": "BAS"
+    #     },
+    #     {
+    #         "field": "appgw_config",
+    #         "oper": "is not",
+    #         "value": None,
+    #         "type": "AGW"
+    #     }
+    # ]
 
     subnet_list = await arg_query(authorization, admin, argquery.SUBNET)
 
@@ -300,16 +323,16 @@ async def get_subnet(
     for subnet in subnet_list:
         subnet['size'] = IPNetwork(subnet['prefix']).size
 
-        subnet["type"] = None
+        # subnet["type"] = None
 
-        for map_item in SUBNET_TYPE_MAP:
-            eval_string = f"subnet[map_item['field']] {map_item['oper']} map_item['value']"
-            check = eval(eval_string)
+        # for map_item in SUBNET_TYPE_MAP:
+        #     eval_string = f"subnet[map_item['field']] {map_item['oper']} map_item['value']"
+        #     check = eval(eval_string)
 
-            if(check):
-                subnet["type"] = map_item["type"]
+        #     if(check):
+        #         subnet["type"] = map_item["type"]
 
-        del subnet['appgw_config']
+        # del subnet['appgw_config']
 
         updated_subnet_list.append(subnet)
 
@@ -327,9 +350,9 @@ async def pe(
     Get a list of Azure Private Endpoints.
     """
 
-    pe_list = await arg_query(authorization, admin, argquery.PRIVATE_ENDPOINT)
+    results = await arg_query(authorization, admin, argquery.PRIVATE_ENDPOINT)
 
-    return pe_list
+    return results
 
 @router.get(
     "/vm",
@@ -343,9 +366,9 @@ async def vm(
     Get a list of Azure Virtual Machines
     """
 
-    vm_list = await arg_query(authorization, admin, argquery.VIRTUAL_MACHINE)
+    results = await arg_query(authorization, admin, argquery.VIRTUAL_MACHINE)
 
-    return vm_list
+    return results
 
 @router.get(
     "/vmss",
@@ -359,10 +382,10 @@ async def vmss(
     Get a list of Azure VM Scale Sets.
     """
 
-    vmss_list = await get_vmss(authorization, admin)
-    # vmss_list = await arg_query(authorization, admin, argquery.VM_SCALE_SET)
+    results = await get_vmss(authorization, admin)
+    # results = await arg_query(authorization, admin, argquery.VM_SCALE_SET)
 
-    return vmss_list
+    return results
 
 @router.get(
     "/fwvnet",
@@ -376,9 +399,9 @@ async def fwvnet(
     Get a list of vNet integrated Azure Firewalls.
     """
 
-    vm_list = await arg_query(authorization, admin, argquery.FIREWALL_VNET)
+    results = await arg_query(authorization, admin, argquery.FIREWALL_VNET)
 
-    return vm_list
+    return results
 
 @router.get(
     "/fwvhub",
@@ -392,9 +415,9 @@ async def fwvhub(
     Get a list of all vWAN Hub integrated Azure Firewalls.
     """
 
-    vm_list = await arg_query(authorization, admin, argquery.FIREWALL_VHUB)
+    results = await arg_query(authorization, admin, argquery.FIREWALL_VHUB)
 
-    return vm_list
+    return results
 
 @router.get(
     "/bastion",
@@ -408,9 +431,25 @@ async def bastion(
     Get a list of all Azure Bastions hosts.
     """
 
-    vm_list = await arg_query(authorization, admin, argquery.BASTION)
+    results = await arg_query(authorization, admin, argquery.BASTION)
 
-    return vm_list
+    return results
+
+@router.get(
+    "/vnetgw",
+    summary = "Get All Virtual Network Gateways"
+)
+async def vnetgw(
+    authorization: str = Header(None),
+    admin: str = Depends(get_admin)
+):
+    """
+    Get a list of all Azure Virtual Network Gateways.
+    """
+
+    results = await arg_query(authorization, admin, argquery.VNET_GATEWAY)
+
+    return results
 
 @router.get(
     "/appgw",
@@ -424,9 +463,9 @@ async def appgw(
     Get a list of all Azure Application Gateways.
     """
 
-    vm_list = await arg_query(authorization, admin, argquery.APP_GATEWAY)
+    results = await arg_query(authorization, admin, argquery.APP_GATEWAY)
 
-    return vm_list
+    return results
 
 @router.get(
     "/apim",
@@ -440,9 +479,9 @@ async def apim(
     Get a list of all Azure API Management instances.
     """
 
-    vm_list = await arg_query(authorization, admin, argquery.APIM)
+    results = await arg_query(authorization, admin, argquery.APIM)
 
-    return vm_list
+    return results
 
 async def multi_helper(func, list, *args):
     """DOCSTRING"""
@@ -470,6 +509,7 @@ async def multi(
     tasks.append(asyncio.create_task(multi_helper(vmss, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(fwvnet, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(bastion, result_list, authorization, admin)))
+    tasks.append(asyncio.create_task(multi_helper(vnetgw, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(appgw, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(apim, result_list, authorization, admin)))
 
@@ -481,7 +521,7 @@ async def multi(
     "/tree",
     summary = "Get Space Tree View"
 )
-async def multi(
+async def tree(
     authorization: str = Header(None),
     tenant_id: str = Depends(get_tenant_id),
     admin: str = Depends(get_admin)
@@ -504,6 +544,7 @@ async def multi(
     tasks.append(asyncio.create_task(multi_helper(vmss, endpoint_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(fwvnet, endpoint_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(bastion, endpoint_list, authorization, admin)))
+    tasks.append(asyncio.create_task(multi_helper(vnetgw, endpoint_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(appgw, endpoint_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(apim, endpoint_list, authorization, admin)))
 
@@ -559,7 +600,6 @@ async def multi(
                                 vnet_item['value'] -= subnet_item['value']
 
                                 endpoints = [item for sublist in endpoint_list for item in sublist]
-                                print(endpoints)
                                 subnet_endpoints = list(filter(lambda x: x['subnet_id'].lower() == subnet['id'].lower(), endpoints))
                                 unique_subnet_endpoints = list({x['id']: x for x in subnet_endpoints}.values())
 

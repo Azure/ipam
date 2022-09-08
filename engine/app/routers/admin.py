@@ -254,7 +254,6 @@ async def add_exclusions(
     invalid_subscriptions = [str(x) for x in exclusions if str(x) not in [y['subscription_id'] for y in subscription_list]]
 
     if invalid_subscriptions:
-        print(invalid_subscriptions)
         raise HTTPException(status_code=400, detail="One or more invalid subscriptions id's provided.")
 
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)

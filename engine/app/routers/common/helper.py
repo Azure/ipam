@@ -228,7 +228,6 @@ async def arg_query(auth, admin, query):
     except ClientAuthenticationError:
         raise HTTPException(status_code=401, detail="Token has expired.")
     except HttpResponseError as e:
-        print("IsAdmin: {}".format(admin))
         print(e)
         raise HTTPException(status_code=403, detail="Access denied.")
     finally:

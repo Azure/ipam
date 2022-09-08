@@ -70,12 +70,18 @@ resources
 VNET = """
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
+| where subscriptionId !in~ {}
 | project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes = properties.addressSpace.addressPrefixes, resv = tostring(coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id']))
 | join kind = leftouter(
     resources
     | where type =~ 'Microsoft.Network/virtualNetworks'
     | mv-expand subnet = todynamic(properties.subnets)
-    | extend subnet_details = pack("name", subnet.name, "prefix", tostring(subnet.properties.addressPrefix), "used", coalesce(array_length(subnet.properties.ipConfigurations), 0) + 5)
+    | extend nameMap = dynamic({{'AzureFirewallSubnet': 'AFW', 'GatewaySubnet': 'VGW', 'AzureBastionSubnet': 'BAS'}})
+    | extend nameResult = nameMap[tostring(subnet.name)]
+    | extend appGwConfig = subnet.properties.applicationGatewayIPConfigurations
+    | extend appGwResult = iff(isnotnull(appGwConfig), "AGW", appGwConfig)
+    | extend subnetType = coalesce(nameResult, appGwResult)
+    | extend subnet_details = pack("name", subnet.name, "prefix", tostring(subnet.properties.addressPrefix), "used", coalesce(array_length(subnet.properties.ipConfigurations), 0) + 5, "type", todynamic(subnetType))
     | summarize subnet_bag = make_bag(subnet_details) by tostring(subnet.id), id
 ) on id
 | join kind = leftouter(
@@ -90,13 +96,27 @@ resources
 | project name, id, todynamic(prefixes), todynamic(subnets), peerings, resource_group, subscription_id, tenant_id, todynamic(resv)
 """
 
+# SUBNET = """
+# resources
+# | where type =~ 'Microsoft.Network/virtualNetworks'
+# | where subscriptionId !in~ {}
+# | mv-expand subnet = todynamic(properties.subnets)
+# | extend subnet_size = array_length(subnet.properties.ipConfigurations)
+# | project name = subnet.name, id = subnet.id, prefix = subnet.properties.addressPrefix, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), appgw_config = subnet.properties.applicationGatewayIPConfigurations
+# """
+
 SUBNET = """
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
 | where subscriptionId !in~ {}
 | mv-expand subnet = todynamic(properties.subnets)
 | extend subnet_size = array_length(subnet.properties.ipConfigurations)
-| project name = subnet.name, id = subnet.id, prefix = subnet.properties.addressPrefix, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), appgw_config = subnet.properties.applicationGatewayIPConfigurations
+| extend nameMap = dynamic({{'AzureFirewallSubnet': 'AFW', 'GatewaySubnet': 'VGW', 'AzureBastionSubnet': 'BAS'}})
+| extend nameResult = nameMap[tostring(subnet.name)]
+| extend appGwConfig = subnet.properties.applicationGatewayIPConfigurations
+| extend appGwResult = iff(isnotnull(appGwConfig), "AGW", appGwConfig)
+| extend subnetType = coalesce(nameResult, appGwResult)
+| project name = subnet.name, id = subnet.id, prefix = subnet.properties.addressPrefix, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), type = todynamic(subnetType)
 """
 
 PRIVATE_ENDPOINT = """
@@ -252,6 +272,31 @@ resources
 ) on subnet_id
 | project-away subnet_id1
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('size', size, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+"""
+
+VNET_GATEWAY = """
+resources
+| where type =~ 'microsoft.Network/virtualNetworkGateways'
+| where subscriptionId !in~ {}
+| mv-expand ipConfig = properties.ipConfigurations
+| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, private_ip = properties.bgpSettings.bgpPeeringAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, public_ip_id = ipConfig.properties.publicIPAddress.id, subnet_id = ipConfig.properties.subnet.id
+| extend public_ip_id = tolower(tostring(public_ip_id))
+| extend subnet_id = tolower(tostring(subnet_id))
+| join kind = leftouter (
+    resources
+    | where type =~ 'Microsoft.Network/PublicIpAddresses'
+    | project public_ip_id = id, public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
+    | extend public_ip_id = tolower(tostring(public_ip_id))
+) on public_ip_id
+| join kind = leftouter (
+    resources
+    | where type =~ 'microsoft.network/virtualnetworks'
+    | extend subnets = array_length(properties.subnets)
+    | mv-expand subnet = properties.subnets
+    | project subnet_id = subnet.id, subnet_name = subnet.name, vnet_id = id, vnet_name = name
+    | extend subnet_id = tolower(tostring(subnet_id))
+) on subnet_id
+| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
 """
 
 APP_GATEWAY = """
