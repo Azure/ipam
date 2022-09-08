@@ -61,6 +61,7 @@ import Analysis from "../../img/Analysis";
 import Configure from "../../img/Configure";
 import Admin from "../../img/Admin";
 import Visualize from "../../img/Visualize";
+import Peering from "../../img/Peering";
 import Conflict from "../../img/Conflict";
 import Person from "../../img/Person";
 import Rule from "../../img/Rule";
@@ -196,12 +197,12 @@ export default function NavDrawer() {
             link: "analyze/visualize",
             admin: false
           },
-          // {
-          //   title: "Conflicts",
-          //   icon: Conflict,
-          //   link: "analyze/conflict",
-          //   admin: false
-          // }
+          {
+            title: "Peerings",
+            icon: Peering,
+            link: "analyze/peering",
+            admin: false
+          }
         ]
       },
     ],
@@ -407,8 +408,10 @@ export default function NavDrawer() {
   }
 
   function stringAvatar(name) {
+    const nameSplit = name.split(" ");
+
     return {
-      children: `${name.split(" ")[0][0]}${name.split(" ")[1][0]}`,
+      children: nameSplit.length === 1 ? `${nameSplit[0][0]}` : `${nameSplit[0][0]}${nameSplit[1][0]}`,
     };
   }
 
@@ -648,7 +651,7 @@ export default function NavDrawer() {
           <Route path="discover/subnet" element={<DiscoverTabs />} />
           <Route path="discover/endpoint" element={<DiscoverTabs />} />
           <Route path="analyze/visualize" element={<AnalyzeTabs />} />
-          <Route path="analyze/conflict" element={<AnalyzeTabs />} />
+          <Route path="analyze/peering" element={<AnalyzeTabs />} />
           <Route path="configure" element={<ConfigureIPAM />} />
           {/* <Route path="admin" element={<Administration />} /> */}
           <Route path="admin/admins" element={<AdminTabs />} />
