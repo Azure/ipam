@@ -548,7 +548,7 @@ const Peering = () => {
     }
   }, [vnets]);
 
-  function filterByVnet(options, target, previous) {
+  function filterByVnet(options, target, previousTarget, currentMembers) {
     const members = [];
 
     let filteredLinks = options.series[0].links.filter((item) => {
@@ -565,7 +565,7 @@ const Peering = () => {
 
     let uniqueMembers = [...new Set(members)];
 
-    var indexOfPrevious = uniqueMembers.indexOf(previous);
+    var indexOfPrevious = uniqueMembers.indexOf(previousTarget);
 
     if (indexOfPrevious !== -1) {
       uniqueMembers.splice(indexOfPrevious, 1);
@@ -581,10 +581,12 @@ const Peering = () => {
 
     if(uniqueMembers.length > 0) {
       uniqueMembers.forEach((member) => {
-        const results = filterByVnet(options, member, target);
+        if(!currentMembers.includes(member)) {
+          const results = filterByVnet(options, member, target, [...new Set(currentMembers.concat(uniqueMembers))]);
 
-        filteredData = filteredData.concat(results.data);
-        filteredLinks = filteredLinks.concat(results.links);
+          filteredData = filteredData.concat(results.data);
+          filteredLinks = filteredLinks.concat(results.links);
+        }
       });
     }
 
@@ -603,7 +605,7 @@ const Peering = () => {
     if(target) {
       let newOptions = cloneDeep(options);
 
-      const zoomedData = filterByVnet(newOptions, target, '');
+      const zoomedData = filterByVnet(newOptions, target, '', []);
 
       zoomedData.data = zoomedData.data.map((item) => {
         if(item.name !== target) {
