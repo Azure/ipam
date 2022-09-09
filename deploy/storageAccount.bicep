@@ -89,7 +89,6 @@ resource copyNginxConfig 'Microsoft.Resources/deploymentScripts@2020-10-01' = if
       }
     ]
     scriptContent: '''
-      # Invoke-WebRequest "https://raw.githubusercontent.com/Azure/ipam/init/default.conf" -OutFile ./default.conf
       $Env:DeployScript | Out-File -FilePath ./default.conf
       $storageAccount = Get-AzStorageAccount -ResourceGroupName $Env:ResourceGroup -Name $Env:StorageAccountName
       $ctx = $storageAccount.Context
