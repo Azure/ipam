@@ -74,7 +74,12 @@ const opt = {
   },
   tooltip: {
     show: true,
-    position: "bottom",
+    position:  function (point, params, dom, rect, size) {
+      const x = point[0] - (size.contentSize[0] / 2) - 6;
+      const y = point[1] + 10;
+
+      return [x, y];
+    },
     formatter: function (d) {
       if(d.dataType === "edge") {
         const source = d.data.source;
@@ -152,6 +157,27 @@ const opt = {
               width: 10px;
               border-radius: 50%;
               margin-right: 4px;
+            }
+
+            .wrapper::before {
+              content: "";
+              position: absolute;
+              top: -12px;
+              left: calc(50% - 6px);
+              border-width: 0px 12px 12px;
+              border-style: solid;
+              border-color: ${lineColor} transparent;
+            }
+
+            .wrapper::after {
+              content: "";
+              position: absolute;
+              top: -10px;
+              left: calc(50% - 4px);
+              border-width: 0px 10px 10px;
+              border-style: solid;
+              border-color: #fff transparent;
+              z-index: 1;
             }
           </style>
           <div class="wrapper">
@@ -256,6 +282,27 @@ const opt = {
               border-radius: 50%;
               margin-right: 4px;
             }
+
+            .outer::before {
+              content: "";
+              position: absolute;
+              top: -12px;
+              left: calc(50% - 6px);
+              border-width: 0px 12px 12px;
+              border-style: solid;
+              border-color: ${color} transparent;
+            }
+
+            .outer::after {
+              content: "";
+              position: absolute;
+              top: -10px;
+              left: calc(50% - 4px);
+              border-width: 0px 10px 10px;
+              border-style: solid;
+              border-color: #fff transparent;
+              z-index: 1;
+            }
           </style>
           <div class="outer">
             <div class="section">
@@ -292,7 +339,8 @@ const opt = {
 };
 
 function parseNets(data) {
-  const factor = data.length > 50 ? 3 : data.length > 25 ? 5 : 10;
+  // const factor = data.length > 50 ? 3 : data.length > 25 ? 5 : 10;
+  const factor = 3;
 
   const stateMap = {
     'Connected': {
