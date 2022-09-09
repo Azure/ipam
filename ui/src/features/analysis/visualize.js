@@ -335,11 +335,11 @@ function parseTree(spaces, vnets, endpoints) {
             size: block.size,
             used: block.used
           },
-          children: block.vnets.map((vnet) => {
+          children: block.vnets.reduce((results, vnet) => {
             const target = vnets.find((x) => x.id === vnet.id);
 
             if(target) {
-              return {
+              results.push({
                 name: target.name,
                 value: {
                   type: 'vnet',
@@ -382,9 +382,11 @@ function parseTree(spaces, vnets, endpoints) {
                     }),
                   };
                 }),
-              };
+              });
             }
-          }),
+
+            return results;
+          }, []),
         };
       }),
     };

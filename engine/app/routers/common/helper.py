@@ -2,12 +2,14 @@ from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 
 from azure.identity.aio import OnBehalfOfCredential, ClientSecretCredential
+
+from azure.core import MatchConditions
 from azure.core.exceptions import ClientAuthenticationError, HttpResponseError, ServiceRequestError
+
 from azure.mgmt.resourcegraph.aio import ResourceGraphClient
 from azure.mgmt.resourcegraph.models import *
 from azure.mgmt.managementgroups.aio import ManagementGroupsAPI
 
-from azure.core import MatchConditions
 from azure.cosmos.aio import CosmosClient
 import azure.cosmos.exceptions as exceptions
 
@@ -304,6 +306,9 @@ async def arg_query_helper(credentials, query):
     except ServiceRequestError as e:
         print(e)
         raise HTTPException(status_code=500, detail="Error communicating with Azure.")
+    except HttpResponseError as e:
+        print(e)
+        raise HTTPException(status_code=403, detail="Access denied.")
     finally:
         await resource_graph_client.close()
 

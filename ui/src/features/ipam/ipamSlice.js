@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { values } from 'lodash';
 import {
   fetchSpaces,
   fetchVNets,
@@ -145,7 +146,7 @@ export const ipamSlice = createSlice({
       .addCase(refreshAllAsync.fulfilled, (state, action) => {
         state.refreshing = false;
 
-        const spaces = action.payload[0].map((space) => {
+        const spaces = action.payload[0].value.map((space) => {
           if('size' in space && 'used' in space) {
             space.available = (space.size - space.used);
             space.utilization = Math.round((space.used / space.size) * 100) || 0;
@@ -156,7 +157,7 @@ export const ipamSlice = createSlice({
 
         state.spaces = spaces;
 
-        state.blocks = action.payload[0].map((space) => {
+        state.blocks = action.payload[0].value.map((space) => {
           space.blocks.forEach((block) => {
             block.parentSpace = space.name;
             block.available = (block.size - block.used);
@@ -167,45 +168,54 @@ export const ipamSlice = createSlice({
           return space.blocks;
          }).flat();
 
-        const vnets = action.payload[1].map((vnet) => {
-          vnet.available = (vnet.size - vnet.used);
-          vnet.utilization = Math.round((vnet.used / vnet.size) * 100);
-          vnet.prefixes = vnet.prefixes.join(", ");
+        if(action.payload[1].status === 'fulfilled') {
+          const vnets = action.payload[1].value.map((vnet) => {
+            vnet.available = (vnet.size - vnet.used);
+            vnet.utilization = Math.round((vnet.used / vnet.size) * 100);
+            vnet.prefixes = vnet.prefixes.join(", ");
 
-          return vnet;
-        });
-
-        state.vNets = vnets;
-
-        const subnets = action.payload[1].map((vnet) => {
-          var subnetArray = [];
-        
-          vnet.subnets.forEach((subnet) => {
-            const subnetDetails = {
-              name: subnet.name,
-              id: `${vnet.id}/subnets/${subnet.name}`,
-              prefix: subnet.prefix,
-              resource_group: vnet.resource_group,
-              subscription_id: vnet.subscription_id,
-              tenant_id: vnet.tenant_id,
-              vnet_name: vnet.name,
-              vnet_id: vnet.id,
-              used: subnet.used,
-              size: subnet.size,
-              available: (subnet.size - subnet.used),
-              utilization: Math.round((subnet.used / subnet.size) * 100),
-              type: subnetMap[subnet.type]
-            };
-
-            subnetArray.push(subnetDetails);
+            return vnet;
           });
 
-          return subnetArray;
-        }).flat();
+          state.vNets = vnets;
 
-        state.subnets = subnets;
+          const subnets = action.payload[1].value.map((vnet) => {
+            var subnetArray = [];
+          
+            vnet.subnets.forEach((subnet) => {
+              const subnetDetails = {
+                name: subnet.name,
+                id: `${vnet.id}/subnets/${subnet.name}`,
+                prefix: subnet.prefix,
+                resource_group: vnet.resource_group,
+                subscription_id: vnet.subscription_id,
+                tenant_id: vnet.tenant_id,
+                vnet_name: vnet.name,
+                vnet_id: vnet.id,
+                used: subnet.used,
+                size: subnet.size,
+                available: (subnet.size - subnet.used),
+                utilization: Math.round((subnet.used / subnet.size) * 100),
+                type: subnetMap[subnet.type]
+              };
 
-        state.endpoints = action.payload[2];
+              subnetArray.push(subnetDetails);
+            });
+
+            return subnetArray;
+          }).flat();
+
+          state.subnets = subnets;
+        } else {
+          state.vNets = [];
+          state.subnets = [];
+        }
+
+        if(action.payload[2].status === 'fulfilled') {
+          state.endpoints = action.payload[2].value;
+        } else {
+          state.endpoints = [];
+        }
       })
       .addCase(refreshAllAsync.pending, (state) => {
         state.refreshing = true;

@@ -279,7 +279,7 @@ export function refreshAll(token) {
     (async () => await fetchEndpoints(token))()
   ];
 
-  return Promise.all(stack);
+  return Promise.allSettled(stack);
 }
 
 export function fetchTreeView(token) {
