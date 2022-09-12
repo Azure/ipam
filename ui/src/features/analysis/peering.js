@@ -235,6 +235,8 @@ const opt = {
         const peers = d.value;
         const color = d.color;
 
+        const display = d.data.category !== 'error' && 'none';
+
         const vNetPattern = "/Microsoft.Network/virtualNetworks/";
         const resourceGroupPattern = "(?<=/resourceGroups/).+?(?=/)";
         const subscriptionPattern = "(?<=/subscriptions/).+?(?=/)";
@@ -308,6 +310,7 @@ const opt = {
             <div class="section">
               <div class="title">
                 <span>VNET DETAILS</span>
+                <img style="margin-left: auto; display: ${display}" src="/warning.png" width="12px" height="12px"/>
               </div>
               <div class="data">
                 <span style="font-weight: bold">vNET Name:&nbsp;</span>
@@ -325,6 +328,7 @@ const opt = {
                 <div class="dot" style="background-color: ${color}"></div>
                 <span style="font-weight: bold">Peerings:&nbsp;</span>
                 ${peers}
+                <span style="margin-left: auto; color: crimson; font-weight: bold; display: ${display}">vNET Missing</span>
               </div>
             </div>
           </div>
@@ -357,7 +361,11 @@ function parseNets(data) {
     }
   };
 
+  var visibleNets = [];
+
   const nodes = data.map(vnet => {
+    visibleNets.push(vnet.id);
+
     let node = {
       name: vnet.id,
       value: vnet.peerings.length, //vnet.id
@@ -369,6 +377,23 @@ function parseNets(data) {
     };
 
     return node;
+  });
+
+  data.map((vnet) => vnet.peerings).flat().forEach((peer) => {
+    if(!visibleNets.includes(peer.remote_network)) {
+      let node = {
+        name: peer.remote_network,
+        value: 1,
+        symbol: 'image:///warning.png',
+        symbolSize: (1 * factor) + factor,
+        category: 'error',
+        label: {
+          show: true,
+        }
+      };
+
+      nodes.push(node);
+    }
   });
 
   const totalLinks = data.reduce((accumulator, object) => {
@@ -407,6 +432,10 @@ function parseNets(data) {
 
   let categories = data.map(vnet => {
     return { name: vnet.id };
+  });
+
+  categories.push({
+    name: 'error'
   });
 
   var newOptions = cloneDeep(opt);

@@ -68,45 +68,33 @@ const HeaderTitle = styled("div")(({ theme }) => ({
   alignSelf: "center",
 }));
 
-const TopSection = styled("div")(({ theme }) => ({
+const DataSection = styled("div")(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
-  height: "50%",
+  height: "100%",
   width: "100%",
   border: "1px solid rgba(224, 224, 224, 1)",
   borderRadius: "4px",
   marginBottom: theme.spacing(1.5)
 }));
 
-const BottomSection = styled("div")(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  height: "50%",
-  width: "100%",
-  border: "1px solid rgba(224, 224, 224, 1)",
-  borderRadius: "4px",
-  marginTop: theme.spacing(1.5)
-}));
-
 // Grid Styles
-
-const GridHeader = styled("div")({
-  height: "50px",
-  width: "100%",
-  display: "flex",
-  borderBottom: "1px solid rgba(224, 224, 224, 1)",
-});
-
-const GridTitle = styled("div")(({ theme }) => ({
-  ...theme.typography.subtitle1,
-  width: "80%",
-  textAlign: "center",
-  alignSelf: "center",
-}));
 
 const GridBody = styled("div")({
   height: "100%",
   width: "100%",
+  '& .ipam-sub-excluded': {
+    backgroundColor: "rgb(255, 230, 230) !important",
+    '&:hover': {
+      backgroundColor: "rgb(255, 220, 220) !important",
+    }
+  },
+  '& .ipam-sub-included': {
+    backgroundColor: "rgb(255, 255, 255, 0.1) !important",
+    '&:hover': {
+      backgroundColor: "none",
+    }
+  }
 });
 
 const StyledGridOverlay = styled("div")({
@@ -116,80 +104,6 @@ const StyledGridOverlay = styled("div")({
   justifyContent: "center",
   height: "100%",
 });
-
-function GridSection(props) {
-  const { title, action, columns, rows, loading, onClick } = props;
-
-  function CustomLoadingOverlay() {
-    return (
-      <GridOverlay>
-        <div style={{ position: "absolute", top: 0, width: "100%" }}>
-          <LinearProgress />
-        </div>
-      </GridOverlay>
-    );
-  }
-
-  function CustomNoRowsOverlay() {
-    return (
-      <StyledGridOverlay>
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-          No Subscriptions Selected
-        </Typography>
-      </StyledGridOverlay>
-    );
-  }
-
-  const message = `Click to ${action}`;
-
-  return (
-    <React.Fragment>
-      <GridHeader
-        style={{
-          borderBottom: "1px solid rgba(224, 224, 224, 1)",
-        }}
-      >
-        <Box sx={{ width: "20%" }} />
-        <GridTitle>{title}</GridTitle>
-        <Box sx={{ width: "20%" }} />
-      </GridHeader>
-      <Tooltip title={message} followCursor>
-        <GridBody>
-          <DataGrid
-            disableColumnMenu
-            // disableSelectionOnClick
-            // hideFooter
-            // hideFooterPagination
-            pagination
-            autoPageSize
-            hideFooterSelectedRowCount
-            density="compact"
-            rows={rows}
-            columns={columns}
-            onRowClick={(rowData) => onClick(rowData.row)}
-            loading={loading}
-            components={{
-              LoadingOverlay: CustomLoadingOverlay,
-              NoRowsOverlay: CustomNoRowsOverlay,
-            }}
-            initialState={{
-              sorting: {
-                sortModel: [{ field: 'name', sort: 'asc' }],
-              },
-            }}
-            sx={{
-              "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus":
-                {
-                  outline: "none",
-                },
-              border: "none",
-            }}
-          />
-        </GridBody>
-      </Tooltip>
-    </React.Fragment>
-  );
-}
 
 const columns = [
   { field: "subscription_id", headerName: "Subscription ID", headerAlign: "left", align: "left", flex: 1 },
@@ -204,12 +118,15 @@ export default function ManageExclusions() {
   const [loading, setLoading] = React.useState(false);
   const [included, setIncluded] = React.useState([]);
   const [excluded, setExcluded] = React.useState([]);
+  const [rowData, setRowData] = React.useState([]);
   const [loadedExclusions, setLoadedExclusions] = React.useState([]);
   const [sending, setSending] = React.useState(false);
 
   const dispatch = useDispatch();
 
   const unchanged = isEqual(excluded, loadedExclusions);
+
+  const message = `Click to Include/Exclude`;
 
   React.useEffect(() => {
     const request = {
@@ -262,6 +179,10 @@ export default function ManageExclusions() {
     })();
   }, []);
 
+  React.useEffect(() => {
+    setRowData(included.concat(excluded));
+  }, [included, excluded]);
+
   function subscriptionExclude(elem) {
     const newArr = included.filter(object => {
       return object.id !== elem.id;
@@ -313,6 +234,34 @@ export default function ManageExclusions() {
     })();
   }
 
+  function onClick(elem) {
+    excluded.includes(elem) ? subscriptionInclude(elem) : subscriptionExclude(elem);
+  }
+
+  function getClass(elem) {
+    return excluded.includes(elem) ? 'ipam-sub-excluded' : 'ipam-sub-included';
+  }
+
+  function CustomLoadingOverlay() {
+    return (
+      <GridOverlay>
+        <div style={{ position: "absolute", top: 0, width: "100%" }}>
+          <LinearProgress />
+        </div>
+      </GridOverlay>
+    );
+  }
+
+  function CustomNoRowsOverlay() {
+    return (
+      <StyledGridOverlay>
+        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+          No Subscriptions Selected
+        </Typography>
+      </StyledGridOverlay>
+    );
+  }
+
   return (
     <Wrapper>
       <MainBody>
@@ -336,28 +285,41 @@ export default function ManageExclusions() {
             </Tooltip>
           </Box>
         </FloatingHeader>
-        <TopSection>
-          <GridSection
-            title="Included Subscriptions"
-            action="exclude"
-            // columns={columns.map((x) => ({...x, renderCell: renderExclude}))}
-            columns={columns}
-            rows={included}
-            loading={loading}
-            onClick={subscriptionExclude}
-          />
-        </TopSection>
-        <BottomSection>
-        <GridSection
-            title="Excluded Subscriptions"
-            action="include"
-            // columns={columns.map((x) => ({...x, renderCell: renderInclude}))}
-            columns={columns}
-            rows={excluded}
-            loading={loading}
-            onClick={subscriptionInclude}
-          />
-        </BottomSection>
+        <DataSection>
+          <GridBody>
+            <DataGrid
+              disableColumnMenu
+              // disableSelectionOnClick
+              // hideFooter
+              // hideFooterPagination
+              pagination
+              autoPageSize
+              hideFooterSelectedRowCount
+              density="compact"
+              rows={rowData}
+              columns={columns}
+              onRowClick={(rowData) => onClick(rowData.row)}
+              getRowClassName={(params) => getClass(params.row)}
+              loading={loading}
+              components={{
+                LoadingOverlay: CustomLoadingOverlay,
+                NoRowsOverlay: CustomNoRowsOverlay,
+              }}
+              initialState={{
+                sorting: {
+                  sortModel: [{ field: 'name', sort: 'asc' }],
+                },
+              }}
+              sx={{
+                "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus":
+                  {
+                    outline: "none",
+                  },
+                border: "none",
+              }}
+            />
+          </GridBody>
+        </DataSection>
       </MainBody>
     </Wrapper>
   );

@@ -11,8 +11,7 @@ import { isEqual, throttle } from 'lodash';
 
 import {
   DataGrid,
-  GridOverlay,
-  GridToolbarContainer
+  GridOverlay
 } from "@mui/x-data-grid";
 
 import {
@@ -41,212 +40,90 @@ import {
 
 import { apiRequest } from "../../msal/authConfig";
 
-function CustomToolbar(props) {
-  const { admins, loadedAdmins, setAdmins, selectionModel, refresh, refreshing } = props;
+// Page Styles
 
-  const { instance, inProgress, accounts } = useMsal();
-  const { enqueueSnackbar } = useSnackbar();
+const Wrapper = styled("div")(({ theme }) => ({
+  display: "flex",
+  flexGrow: 1,
+  height: "calc(100vh - 160px)"
+}));
 
-  const [open, setOpen] = React.useState(false);
-  const [options, setOptions] = React.useState(null);
-  const [input, setInput] = React.useState("");
-  const [selected, setSelected] = React.useState(null);
-  const [sending, setSending] = React.useState(false);
+const MainBody = styled("div")({
+  display: "flex",
+  height: "100%",
+  width: "100%",
+  flexDirection: "column",
+});
 
-  const loading = open && !options
-  const unchanged = isEqual(admins, loadedAdmins);
+const FloatingHeader = styled("div")(({ theme }) => ({
+  ...theme.typography.h6,
+  display: "flex",
+  flexDirection: "row",
+  height: "7%",
+  width: "100%",
+  border: "1px solid rgba(224, 224, 224, 1)",
+  borderRadius: "4px",
+  marginBottom: theme.spacing(3)
+}));
 
-  function SearchUsers(nameFilter) {
-    const request = {
-      scopes: ["Directory.Read.All"],
-      account: accounts[0],
-    };
+const HeaderTitle = styled("div")(({ theme }) => ({
+  ...theme.typography.h6,
+  width: "80%",
+  textAlign: "center",
+  alignSelf: "center",
+}));
 
-    (async () => {
-      try {
-        setOptions(null);
-        const response = await instance.acquireTokenSilent(request);
-        const userData = await callMsGraphUsersFilter(response.accessToken, nameFilter);
-        setOptions(userData.value);
-      } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar(e.response.data.error, { variant: "error" });
-        }
-      }
-    })();
+const DataSection = styled("div")(({ theme }) => ({
+  display: "flex",
+  flexDirection: "column",
+  height: "100%",
+  width: "100%",
+  border: "1px solid rgba(224, 224, 224, 1)",
+  borderRadius: "4px",
+  marginBottom: theme.spacing(1.5)
+}));
+
+// Grid Styles
+
+const GridBody = styled("div")({
+  height: "100%",
+  width: "100%",
+  '& .ipam-sub-excluded': {
+    backgroundColor: "rgb(255, 230, 230) !important",
+    '&:hover': {
+      backgroundColor: "rgb(255, 220, 220) !important",
+    }
+  },
+  '& .ipam-sub-included': {
+    backgroundColor: "rgb(255, 255, 255, 0.1) !important",
+    '&:hover': {
+      backgroundColor: "none",
+    }
   }
+});
 
-  const fetchUsers = React.useMemo(() => throttle((input) => SearchUsers(input), 500), []);
-
-  React.useEffect(() => {
-    let active = true;
-
-    if (active) {
-      fetchUsers(input);
-    }
-
-    return () => {
-      active = false;
-    };
-  }, [input, fetchUsers]);
-
-  React.useEffect(() => {
-    if (!open) {
-      setOptions(null);
-    }
-  }, [input, open]);
-
-  function handleAdd(user) {
-    let newAdmin = {
-      name: user.displayName,
-      id: user.id,
-      email: user.userPrincipalName,
-    };
-
-    if(!admins.find(obj => { return obj.id === user.id })) {
-      setAdmins((admins) => [...admins, newAdmin]);
-    } else {
-      console.log("Admin already added!");
-      enqueueSnackbar('Admin already added!', { variant: 'error' });
-    }
-    
-    setSelected(null);
-  }
-
-  function onSave() {
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
-    (async () => {
-      try {
-        setSending(true);
-        const response = await instance.acquireTokenSilent(request);
-        const data = await replaceAdmins(response.accessToken, admins);
-        enqueueSnackbar("Successfully updated admins", { variant: "success" });
-        refresh();
-      } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar(e.response.data.error, { variant: "error" });
-        }
-      } finally {
-        setSending(false);
-      }
-    })();
-  }
-
-  const popperStyle = {
-    popper: {
-      width: "fit-content"
-    }
-  };
-
-  const MyPopper = function (props) {
-    return <Popper {...props} style={{ popperStyle }} placement="bottom-start" />;
-  };
-
-  return (
-    <GridToolbarContainer>
-      <Box
-        height="65px"
-        width="100%"
-        display="flex"
-        flexDirection="row"
-        justifyContent="flex-start"
-        style={{ borderBottom: "1px solid rgba(224, 224, 224, 1)" }}
-      >
-        <Box display="flex" justifyContent="flex-start"  sx={{ flexBasis: "300px", flexGrow: 0, flexShrink: 0, ml: 2, mr: 2 }}>
-          <Autocomplete
-            PopperComponent={MyPopper}
-            key="12345"
-            id="asynchronous-demo"
-            autoHighlight
-            blurOnSelect={true}
-            forcePopupIcon={false}
-            sx={{ width: 300 }}
-            open={open}
-            value={selected}
-            onOpen={() => {
-              setOpen(true);
-            }}
-            onClose={() => {
-              setOpen(false);
-            }}
-            onInputChange={(event, newInput) => {
-              setInput(newInput);
-            }}
-            onChange={(event, newValue) => {
-              newValue ? handleAdd(newValue) : setSelected(null);
-            }}
-            isOptionEqualToValue={(option, value) => option.displayName === value.displayName}
-            getOptionLabel={(option) => `${option.displayName} (${option.userPrincipalName})`}
-            options={options || []}
-            loading={loading}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="User Search"
-                variant="standard"
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <React.Fragment>
-                      {loading ? <CircularProgress color="inherit" size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </React.Fragment>
-                  ),
-                }}
-              />
-            )}
-          />
-        </Box>
-        <Box width="100%" display="flex" alignSelf="center" textAlign="center">
-          <Typography sx={{ flex: "1 1 100%" }} variant="h6" component="div">
-            IPAM Admins
-          </Typography>
-        </Box>
-        <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ flexBasis: "300px", flexGrow: 0, flexShrink: 0, ml: 2, mr: 2 }}>
-          <Tooltip title="Save" >
-            <IconButton
-              color="primary"
-              aria-label="upload picture"
-              component="span"
-              style={{
-                visibility: unchanged ? 'hidden' : 'visible'
-              }}
-              disabled={sending || refreshing}
-              onClick={onSave}
-            >
-              <SaveAlt />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </Box>
-    </GridToolbarContainer>
-  );
-}
+const StyledGridOverlay = styled("div")({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  height: "100%",
+});
 
 export default function Administration() {
-  const { instance, accounts } = useMsal();
+  const { instance, inProgress, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [admins, setAdmins] = React.useState([]);
   const [loadedAdmins, setLoadedAdmins] = React.useState([]);
   const [selectionModel, setSelectionModel] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
+
+  const [open, setOpen] = React.useState(false);
+  const [options, setOptions] = React.useState(null);
+  const [input, setInput] = React.useState("");
+  const [selected, setSelected] = React.useState(null);
+  const [sending, setSending] = React.useState(false);
 
   const columns = [
     { field: "name", headerName: "Name", flex: 0.5 },
@@ -255,9 +132,34 @@ export default function Administration() {
     { field: "", headerName: "", headerAlign: "center", align: "center", width: 25, sortable: false, renderCell: renderDelete }
   ];
 
+  const fetchUsers = React.useMemo(() => throttle((input) => SearchUsers(input), 500), []);
+
+  const usersLoading = open && !options;
+  const unchanged = isEqual(admins, loadedAdmins);
+
   React.useEffect(() => {
     refreshData();
   }, []);
+
+  React.useEffect(() => {
+    if(open) {
+      let active = true;
+
+      if (active) {
+        fetchUsers(input);
+      }
+
+      return () => {
+        active = false;
+      };
+    }
+  }, [open, input, fetchUsers]);
+
+  React.useEffect(() => {
+    if (!open) {
+      setOptions(null);
+    }
+  }, [input, open]);
 
   function refreshData() {
     const request = {
@@ -288,6 +190,61 @@ export default function Administration() {
     })();
   }
 
+  function SearchUsers(nameFilter) {
+    const request = {
+      scopes: ["Directory.Read.All"],
+      account: accounts[0],
+    };
+
+    (async () => {
+      try {
+        setOptions(null);
+        const response = await instance.acquireTokenSilent(request);
+        const userData = await callMsGraphUsersFilter(response.accessToken, nameFilter);
+        setOptions(userData.value);
+      } catch (e) {
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar(e.response.data.error, { variant: "error" });
+        }
+      }
+    })();
+  }
+
+  function onSave() {
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
+
+    (async () => {
+      try {
+        setSending(true);
+        const response = await instance.acquireTokenSilent(request);
+        const data = await replaceAdmins(response.accessToken, admins);
+        enqueueSnackbar("Successfully updated admins", { variant: "success" });
+        refreshData();
+      } catch (e) {
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar(e.response.data.error, { variant: "error" });
+        }
+      } finally {
+        setSending(false);
+      }
+    })();
+  }
+
   function renderDelete(params) {  
     const flexCenter = {
       display: "flex",
@@ -302,7 +259,7 @@ export default function Administration() {
             color="error"
             sx={{
               padding: 0,
-              display: (JSON.stringify([params.row.id]) === JSON.stringify(selectionModel)) ? "flex" : "none"
+              display: (isEqual([params.row.id], selectionModel)) ? "flex" : "none"
             }}
             disableFocusRipple
             disableTouchRipple
@@ -316,21 +273,40 @@ export default function Administration() {
     );
   }
 
+  function handleAdd(user) {
+    let newAdmin = {
+      name: user.displayName,
+      id: user.id,
+      email: user.userPrincipalName,
+    };
+
+    if(!admins.find(obj => { return obj.id === user.id })) {
+      setAdmins((admins) => [...admins, newAdmin]);
+    } else {
+      console.log("Admin already added!");
+      enqueueSnackbar('Admin already added!', { variant: 'error' });
+    }
+    
+    setSelected(null);
+  }
+
+  const popperStyle = {
+    popper: {
+      width: "fit-content"
+    }
+  };
+
+  const MyPopper = function (props) {
+    return <Popper {...props} style={{ popperStyle }} placement="bottom-start" />;
+  };
+
   function onModelChange(newModel) {
-    if(JSON.stringify(newModel) === JSON.stringify(selectionModel)) {
+    if(isEqual(newModel, selectionModel)) {
       setSelectionModel([]);
     } else {
       setSelectionModel(newModel);
     }
   }
-
-  const StyledGridOverlay = styled('div')({
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-  });
 
   function CustomNoRowsOverlay() {
     return (
@@ -354,39 +330,108 @@ export default function Administration() {
   }
 
   return (
-    <Box sx={{ flexGrow: 1, height: "100%" }}>
-      <DataGrid
-        disableColumnMenu
-        hideFooter
-        hideFooterPagination
-        hideFooterSelectedRowCount
-        rows={admins}
-        columns={columns}
-        loading={loading}
-        onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
-        setSelectionModel={selectionModel}
-        components={{
-          Toolbar: CustomToolbar,
-          NoRowsOverlay: CustomNoRowsOverlay,
-          LoadingOverlay: CustomLoadingOverlay,
-        }}
-        componentsProps={{
-          toolbar: {
-            admins: admins,
-            loadedAdmins: loadedAdmins,
-            setAdmins, setAdmins,
-            selectionModel: selectionModel,
-            refresh: refreshData,
-            refreshing: loading
-          }
-        }}
-        sx={{
-          "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus-within":
-            {
-              outline: "none",
-            },
-        }}
-      />
-    </Box>
+    <Wrapper>
+      <MainBody>
+        <FloatingHeader>
+          <Box sx={{ width: "35%" }}>
+            <Autocomplete
+              PopperComponent={MyPopper}
+              key="12345"
+              id="asynchronous-demo"
+              size="small"
+              autoHighlight
+              blurOnSelect={true}
+              forcePopupIcon={false}
+              sx={{
+                ml: 2,
+                width: 300
+              }}
+              open={open}
+              value={selected}
+              onOpen={() => {
+                setOpen(true);
+              }}
+              onClose={() => {
+                setOpen(false);
+              }}
+              onInputChange={(event, newInput) => {
+                setInput(newInput);
+              }}
+              onChange={(event, newValue) => {
+                newValue ? handleAdd(newValue) : setSelected(null);
+              }}
+              isOptionEqualToValue={(option, value) => option.displayName === value.displayName}
+              getOptionLabel={(option) => `${option.displayName} (${option.userPrincipalName})`}
+              options={options || []}
+              loading={usersLoading}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="User Search"
+                  variant="standard"
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <React.Fragment>
+                        {usersLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.InputProps.endAdornment}
+                      </React.Fragment>
+                    ),
+                  }}
+                />
+              )}
+            />
+          </Box>
+          <HeaderTitle>IPAM Admins</HeaderTitle>
+          <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ width: "35%", ml: 2, mr: 2 }}>
+            <Tooltip title="Save" >
+              <IconButton
+                color="primary"
+                aria-label="upload picture"
+                component="span"
+                style={{
+                  visibility: unchanged ? 'hidden' : 'visible'
+                }}
+                disabled={sending}
+                onClick={onSave}
+              >
+                <SaveAlt />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </FloatingHeader>
+        <DataSection>
+          <GridBody>
+            <DataGrid
+              disableColumnMenu
+              hideFooter
+              hideFooterPagination
+              hideFooterSelectedRowCount
+              density="compact"
+              rows={admins}
+              columns={columns}
+              loading={loading}
+              onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
+              setSelectionModel={selectionModel}
+              components={{
+                NoRowsOverlay: CustomNoRowsOverlay,
+                LoadingOverlay: CustomLoadingOverlay,
+              }}
+              sx={{
+                "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus-within":
+                  {
+                    outline: "none",
+                  },
+                "&.MuiDataGrid-root .MuiDataGrid-columnHeader--moving":
+                  {
+                    backgroundColor: "rgba(255, 255, 255, 0.1)"
+                  },
+                border: "none"
+              }}
+            />
+          </GridBody>
+        </DataSection>
+      </MainBody>
+    </Wrapper>
   );
 }
