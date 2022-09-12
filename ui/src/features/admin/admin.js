@@ -412,7 +412,7 @@ export default function Administration() {
               columns={columns}
               loading={loading}
               onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
-              setSelectionModel={selectionModel}
+              selectionModel={selectionModel}
               components={{
                 NoRowsOverlay: CustomNoRowsOverlay,
                 LoadingOverlay: CustomLoadingOverlay,
