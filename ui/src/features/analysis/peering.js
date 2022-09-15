@@ -379,7 +379,10 @@ function parseNets(data) {
     return node;
   });
 
-  data.map((vnet) => vnet.peerings).flat().forEach((peer) => {
+  const missing = [...new Set(data.map((vnet) => vnet.peerings).flat())];
+  const uniqueMissing = [...new Map(missing.map((item) => [item["remote_network"], item])).values()];
+
+  uniqueMissing.forEach((peer) => {
     if(!visibleNets.includes(peer.remote_network)) {
       let node = {
         name: peer.remote_network,
