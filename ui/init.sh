@@ -1,8 +1,12 @@
 #!/bin/sh
 
-echo "window.env = {" >> /app/build/env.js
-echo \"REACT_APP_CLIENT_ID\": \"$CLIENT_ID\", >> /app/build.env.js
-echo \"REACT_APP_TENANT_ID\": \"$TENANT_ID\" >> /app/build.env.js
-echo "}" >> /app/build/env.js
+PORT=$1
 
-nginx -g daemon off;
+test -e /etc/os-release && os_release='/etc/os-release' || os_release='/usr/lib/os-release'
+. "${os_release}"
+
+REACT_APP_CONTAINER_IMAGE=${PRETTY_NAME}
+export REACT_APP_CONTAINER_IMAGE
+
+npx --yes react-inject-env set
+npx --yes http-server -a 0.0.0.0 -P http://localhost? -p ${PORT} build

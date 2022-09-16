@@ -3,7 +3,10 @@ FROM $BASE_IMAGE
 
 ARG PORT=80
 
-# Add application sources
+# Set Environment Variable
+ENV PORT=${PORT}
+
+# Add Application Sources
 ADD . $HOME
 
 # Install Dependencies
@@ -12,8 +15,15 @@ RUN npm install
 # Build Application
 RUN npm run build
 
+# Switch to Root User
+USER root
+
+# Set Script Execute Permissions
+RUN chmod +x init.sh
+
 # Expose Port
 EXPOSE $PORT
 
 # Inject ENV Variables & Start Server
-CMD npx --yes react-inject-env set && npx --yes http-server -a 0.0.0.0 -P http://localhost? -p $PORT build
+# CMD npx --yes react-inject-env set && npx --yes http-server -a 0.0.0.0 -P http://localhost? -p $PORT build
+ENTRYPOINT ["init.sh", ${PORT}]
