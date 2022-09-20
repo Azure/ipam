@@ -19,6 +19,9 @@
     },
     "engineAppSecret": {
       "value": "<ENGINE APP REGISTRATION CLIENT SECRET>"
+    },
+    "deployAcr": {
+      "value": false
     }
   }
 }

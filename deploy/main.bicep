@@ -23,9 +23,13 @@ param engineAppSecret string
 @description('Tags')
 param tags object = {}
 
+@description('Flag to Deploy Container Registry')
+param deployAcr bool = false
+
 // Resource naming variables
 var appServiceName = '${namePrefix}-${uniqueString(guid)}'
 var appServicePlanName = '${namePrefix}-asp-${uniqueString(guid)}'
+var containerRegistryName = '${namePrefix}acr${uniqueString(guid)}'
 var cosmosAccountName = '${namePrefix}-dbacct-${uniqueString(guid)}'
 var keyVaultName = '${namePrefix}-kv-${uniqueString(guid)}'
 var managedIdentityName = '${namePrefix}-mi-${uniqueString(guid)}'
@@ -103,5 +107,16 @@ module appService 'appService.bicep' = {
   }
 }
 
+// Container Registry
+module containerRegistry 'containerRegistry.bicep' = if (deployAcr) {
+  scope: resourceGroup
+  name: 'containerRegistryModule'
+  params: {
+    containerRegistryName: containerRegistryName
+    location: location
+  }
+}
+
 // Outputs
 output appServiceHostName string = appService.outputs.appServiceHostName
+output loginServer string = deployAcr ? containerRegistry.outputs.loginServer : ''

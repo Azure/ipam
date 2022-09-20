@@ -71,6 +71,13 @@ param(
   [switch]
   $SubscriptionScope,
 
+  [Parameter(Mandatory = $false,
+  ParameterSetName = 'TemplateOnly')]
+  [Parameter(Mandatory = $false,
+  ParameterSetName = 'Full')]
+  [switch]
+  $DeployAcr,
+
   [Parameter(Mandatory = $true,
     ParameterSetName = 'TemplateOnly')]
   [ValidateScript({
@@ -371,7 +378,9 @@ Function Save-Parameters {
     [Parameter(Mandatory=$true)]
     [string]$EngineAppId,
     [Parameter(Mandatory=$true)]
-    [string]$EngineSecret
+    [string]$EngineSecret,
+    [Parameter(Mandatory=$false)]
+    [bool]$DeployAcr
   )
 
   Write-Host "INFO: Populating Bicep parameter file for infrastructure deployment" -ForegroundColor Green
@@ -384,6 +393,7 @@ Function Save-Parameters {
   $parametersObject.parameters.uiAppId.value = $UIAppId
   $parametersObject.parameters.engineAppId.value = $EngineAppId
   $parametersObject.parameters.engineAppSecret.value = $EngineSecret
+  $parametersObject.parameters.deployAcr.value = $DeployAcr
   $parametersObject.parameters = $parametersObject.parameters | Select-Object * -ExcludeProperty namePrefix, tags
 
   # Output updated parameter file for Bicep deployment
@@ -409,6 +419,7 @@ Function Import-Parameters {
   $UIAppId = $parametersObject.parameters.uiAppId.value
   $EngineAppId = $parametersObject.parameters.engineAppId.value
   $EngineSecret = $parametersObject.parameters.engineAppSecret.value
+  $script:DeployAcr = $parametersObject.parameters.deployAcr.value
 
   Write-Host "INFO: Successfully import Bicep parameter values" -ForegroundColor green
   Write-Verbose -Message "Successfully import Bicep parameter values"
@@ -433,7 +444,10 @@ Function Deploy-Bicep {
     [Parameter(Mandatory=$false)]
     [string]$NamePrefix,
     [Parameter(Mandatory=$false)]
+    [boolean]$DeployAcr,
+    [Parameter(Mandatory=$false)]
     [hashtable]$Tags
+
   )
 
   Write-Host "INFO: Deploying IPAM bicep templates" -ForegroundColor green
@@ -448,6 +462,10 @@ Function Deploy-Bicep {
 
   if($NamePrefix) {
     $deploymentParameters.Add('namePrefix', $NamePrefix)
+  }
+
+  if($DeployAcr) {
+    $deploymentParameters.Add('deployAcr', $DeployAcr)
   }
 
   if($Tags) {
@@ -535,6 +553,7 @@ try {
   if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly')) {
     $deployment = Deploy-Bicep @appDetails `
       -NamePrefix $NamePrefix `
+      -DeployAcr $DeployAcr `
       -Tags $Tags
   }
 
@@ -543,6 +562,15 @@ try {
       -UIAppId $appDetails.UIAppId `
       -Endpoint $deployment.Outputs["appServiceHostName"].Value
   }
+
+  if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly') -and $($DeployAcr)) {
+    Write-Host "INFO: Building and pushing container images to Azure Container Registry" -ForegroundColor Green
+    Write-Verbose -Message "Building and pushing container images to Azure Container Registry"
+
+    az acr build -r $deployment.Outputs["loginServer"].Value -t ipam-engine:latest -f ../engine/Dockerfile.prod
+
+    az acr build -r $deployment.Outputs["loginServer"].Value -t ipam-ui:latest -f ../ui/Dockerfile.prod
+  } 
 
   Write-Host "INFO: Azure IPAM Solution deployed successfully" -ForegroundColor green
   Write-Verbose -Message "Azure IPAM Solution deployed successfully"
