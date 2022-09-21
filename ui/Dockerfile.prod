@@ -19,12 +19,8 @@ COPY . ./
 # Build Application
 RUN npm run build
 
-# Set Script Execute Permissions
-RUN chmod +x /app/init.sh
-
 # Expose Port
 EXPOSE 80
 
 # Inject ENV Variables & Start Server
-# CMD npx --yes react-inject-env set && npx --yes http-server -a 0.0.0.0 -P http://localhost? -p 80 build
-ENTRYPOINT ["/app/init.sh", "80"]
+CMD npx --yes react-inject-env set && npx --yes http-server -a 0.0.0.0 -P http://localhost? -p 80 build

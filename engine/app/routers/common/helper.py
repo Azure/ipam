@@ -35,7 +35,10 @@ def get_username_from_jwt(token):
 
     decoded = jwt.decode(token, options={"verify_signature": False})
 
-    return decoded['preferred_username']
+    if "preferred_username" in decoded:
+        return decoded["preferred_username"]
+    else:
+        return f"spn:{decoded['oid']}"
 
 def get_user_id_from_jwt(token):
     """DOCSTRING"""
