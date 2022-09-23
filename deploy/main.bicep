@@ -13,6 +13,9 @@ param namePrefix string = 'ipam'
 @description('Azure Cloud Enviroment')
 param azureCloud string = 'AZURE_PUBLIC'
 
+@description('Flag to Deploy Private Container Registry')
+param privateAcr bool = false
+
 @description('Flag to Deploy IPAM as a Function')
 param deployAsFunc bool = false
 
@@ -40,6 +43,7 @@ var workspaceName = '${namePrefix}-law-${uniqueString(guid)}'
 var managedIdentityName = '${namePrefix}-mi-${uniqueString(guid)}'
 var resourceGroupName = '${namePrefix}-rg-${uniqueString(guid)}'
 var storageName = '${namePrefix}stg${uniqueString(guid)}'
+var containerRegistryName = '${namePrefix}acr${uniqueString(guid)}'
 
 
 // Resource Group
@@ -98,7 +102,7 @@ module cosmos 'cosmos.bicep' = {
   }
 }
 
-// Storage Account for Nginx Config
+// Storage Account for Nginx Config/ Function Metadata
 module storageAccount 'storageAccount.bicep' = {
   scope: resourceGroup
   name: 'storageAccountModule'
@@ -109,6 +113,16 @@ module storageAccount 'storageAccount.bicep' = {
     managedIdentityId: managedIdentity.outputs.id
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     deployAsFunc: deployAsFunc
+  }
+}
+
+// Container Registry
+module containerRegistry 'containerRegistry.bicep' = if (privateAcr) {
+  scope: resourceGroup
+  name: 'containerRegistryModule'
+  params: {
+    containerRegistryName: containerRegistryName
+    location: location
   }
 }
 
@@ -126,6 +140,8 @@ module appService 'appService.bicep' = if (!deployAsFunc) {
     managedIdentityId: managedIdentity.outputs.id
     storageAccountName: storageAccount.outputs.name
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
+    privateAcr: privateAcr
+    privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
   }
 }
 
@@ -143,8 +159,13 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
     managedIdentityId: managedIdentity.outputs.id
     storageAccountName: storageAccount.outputs.name
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
+    privateAcr: privateAcr
+    privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
   }
 }
 
 // Outputs
+output resourceGroupName string = resourceGroupName
+output appServiceName string = appServiceName
 output appServiceHostName string = deployAsFunc ? functionApp.outputs.functionAppHostName : appService.outputs.appServiceHostName
+output acrUri string = privateAcr ? containerRegistry.outputs.acrUri : ''

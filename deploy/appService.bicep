@@ -25,7 +25,22 @@ param storageAccountName string
 @description('Log Analytics Worskpace ID')
 param workspaceId string
 
-var dockerCompose = loadFileAsBase64('../docker-compose.prod.yml')
+@description('Flag to Deploy Private Container Registry')
+param privateAcr bool
+
+@description('Uri for Private Container Registry')
+param privateAcrUri string
+
+// ACR Uri Variable
+var acrUri = privateAcr ? privateAcrUri : 'azureipam.azurecr.io'
+
+// Docker Compose File as Base64 String
+// var dockerCompose = loadFileAsBase64('../docker-compose.prod.yml')
+
+// Load Docker Compose File & Replace ACR Uri (for Private ACR)
+var dockerCompose = loadTextContent('../docker-compose.prod.yml')
+var dockerComposeReplace = replace(dockerCompose, 'azureipam.azurecr.io', acrUri)
+var dockerComposeEncode = base64(dockerComposeReplace)
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-06-01' existing = {
   name: storageAccountName
@@ -62,7 +77,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
     keyVaultReferenceIdentity: managedIdentityId
     siteConfig: {
       alwaysOn: true
-      linuxFxVersion: 'COMPOSE|${dockerCompose}'
+      linuxFxVersion: 'COMPOSE|${dockerComposeEncode}'
       appSettings: [
         {
           name: 'AZURE_ENV'

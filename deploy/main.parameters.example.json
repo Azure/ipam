@@ -22,6 +22,9 @@
     },
     "deployAsFunc": {
       "value": false
+    },
+    "privateAcr": {
+      "value": false
     }
   }
 }

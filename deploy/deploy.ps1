@@ -57,10 +57,10 @@ param(
   [hashtable]
   $Tags,
 
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'TemplateOnly')]
-  [switch]
-  $TemplateOnly,
+  # [Parameter(Mandatory = $false,
+  #   ParameterSetName = 'TemplateOnly')]
+  # [switch]
+  # $TemplateOnly,
 
   [Parameter(Mandatory = $true,
     ParameterSetName = 'AppsOnly')]
@@ -87,6 +87,13 @@ param(
   [switch]
   $AsFunction,
 
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Full')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'TemplateOnly')]
+  [switch]
+  $PrivateAcr,
+
   [Parameter(Mandatory = $true,
     ParameterSetName = 'TemplateOnly')]
   [ValidateScript({
@@ -110,6 +117,8 @@ $AZURE_ENV_MAP = @{
   AzureGermanCloud  = "AZURE_GERMANY"
   AzureChinaCloud   = "AZURE_CHINA"
 }
+
+$MIN_AZ_CLI_VER = [System.Version]'2.35.0'
 
 # Set preference variables
 $ErrorActionPreference = "Stop"
@@ -491,7 +500,9 @@ Function Deploy-Bicep {
     [Parameter(Mandatory=$false)]
     [string]$AzureCloud,
     [Parameter(Mandatory=$false)]
-    [boolean]$AsFunction,
+    [bool]$AsFunction,
+    [Parameter(Mandatory=$false)]
+    [bool]$PrivateAcr,
     [Parameter(Mandatory=$false)]
     [hashtable]$Tags
   )
@@ -516,6 +527,10 @@ Function Deploy-Bicep {
 
   if($AsFunction) {
     $deploymentParameters.Add('deployAsFunc', $AsFunction)
+  }
+
+  if($PrivateAcr) {
+    $deploymentParameters.Add('privateAcr', $PrivateAcr)
   }
 
   if($Tags) {
@@ -559,6 +574,38 @@ Write-Host
 Write-Host "NOTE: IPAM Deployment Type: $($PSCmdlet.ParameterSetName)" -ForegroundColor Magenta
 
 try {
+  if($PrivateAcr) {
+    # Verify Minimum Azure CLI Version
+    Write-Host "INFO: PrivateAcr flag set, verifying minimum Azure CLI version" -ForegroundColor Green
+    Write-Verbose -Message "PrivateAcr flag set, verifying minimum Azure CLI version"
+
+    $azureCliVer = [System.Version](az version | ConvertFrom-Json).'azure-cli'
+
+    if($azureCliVer -lt $MIN_AZ_CLI_VER) {
+      Write-Host "ERROR: Azure CLI must be version $MIN_AZ_CLI_VER or greater!" -ForegroundColor red
+      exit
+    }
+
+    # Verify Azure PowerShell and Azure CLI Contexts Match
+    Write-Host "INFO: PrivateAcr flag set, verifying Azure PowerShell and Azure CLI contexts match" -ForegroundColor Green
+    Write-Verbose -Message "PrivateAcr flag set, verifying Azure PowerShell and Azure CLI contexts match"
+
+    $azureCliContext = $(az account show | ConvertFrom-Json) 2>$null
+
+    if(-not $azureCliContext) {
+      Write-Host "ERROR: Azure CLI not logged in or no subscription has been selected!" -ForegroundColor red
+      exit
+    }
+
+    $azureCliSub = $azureCliContext.id
+    $azurePowerShellSub = (Get-AzContext).Subscription.Id
+
+    if($azurePowerShellSub -ne $azureCliSub) {
+      Write-Host "ERROR: Azure PowerShell and Azure CLI must be set to the same context!" -ForegroundColor red
+      exit
+    }
+  }
+
   if ($PSCmdlet.ParameterSetName -in ('Full', 'AppsOnly', 'Function', 'FuncAppsOnly')) {
     # Fetch Tenant ID
     Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor Green
@@ -619,6 +666,7 @@ try {
     $deployment = Deploy-Bicep @appDetails `
       -NamePrefix $NamePrefix `
       -AzureCloud $azureCloud `
+      -PrivateAcr $PrivateAcr `
       -AsFunction $AsFunction `
       -Tags $Tags
   }
@@ -627,6 +675,22 @@ try {
     Update-UIApplication `
       -UIAppId $appDetails.UIAppId `
       -Endpoint $deployment.Outputs["appServiceHostName"].Value
+  }
+
+  if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly') -and $PrivateAcr) {
+    Write-Host "INFO: Building and pushing container images to Azure Container Registry" -ForegroundColor Green
+    Write-Verbose -Message "Building and pushing container images to Azure Container Registry"
+
+    if($AsFunction) {
+      az acr build -r $deployment.Outputs["acrUri"].Value -t ipam-function:latest -f ../engine/Dockerfile.func
+
+      Restart-AzFunctionApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Force
+    } else {
+      az acr build -r $deployment.Outputs["acrUri"].Value -t ipam-engine:latest -f ../engine/Dockerfile.prod
+      az acr build -r $deployment.Outputs["acrUri"].Value -t ipam-ui:latest -f ../ui/Dockerfile.prod
+
+      Restart-AzWebApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value
+    }
   }
 
   Write-Host "INFO: Azure IPAM Solution deployed successfully" -ForegroundColor Green

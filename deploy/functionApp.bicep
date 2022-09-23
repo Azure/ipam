@@ -25,6 +25,15 @@ param storageAccountName string
 @description('Log Analytics Workspace ID')
 param workspaceId string
 
+@description('Flag to Deploy Private Container Registry')
+param privateAcr bool
+
+@description('Uri for Private Container Registry')
+param privateAcrUri string
+
+// ACR Uri Variable
+var acrUri = privateAcr ? privateAcrUri : 'azureipam.azurecr.io'
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-06-01' existing = {
   name: storageAccountName
 }
@@ -57,7 +66,7 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
     serverFarmId: functionAppPlan.id
     keyVaultReferenceIdentity: managedIdentityId
     siteConfig: {
-      linuxFxVersion: 'DOCKER|azureipam.azurecr.io/ipam-func:latest'
+      linuxFxVersion: 'DOCKER|${acrUri}/ipam-func:latest'
       appSettings: [
         {
           name: 'AZURE_ENV'
