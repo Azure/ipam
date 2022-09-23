@@ -76,6 +76,8 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
     serverFarmId: appServicePlan.id
     keyVaultReferenceIdentity: managedIdentityId
     siteConfig: {
+      acrUseManagedIdentityCreds: privateAcr ? true : false
+      acrUserManagedIdentityID: privateAcr ? managedIdentityId : null
       alwaysOn: true
       linuxFxVersion: 'COMPOSE|${dockerComposeEncode}'
       appSettings: [

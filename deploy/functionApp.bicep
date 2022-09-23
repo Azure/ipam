@@ -66,6 +66,8 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
     serverFarmId: functionAppPlan.id
     keyVaultReferenceIdentity: managedIdentityId
     siteConfig: {
+      acrUseManagedIdentityCreds: privateAcr ? true : false
+      acrUserManagedIdentityID: privateAcr ? managedIdentityId : null
       linuxFxVersion: 'DOCKER|${acrUri}/ipam-func:latest'
       appSettings: [
         {
