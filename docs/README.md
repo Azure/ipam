@@ -8,12 +8,12 @@ Guidance on onboarding samples to docs.microsoft.com/samples: https://review.doc
 Taxonomies for products and languages: https://review.docs.microsoft.com/new-hope/information-architecture/metadata/taxonomies?branch=master
 -->
 
-## IPAM Overview and Architecture
+## Overview and Architecture
 IPAM was developed to give customers a simple, straightforward way to manage their IP address space in Azure.  IPAM enables end-to-end planning, deploying, managing and monitoring of your IP address space, with an intuitive user experience. IPAM automatically discovers IP address utilization in your Azure tenant and enables you to manage it all from a centralized UI. You can also interface with IPAM programmatically via a RESTful API to facilitate IP address management at scale via Infrastructure as Code (IaC). IPAM is designed and architected based on the 5 pillars of the [Microsoft Azure Well Architected Framework](https://docs.microsoft.com/en-us/azure/architecture/framework/).
 
 ![IPAM Architecture](./images/ipam_architecture.png ':size=70%')
 
-### IPAM Infrastructure
+## IPAM Infrastructure
 The IPAM solution is comprised of containers running on Azure App Services. IPAM can also be deployed in an API-only fashion with an Azure Function if no UI is required (e.g. pure IaC model). The containers are built and published to a public Azure Container Registry (ACR), but you may also choose to build your own containers and host them in your own registry. More details on this can be found in the [Contributing](./contributing/README.md) section. All of the supporting infrastructure is deployed and runs within your Azure Tenant, none of the resources are shared with other IPAM users (outside of the public ACR).
 
 Here is a more specific breakdown of the components used:
@@ -54,10 +54,10 @@ As mentioned above, the IPAM application is made up of two containers, one that 
 - You plan on interfacing with IPAM exclusively via the RESTful API
 - You plan on running the backend engine in a lightweight fashion, such as Azure Functions or Azure Container Instances
 
-### The User Interface Container
+## User Interface
 
 The front end is written in [React](https://reactjs.org/) and we leverage the [Material UI](https://mui.com/) for the UI components. The UI handles AuthN/AuthZ with AzureAD via [MSAL](https://learn.microsoft.com/en-us/azure/active-directory/develop/msal-overview), and manages token acquisition & refresh for communication to the backend Engine API (on your behalf).
 
-### The Backend Engine Container
+## Backend Engine
 
 The engine is written in [Python](https://www.python.org/) and we leverage the [FastAPI Framework](https://fastapi.tiangolo.com/) for building the APIs. It handles interfacing with Azure Resource Graph on the user's behalf to gather information about various Azure Networking related resources, and their states.

@@ -8,7 +8,7 @@ API docs can be found at the `/api/docs` path of your IPAM website. Here you wil
 ## How to Call the API
 You can interface with the API like you would any other REST API. We'll be using [Postman](https://www.postman.com) and [Azure PowerShell](https://docs.microsoft.com/en-us/powershell/azure/what-is-azure-powershell) for our examples. 
 
-### Obtaining an Azure AD Token
+## Obtaining an Azure AD Token
 First things first, you'll need to obtain an Azure AD token for authentication purposes. You can retrieve one via the IPAM UI at anytime by selecting **Token** from the menu presented when clicking on your user avatar in the upper righthand corner.
 
 ![IPAM azure ad token](../images/token.png)
@@ -25,7 +25,7 @@ You can also retrieve an Azure AD token from IPAM via Azure PowerShell by using 
 $accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://e3ff2k34-2271-58b5-9g2g-5004145608b3).Token -AsPlainText
 ````
 
-### Sample API Calls
+## Sample API Calls
 You'll need to provide the following for each API call:
 * a bearer token
 * the method
@@ -56,9 +56,14 @@ Click **Send** and you will recieve a response of type **201 Created** with key 
 Here is the same example performed via Azure PowerShell.
 
 ````ps1
-$accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://e3ff2k34-2271-58b5-9g2g-5004145608b3).Token -AsPlainText
+$engineClientId = '<Engine App Registration Client ID>'
+$appName = 'ipamdev'
+$space = 'TestSpace'
+$block = 'TestBlock'
 
-$requestUrl = 'https://ipamdev.azurewebsites.net/api/spaces/TestSpace/blocks/TestBlock/reservations'
+$accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token -AsPlainText
+
+$requestUrl = "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations"
 
 $body = @{
     'size' = 24
@@ -78,10 +83,10 @@ $response = Invoke-RestMethod `
  -Body $body
 ````
 
-The call will return key information regarding your CIDR block reservation. Again, make note of the tag information in the response.
+The call will return key information regarding your CIDR block reservation. Again, make note of the *tag* information in the response.
 
 ````ps1
-return $response
+$response
 
 id        : ABNsJjXXyTRDTRCdJEJThu
 cidr      : 10.1.5.0/24
@@ -91,4 +96,4 @@ status    : wait
 tag       : @{X-IPAM-RES-ID=ABNsJjXXyTRDTRCdJEJThu}
 ````
 
-Take a look at our **Azure Landing Zone integration** example found under the `deploy` directory in the repository for a real work example of how to automate VNET creation by means of Bicep and leveraging the IPAM API.
+Take a look at our **Azure Landing Zone integration** example found under the `deploy` directory in the repository for a real work example of how to automate vNET creation by means of Bicep and leveraging the IPAM API.
