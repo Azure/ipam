@@ -682,12 +682,35 @@ try {
     Write-Verbose -Message "Building and pushing container images to Azure Container Registry"
 
     if($AsFunction) {
-      az acr build -r $deployment.Outputs["acrUri"].Value -t ipam-function:latest -f ../engine/Dockerfile.func
+      $funcBuildOutput = az acr build -r $deployment.Outputs["acrUri"].Value -t ipam-function:latest -f ..\engine\Dockerfile.func  ..\engine\ 2>&1
+
+      if ($LASTEXITCODE -ne 0) {
+        throw $funcBuildOutput
+      } else {
+        WRITE-HOST "INFO: Function container image build and push completed successfully" -ForegroundColor Green
+        Write-Verbose -Message "Function container image build and push completed successfully"
+      }
 
       Restart-AzFunctionApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Force
     } else {
-      az acr build -r $deployment.Outputs["acrUri"].Value -t ipam-engine:latest -f ../engine/Dockerfile.prod
-      az acr build -r $deployment.Outputs["acrUri"].Value -t ipam-ui:latest -f ../ui/Dockerfile.prod
+      $engineBuildOutput = az acr build -r $deployment.Outputs["acrUri"].Value -t ipam-engine:latest -f ..\engine\Dockerfile.prod ..\engine\ 2>&1
+
+      if ($LASTEXITCODE -ne 0) {
+        throw $engineBuildOutput
+      } else {
+        WRITE-HOST "INFO: Engine container image build and push completed successfully" -ForegroundColor Green
+        Write-Verbose -Message "Engine container image build and push completed successfully"
+      }
+
+      $uiBuildOutput = az acr build -r $deployment.Outputs["acrUri"].Value -t ipam-ui:latest -f ..\ui\Dockerfile.prod ..\ui\
+
+      if ($LASTEXITCODE -ne 0) {
+        throw $uiBuildOutput
+      } else {
+        WRITE-HOST "INFO: UI container image build and push completed successfully" -ForegroundColor Green
+        Write-Verbose -Message "UI container image build and push completed successfully"
+      }
+
 
       Restart-AzWebApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value
     }
