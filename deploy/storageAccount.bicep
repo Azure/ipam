@@ -1,8 +1,8 @@
-@description('Blob Container Name')
-param containerName string = 'nginx'
-
 @description('Deployment Location')
 param location string = resourceGroup().location
+
+@description('Blob Container Name')
+param containerName string = 'nginx'
 
 @description('Managed Identity Id')
 param managedIdentityId string

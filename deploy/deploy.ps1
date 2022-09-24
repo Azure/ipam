@@ -90,6 +90,8 @@ param(
   [Parameter(Mandatory = $false,
     ParameterSetName = 'Full')]
   [Parameter(Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [Parameter(Mandatory = $false,
     ParameterSetName = 'TemplateOnly')]
   [switch]
   $PrivateAcr,
@@ -576,8 +578,8 @@ Write-Host "NOTE: IPAM Deployment Type: $($PSCmdlet.ParameterSetName)" -Foregrou
 try {
   if($PrivateAcr) {
     # Verify Minimum Azure CLI Version
-    Write-Host "INFO: PrivateAcr flag set, verifying minimum Azure CLI version" -ForegroundColor Green
-    Write-Verbose -Message "PrivateAcr flag set, verifying minimum Azure CLI version"
+    Write-Host "INFO: PrivateACR flag set, verifying minimum Azure CLI version" -ForegroundColor Green
+    Write-Verbose -Message "PrivateACR flag set, verifying minimum Azure CLI version"
 
     $azureCliVer = [System.Version](az version | ConvertFrom-Json).'azure-cli'
 
@@ -587,8 +589,8 @@ try {
     }
 
     # Verify Azure PowerShell and Azure CLI Contexts Match
-    Write-Host "INFO: PrivateAcr flag set, verifying Azure PowerShell and Azure CLI contexts match" -ForegroundColor Green
-    Write-Verbose -Message "PrivateAcr flag set, verifying Azure PowerShell and Azure CLI contexts match"
+    Write-Host "INFO: PrivateACR flag set, verifying Azure PowerShell and Azure CLI contexts match" -ForegroundColor Green
+    Write-Verbose -Message "PrivateACR flag set, verifying Azure PowerShell and Azure CLI contexts match"
 
     $azureCliContext = $(az account show | ConvertFrom-Json) 2>$null
 
@@ -677,12 +679,19 @@ try {
       -Endpoint $deployment.Outputs["appServiceHostName"].Value
   }
 
-  if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly') -and $PrivateAcr) {
+  if ($PSCmdlet.ParameterSetName -in ('Full', 'Function', 'TemplateOnly') -and $PrivateAcr) {
     Write-Host "INFO: Building and pushing container images to Azure Container Registry" -ForegroundColor Green
     Write-Verbose -Message "Building and pushing container images to Azure Container Registry"
 
+    $enginePath = [Io.Path]::Combine('..', 'engine')
+    $engineDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.prod'
+    $functionDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.func'
+
+    $uiPath = [Io.Path]::Combine('..', 'ui')
+    $uiDockerFile = Join-Path -Path $uiPath -ChildPath 'Dockerfile.prod'
+
     if($AsFunction) {
-      $funcBuildOutput = az acr build -r $deployment.Outputs["acrUri"].Value -t ipam-function:latest -f ..\engine\Dockerfile.func  ..\engine\ 2>&1
+      $funcBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-func:latest -f $functionDockerFile $enginePath) 2>&1
 
       if ($LASTEXITCODE -ne 0) {
         throw $funcBuildOutput
@@ -691,9 +700,12 @@ try {
         Write-Verbose -Message "Function container image build and push completed successfully"
       }
 
-      Restart-AzFunctionApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Force
+      Write-Host "INFO: Restarting Function App" -ForegroundColor Green
+      Write-Verbose -Message "Restarting Function App"
+
+      Restart-AzFunctionApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Force | Out-Null
     } else {
-      $engineBuildOutput = az acr build -r $deployment.Outputs["acrUri"].Value -t ipam-engine:latest -f ..\engine\Dockerfile.prod ..\engine\ 2>&1
+      $engineBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-engine:latest -f $engineDockerFile $enginePath) 2>&1
 
       if ($LASTEXITCODE -ne 0) {
         throw $engineBuildOutput
@@ -702,7 +714,7 @@ try {
         Write-Verbose -Message "Engine container image build and push completed successfully"
       }
 
-      $uiBuildOutput = az acr build -r $deployment.Outputs["acrUri"].Value -t ipam-ui:latest -f ..\ui\Dockerfile.prod ..\ui\
+      $uiBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-ui:latest -f $uiDockerFile $uiPath) 2>&1
 
       if ($LASTEXITCODE -ne 0) {
         throw $uiBuildOutput
@@ -711,8 +723,10 @@ try {
         Write-Verbose -Message "UI container image build and push completed successfully"
       }
 
+      Write-Host "INFO: Restarting App Service" -ForegroundColor Green
+      Write-Verbose -Message "Restarting App Service"
 
-      Restart-AzWebApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value
+      Restart-AzWebApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value | Out-Null
     }
   }
 

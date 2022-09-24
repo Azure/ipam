@@ -19,6 +19,9 @@ param azureCloud string = 'AZURE_PUBLIC'
 @description('Managed Identity Id')
 param managedIdentityId string
 
+@description('Managed Identity ClientId')
+param managedIdentityClientId string
+
 @description('Storage Account Name')
 param storageAccountName string
 
@@ -67,7 +70,7 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
     keyVaultReferenceIdentity: managedIdentityId
     siteConfig: {
       acrUseManagedIdentityCreds: privateAcr ? true : false
-      acrUserManagedIdentityID: privateAcr ? managedIdentityId : null
+      acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
       linuxFxVersion: 'DOCKER|${acrUri}/ipam-func:latest'
       appSettings: [
         {
@@ -104,7 +107,7 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
         }
         {
           name: 'DOCKER_REGISTRY_SERVER_URL'
-          value: 'https://index.docker.io/v1'
+          value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
         }
         {
           name: 'AzureWebJobsStorage'

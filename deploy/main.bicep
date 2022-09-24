@@ -58,8 +58,8 @@ module logAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' ={
   name: 'logAnalyticsWorkspaceModule'
   scope: resourceGroup
   params: {
-    workspaceName: workspaceName
     location: location
+    workspaceName: workspaceName
   }
 }
 
@@ -68,8 +68,8 @@ module managedIdentity 'managedIdentity.bicep' = {
   name: 'managedIdentityModule'
   scope: resourceGroup
   params: {
-    managedIdentityName: managedIdentityName
     location: location
+    managedIdentityName: managedIdentityName
   }
 }
 
@@ -78,8 +78,8 @@ module keyVault 'keyVault.bicep' = {
   name: 'keyVaultModule'
   scope: resourceGroup
   params: {
-    keyVaultName: keyVaultName
     location: location
+    keyVaultName: keyVaultName
     principalId:  managedIdentity.outputs.principalId
     uiAppId: uiAppId
     engineAppId: engineAppId
@@ -121,8 +121,9 @@ module containerRegistry 'containerRegistry.bicep' = if (privateAcr) {
   scope: resourceGroup
   name: 'containerRegistryModule'
   params: {
-    containerRegistryName: containerRegistryName
     location: location
+    containerRegistryName: containerRegistryName
+    principalId: managedIdentity.outputs.principalId
   }
 }
 
@@ -138,6 +139,7 @@ module appService 'appService.bicep' = if (!deployAsFunc) {
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     managedIdentityId: managedIdentity.outputs.id
+    managedIdentityClientId: managedIdentity.outputs.clientId
     storageAccountName: storageAccount.outputs.name
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     privateAcr: privateAcr
@@ -157,6 +159,7 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     managedIdentityId: managedIdentity.outputs.id
+    managedIdentityClientId: managedIdentity.outputs.clientId
     storageAccountName: storageAccount.outputs.name
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     privateAcr: privateAcr
@@ -168,4 +171,5 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
 output resourceGroupName string = resourceGroupName
 output appServiceName string = appServiceName
 output appServiceHostName string = deployAsFunc ? functionApp.outputs.functionAppHostName : appService.outputs.appServiceHostName
+output acrName string = privateAcr ? containerRegistry.outputs.acrName : ''
 output acrUri string = privateAcr ? containerRegistry.outputs.acrUri : ''
