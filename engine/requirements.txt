@@ -19,4 +19,4 @@ azure-mgmt-resourcegraph
 azure-keyvault-secrets
 azure-cosmos==4.3.0
 pytest
-asyncio
+pytest-asyncio
