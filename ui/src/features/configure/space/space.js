@@ -154,19 +154,19 @@ export default function SpaceDataGrid(props) {
           handleClose={() => setEditSpaceOpen(false)}
           space={selectedRow ? selectedRow : null}
           spaces={spaces}
-          refresh={() => refresh()}
+          refresh={refresh}
         />
         <AddSpace
           open={addSpaceOpen}
           handleClose={() => setAddSpaceOpen(false)}
           spaces={spaces}
-          refresh={() => refresh()}
+          refresh={refresh}
         />
         <ConfirmDelete
           open={deleteSpaceOpen}
           handleClose={() => setDeleteSpaceOpen(false)}
           space={selectedRow ? selectedRow.name : null}
-          refresh={() => refresh()}
+          refresh={refresh}
         />
         </React.Fragment>
       }

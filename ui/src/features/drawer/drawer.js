@@ -61,15 +61,18 @@ import Analysis from "../../img/Analysis";
 import Configure from "../../img/Configure";
 import Admin from "../../img/Admin";
 import Visualize from "../../img/Visualize";
+import Peering from "../../img/Peering";
 import Conflict from "../../img/Conflict";
+import Person from "../../img/Person";
+import Rule from "../../img/Rule";
 
 import UserSettings from "./userSettings";
 
 import Welcome from "../welcome/Welcome";
 import DiscoverTabs from "../tabs/discoverTabs";
 import AnalyzeTabs from "../tabs/analyzeTabs";
+import AdminTabs from "../tabs/adminTabs";
 // import AnalysisTool from "../analysis/analysis";
-import Administration from "../admin/admin";
 import ConfigureIPAM from "../configure/configure";
 
 import Refresh from "./refresh";
@@ -149,6 +152,7 @@ export default function NavDrawer() {
       {
         title: "Discover",
         icon: Discover,
+        admin: false,
         children: [
           {
             title: "Spaces",
@@ -185,6 +189,7 @@ export default function NavDrawer() {
       {
         title: "Analysis",
         icon: Analysis,
+        admin: false,
         children: [
           {
             title: "Visualize",
@@ -192,12 +197,12 @@ export default function NavDrawer() {
             link: "analyze/visualize",
             admin: false
           },
-          // {
-          //   title: "Conflicts",
-          //   icon: Conflict,
-          //   link: "analyze/conflict",
-          //   admin: false
-          // }
+          {
+            title: "Peerings",
+            icon: Peering,
+            link: "analyze/peering",
+            admin: false
+          }
         ]
       },
     ],
@@ -208,11 +213,30 @@ export default function NavDrawer() {
         link: "configure",
         admin: false
       },
+      // {
+      //   title: "Admin",
+      //   icon: Admin,
+      //   link: "admin",
+      //   admin: true
+      // },
       {
         title: "Admin",
         icon: Admin,
-        link: "admin",
-        admin: true
+        admin: true,
+        children: [
+          {
+            title: "Admins",
+            icon: Person,
+            link: "admin/admins",
+            admin: true
+          },
+          {
+            title: "Subscriptions",
+            icon: Rule,
+            link: "admin/subscriptions",
+            admin: true
+          }
+        ]
       },
     ]
   ];
@@ -282,7 +306,8 @@ export default function NavDrawer() {
             <List>
               {navItem.map((item, itemIndex) => {
                 return item.hasOwnProperty('children') 
-                ? <React.Fragment key={`item-${item.title}`}>
+                ? ((item.admin && isAdmin) || !item.admin) &&
+                  <React.Fragment key={`item-${item.title}`}>
                     <ListItem
                       key={item.title}
                       component="div"
@@ -383,8 +408,10 @@ export default function NavDrawer() {
   }
 
   function stringAvatar(name) {
+    const nameSplit = name.split(" ");
+
     return {
-      children: `${name.split(" ")[0][0]}${name.split(" ")[1][0]}`,
+      children: nameSplit.length === 1 ? `${nameSplit[0][0]}` : `${nameSplit[0][0]}${nameSplit[1][0]}`,
     };
   }
 
@@ -624,9 +651,11 @@ export default function NavDrawer() {
           <Route path="discover/subnet" element={<DiscoverTabs />} />
           <Route path="discover/endpoint" element={<DiscoverTabs />} />
           <Route path="analyze/visualize" element={<AnalyzeTabs />} />
-          <Route path="analyze/conflict" element={<AnalyzeTabs />} />
+          <Route path="analyze/peering" element={<AnalyzeTabs />} />
           <Route path="configure" element={<ConfigureIPAM />} />
-          <Route path="admin" element={<Administration />} />
+          {/* <Route path="admin" element={<Administration />} /> */}
+          <Route path="admin/admins" element={<AdminTabs />} />
+          <Route path="admin/subscriptions" element={<AdminTabs />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Box>

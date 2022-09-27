@@ -8,17 +8,31 @@ from typing import Optional, List, Any
 
 import azure.cosmos.exceptions as exceptions
 
-from app.dependencies import check_token_expired, get_admin
+from app.dependencies import (
+    check_token_expired,
+    get_admin,
+    get_tenant_id
+)
 
 import re
 import jsonpatch
-from uuid import UUID
+import uuid
+import copy
+
+from app.models import *
+
+from app.routers.admin import (
+    new_admin_db
+)
 
 from app.routers.common.helper import (
     get_username_from_jwt,
     get_user_id_from_jwt,
     cosmos_query,
-    cosmos_upsert
+    cosmos_upsert,
+    cosmos_replace,
+    cosmos_delete,
+    cosmos_retry
 )
 
 router = APIRouter(
@@ -27,27 +41,20 @@ router = APIRouter(
     dependencies=[Depends(check_token_expired)]
 )
 
-class User(BaseModel):
-    """DOCSTRING"""
-
-    id: UUID
-    apiRefresh: int
-    isAdmin: bool
-
-    class Config:
-        json_encoders = {
-            UUID: lambda v: str(v),
+async def new_user(user_id, tenant_id):
+    new_user = {
+        "id": uuid.uuid4(),
+        "type": "user",
+        "tenant_id": tenant_id,
+        "data": {
+          "id": user_id,
+          "apiRefresh": 5
         }
+    }
 
-class JSONPatch(BaseModel):
-    """DOCSTRING"""
+    query_results = await cosmos_upsert(jsonable_encoder(new_user))
 
-    op: str
-    path: str
-    value: Any
-
-class UserUpdate(List[JSONPatch]):
-    """DOCSTRING"""
+    return query_results
 
 async def scrub_patch(patch):
     scrubbed_patch = []
@@ -79,6 +86,7 @@ async def scrub_patch(patch):
     status_code = 200
 )
 async def get_users(
+    tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
@@ -90,10 +98,12 @@ async def get_users(
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    users = await cosmos_query("users")
-    admins = await cosmos_query("admins")
+    users = await cosmos_query("SELECT VALUE c.data FROM c WHERE c.type = 'user'", tenant_id)
+    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
-    for user in users['users']:
+    admins = admin_query[0]
+
+    for user in users:
         is_admin = next((x for x in admins['admins'] if x['id'] == user['id']), None)
 
         current_user = {
@@ -111,53 +121,43 @@ async def get_users(
     response_model = User,
     status_code = 200
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error fetching user, please try again."
+)
 async def get_user(
-    authorization: str = Header(None)
+    authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get your IPAM user details.
     """
 
     user_assertion = authorization.split(' ')[1]
-    userId = get_user_id_from_jwt(user_assertion)
+    user_id = get_user_id_from_jwt(user_assertion)
 
-    current_try = 0
-    max_retry = 5
+    user_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND c['data']['id'] = '{}')".format(user_id), tenant_id)
 
-    while True:
-        try:
-            item = await cosmos_query("users")
+    if not user_query:
+        user_query = [await new_user(user_id, tenant_id)]
 
-            target_user = next((x for x in item['users'] if x['id'] == userId), None)
+    user_data = copy.deepcopy(user_query[0])
 
-            if not target_user:
-                target_user = {
-                    "id": userId,
-                    "apiRefresh": 5
-                }
+    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
-                item['users'].append(target_user)
+    if not admin_query:
+        admin_query = [await new_admin_db([], [], tenant_id)]
 
-                await cosmos_upsert("users", item)
-        except exceptions.CosmosAccessConditionFailedError as e:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error creating user, please try again.")
-        else:
-            break
-
-    admins = await cosmos_query("admins")
+    admins = admin_query[0]
 
     if admins['admins']:
-      is_admin = next((x for x in admins['admins'] if x['id'] == target_user['id']), None)
+        is_admin = next((x for x in admins['admins'] if x['id'] == user_id), None)
     else:
-      is_admin = True
+        is_admin = True
 
-    target_user['isAdmin'] = True if is_admin else False
+    user_data['data']['isAdmin'] = True if is_admin else False
 
-    return target_user
+    return user_data['data']
 
 @router.patch(
     "/me",
@@ -165,9 +165,14 @@ async def get_user(
     response_model = User,
     status_code=200
 )
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error updating user, please try again."
+)
 async def update_user(
     updates: UserUpdate,
-    authorization: str = Header(None)
+    authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Update a User with a JSON patch:
@@ -183,40 +188,32 @@ async def update_user(
     - **/apiRefresh**
     """
 
-    current_try = 0
-    max_retry = 5
-
     user_assertion = authorization.split(' ')[1]
-    userId = get_user_id_from_jwt(user_assertion)
+    user_id = get_user_id_from_jwt(user_assertion)
 
-    while True:
-        try:
-            item = await cosmos_query("users")
+    user_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND c['data']['id'] = '{}')".format(user_id), tenant_id)
 
-            target_user = next((x for x in item['users'] if x['id'] == userId), None)
+    if not user_query:
+        user_query = [await new_user(user_id, tenant_id)]
 
-            try:
-                patch = jsonpatch.JsonPatch(updates)
-            except jsonpatch.InvalidJsonPatch:
-                raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
+    user_data = copy.deepcopy(user_query[0])
 
-            scrubbed_patch = jsonpatch.JsonPatch(await scrub_patch(patch))
-            scrubbed_patch.apply(target_user, in_place = True)
+    try:
+        patch = jsonpatch.JsonPatch(updates)
+    except jsonpatch.InvalidJsonPatch:
+        raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
 
-            await cosmos_upsert("users", item)
-        except exceptions.CosmosAccessConditionFailedError:
-            if current_try < max_retry:
-                current_try += 1
-                continue
-            else:
-                raise HTTPException(status_code=500, detail="Error updating user, please try again.")
-        else:
-            break
+    scrubbed_patch = jsonpatch.JsonPatch(await scrub_patch(patch))
+    user_data['data'] = scrubbed_patch.apply(user_data['data'], in_place = True)
 
-    admins = await cosmos_query("admins")
+    await cosmos_replace(user_query[0], user_data)
 
-    is_admin = next((x for x in admins['admins'] if x['id'] == target_user['id']), None)
+    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
-    target_user['isAdmin'] = True if is_admin else False
+    admins = admin_query[0]
 
-    return target_user
+    is_admin = next((x for x in admins['admins'] if x['id'] == user_id), None)
+
+    user_data['data']['isAdmin'] = True if is_admin else False
+
+    return user_data['data']

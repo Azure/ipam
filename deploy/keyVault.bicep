@@ -20,6 +20,9 @@ param engineAppId string
 @description('IPAM-Engine App Registration Client Secret')
 param engineAppSecret string
 
+@description('Log Analytics Worskpace ID')
+param workspaceId string
+
 // KeyVault Secret Permissions Assigned to Managed Identity
 var secretsPermissions = [
   'get'
@@ -80,6 +83,34 @@ resource appTenant 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
   name: 'TENANT-ID'
   properties: {
     value: tenantId
+  }
+}
+
+resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'diagSettings'
+  scope: keyVault
+  properties: {
+    logs: [
+      {
+        categoryGroup: 'allLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
+    workspaceId: workspaceId
   }
 }
 

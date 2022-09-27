@@ -6,6 +6,8 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 
+import Visualize from '../analysis/visualize';
+import Peering from '../analysis/peering';
 import AnalysisTool from '../analysis/analysis';
 import GmailTreeView from '../analysis/conflicts';
 
@@ -43,7 +45,7 @@ function a11yProps(index) {
 }
 
 export default function AnalyzeTabs() {
-  const allTabs = ['/analyze/visualize', '/analyze/conflict'];
+  const allTabs = ['/analyze/visualize', '/analyze/peering'];
 
   let location = useLocation();
 
@@ -53,11 +55,11 @@ export default function AnalyzeTabs() {
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={allTabs.indexOf(location.pathname)}>
             <Tab label="Visualize" component={Link} to={allTabs[0]} {...a11yProps(0)} />
-            {/* <Tab label="IP Conflicts" component={Link} to={allTabs[1]} {...a11yProps(1)} /> */}
+            <Tab label="Peering" component={Link} to={allTabs[1]} {...a11yProps(1)} />
           </Tabs>
         </Box>
-        <TabPanel value={allTabs.indexOf(location.pathname)} index={0}><AnalysisTool /></TabPanel>
-        {/* <TabPanel value={allTabs.indexOf(location.pathname)} index={1}><GmailTreeView /></TabPanel> */}
+        <TabPanel value={allTabs.indexOf(location.pathname)} index={0}><Visualize /></TabPanel>
+        <TabPanel value={allTabs.indexOf(location.pathname)} index={1}><Peering /></TabPanel>
       </React.Fragment>
     </Box>
   );

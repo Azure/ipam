@@ -7,7 +7,9 @@ import {
   DataGrid,
   GridOverlay,
   GridToolbarContainer,
-  GridToolbarColumnsButton
+  GridToolbarColumnsButton,
+  GridToolbarFilterButton,
+  GridToolbarExport
 } from "@mui/x-data-grid";
 
 import {
@@ -29,6 +31,7 @@ import Shrug from "../../img/pam/Shrug";
 import { TableContext } from "./TableContext";
 import FilterMenu from "./FilterMenu";
 import ItemDetails from "./Utils/Details";
+import { minWidth } from "@mui/system";
 
 const openStyle = {
   right: 0,
@@ -68,20 +71,18 @@ export default function DiscoverTable(props) {
 
   if (!columns.find( x => x['field'] === 'id' )) {
     columns.push(
-      { field: "id", headerName: "", headerAlign: "right", align: "right", width: 25, sortable: false, renderCell: renderExpand }
+      { field: "id", headerName: "", headerAlign: "right", align: "right", width: 25, filterable: false, sortable: false, disableExport: true, renderCell: renderExpand }
     );
   } else {
     columns.pop();
     columns.push(
-      { field: "id", headerName: "", headerAlign: "right", align: "right", width: 25, sortable: false, renderCell: renderExpand }
+      { field: "id", headerName: "", headerAlign: "right", align: "right", width: 25, filterable: false, sortable: false, disableExport: true, renderCell: renderExpand }
     );
   }
 
   function renderExpand(params) {  
     const onClick = (e) => {
       e.stopPropagation();
-      console.log("CLICK!");
-      // setSelectionModel([params.value]);
       setRowData(params.row);
       setMenuExpand(true);
     };
@@ -213,18 +214,27 @@ export default function DiscoverTable(props) {
           justifyContent="center"
           style={{ borderBottom: "1px solid rgba(224, 224, 224, 1)", backgroundColor: selectedRow ? "rgba(25, 118, 210, 0.12)" : "unset" }}
         >
-          <Box width="300px" display="flex" justifyContent="flex-start" alignItems="center">
+          <Box sx={{ minWidth: "300px", display: "flex", justifyContent: "flex-start", alignItems: "center" }}>
             <GridToolbarColumnsButton
               sx={{ ml: 2 }}
             />
+            <GridToolbarFilterButton
+              sx={{ ml: 1 }}
+            />
+            <GridToolbarExport
+              sx={{ ml: 1 }}
+              printOptions={{
+                disableToolbarButton: true
+              }}
+            />
           </Box>
-          <Box width="100%" alignSelf="center" textAlign="center">
+          <Box sx={{ width: "100%", alignSelf: "center", textAlign: "center" }}>
             <Typography sx={{ flex: "1 1 100%" }} variant="h6" component="div">
               {selectedRow ? `'${selectedRow.name}' selected` : `${config.title}s`}
             </Typography>
           </Box>
-          <Box width="300px" display="flex" justifyContent="flex-end" alignItems="center">
-            <Tooltip title="Filter">
+          <Box sx={{ minWidth: "300px", display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+            {/* <Tooltip title="Filter">
               <IconButton
                 ref={anchorEl}
                 color="primary"
@@ -244,7 +254,7 @@ export default function DiscoverTable(props) {
               filterSettings={filterSettings}
               handleClose={handleMenuClose}
               state={filterMenuState}
-            />
+            /> */}
           </Box>
         </Box>
       </GridToolbarContainer>
@@ -258,8 +268,10 @@ export default function DiscoverTable(props) {
         <DataGrid
           disableSelectionOnClick
           disableColumnMenu
-          hideFooter
-          hideFooterPagination
+          // hideFooter
+          // hideFooterPagination
+          pagination
+          autoPageSize
           hideFooterSelectedRowCount
           density="compact"
           rows={filteredData}
@@ -289,7 +301,11 @@ export default function DiscoverTable(props) {
             "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus-within":
               {
                 outline: "none",
-              }
+              },
+            // "&.MuiDataGrid-root .MuiDataGrid-footerContainer":
+            //   {
+            //     minHeight: "59.5px",
+            //   }
           }}
         />
       </Box>

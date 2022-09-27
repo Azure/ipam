@@ -1,0 +1,29 @@
+ARG BASE_IMAGE=python:3.9-slim
+FROM $BASE_IMAGE
+
+ARG PORT=80
+
+# Set Environment Variable
+ENV PORT=${PORT}
+
+# Copy Requirements File
+ADD ./requirements.txt $HOME
+
+# Install Dependencies
+RUN pip install --no-cache-dir --upgrade -r ./requirements.txt
+
+# Copy Application Scripts & Sources
+ADD ./init.sh $HOME
+ADD ./app $HOME/app
+
+# Switch to Root User
+USER root
+
+# Set Script Execute Permissions
+RUN chmod +x init.sh
+
+# Expose Port
+EXPOSE $PORT
+
+# Execute Startup Script
+ENTRYPOINT ./init.sh ${PORT}

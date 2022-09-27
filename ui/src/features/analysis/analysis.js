@@ -79,17 +79,19 @@ export default function AnalysisTool() {
   }, []);
 
   React.useEffect(() => {
-    chart.current = Sunburst()
-    chart.current
-      .data(selected)
-      .label('name')
-      .color(d => color(d.name))
-      .width(500)
-      .height(500)
-      .excludeRoot(true)
-      .tooltipTitle(d => `<i>${d.name}</i>`)
-      .tooltipContent(d => d.ip ? `<i>${d.ip}</i>` : ``)
-    (ref.current);
+    if(!chart.current) {
+      chart.current = Sunburst()
+      chart.current
+        .data(selected)
+        .label('name')
+        .color(d => color(d.name))
+        .width(500)
+        .height(500)
+        .excludeRoot(true)
+        .tooltipTitle(d => `<i>${d.name}</i>`)
+        .tooltipContent(d => d.ip ? `<i>${d.ip}</i>` : ``)
+      (ref.current);
+    }
   }, []);
 
   React.useEffect(() => {

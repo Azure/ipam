@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { values } from 'lodash';
 import {
   fetchSpaces,
   fetchVNets,
@@ -7,6 +8,13 @@ import {
   refreshAll,
   getMe
 } from './ipamAPI';
+
+const subnetMap = {
+  AFW: "Azure Firewall",
+  VGW: "Virtual Network Gateway",
+  BAS: "Azure Bastion",
+  AGW: "Application Gateway"
+};
 
 const initialState = {
   refreshInterval: null,
@@ -88,10 +96,19 @@ export const ipamSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchSpacesAsync.fulfilled, (state, action) => {
-        state.spaces = action.payload;
+        const spaces = action.payload.map((space) => {
+          if('size' in space && 'used' in space) {
+            space.available = (space.size - space.used);
+            space.utilization = Math.round((space.used / space.size) * 100) || 0;
+          }
+
+          return space;
+        });
+
+        state.spaces = spaces;
 
         state.blocks = action.payload.map((space) => {
-          space.blocks.forEach(block => {
+          space.blocks.forEach((block) => {
             block.parentSpace = space.name;
             block.available = (block.size - block.used);
             block.utilization = Math.round((block.used / block.size) * 100);
@@ -102,20 +119,46 @@ export const ipamSlice = createSlice({
          }).flat();
       })
       .addCase(fetchVNetsAsync.fulfilled, (state, action) => {
-        state.vNets = action.payload;
+        const vnets = action.payload.map((vnet) => {
+          vnet.available = (vnet.size - vnet.used);
+          vnet.utilization = Math.round((vnet.used / vnet.size) * 100);
+          vnet.prefixes = vnet.prefixes.join(", ");
+
+          return vnet;
+        });
+
+        state.vNets = vnets;
       })
       .addCase(fetchSubnetsAsync.fulfilled, (state, action) => {
-        state.subnets = action.payload;
+        const subnets = action.payload.map((subnet) => {
+          subnet.available = (subnet.size - subnet.used);
+          subnet.utilization = Math.round((subnet.used / subnet.size) * 100);
+          subnet.type = subnetMap[subnet.type];
+
+          return subnet;
+        });
+
+        state.subnets = subnets;
       })
       .addCase(fetchEndpointsAsync.fulfilled, (state, action) => {
         state.endpoints = action.payload;
       })
       .addCase(refreshAllAsync.fulfilled, (state, action) => {
         state.refreshing = false;
-        state.spaces = action.payload[0];
 
-        state.blocks = action.payload[0].map((space) => {
-          space.blocks.forEach(block => {
+        const spaces = action.payload[0].value.map((space) => {
+          if('size' in space && 'used' in space) {
+            space.available = (space.size - space.used);
+            space.utilization = Math.round((space.used / space.size) * 100) || 0;
+          }
+
+          return space;
+        });
+
+        state.spaces = spaces;
+
+        state.blocks = action.payload[0].value.map((space) => {
+          space.blocks.forEach((block) => {
             block.parentSpace = space.name;
             block.available = (block.size - block.used);
             block.utilization = Math.round((block.used / block.size) * 100);
@@ -125,9 +168,54 @@ export const ipamSlice = createSlice({
           return space.blocks;
          }).flat();
 
-        state.vNets = action.payload[1];
-        state.subnets = action.payload[2];
-        state.endpoints = action.payload[3];
+        if(action.payload[1].status === 'fulfilled') {
+          const vnets = action.payload[1].value.map((vnet) => {
+            vnet.available = (vnet.size - vnet.used);
+            vnet.utilization = Math.round((vnet.used / vnet.size) * 100);
+            vnet.prefixes = vnet.prefixes.join(", ");
+
+            return vnet;
+          });
+
+          state.vNets = vnets;
+
+          const subnets = action.payload[1].value.map((vnet) => {
+            var subnetArray = [];
+          
+            vnet.subnets.forEach((subnet) => {
+              const subnetDetails = {
+                name: subnet.name,
+                id: `${vnet.id}/subnets/${subnet.name}`,
+                prefix: subnet.prefix,
+                resource_group: vnet.resource_group,
+                subscription_id: vnet.subscription_id,
+                tenant_id: vnet.tenant_id,
+                vnet_name: vnet.name,
+                vnet_id: vnet.id,
+                used: subnet.used,
+                size: subnet.size,
+                available: (subnet.size - subnet.used),
+                utilization: Math.round((subnet.used / subnet.size) * 100),
+                type: subnetMap[subnet.type]
+              };
+
+              subnetArray.push(subnetDetails);
+            });
+
+            return subnetArray;
+          }).flat();
+
+          state.subnets = subnets;
+        } else {
+          state.vNets = [];
+          state.subnets = [];
+        }
+
+        if(action.payload[2].status === 'fulfilled') {
+          state.endpoints = action.payload[2].value;
+        } else {
+          state.endpoints = [];
+        }
       })
       .addCase(refreshAllAsync.pending, (state) => {
         state.refreshing = true;

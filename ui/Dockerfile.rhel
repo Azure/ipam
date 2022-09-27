@@ -1,0 +1,28 @@
+ARG BASE_IMAGE=node:16-slim
+FROM $BASE_IMAGE
+
+ARG PORT=80
+
+# Set Environment Variable
+ENV PORT=${PORT}
+
+# Add Application Sources
+ADD . $HOME
+
+# Install Dependencies
+RUN npm install
+
+# Build Application
+RUN npm run build
+
+# Switch to Root User
+USER root
+
+# Set Script Execute Permissions
+RUN chmod +x init.sh
+
+# Expose Port
+EXPOSE $PORT
+
+# Execute Startup Script
+ENTRYPOINT ./init.sh ${PORT}

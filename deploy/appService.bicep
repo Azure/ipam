@@ -13,16 +13,37 @@ param keyVaultUri string
 @description('Deployment Location')
 param location string = resourceGroup().location
 
-@description('Managed Identity ClientId')
-param managedIdentityClientId string
+@description('Azure Cloud Enviroment')
+param azureCloud string = 'AZURE_PUBLIC'
 
 @description('Managed Identity Id')
 param managedIdentityId string
 
+@description('Managed Identity ClientId')
+param managedIdentityClientId string
+
 @description('Storage Account Name')
 param storageAccountName string
 
-var dockerCompose = loadFileAsBase64('../docker-compose.prod.yml')
+@description('Log Analytics Worskpace ID')
+param workspaceId string
+
+@description('Flag to Deploy Private Container Registry')
+param privateAcr bool
+
+@description('Uri for Private Container Registry')
+param privateAcrUri string
+
+// ACR Uri Variable
+var acrUri = privateAcr ? privateAcrUri : 'azureipam.azurecr.io'
+
+// Docker Compose File as Base64 String
+// var dockerCompose = loadFileAsBase64('../docker-compose.prod.yml')
+
+// Load Docker Compose File & Replace ACR Uri (for Private ACR)
+var dockerCompose = loadTextContent('../docker-compose.prod.yml')
+var dockerComposeReplace = replace(dockerCompose, 'azureipam.azurecr.io', acrUri)
+var dockerComposeEncode = base64(dockerComposeReplace)
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-06-01' existing = {
   name: storageAccountName
@@ -58,9 +79,15 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
     serverFarmId: appServicePlan.id
     keyVaultReferenceIdentity: managedIdentityId
     siteConfig: {
+      acrUseManagedIdentityCreds: privateAcr ? true : false
+      acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
       alwaysOn: true
-      linuxFxVersion: 'COMPOSE|${dockerCompose}'
+      linuxFxVersion: 'COMPOSE|${dockerComposeEncode}'
       appSettings: [
+        {
+          name: 'AZURE_ENV'
+          value: azureCloud
+        }
         {
           name: 'COSMOS_URL'
           value: cosmosDbUri
@@ -95,7 +122,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         }
         {
           name: 'DOCKER_REGISTRY_SERVER_URL'
-          value: 'https://index.docker.io/v1'
+          value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
         }
         {
           name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
@@ -132,6 +159,108 @@ resource appConfigLogs 'Microsoft.Web/sites/config@2021-02-01' = {
         retentionInMb: 50
       }
     }
+  }
+}
+
+resource diagnosticSettingsPlan 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'diagSettings'
+  scope: appServicePlan
+  properties: {
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
+    workspaceId: workspaceId
+  }
+}
+
+resource diagnosticSettingsApp 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'diagSettings'
+  scope: appService
+  properties: {
+    logs: [
+      {
+        category: 'AppServiceAntivirusScanAuditLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+      {
+        category: 'AppServiceHTTPLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+      {
+        category: 'AppServiceConsoleLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+      {
+        category: 'AppServiceAppLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+      {
+        category: 'AppServiceFileAuditLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+      {
+        category: 'AppServiceAuditLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+      {
+        category: 'AppServiceIPSecAuditLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+      {
+        category: 'AppServicePlatformLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
+    workspaceId: workspaceId
   }
 }
 

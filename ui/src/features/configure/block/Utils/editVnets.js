@@ -60,7 +60,7 @@ export default function EditVnets(props) {
   const unchanged = block ? isEqual(block['vnets'].map(vnet => vnet.id).sort(), selectionModel.sort()) : false;
 
   React.useEffect(() => {
-      refreshData();
+      (block && !refreshing && !refreshingState) && refreshData();
   }, [block]);
 
   React.useEffect(() => {
@@ -84,6 +84,7 @@ export default function EditVnets(props) {
       if(space && block) {
         try {
           setRefreshing(true);
+          setSelectionModel([]);
           const response = await instance.acquireTokenSilent(request);
           var data = await fetchBlockAvailable(response.accessToken, space, block.name);
           data.forEach((item) => {
@@ -141,6 +142,7 @@ export default function EditVnets(props) {
   }
 
   function manualRefresh() {
+    console.log("MANUAL REFRESH");
     setLoading(true);
     setVNets([]);
     refresh();
@@ -251,12 +253,22 @@ export default function EditVnets(props) {
                     outline: "none",
                   }
               }}
+              initialState={{
+                sorting: {
+                  sortModel: [
+                    {
+                      field: 'name',
+                      sort: 'asc',
+                    },
+                  ],
+                },
+              }}
             />
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={onSubmit} disabled={unchanged || sending}>
+          <Button onClick={onSubmit} disabled={unchanged || sending || loading || refreshingState}>
             Apply
           </Button>
         </DialogActions>
