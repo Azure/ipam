@@ -48,6 +48,7 @@ resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/container
 }
 
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (!deployAsFunc) {
+  #disable-next-line use-stable-resource-identifiers
   name: roleAssignmentName
   scope: blobContainer
   properties: {

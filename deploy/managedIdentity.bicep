@@ -21,6 +21,7 @@ resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-
 }
 
 resource contributorAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  #disable-next-line use-stable-resource-identifiers
   name: contributorAssignmentName
   properties: {
     principalType: 'ServicePrincipal'
@@ -30,6 +31,7 @@ resource contributorAssignment 'Microsoft.Authorization/roleAssignments@2020-04-
 }
 
 resource managedIdentityOperatorAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  #disable-next-line use-stable-resource-identifiers
   name: managedIdentityOperatorAssignmentName
   properties: {
     principalType: 'ServicePrincipal'

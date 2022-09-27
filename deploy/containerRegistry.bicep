@@ -22,6 +22,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2021-12-01-pr
 }
 
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  #disable-next-line use-stable-resource-identifiers
   name: roleAssignmentName
   scope: containerRegistry
   properties: {
