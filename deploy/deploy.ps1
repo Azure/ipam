@@ -57,6 +57,15 @@ param(
   [hashtable]
   $Tags,
 
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Full')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'TemplateOnly')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [hashtable]
+  $ResourceNames,
+
   # [Parameter(Mandatory = $false,
   #   ParameterSetName = 'TemplateOnly')]
   # [switch]
@@ -506,7 +515,9 @@ Function Deploy-Bicep {
     [Parameter(Mandatory=$false)]
     [bool]$PrivateAcr,
     [Parameter(Mandatory=$false)]
-    [hashtable]$Tags
+    [hashtable]$Tags,
+    [Parameter(Mandatory=$false)]
+    [hashtable]$ResourceNames
   )
 
   Write-Host "INFO: Deploying IPAM bicep templates" -ForegroundColor Green
@@ -537,6 +548,10 @@ Function Deploy-Bicep {
 
   if($Tags) {
     $deploymentParameters.Add('tags', $Tags)
+  }
+
+  if($ResourceNames) {
+    $deploymentParameters.Add('resourceNames', $ResourceNames)
   }
 
   # Deploy IPAM bicep template
@@ -670,7 +685,8 @@ try {
       -AzureCloud $azureCloud `
       -PrivateAcr $PrivateAcr `
       -AsFunction $AsFunction `
-      -Tags $Tags
+      -Tags $Tags `
+      -resourceNames $ResourceNames
   }
 
   if ($PSCmdlet.ParameterSetName -eq 'Full') {
