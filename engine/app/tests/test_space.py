@@ -10,11 +10,6 @@ from app.models import SpaceReq
 
 client = TestClient(app)
 
-fake_vnets = [{
-        "id": "/subscriptions/0d475e11-cdf6-4c4a-b890-7fc9956c1a6f/resourceGroups/rg-network/providers/Microsoft.Network/virtualNetworks/spoke-d-net",
-        "active": True
-      }]
-
 fake_spaces = {
   "spaces": [
   {
@@ -31,26 +26,6 @@ fake_spaces = {
                     },
                     {
                         "id": "/subscriptions/1eb2d5f0-c69b-4bdf-ba34-7bfc14f69da4/resourceGroups/rg-network/providers/Microsoft.Network/virtualNetworks/spoke-c-net",
-                        "active": True
-                    },
-                    {
-                        "id": "/subscriptions/93eb74de-8ad3-4938-96b3-a90ef1c14751/resourceGroups/rg-network/providers/Microsoft.Network/virtualNetworks/spoke-a-net",
-                        "active": True
-                    },
-                    {
-                        "id": "/subscriptions/9dde0edf-caf7-457f-868e-572f4536deb6/resourceGroups/rg-network/providers/Microsoft.Network/virtualNetworks/hub-net",
-                        "active": True
-                    },
-                    {
-                        "id": "/subscriptions/ba1c9297-be3a-44a4-b8ab-f0052a5e0ea7/resourceGroups/rg-network/providers/Microsoft.Network/virtualNetworks/spoke-b-net",
-                        "active": True
-                    },
-                    {
-                        "id": "/subscriptions/049c47c9-bb8d-4c78-b3a5-690ff00ad542/resourceGroups/demoNetworkSvcs-rg-kdqwe4vlninue/providers/Microsoft.Network/virtualNetworks/demo-vnet-kdqwe4vlninue",
-                        "active": True
-                    },
-                    {
-                        "id": "/subscriptions/049c47c9-bb8d-4c78-b3a5-690ff00ad542/resourceGroups/demoNetworkSvcs-rg-5i2idytjvtqyk/providers/Microsoft.Network/virtualNetworks/demo-vnet-5i2idytjvtqyk",
                         "active": True
                     }
                 ],
@@ -79,7 +54,7 @@ def test_get_spaces_when_expand_and_not_admin_then_raise_403_httpexception():
     response = client.get("/api/spaces",  headers={"authorization": "fake user"}, params={"expand": "true"})
     assert response.status_code == 403
     assert response.json() == {"error": "Expand parameter can only be used by admins."}
-
+    
 
 @pytest.mark.asyncio
 async def test_get_spaces_when_expand_and_admin_true_and_vnet_matches_then_return_spaces_with_vnet(monkeypatch):
@@ -110,37 +85,38 @@ async def test_get_spaces_when_expand_and_admin_true_and_vnet_matches_then_retur
     assert jsonObj[0]['name'] == 'TestSpace'
     assert spaceBlocks[0]['name'] == 'TestBlock'
     assert blockVNets[0]['id'] == fake_vnets[0]['id'] 
+    monkeypatch.undo()
 
 
-
-@pytest.mark.asyncio
-async def test_get_spaces_when_expand_and_admin_true_and_vnet_donot_match_then_return_spaces_without_vnet(monkeypatch):
-    app.dependency_overrides[check_token_expired] = override_check_token_expired
-    app.dependency_overrides[get_admin] = override_get_admin_and_set_true
+# # Causing monkey patch leak issue
+# @pytest.mark.asyncio
+# async def test_get_spaces_when_expand_and_admin_true_and_vnet_donot_match_then_return_spaces_without_vnet(monkeypatch):
+#     app.dependency_overrides[check_token_expired] = override_check_token_expired
+#     app.dependency_overrides[get_admin] = override_get_admin_and_set_true    
     
-    
-    unmatched_vnets = [{
-        "id": "/subscriptions/0d475e11-cdf6-4c4a-b890-7fc9956c1a7f/resourceGroups/rg-network/providers/Microsoft.Network/virtualNetworks/spoke-d-net",
-        "active": True
-      }]
+#     unmatched_vnets = [{
+#         "id": "some id that do not match",
+#         "active": True
+#       }]
 
-    async def mock_cosmos_query(*args, **kwargs):   
-          return fake_spaces
+#     async def mock_cosmos_query(*args, **kwargs):   
+#           return fake_spaces
 
-    async def mock_vnet_obj(*args, **kwargs):
-          return unmatched_vnets
+#     async def mock_vnet_obj(*args, **kwargs):
+#           return unmatched_vnets
 
-    monkeypatch.setattr('app.routers.space.cosmos_query', mock_cosmos_query)
-    monkeypatch.setattr('app.routers.space.arg_query', mock_vnet_obj)
-    response = client.get("/api/spaces",  headers={"authorization": "fake user"}, params={"expand": "true"})
+#     monkeypatch.setattr('app.routers.space.cosmos_query', mock_cosmos_query)
+#     monkeypatch.setattr('app.routers.space.arg_query', mock_vnet_obj)
+#     response = client.get("/api/spaces",  headers={"authorization": "fake user"}, params={"expand": "true"})
 
-    jsonObj = response.json()
-    spaceBlocks = jsonObj[0]['blocks']
-    blockVNets = spaceBlocks[0]['vnets']
-    assert response.status_code == 200
-    assert jsonObj[0]['name'] == 'TestSpace'
-    assert spaceBlocks[0]['name'] == 'TestBlock'
-    assert len(blockVNets) == 0
+#     jsonObj = response.json()
+#     spaceBlocks = jsonObj[0]['blocks']
+#     blockVNets = spaceBlocks[0]['vnets']
+#     assert response.status_code == 200
+#     assert jsonObj[0]['name'] == 'TestSpace'
+#     assert spaceBlocks[0]['name'] == 'TestBlock'
+#     assert len(blockVNets) == 0
+#     monkeypatch.undo()
 
 
 def test_create_space_when_not_admin_then_raise_403_httpexception():
@@ -164,6 +140,7 @@ async def test_create_space_when_admin_but_duplicate_space_then_raise_400_httpex
     response = client.post("/api/spaces", data = json.dumps({"name": "TestSpace",  "desc": "TestSpace"}))
     assert response.status_code == 400
     assert response.json() == {"error": "Space name must be unique."}    
+    monkeypatch.undo()
 
 @pytest.mark.asyncio
 async def test_create_space_when_admin_and_not__duplicate_space_then_create_new_space(monkeypatch):
@@ -184,6 +161,7 @@ async def test_create_space_when_admin_and_not__duplicate_space_then_create_new_
     response = client.post("/api/spaces", data = json.dumps(test_fake_space))
     assert response.status_code == 201
     assert test_mock.call_count == 1
+    monkeypatch.undo()
 
 def test_get_space_when_expand_and_not_admin_then_raise_403_httpexception():
     app.dependency_overrides[check_token_expired] = override_check_token_expired
@@ -204,6 +182,7 @@ async def test_get_space_when_admin_and_not_found_space_then_raise_400_httpexcep
     response = client.get("/api/spaces/test_fake_space",  headers={"authorization": "fake user"}, params={"expand": "true"})
     assert response.status_code == 400
     assert response.json() == {"error": "Invalid space name."}
+    monkeypatch.undo()
 
 @pytest.mark.asyncio
 async def test_get_space_when_admin_and_not_expand_and_found_space_then_return_space(monkeypatch):
@@ -219,35 +198,70 @@ async def test_get_space_when_admin_and_not_expand_and_found_space_then_return_s
     jsonObj = response.json()
     assert response.status_code == 200
     assert jsonObj['name'] == 'TestSpace'  
+    monkeypatch.undo()
 
-# TODO uncomment this
-# This test should pass once we start using monkeypatch fixture
 
-# @pytest.mark.asyncio
-# async def test_get_space_when_admin_and_expand_and_found_space_then_return_space_and_vnet(monkeypatch):
-#     app.dependency_overrides[check_token_expired] = override_check_token_expired
-#     app.dependency_overrides[get_admin] = override_get_admin_and_set_true
+# Causing monkey patch leak issue
+@pytest.mark.asyncio
+async def test_get_spaces_when_expand_and_admin_true_and_vnet_donot_match_then_return_spaces_without_vnet(monkeypatch):
+    app.dependency_overrides[check_token_expired] = override_check_token_expired
+    app.dependency_overrides[get_admin] = override_get_admin_and_set_true    
+    
+    unmatched_vnets = [{
+        "id": "some id that do not match",
+        "active": True
+      }]
 
-#     fake_vnets = [{
-#         "id": "/subscriptions/0d475e11-cdf6-4c4a-b890-7fc9956c1a6f/resourceGroups/rg-network/providers/Microsoft.Network/virtualNetworks/spoke-d-net",
-#         "active": True
-#       }]
+    async def mock_cosmos_query(*args, **kwargs):   
+          return fake_spaces
 
-#     async def mock_cosmos_query(*args, **kwargs):   
-#           return fake_spaces
+    async def mock_vnet_obj(*args, **kwargs):
+          return unmatched_vnets
 
-#     async def mock_vnet_obj(*args, **kwargs):
-#           return fake_vnets
+    monkeypatch.setattr('app.routers.space.cosmos_query', mock_cosmos_query)
+    monkeypatch.setattr('app.routers.space.arg_query', mock_vnet_obj)
+    response = client.get("/api/spaces",  headers={"authorization": "fake user"}, params={"expand": "true"})
 
-#     monkeypatch.setattr('app.routers.space.cosmos_query', mock_cosmos_query)
-#     monkeypatch.setattr('app.routers.space.arg_query', mock_vnet_obj)    
+    jsonObj = response.json()
+    spaceBlocks = jsonObj[0]['blocks']
+    blockVNets = spaceBlocks[0]['vnets']
+    assert response.status_code == 200
+    assert jsonObj[0]['name'] == 'TestSpace'
+    assert spaceBlocks[0]['name'] == 'TestBlock'
+    assert len(blockVNets) == 0
+    monkeypatch.undo()
+
+
+
+
+
+@pytest.mark.asyncio
+async def test_get_space_when_admin_and_expand_and_found_space_then_return_space_and_vnet(monkeypatch):
+    app.dependency_overrides[check_token_expired] = override_check_token_expired
+    app.dependency_overrides[get_admin] = override_get_admin_and_set_true
+
+    fake_vnets = [{
+        "id": "/subscriptions/0d475e11-cdf6-4c4a-b890-7fc9956c1a6f/resourceGroups/rg-network/providers/Microsoft.Network/virtualNetworks/spoke-d-net",
+        "active": True
+      }]
+
+    async def mock_cosmos_query(*args, **kwargs):   
+          return fake_spaces
+
+    async def mock_vnet_obj2(*args, **kwargs):
+          return fake_vnets
+
+    monkeypatch.setattr('app.routers.space.cosmos_query', mock_cosmos_query)
+    monkeypatch.setattr('app.routers.space.arg_query', mock_vnet_obj2)    
  
-#     response = client.get("/api/spaces/TestSpace",  headers={"authorization": "fake user"}, params={"expand": "true"})
+    response = client.get("/api/spaces/TestSpace",  headers={"authorization": "fake user"}, params={"expand": "true"})
 
-#     jsonObj = response.json()
-#     print(jsonObj)
-#     spaceBlocks = jsonObj['blocks']
-#     blockVNets = spaceBlocks[0]['vnets']
-#     print(blockVNets)
-#     assert response.status_code == 201
-#     assert jsonObj['name'] == 'TestSpace'     
+    jsonObj = response.json()
+    print(jsonObj)
+    spaceBlocks = jsonObj['blocks']
+    blockVNets = spaceBlocks[0]['vnets']
+    print(blockVNets)
+    assert response.status_code == 200
+    assert jsonObj['name'] == 'TestSpace'    
+    assert blockVNets[0]['id'] == fake_vnets[0]['id']  
+    monkeypatch.undo()
