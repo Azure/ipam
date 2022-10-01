@@ -32,25 +32,25 @@ param engineAppSecret string
 @description('Tags')
 param tags object = {}
 
-// Resource naming variables
-var appServiceName = '${namePrefix}-${uniqueString(guid)}'
-var appServicePlanName = '${namePrefix}-asp-${uniqueString(guid)}'
-var cosmosAccountName = '${namePrefix}-dbacct-${uniqueString(guid)}'
-var cosmosContainerName = '${namePrefix}-ctr'
-var cosmosDatabaseName = '${namePrefix}-db'
-var keyVaultName = '${namePrefix}-kv-${uniqueString(guid)}'
-var workspaceName = '${namePrefix}-law-${uniqueString(guid)}'
-var managedIdentityName = '${namePrefix}-mi-${uniqueString(guid)}'
-var resourceGroupName = '${namePrefix}-rg-${uniqueString(guid)}'
-var storageName = '${namePrefix}stg${uniqueString(guid)}'
-var containerRegistryName = '${namePrefix}acr${uniqueString(guid)}'
-
+@description('IPAM Resource Names')
+param resourceNames object = {
+  appServiceName: '${namePrefix}-${uniqueString(guid)}'
+  appServicePlanName: '${namePrefix}-asp-${uniqueString(guid)}'
+  cosmosAccountName: '${namePrefix}-dbacct-${uniqueString(guid)}'
+  cosmosContainerName: '${namePrefix}-ctr'
+  cosmosDatabaseName: '${namePrefix}-db'
+  keyVaultName: '${namePrefix}-kv-${uniqueString(guid)}'
+  workspaceName: '${namePrefix}-law-${uniqueString(guid)}'
+  managedIdentityName: '${namePrefix}-mi-${uniqueString(guid)}'
+  resourceGroupName: '${namePrefix}-rg-${uniqueString(guid)}'
+  storageAccountName: '${namePrefix}stg${uniqueString(guid)}'
+  containerRegistryName: '${namePrefix}acr${uniqueString(guid)}'
+}
 
 // Resource Group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   location: location
-  #disable-next-line use-stable-resource-identifiers
-  name: resourceGroupName
+  name: resourceNames.resourceGroupName
   tags: tags
 }
 
@@ -60,7 +60,7 @@ module logAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' ={
   scope: resourceGroup
   params: {
     location: location
-    workspaceName: workspaceName
+    workspaceName: resourceNames.workspaceName
   }
 }
 
@@ -70,7 +70,7 @@ module managedIdentity 'managedIdentity.bicep' = {
   scope: resourceGroup
   params: {
     location: location
-    managedIdentityName: managedIdentityName
+    managedIdentityName: resourceNames.managedIdentityName
   }
 }
 
@@ -80,7 +80,7 @@ module keyVault 'keyVault.bicep' = {
   scope: resourceGroup
   params: {
     location: location
-    keyVaultName: keyVaultName
+    keyVaultName: resourceNames.keyVaultName
     principalId:  managedIdentity.outputs.principalId
     uiAppId: uiAppId
     engineAppId: engineAppId
@@ -95,9 +95,9 @@ module cosmos 'cosmos.bicep' = {
   scope: resourceGroup
   params: {
     location: location
-    cosmosAccountName: cosmosAccountName
-    cosmosContainerName: cosmosContainerName
-    cosmosDatabaseName: cosmosDatabaseName
+    cosmosAccountName: resourceNames.cosmosAccountName
+    cosmosContainerName: resourceNames.cosmosContainerName
+    cosmosDatabaseName: resourceNames.cosmosDatabaseName
     keyVaultName: keyVault.outputs.keyVaultName
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
   }
@@ -109,7 +109,7 @@ module storageAccount 'storageAccount.bicep' = {
   name: 'storageAccountModule'
   params: {
     location: location
-    storageAccountName: storageName
+    storageAccountName: resourceNames.storageAccountName
     principalId: managedIdentity.outputs.principalId
     managedIdentityId: managedIdentity.outputs.id
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
@@ -123,7 +123,7 @@ module containerRegistry 'containerRegistry.bicep' = if (privateAcr) {
   name: 'containerRegistryModule'
   params: {
     location: location
-    containerRegistryName: containerRegistryName
+    containerRegistryName: resourceNames.containerRegistryName
     principalId: managedIdentity.outputs.principalId
   }
 }
@@ -135,8 +135,8 @@ module appService 'appService.bicep' = if (!deployAsFunc) {
   params: {
     location: location
     azureCloud: azureCloud
-    appServicePlanName: appServicePlanName
-    appServiceName: appServiceName
+    appServicePlanName: resourceNames.appServicePlanName
+    appServiceName: resourceNames.appServiceName
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     managedIdentityId: managedIdentity.outputs.id
@@ -155,8 +155,8 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
   params: {
     location: location
     azureCloud: azureCloud
-    functionAppPlanName: appServicePlanName
-    functionAppName: appServiceName
+    functionAppPlanName: resourceNames.appServicePlanName
+    functionAppName: resourceNames.appServiceName
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     managedIdentityId: managedIdentity.outputs.id
@@ -169,8 +169,8 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
 }
 
 // Outputs
-output resourceGroupName string = resourceGroupName
-output appServiceName string = appServiceName
+output resourceGroupName string = resourceGroup.name
+output appServiceName string = resourceNames.appServiceName
 output appServiceHostName string = deployAsFunc ? functionApp.outputs.functionAppHostName : appService.outputs.appServiceHostName
 output acrName string = privateAcr ? containerRegistry.outputs.acrName : ''
 output acrUri string = privateAcr ? containerRegistry.outputs.acrUri : ''

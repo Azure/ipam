@@ -50,6 +50,7 @@ You have the ability to pass optional flags to the deployment script:
 | `-UIAppName <name>`                             | Changes the name of the UI app registration                               |
 | `-EngineAppName <name>`                         | Changes the name of the Engine app registration                           |
 | `-Tags @{​​​​​​<tag> = '​<value>'; ​<tag> = '​<value>'}` | Attaches the hashtable as tags on the deployed IPAM resource group        |
+| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names ***THIS MUST INCLUDE ALL RESOURCE NAMES. SEE BELOW FOR MORE DETAILS***     |
 | `-NamePrefix <prefix>`                          | Replaces the default resource prefix of "ipam" with an alternative prefix |
 | `-AsFunction`                                   | Deploys the engine container only to an Azure Function                    |
 | `-PrivateACR`                                   | Deploys a private Azure Container Registry and builds the IPAM containers |
@@ -77,6 +78,28 @@ You have the ability to pass optional flags to the deployment script:
 ./deploy.ps1 `
   -Location "westus3" `
   -Tags @{owner = 'ipamadmin@example.com'; environment = 'development'}
+```
+
+**Override default resource names with custom resource names. This must include ALL resource names as shown below. ***PLEASE REVIEW [NAMING RULES AND RESTRICTIONS FOR AZURE RESOURCES](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) DOCUMENTATION TO ENSURE YOUR CUSTOM NAMES ARE COMPLIANT AND UNIQUE***:**
+
+```powershell
+$ResourceNames = @{
+  appServiceName = 'myappservice01'
+  appServicePlanName = 'myappserviceplan01'
+  cosmosAccountName = 'mycosmosaccount01'
+  cosmosContainerName = 'mycontainer01'
+  cosmosDatabaseName = 'mydatabase01'
+  keyVaultName = 'mykeyvault01'
+  workspaceName = 'myworkspace01'
+  managedIdentityName = 'mymanagedid01'
+  resourceGroupName = 'myresourcegroup01'
+  storageAccountName = 'mystorageaccount01'
+  containerRegistryName = 'mycontainerregistry01'
+}
+
+./deploy.ps1 `
+  -Location "westus3" `
+  -ResourceNames $ResourceNames
 ```
 
 **Deploy IPAM solution as an Azure Function:**
@@ -158,6 +181,27 @@ You have the ability to pass optional flags to the deployment script:
   -ParameterFile ./main.parameters.json `
   -Tags @{owner = 'ipamadmin@example.com'; environment = 'development'}
 ```
+**Override default resource names with custom resource names. This must include ALL resource names as shown below.  ***PLEASE REVIEW [NAMING RULES AND RESTRICTIONS FOR AZURE RESOURCES](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) DOCUMENTATION TO ENSURE YOUR CUSTOM NAMES ARE COMPLIANT AND UNIQUE***:**
+
+```powershell
+$ResourceNames = @{
+  appServiceName = 'myappservice01'
+  appServicePlanName = 'myappserviceplan01'
+  cosmosAccountName = 'mycosmosaccount01'
+  cosmosContainerName = 'mycontainer01'
+  cosmosDatabaseName = 'mydatabase01'
+  keyVaultName = 'mykeyvault01'
+  workspaceName = 'myworkspace01'
+  managedIdentityName = 'mymanagedid01'
+  resourceGroupName = 'myresourcegroup01'
+  storageAccountName = 'mystorageaccount01'
+  containerRegistryName = 'mycontainerregistry01'
+}
+
+./deploy.ps1 `
+  -Location "westus3" `
+  -ResourceNames $ResourceNames
+  ```
 
 **Change the name prefix for the Azure resources:**
 
