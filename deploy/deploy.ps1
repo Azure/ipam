@@ -105,11 +105,12 @@ param(
       Write-Host "ERROR: Please refer to the 'Naming Rules and Restrictions for Azure Resources'" -ForegroundColor Red
       Write-Host "ERROR: " -ForegroundColor Red -NoNewline
       Write-Host "https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules" -ForegroundColor Yellow
+      Write-Host ""
 
       throw [System.ArgumentException]::New('One of the required resource names is missing or invalid.')
     }
 
-    return -not $($invalidFields -or $missingFields)
+    return -not ($invalidFields -or $missingFields)
   })]
   [hashtable]
   $ResourceNames,
@@ -157,13 +158,13 @@ param(
     ParameterSetName = 'TemplateOnly')]
   [ValidateScript({
     if(-Not ($_ | Test-Path) ){
-      throw "File or does not exist."
+      throw [System.ArgumentException]::New('File or does not exist.')
     }
     if(-Not ($_ | Test-Path -PathType Leaf) ){
-      throw "The ParameterFile argument must be a file, folder paths are not allowed."
+      throw [System.ArgumentException]::New('The ParameterFile argument must be a file, folder paths are not allowed.')
     }
     if($_ -notmatch "(\.json)"){
-      throw "The file specified in the ParameterFile argument must be of type json."
+      throw [System.ArgumentException]::New('The file specified in the ParameterFile argument must be of type json.')
     }
     return $true 
   })]
