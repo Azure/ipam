@@ -801,35 +801,49 @@ try {
     Write-Verbose -Message "Building and pushing container images to Azure Container Registry"
 
     $enginePath = [Io.Path]::Combine('..', 'engine')
-    $engineDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.prod'
+    $engineDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.rhel'
     $functionDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.func'
 
     $uiPath = [Io.Path]::Combine('..', 'ui')
-    $uiDockerFile = Join-Path -Path $uiPath -ChildPath 'Dockerfile.prod'
+    $uiDockerFile = Join-Path -Path $uiPath -ChildPath 'Dockerfile.rhel'
 
+    $containerMap = @{
+      Debian = @{
+        Port = 80
+        Images = @{
+          UI     = 'node:16-slim'
+          Engine = 'python:3.9-slim'
+        }
+      }
+      RHEL = @{
+        Port = 8080
+        Images = @{
+          UI     = 'registry.access.redhat.com/ubi8/nodejs-16'
+          Engine = 'registry.access.redhat.com/ubi8/python-39'
+        }
+      }
+    }
+  
     if($AsFunction) {
-      # switch ($ContainerType) {
-      #   'Debian' { 
-      #     $funcBuildOutput = $(
-      #       az acr build -r $deployment.Outputs["acrName"].Value `
-      #         -t ipam-func:latest `
-      #         -f $functionDockerFile $enginePath `
-      #         --build-arg PORT=80 `
-      #         --build-arg BASE_IMAGE=python:3.9-slim
-      #     ) *>&1
-      #   }
-      #   'RHEL' {
-      #     $funcBuildOutput = $(
-      #       az acr build -r $deployment.Outputs["acrName"].Value `
-      #         -t ipam-func:latest `
-      #         -f $functionDockerFile $enginePath `
-      #         --build-arg PORT=8080 `
-      #         --build-arg BASE_IMAGE=registry.access.redhat.com/ubi8/python-39
-      #     ) *>&1
-      #   }
-      # }
+      # WRITE-HOST "INFO: Building Function container ($ContainerType)..." -ForegroundColor Green
+      # Write-Verbose -Message "INFO: Building Function container ($ContainerType)..."
 
-      $funcBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-func:latest -f $functionDockerFile $enginePath) *>&1
+      # $funcBuildOutput = $(
+      #   az acr build -r $deployment.Outputs["acrName"].Value `
+      #     -t ipam-func:latest `
+      #     -f $functionDockerFile $enginePath `
+      #     --build-arg PORT=$($containerMap[$ContainerType].Port) `
+      #     --build-arg BASE_IMAGE=$($containerMap[$ContainerType].Images.Engine)
+      # ) *>&1
+
+      WRITE-HOST "INFO: Building Function container..." -ForegroundColor Green
+      Write-Verbose -Message "INFO: Building Function container..."
+
+      $funcBuildOutput = $(
+        az acr build -r $deployment.Outputs["acrName"].Value `
+        -t ipam-func:latest `
+        -f $functionDockerFile $enginePath
+      ) *>&1
 
       if ($LASTEXITCODE -ne 0) {
         throw $funcBuildOutput
@@ -843,26 +857,16 @@ try {
 
       Restart-AzFunctionApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Force | Out-Null
     } else {
-      switch ($ContainerType) {
-        'Debian' {
-          $engineBuildOutput = $(
-            az acr build -r $deployment.Outputs["acrName"].Value `
-              -t ipam-engine:latest `
-              -f $engineDockerFile $enginePath `
-              --build-arg PORT=80 `
-              --build-arg BASE_IMAGE=python:3.9-slim
-          ) *>&1
-        }
-        'RHEL' {
-          $engineBuildOutput = $(
-            az acr build -r $deployment.Outputs["acrName"].Value `
-              -t ipam-engine:latest `
-              -f $engineDockerFile $enginePath `
-              --build-arg PORT=8080 `
-              --build-arg BASE_IMAGE=registry.access.redhat.com/ubi8/python-39
-          ) *>&1
-        }
-      }
+      WRITE-HOST "INFO: Building Engine container ($ContainerType)..." -ForegroundColor Green
+      Write-Verbose -Message "INFO: Building Engine container ($ContainerType)..."
+
+      $engineBuildOutput = $(
+        az acr build -r $deployment.Outputs["acrName"].Value `
+          -t ipam-engine:latest `
+          -f $engineDockerFile $enginePath `
+          --build-arg PORT=$($containerMap[$ContainerType].Port) `
+          --build-arg BASE_IMAGE=$($containerMap[$ContainerType].Images.Engine)
+      ) *>&1
 
       if ($LASTEXITCODE -ne 0) {
         throw $engineBuildOutput
@@ -871,26 +875,16 @@ try {
         Write-Verbose -Message "Engine container image build and push completed successfully"
       }
 
-      switch ($ContainerType) {
-        'Debian' {
-          $uiBuildOutput = $(
-            az acr build -r $deployment.Outputs["acrName"].Value `
-              -t ipam-ui:latest `
-              -f $uiDockerFile $uiPath `
-              --build-arg PORT=80 `
-              --build-arg BASE_IMAGE=node:16-slim
-          ) *>&1
-        }
-        'RHEL' {
-          $uiBuildOutput = $(
-            az acr build -r $deployment.Outputs["acrName"].Value `
-              -t ipam-ui:latest `
-              -f $uiDockerFile $uiPath `
-              --build-arg PORT=8080 `
-              --build-arg BASE_IMAGE=registry.access.redhat.com/ubi8/nodejs-16
-          ) *>&1
-        }
-      }
+      WRITE-HOST "INFO: Building UI container ($ContainerType)..." -ForegroundColor Green
+      Write-Verbose -Message "INFO: Building UI container ($ContainerType)..."
+
+      $uiBuildOutput = $(
+        az acr build -r $deployment.Outputs["acrName"].Value `
+          -t ipam-ui:latest `
+          -f $uiDockerFile $uiPath `
+          --build-arg PORT=$($containerMap[$ContainerType].Port) `
+          --build-arg BASE_IMAGE=$($containerMap[$ContainerType].Images.UI)
+      ) *>&1
 
       if ($LASTEXITCODE -ne 0) {
         throw $uiBuildOutput

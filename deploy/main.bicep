@@ -50,6 +50,7 @@ param resourceNames object = {
 // Resource Group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   location: location
+  #disable-next-line use-stable-resource-identifiers
   name: resourceNames.resourceGroupName
   tags: tags
 }
