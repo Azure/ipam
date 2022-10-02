@@ -160,7 +160,7 @@ param(
     ParameterSetName = 'Function')]
   [Parameter(Mandatory = $false,
     ParameterSetName = 'TemplateOnly')]
-  [ValidateSetAttribute('Debian', 'RHEL')]
+  [ValidateSet('Debian', 'RHEL')]
   [string]
   $ContainerType = 'Debian',
 
@@ -219,6 +219,8 @@ Function Deploy-IPAMApplications {
     [string]$UIAppName = 'ipam-ui-app',
     [Parameter(Mandatory=$true)]
     [string]$TenantId,
+    [Parameter(Mandatory=$true)]
+    [string]$AzureCloud,
     [Parameter(Mandatory=$false)]
     [bool]$AsFunction
   ) 
@@ -268,15 +270,53 @@ Function Deploy-IPAMApplications {
       -Web $uiWebSettings
   }
 
-  $engineResourceAccess = [System.Collections.ArrayList]@(
+  # $engineResourceAccess = [System.Collections.ArrayList]@(
+  #   @{
+  #     ResourceAppId  = "797f4846-ba00-4fd7-ba43-dac1f8f63013"; # Azure Service Management
+  #     ResourceAccess = @(
+  #       @{
+  #         Id = "41094075-9dad-400e-a0bd-54e686782033"; # user_impersonation
+  #         Type = "Scope"
+  #       }
+  #     )
+  #   }
+  # )
+
+  $engineResourceMap = @{
+    "AZURE_PUBLIC" = @{
+      ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+      ResourceAccessIds = @("41094075-9dad-400e-a0bd-54e686782033")
+    }
+    "AZURE_US_GOV" = @{
+      ResourceAppId    = "40a69793-8fe6-4db1-9591-dbc5c57b17d8"
+      ResourceAccessIds = @("8eb49ffc-05ac-454c-9027-8648349217dd", "e59ee429-1fb1-4054-b99f-f542e8dc9b95")
+    }
+    "AZURE_GERMANY" = @{
+      ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+      ResourceAccessIds = @("41094075-9dad-400e-a0bd-54e686782033")
+    }
+    "AZURE_CHINA" = @{
+      ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+      ResourceAccessIds = @("41094075-9dad-400e-a0bd-54e686782033")
+    }
+  }
+
+  $engineResourceAppId = $engineResourceMap[$AzureCloud].ResourceAppId
+  $engineResourceAccess = [System.Collections.ArrayList]@()
+
+  foreach ($engineAccessId in  $engineResourceMap[$AzureCloud].ResourceAccessIds) {
+    $access = @{
+      Id   = $engineAccessId
+      Type = "Scope"
+    }
+
+    $engineResourceAccess.Add($access) | Out-Null
+  }
+
+  $engineResourceAccessList = [System.Collections.ArrayList]@(
     @{
-      ResourceAppId = "797f4846-ba00-4fd7-ba43-dac1f8f63013"; # Azure Service Management
-      ResourceAccess = @(
-        @{
-          Id = "41094075-9dad-400e-a0bd-54e686782033"; # user_impersonation
-          Type = "Scope"
-        }
-      )
+      ResourceAppId  = $engineResourceAppId
+      ResourceAccess = $engineResourceAccess
     }
   )
 
@@ -323,7 +363,7 @@ Function Deploy-IPAMApplications {
   $engineApp = New-AzADApplication `
     -DisplayName $EngineAppName `
     -Api $engineApiSettings `
-    -RequiredResourceAccess $engineResourceAccess
+    -RequiredResourceAccess $engineResourceAccessList
 
   # Update IPAM Engine API Endpoint (If not deployed as Function App)
   if (-not $AsFunction) {
@@ -714,6 +754,7 @@ try {
       -UIAppName $UIAppName `
       -EngineAppName $EngineAppName `
       -TenantId $tenantId `
+      -AzureCloud $azureCloud `
       -AsFunction $AsFunction
 
     if (-not $NoConsent) {
