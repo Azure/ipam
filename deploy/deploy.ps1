@@ -63,6 +63,54 @@ param(
     ParameterSetName = 'TemplateOnly')]
   [Parameter(Mandatory = $false,
     ParameterSetName = 'Function')]
+  [ValidateScript({
+    $validators = @{
+      appServiceName = '^(?=^.{2,59}$)([^-][\w-]*[^-])$'
+      appServicePlanName = '^(?=^.{1,40}$)([\w-]*)$'
+      cosmosAccountName = '^(?=^.{3,44}$)([^-][a-z0-9-]*[^-])$'
+      cosmosContainerName = '^(?=^.{1,255}$)([^/\\#?]*)$'
+      cosmosDatabaseName = '^(?=^.{1,255}$)([^/\\#?]*)$'
+      keyVaultName = '^(?=^.{3,24}$)(?!.*--)([a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9])$'
+      workspaceName = '^(?=^.{4,63}$)([a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])$'
+      managedIdentityName = '^(?=^.{3,128}$)([a-zA-Z0-9][a-zA-Z0-9-_]*)$'
+      resourceGroupName = '^(?=^.{1,90}$)(?!.*\.$)([a-zA-Z0-9-_\.\p{L}\p{N}]*)$'
+      storageAccountName = '^(?=^.{3,24}$)([a-z0-9]*)$'
+      containerRegistryName = '^(?=^.{5,50}$)([a-zA-Z0-9]*)$'
+    }
+
+    $invalidFields = [System.Collections.ArrayList]@()
+    $missingFields = [System.Collections.ArrayList]@()
+
+    foreach ($validator in $validators.GetEnumerator()) {
+      if ($_.ContainsKey($validator.Name)) {
+        if (-not ($_[$validator.Name] -match $validator.Value)) {
+          $invalidFields.Add($validator.Name) | Out-Null
+        }
+      } else {
+        $missingFields.Add($validator.Name) | Out-Null
+      }
+    }
+
+    if ($invalidFields -or $missingFields) {
+      Write-Host "ERROR: Missing or improperly formatted field(s) in 'ResourceNames' parameter" -ForegroundColor Red
+
+      foreach ($field in $invalidFields) {
+        Write-Host "ERROR: Invalid Field ->" $field -ForegroundColor Red
+      }
+
+      foreach ($field in $missingFields) {
+        Write-Host "ERROR: Missing Field ->" $field -ForegroundColor Red
+      }
+
+      Write-Host "ERROR: Please refer to the 'Naming Rules and Restrictions for Azure Resources'" -ForegroundColor Red
+      Write-Host "ERROR: " -ForegroundColor Red -NoNewline
+      Write-Host "https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules" -ForegroundColor Yellow
+
+      throw [System.ArgumentException]::New('One of the required resource names is missing or invalid.')
+    }
+
+    return -not $($invalidFields -or $missingFields)
+  })]
   [hashtable]
   $ResourceNames,
 
@@ -119,7 +167,8 @@ param(
     }
     return $true 
   })]
-  [System.IO.FileInfo]$ParameterFile
+  [System.IO.FileInfo]
+  $ParameterFile
 )
 
 $AZURE_ENV_MAP = @{
@@ -686,7 +735,7 @@ try {
       -PrivateAcr $PrivateAcr `
       -AsFunction $AsFunction `
       -Tags $Tags `
-      -resourceNames $ResourceNames
+      -ResourceNames $ResourceNames
   }
 
   if ($PSCmdlet.ParameterSetName -eq 'Full') {
@@ -707,7 +756,7 @@ try {
     $uiDockerFile = Join-Path -Path $uiPath -ChildPath 'Dockerfile.prod'
 
     if($AsFunction) {
-      $funcBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-func:latest -f $functionDockerFile $enginePath) 2>&1
+      $funcBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-func:latest -f $functionDockerFile $enginePath) *>&1
 
       if ($LASTEXITCODE -ne 0) {
         throw $funcBuildOutput
@@ -721,7 +770,7 @@ try {
 
       Restart-AzFunctionApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Force | Out-Null
     } else {
-      $engineBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-engine:latest -f $engineDockerFile $enginePath) 2>&1
+      $engineBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-engine:latest -f $engineDockerFile $enginePath) *>&1
 
       if ($LASTEXITCODE -ne 0) {
         throw $engineBuildOutput
@@ -730,7 +779,7 @@ try {
         Write-Verbose -Message "Engine container image build and push completed successfully"
       }
 
-      $uiBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-ui:latest -f $uiDockerFile $uiPath) 2>&1
+      $uiBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-ui:latest -f $uiDockerFile $uiPath) *>&1
 
       if ($LASTEXITCODE -ne 0) {
         throw $uiBuildOutput

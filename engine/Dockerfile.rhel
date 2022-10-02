@@ -10,7 +10,7 @@ ENV PORT=${PORT}
 ADD ./requirements.txt $HOME
 
 # Install Dependencies
-RUN pip install --no-cache-dir --upgrade -r ./requirements.txt
+RUN pip install --no-cache-dir --upgrade -r ./requirements.txt --progress-bar off
 
 # Copy Application Scripts & Sources
 ADD ./init.sh $HOME

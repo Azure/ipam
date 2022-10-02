@@ -80,7 +80,23 @@ You have the ability to pass optional flags to the deployment script:
   -Tags @{owner = 'ipamadmin@example.com'; environment = 'development'}
 ```
 
-**Override default resource names with custom resource names. This must include ALL resource names as shown below. ***PLEASE REVIEW [NAMING RULES AND RESTRICTIONS FOR AZURE RESOURCES](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) DOCUMENTATION TO ENSURE YOUR CUSTOM NAMES ARE COMPLIANT AND UNIQUE***:**
+**Deploy IPAM solution as an Azure Function:**
+
+```powershell
+./deploy.ps1 `
+  -Location "westus3" `
+  -AsFunction
+```
+
+**Deploy IPAM solution with a private Container Registry:**
+
+```powershell
+./deploy.ps1 `
+  -Location "westus3" `
+  -PrivateACR
+```
+
+**Override default resource names with custom resource names:**
 
 ```powershell
 $ResourceNames = @{
@@ -100,23 +116,9 @@ $ResourceNames = @{
 ./deploy.ps1 `
   -Location "westus3" `
   -ResourceNames $ResourceNames
-```
+  ```
 
-**Deploy IPAM solution as an Azure Function:**
-
-```powershell
-./deploy.ps1 `
-  -Location "westus3" `
-  -AsFunction
-```
-
-**Deploy IPAM solution with a private Container Registry:**
-
-```powershell
-./deploy.ps1 `
-  -Location "westus3" `
-  -PrivateACR
-```
+> **NOTE:** This must include ALL resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
 
 ## App Registration Only Deployment
 
@@ -181,27 +183,6 @@ You have the ability to pass optional flags to the deployment script:
   -ParameterFile ./main.parameters.json `
   -Tags @{owner = 'ipamadmin@example.com'; environment = 'development'}
 ```
-**Override default resource names with custom resource names. This must include ALL resource names as shown below.  ***PLEASE REVIEW [NAMING RULES AND RESTRICTIONS FOR AZURE RESOURCES](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) DOCUMENTATION TO ENSURE YOUR CUSTOM NAMES ARE COMPLIANT AND UNIQUE***:**
-
-```powershell
-$ResourceNames = @{
-  appServiceName = 'myappservice01'
-  appServicePlanName = 'myappserviceplan01'
-  cosmosAccountName = 'mycosmosaccount01'
-  cosmosContainerName = 'mycontainer01'
-  cosmosDatabaseName = 'mydatabase01'
-  keyVaultName = 'mykeyvault01'
-  workspaceName = 'myworkspace01'
-  managedIdentityName = 'mymanagedid01'
-  resourceGroupName = 'myresourcegroup01'
-  storageAccountName = 'mystorageaccount01'
-  containerRegistryName = 'mycontainerregistry01'
-}
-
-./deploy.ps1 `
-  -Location "westus3" `
-  -ResourceNames $ResourceNames
-  ```
 
 **Change the name prefix for the Azure resources:**
 
@@ -220,3 +201,28 @@ $ResourceNames = @{
   -ParameterFile ./main.parameters.json `
   -PrivateACR
 ```
+
+**Override default resource names with custom resource names:**
+
+```powershell
+$ResourceNames = @{
+  appServiceName = 'myappservice01'
+  appServicePlanName = 'myappserviceplan01'
+  cosmosAccountName = 'mycosmosaccount01'
+  cosmosContainerName = 'mycontainer01'
+  cosmosDatabaseName = 'mydatabase01'
+  keyVaultName = 'mykeyvault01'
+  workspaceName = 'myworkspace01'
+  managedIdentityName = 'mymanagedid01'
+  resourceGroupName = 'myresourcegroup01'
+  storageAccountName = 'mystorageaccount01'
+  containerRegistryName = 'mycontainerregistry01'
+}
+
+./deploy.ps1 `
+  -Location "westus3" `
+  -ParameterFile ./main.parameters.json `
+  -ResourceNames $ResourceNames
+  ```
+
+> **NOTE:** This must include ALL resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
