@@ -154,6 +154,16 @@ param(
   [switch]
   $PrivateAcr,
 
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Full')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'TemplateOnly')]
+  [ValidateSetAttribute('Debian', 'RHEL')]
+  [string]
+  $ContainerType = 'Debian',
+
   [Parameter(Mandatory = $true,
     ParameterSetName = 'TemplateOnly')]
   [ValidateScript({
@@ -757,6 +767,27 @@ try {
     $uiDockerFile = Join-Path -Path $uiPath -ChildPath 'Dockerfile.prod'
 
     if($AsFunction) {
+      # switch ($ContainerType) {
+      #   'Debian' { 
+      #     $funcBuildOutput = $(
+      #       az acr build -r $deployment.Outputs["acrName"].Value `
+      #         -t ipam-func:latest `
+      #         -f $functionDockerFile $enginePath `
+      #         --build-arg PORT=80 `
+      #         --build-arg BASE_IMAGE=python:3.9-slim
+      #     ) *>&1
+      #   }
+      #   'RHEL' {
+      #     $funcBuildOutput = $(
+      #       az acr build -r $deployment.Outputs["acrName"].Value `
+      #         -t ipam-func:latest `
+      #         -f $functionDockerFile $enginePath `
+      #         --build-arg PORT=8080 `
+      #         --build-arg BASE_IMAGE=registry.access.redhat.com/ubi8/python-39
+      #     ) *>&1
+      #   }
+      # }
+
       $funcBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-func:latest -f $functionDockerFile $enginePath) *>&1
 
       if ($LASTEXITCODE -ne 0) {
@@ -771,7 +802,26 @@ try {
 
       Restart-AzFunctionApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Force | Out-Null
     } else {
-      $engineBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-engine:latest -f $engineDockerFile $enginePath) *>&1
+      switch ($ContainerType) {
+        'Debian' {
+          $engineBuildOutput = $(
+            az acr build -r $deployment.Outputs["acrName"].Value `
+              -t ipam-engine:latest `
+              -f $engineDockerFile $enginePath `
+              --build-arg PORT=80 `
+              --build-arg BASE_IMAGE=python:3.9-slim
+          ) *>&1
+        }
+        'RHEL' {
+          $engineBuildOutput = $(
+            az acr build -r $deployment.Outputs["acrName"].Value `
+              -t ipam-engine:latest `
+              -f $engineDockerFile $enginePath `
+              --build-arg PORT=8080 `
+              --build-arg BASE_IMAGE=registry.access.redhat.com/ubi8/python-39
+          ) *>&1
+        }
+      }
 
       if ($LASTEXITCODE -ne 0) {
         throw $engineBuildOutput
@@ -780,7 +830,26 @@ try {
         Write-Verbose -Message "Engine container image build and push completed successfully"
       }
 
-      $uiBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-ui:latest -f $uiDockerFile $uiPath) *>&1
+      switch ($ContainerType) {
+        'Debian' {
+          $uiBuildOutput = $(
+            az acr build -r $deployment.Outputs["acrName"].Value `
+              -t ipam-ui:latest `
+              -f $uiDockerFile $uiPath `
+              --build-arg PORT=80 `
+              --build-arg BASE_IMAGE=node:16-slim
+          ) *>&1
+        }
+        'RHEL' {
+          $uiBuildOutput = $(
+            az acr build -r $deployment.Outputs["acrName"].Value `
+              -t ipam-ui:latest `
+              -f $uiDockerFile $uiPath `
+              --build-arg PORT=8080 `
+              --build-arg BASE_IMAGE=registry.access.redhat.com/ubi8/nodejs-16
+          ) *>&1
+        }
+      }
 
       if ($LASTEXITCODE -ne 0) {
         throw $uiBuildOutput
