@@ -57,6 +57,55 @@ param(
   [hashtable]
   $Tags,
 
+  # [Parameter(Mandatory = $false,
+  #   ParameterSetName = 'TemplateOnly')]
+  # [switch]
+  # $TemplateOnly,
+
+  [Parameter(Mandatory = $true,
+    ParameterSetName = 'AppsOnly')]
+  [Parameter(Mandatory = $true,
+    ParameterSetName = 'FuncAppsOnly')]
+  [switch]
+  $AppsOnly,
+
+  [Parameter(Mandatory = $true,
+    ParameterSetName = 'Function')]
+  [Parameter(Mandatory = $true,
+    ParameterSetName = 'FuncAppsOnly')]
+  [switch]
+  $AsFunction,
+
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Full')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'TemplateOnly')]
+  [switch]
+  $PrivateAcr,
+
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Full')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'AppsOnly')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'FuncAppsOnly')]
+  [switch]
+  $NoConsent,
+
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Full')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'TemplateOnly')]
+  [ValidateSet('Debian', 'RHEL')]
+  [string]
+  $ContainerType = 'Debian',
+
   [Parameter(Mandatory = $false,
     ParameterSetName = 'Full')]
   [Parameter(Mandatory = $false,
@@ -114,55 +163,6 @@ param(
   })]
   [hashtable]
   $ResourceNames,
-
-  # [Parameter(Mandatory = $false,
-  #   ParameterSetName = 'TemplateOnly')]
-  # [switch]
-  # $TemplateOnly,
-
-  [Parameter(Mandatory = $true,
-    ParameterSetName = 'AppsOnly')]
-  [Parameter(Mandatory = $true,
-    ParameterSetName = 'FuncAppsOnly')]
-  [switch]
-  $AppsOnly,
-
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Full')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'AppsOnly')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Function')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'FuncAppsOnly')]
-  [switch]
-  $NoConsent,
-
-  [Parameter(Mandatory = $true,
-    ParameterSetName = 'Function')]
-  [Parameter(Mandatory = $true,
-    ParameterSetName = 'FuncAppsOnly')]
-  [switch]
-  $AsFunction,
-
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Full')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Function')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'TemplateOnly')]
-  [switch]
-  $PrivateAcr,
-
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Full')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Function')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'TemplateOnly')]
-  [ValidateSet('Debian', 'RHEL')]
-  [string]
-  $ContainerType = 'Debian',
 
   [Parameter(Mandatory = $true,
     ParameterSetName = 'TemplateOnly')]
