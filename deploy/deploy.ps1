@@ -57,15 +57,6 @@ param(
   [hashtable]
   $Tags,
 
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Full')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'TemplateOnly')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Function')]
-  [hashtable]
-  $ResourceNames,
-
   # [Parameter(Mandatory = $false,
   #   ParameterSetName = 'TemplateOnly')]
   # [switch]
@@ -77,17 +68,6 @@ param(
     ParameterSetName = 'FuncAppsOnly')]
   [switch]
   $AppsOnly,
-
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Full')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'AppsOnly')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Function')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'FuncAppsOnly')]
-  [switch]
-  $NoConsent,
 
   [Parameter(Mandatory = $true,
     ParameterSetName = 'Function')]
@@ -105,21 +85,101 @@ param(
   [switch]
   $PrivateAcr,
 
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Full')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'AppsOnly')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'FuncAppsOnly')]
+  [switch]
+  $NoConsent,
+
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Full')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'TemplateOnly')]
+  [ValidateSet('Debian', 'RHEL')]
+  [string]
+  $ContainerType = 'Debian',
+
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Full')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'TemplateOnly')]
+  [Parameter(Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [ValidateScript({
+    $validators = @{
+      appServiceName = '^(?=^.{2,59}$)([^-][\w-]*[^-])$'
+      appServicePlanName = '^(?=^.{1,40}$)([\w-]*)$'
+      cosmosAccountName = '^(?=^.{3,44}$)([^-][a-z0-9-]*[^-])$'
+      cosmosContainerName = '^(?=^.{1,255}$)([^/\\#?]*)$'
+      cosmosDatabaseName = '^(?=^.{1,255}$)([^/\\#?]*)$'
+      keyVaultName = '^(?=^.{3,24}$)(?!.*--)([a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9])$'
+      workspaceName = '^(?=^.{4,63}$)([a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])$'
+      managedIdentityName = '^(?=^.{3,128}$)([a-zA-Z0-9][a-zA-Z0-9-_]*)$'
+      resourceGroupName = '^(?=^.{1,90}$)(?!.*\.$)([a-zA-Z0-9-_\.\p{L}\p{N}]*)$'
+      storageAccountName = '^(?=^.{3,24}$)([a-z0-9]*)$'
+      containerRegistryName = '^(?=^.{5,50}$)([a-zA-Z0-9]*)$'
+    }
+
+    $invalidFields = [System.Collections.ArrayList]@()
+    $missingFields = [System.Collections.ArrayList]@()
+
+    foreach ($validator in $validators.GetEnumerator()) {
+      if ($_.ContainsKey($validator.Name)) {
+        if (-not ($_[$validator.Name] -match $validator.Value)) {
+          $invalidFields.Add($validator.Name) | Out-Null
+        }
+      } else {
+        $missingFields.Add($validator.Name) | Out-Null
+      }
+    }
+
+    if ($invalidFields -or $missingFields) {
+      Write-Host "ERROR: Missing or improperly formatted field(s) in 'ResourceNames' parameter" -ForegroundColor Red
+
+      foreach ($field in $invalidFields) {
+        Write-Host "ERROR: Invalid Field ->" $field -ForegroundColor Red
+      }
+
+      foreach ($field in $missingFields) {
+        Write-Host "ERROR: Missing Field ->" $field -ForegroundColor Red
+      }
+
+      Write-Host "ERROR: Please refer to the 'Naming Rules and Restrictions for Azure Resources'" -ForegroundColor Red
+      Write-Host "ERROR: " -ForegroundColor Red -NoNewline
+      Write-Host "https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules" -ForegroundColor Yellow
+      Write-Host ""
+
+      throw [System.ArgumentException]::New("One of the required resource names is missing or invalid.")
+    }
+
+    return -not ($invalidFields -or $missingFields)
+  })]
+  [hashtable]
+  $ResourceNames,
+
   [Parameter(Mandatory = $true,
     ParameterSetName = 'TemplateOnly')]
   [ValidateScript({
     if(-Not ($_ | Test-Path) ){
-      throw "File or does not exist."
+      throw [System.ArgumentException]::New("Target file or does not exist.")
     }
     if(-Not ($_ | Test-Path -PathType Leaf) ){
-      throw "The ParameterFile argument must be a file, folder paths are not allowed."
+      throw [System.ArgumentException]::New("The 'ParameterFile' argument must be a file, folder paths are not allowed.")
     }
     if($_ -notmatch "(\.json)"){
-      throw "The file specified in the ParameterFile argument must be of type json."
+      throw [System.ArgumentException]::New("The file specified in the 'ParameterFile' argument must be of type json.")
     }
     return $true 
   })]
-  [System.IO.FileInfo]$ParameterFile
+  [System.IO.FileInfo]
+  $ParameterFile
 )
 
 $AZURE_ENV_MAP = @{
@@ -159,6 +219,8 @@ Function Deploy-IPAMApplications {
     [string]$UIAppName = 'ipam-ui-app',
     [Parameter(Mandatory=$true)]
     [string]$TenantId,
+    [Parameter(Mandatory=$true)]
+    [string]$AzureCloud,
     [Parameter(Mandatory=$false)]
     [bool]$AsFunction
   ) 
@@ -208,15 +270,53 @@ Function Deploy-IPAMApplications {
       -Web $uiWebSettings
   }
 
-  $engineResourceAccess = [System.Collections.ArrayList]@(
+  # $engineResourceAccess = [System.Collections.ArrayList]@(
+  #   @{
+  #     ResourceAppId  = "797f4846-ba00-4fd7-ba43-dac1f8f63013"; # Azure Service Management
+  #     ResourceAccess = @(
+  #       @{
+  #         Id = "41094075-9dad-400e-a0bd-54e686782033"; # user_impersonation
+  #         Type = "Scope"
+  #       }
+  #     )
+  #   }
+  # )
+
+  $engineResourceMap = @{
+    "AZURE_PUBLIC" = @{
+      ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+      ResourceAccessIds = @("41094075-9dad-400e-a0bd-54e686782033")
+    }
+    "AZURE_US_GOV" = @{
+      ResourceAppId    = "40a69793-8fe6-4db1-9591-dbc5c57b17d8"
+      ResourceAccessIds = @("8eb49ffc-05ac-454c-9027-8648349217dd", "e59ee429-1fb1-4054-b99f-f542e8dc9b95")
+    }
+    "AZURE_GERMANY" = @{
+      ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+      ResourceAccessIds = @("41094075-9dad-400e-a0bd-54e686782033")
+    }
+    "AZURE_CHINA" = @{
+      ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+      ResourceAccessIds = @("41094075-9dad-400e-a0bd-54e686782033")
+    }
+  }
+
+  $engineResourceAppId = $engineResourceMap[$AzureCloud].ResourceAppId
+  $engineResourceAccess = [System.Collections.ArrayList]@()
+
+  foreach ($engineAccessId in  $engineResourceMap[$AzureCloud].ResourceAccessIds) {
+    $access = @{
+      Id   = $engineAccessId
+      Type = "Scope"
+    }
+
+    $engineResourceAccess.Add($access) | Out-Null
+  }
+
+  $engineResourceAccessList = [System.Collections.ArrayList]@(
     @{
-      ResourceAppId = "797f4846-ba00-4fd7-ba43-dac1f8f63013"; # Azure Service Management
-      ResourceAccess = @(
-        @{
-          Id = "41094075-9dad-400e-a0bd-54e686782033"; # user_impersonation
-          Type = "Scope"
-        }
-      )
+      ResourceAppId  = $engineResourceAppId
+      ResourceAccess = $engineResourceAccess
     }
   )
 
@@ -263,7 +363,7 @@ Function Deploy-IPAMApplications {
   $engineApp = New-AzADApplication `
     -DisplayName $EngineAppName `
     -Api $engineApiSettings `
-    -RequiredResourceAccess $engineResourceAccess
+    -RequiredResourceAccess $engineResourceAccessList
 
   # Update IPAM Engine API Endpoint (If not deployed as Function App)
   if (-not $AsFunction) {
@@ -654,6 +754,7 @@ try {
       -UIAppName $UIAppName `
       -EngineAppName $EngineAppName `
       -TenantId $tenantId `
+      -AzureCloud $azureCloud `
       -AsFunction $AsFunction
 
     if (-not $NoConsent) {
@@ -686,7 +787,7 @@ try {
       -PrivateAcr $PrivateAcr `
       -AsFunction $AsFunction `
       -Tags $Tags `
-      -resourceNames $ResourceNames
+      -ResourceNames $ResourceNames
   }
 
   if ($PSCmdlet.ParameterSetName -eq 'Full') {
@@ -700,14 +801,49 @@ try {
     Write-Verbose -Message "Building and pushing container images to Azure Container Registry"
 
     $enginePath = [Io.Path]::Combine('..', 'engine')
-    $engineDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.prod'
+    $engineDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.rhel'
     $functionDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.func'
 
     $uiPath = [Io.Path]::Combine('..', 'ui')
-    $uiDockerFile = Join-Path -Path $uiPath -ChildPath 'Dockerfile.prod'
+    $uiDockerFile = Join-Path -Path $uiPath -ChildPath 'Dockerfile.rhel'
 
+    $containerMap = @{
+      Debian = @{
+        Port = 80
+        Images = @{
+          UI     = 'node:16-slim'
+          Engine = 'python:3.9-slim'
+        }
+      }
+      RHEL = @{
+        Port = 8080
+        Images = @{
+          UI     = 'registry.access.redhat.com/ubi8/nodejs-16'
+          Engine = 'registry.access.redhat.com/ubi8/python-39'
+        }
+      }
+    }
+  
     if($AsFunction) {
-      $funcBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-func:latest -f $functionDockerFile $enginePath) 2>&1
+      # WRITE-HOST "INFO: Building Function container ($ContainerType)..." -ForegroundColor Green
+      # Write-Verbose -Message "INFO: Building Function container ($ContainerType)..."
+
+      # $funcBuildOutput = $(
+      #   az acr build -r $deployment.Outputs["acrName"].Value `
+      #     -t ipam-func:latest `
+      #     -f $functionDockerFile $enginePath `
+      #     --build-arg PORT=$($containerMap[$ContainerType].Port) `
+      #     --build-arg BASE_IMAGE=$($containerMap[$ContainerType].Images.Engine)
+      # ) *>&1
+
+      WRITE-HOST "INFO: Building Function container..." -ForegroundColor Green
+      Write-Verbose -Message "INFO: Building Function container..."
+
+      $funcBuildOutput = $(
+        az acr build -r $deployment.Outputs["acrName"].Value `
+        -t ipam-func:latest `
+        -f $functionDockerFile $enginePath
+      ) *>&1
 
       if ($LASTEXITCODE -ne 0) {
         throw $funcBuildOutput
@@ -721,7 +857,16 @@ try {
 
       Restart-AzFunctionApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Force | Out-Null
     } else {
-      $engineBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-engine:latest -f $engineDockerFile $enginePath) 2>&1
+      WRITE-HOST "INFO: Building Engine container ($ContainerType)..." -ForegroundColor Green
+      Write-Verbose -Message "INFO: Building Engine container ($ContainerType)..."
+
+      $engineBuildOutput = $(
+        az acr build -r $deployment.Outputs["acrName"].Value `
+          -t ipam-engine:latest `
+          -f $engineDockerFile $enginePath `
+          --build-arg PORT=$($containerMap[$ContainerType].Port) `
+          --build-arg BASE_IMAGE=$($containerMap[$ContainerType].Images.Engine)
+      ) *>&1
 
       if ($LASTEXITCODE -ne 0) {
         throw $engineBuildOutput
@@ -730,7 +875,16 @@ try {
         Write-Verbose -Message "Engine container image build and push completed successfully"
       }
 
-      $uiBuildOutput = $(az acr build -r $deployment.Outputs["acrName"].Value -t ipam-ui:latest -f $uiDockerFile $uiPath) 2>&1
+      WRITE-HOST "INFO: Building UI container ($ContainerType)..." -ForegroundColor Green
+      Write-Verbose -Message "INFO: Building UI container ($ContainerType)..."
+
+      $uiBuildOutput = $(
+        az acr build -r $deployment.Outputs["acrName"].Value `
+          -t ipam-ui:latest `
+          -f $uiDockerFile $uiPath `
+          --build-arg PORT=$($containerMap[$ContainerType].Port) `
+          --build-arg BASE_IMAGE=$($containerMap[$ContainerType].Images.UI)
+      ) *>&1
 
       if ($LASTEXITCODE -ne 0) {
         throw $uiBuildOutput
