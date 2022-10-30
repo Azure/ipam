@@ -690,6 +690,10 @@ Function Update-UIApplication {
 Write-Host
 Write-Host "NOTE: IPAM Deployment Type: $($PSCmdlet.ParameterSetName)" -ForegroundColor Magenta
 
+$logPath = [Io.Path]::Combine('..', 'logs')                  
+New-Item -ItemType Directory -Force -Path $logpath | Out-Null
+Start-Transcript -Path $logPath
+
 try {
   if($PrivateAcr) {
     # Verify Minimum Azure CLI Version
@@ -807,12 +811,16 @@ try {
     $uiPath = [Io.Path]::Combine('..', 'ui')
     $uiDockerFile = Join-Path -Path $uiPath -ChildPath 'Dockerfile.rhel'
 
+    $lbPath = [Io.Path]::Combine('..', 'lb')
+    $lbDockerFile = Join-Path -Path $lbPath -ChildPath 'Dockerfile'
+
     $containerMap = @{
       Debian = @{
         Port = 80
         Images = @{
           UI     = 'node:16-slim'
           Engine = 'python:3.9-slim'
+          LB     = 'nginx:alpine'
         }
       }
       RHEL = @{
@@ -820,6 +828,7 @@ try {
         Images = @{
           UI     = 'registry.access.redhat.com/ubi8/nodejs-16'
           Engine = 'registry.access.redhat.com/ubi8/python-39'
+          LB     = 'registry.access.redhat.com/ubi8/nginx-120'
         }
       }
     }
@@ -893,6 +902,23 @@ try {
         Write-Verbose -Message "UI container image build and push completed successfully"
       }
 
+      WRITE-HOST "INFO: Building Load Balancer container ($ContainerType)..." -ForegroundColor Green
+      Write-Verbose -Message "INFO: Building Load Balancer container ($ContainerType)..."
+
+      $lbBuildOutput = $(
+        az acr build -r $deployment.Outputs["acrName"].Value `
+          -t ipam-lb:latest `
+          -f $lbDockerFile $lbPath `
+          --build-arg BASE_IMAGE=$($containerMap[$ContainerType].Images.LB)
+      ) *>&1
+
+      if ($LASTEXITCODE -ne 0) {
+        throw $lbBuildOutput
+      } else {
+        WRITE-HOST "INFO: Load Balancer container image build and push completed successfully" -ForegroundColor Green
+        Write-Verbose -Message "Load Balancer container image build and push completed successfully"
+      }
+
       Write-Host "INFO: Restarting App Service" -ForegroundColor Green
       Write-Verbose -Message "Restarting App Service"
 
@@ -902,9 +928,6 @@ try {
 
   Write-Host "INFO: Azure IPAM Solution deployed successfully" -ForegroundColor Green
   Write-Verbose -Message "Azure IPAM Solution deployed successfully"
-
-  # ADD OUTPUT HERE TO INFORM USERS TO UPDATE UI APP HOSTNAME W/ TEMPLATEONLY DEPLOYMENT
-  # https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/d71404fa-ee4c-41ae-ab40-62265574ad32
 
   if ($($PSCmdlet.ParameterSetName -eq 'TemplateOnly') -and $(-not $AsFunction)) {
     $updateUrl = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/$($appDetails.UIAppId)"
@@ -925,5 +948,8 @@ try {
 catch {
   $_ | Out-File -FilePath $logFile -Append
   Write-Host "ERROR: Unable to deploy Azure IPAM solution due to an exception, see $logFile for detailed information!" -ForegroundColor red
+  Stop-Transcript
   exit
 }
+
+Stop-Transcript

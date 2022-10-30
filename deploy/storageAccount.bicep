@@ -4,8 +4,8 @@ param location string = resourceGroup().location
 @description('Blob Container Name')
 param containerName string = 'nginx'
 
-@description('Managed Identity Id')
-param managedIdentityId string
+// @description('Managed Identity Id')
+// param managedIdentityId string
 
 @description('Managed Identity PrincipalId')
 param principalId string
@@ -58,57 +58,57 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-prev
   }
 }
 
-resource copyNginxConfig 'Microsoft.Resources/deploymentScripts@2020-10-01' = if (!deployAsFunc) {
-  name: 'copyNginxConfig'
-  location: location
-  kind: 'AzurePowerShell'
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${managedIdentityId}': {}
-    }
-  }
-  properties: {
-    azPowerShellVersion: '7.5'
-    timeout: 'PT1H'
-    environmentVariables: [
-      {
-        name: 'StorageAccountName'
-        value: storageAccount.name
-      }
-      {
-        name: 'ContainerName'
-        value: containerName
-      }
-      {
-        name: 'ResourceGroup'
-        value: resourceGroup().name
-      }
-      {
-        name: 'DeployScript'
-        value: loadTextContent('../default.conf')
-      }
-    ]
-    scriptContent: '''
-      $Env:DeployScript | Out-File -FilePath ./default.conf
-      $storageAccount = Get-AzStorageAccount -ResourceGroupName $Env:ResourceGroup -Name $Env:StorageAccountName
-      $ctx = $storageAccount.Context
-      $container = Get-AzStorageContainer -Name $Env:ContainerName -Context $ctx
+// resource copyNginxConfig 'Microsoft.Resources/deploymentScripts@2020-10-01' = if (!deployAsFunc) {
+//   name: 'copyNginxConfig'
+//   location: location
+//   kind: 'AzurePowerShell'
+//   identity: {
+//     type: 'UserAssigned'
+//     userAssignedIdentities: {
+//       '${managedIdentityId}': {}
+//     }
+//   }
+//   properties: {
+//     azPowerShellVersion: '7.5'
+//     timeout: 'PT1H'
+//     environmentVariables: [
+//       {
+//         name: 'StorageAccountName'
+//         value: storageAccount.name
+//       }
+//       {
+//         name: 'ContainerName'
+//         value: containerName
+//       }
+//       {
+//         name: 'ResourceGroup'
+//         value: resourceGroup().name
+//       }
+//       {
+//         name: 'DeployScript'
+//         value: loadTextContent('../default.conf')
+//       }
+//     ]
+//     scriptContent: '''
+//       $Env:DeployScript | Out-File -FilePath ./default.conf
+//       $storageAccount = Get-AzStorageAccount -ResourceGroupName $Env:ResourceGroup -Name $Env:StorageAccountName
+//       $ctx = $storageAccount.Context
+//       $container = Get-AzStorageContainer -Name $Env:ContainerName -Context $ctx
 
-      $NginxConfig = @{
-        File             = "./default.conf"
-        Container        = $Env:ContainerName
-        Blob             = "default.conf"
-        Context          = $ctx
-        StandardBlobTier = "Hot"
-      }
+//       $NginxConfig = @{
+//         File             = "./default.conf"
+//         Container        = $Env:ContainerName
+//         Blob             = "default.conf"
+//         Context          = $ctx
+//         StandardBlobTier = "Hot"
+//       }
 
-      Set-AzStorageBlobContent @NginxConfig
-    '''
-    cleanupPreference: 'Always'
-    retentionInterval: 'PT1H'
-  }
-}
+//       Set-AzStorageBlobContent @NginxConfig
+//     '''
+//     cleanupPreference: 'Always'
+//     retentionInterval: 'PT1H'
+//   }
+// }
 
 resource diagnosticSettingsAccount 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'diagSettingsAccount'

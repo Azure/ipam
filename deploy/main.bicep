@@ -105,14 +105,14 @@ module cosmos 'cosmos.bicep' = {
 }
 
 // Storage Account for Nginx Config/ Function Metadata
-module storageAccount 'storageAccount.bicep' = {
+module storageAccount 'storageAccount.bicep' = if (deployAsFunc) {
   scope: resourceGroup
   name: 'storageAccountModule'
   params: {
     location: location
     storageAccountName: resourceNames.storageAccountName
     principalId: managedIdentity.outputs.principalId
-    managedIdentityId: managedIdentity.outputs.id
+    // managedIdentityId: managedIdentity.outputs.id
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     deployAsFunc: deployAsFunc
   }
