@@ -34,6 +34,7 @@ Azure IPAM is a lightweight solution developed on top of the Azure platform desi
 | `deploy/`            | Deployment Bicep Templates & PowerShell Deployment Scripts    |
 | `docs/`              | Documentation Folder                                          |
 | `engine/`            | Engine Application Code                                       |
+| `lb/`                | Load Balancer (NGINX) Configs                                 |
 | `ui/`                | UI Application Code                                           |
 | `.dockerignore`      | Untracked Docker Files to Ignore                              |
 | `.gitignore`         | Untracked Git Files to Ignore                                 |
