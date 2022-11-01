@@ -198,7 +198,13 @@ $ErrorActionPreference = "Stop"
 $Env:SuppressAzurePowerShellBreakingChangeWarnings = $true
 
 # Set Log File Location
-$logFile = "./deploy_$(get-date -format `"yyyyMMddhhmmsstt`").log"
+$logPath = [Io.Path]::Combine('..', 'logs')
+New-Item -ItemType Directory -Force -Path $logpath | Out-Null
+
+$errorLog = Join-Path -Path $logPath -ChildPath "error_$(get-date -format `"yyyyMMddhhmmsstt`").log"
+$transcriptLog = Join-Path -Path $logPath -ChildPath "deploy_$(get-date -format `"yyyyMMddhhmmsstt`").log"              
+
+Start-Transcript -Path $transcriptLog | Out-Null
 
 Function Test-Location {
   Param(
@@ -690,10 +696,6 @@ Function Update-UIApplication {
 Write-Host
 Write-Host "NOTE: IPAM Deployment Type: $($PSCmdlet.ParameterSetName)" -ForegroundColor Magenta
 
-$logPath = [Io.Path]::Combine('..', 'logs')                  
-New-Item -ItemType Directory -Force -Path $logpath | Out-Null
-Start-Transcript -Path $logPath
-
 try {
   if($PrivateAcr) {
     # Verify Minimum Azure CLI Version
@@ -804,18 +806,9 @@ try {
     Write-Host "INFO: Building and pushing container images to Azure Container Registry" -ForegroundColor Green
     Write-Verbose -Message "Building and pushing container images to Azure Container Registry"
 
-    $enginePath = [Io.Path]::Combine('..', 'engine')
-    $engineDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.rhel'
-    $functionDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.func'
-
-    $uiPath = [Io.Path]::Combine('..', 'ui')
-    $uiDockerFile = Join-Path -Path $uiPath -ChildPath 'Dockerfile.rhel'
-
-    $lbPath = [Io.Path]::Combine('..', 'lb')
-    $lbDockerFile = Join-Path -Path $lbPath -ChildPath 'Dockerfile'
-
     $containerMap = @{
       Debian = @{
+        Extension = "deb"
         Port = 80
         Images = @{
           UI     = 'node:16-slim'
@@ -824,6 +817,7 @@ try {
         }
       }
       RHEL = @{
+        Extension = "rhel"
         Port = 8080
         Images = @{
           UI     = 'registry.access.redhat.com/ubi8/nodejs-16'
@@ -832,7 +826,17 @@ try {
         }
       }
     }
-  
+
+    $enginePath = [Io.Path]::Combine('..', 'engine')
+    $engineDockerFile = Join-Path -Path $enginePath -ChildPath "Dockerfile.$($containerMap[$ContainerType].Extension)"
+    $functionDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.func'
+
+    $uiPath = [Io.Path]::Combine('..', 'ui')
+    $uiDockerFile = Join-Path -Path $uiPath -ChildPath "Dockerfile.$($containerMap[$ContainerType].Extension)"
+
+    $lbPath = [Io.Path]::Combine('..', 'lb')
+    $lbDockerFile = Join-Path -Path $lbPath -ChildPath "Dockerfile"
+
     if($AsFunction) {
       # WRITE-HOST "INFO: Building Function container ($ContainerType)..." -ForegroundColor Green
       # Write-Verbose -Message "INFO: Building Function container ($ContainerType)..."
@@ -942,14 +946,14 @@ try {
     Write-Host $updateAddr -ForegroundColor White
     Write-Host "##############################################" -ForegroundColor Yellow
   }
-
-  Write-Host
 }
 catch {
-  $_ | Out-File -FilePath $logFile -Append
-  Write-Host "ERROR: Unable to deploy Azure IPAM solution due to an exception, see $logFile for detailed information!" -ForegroundColor red
-  Stop-Transcript
+  $_ | Out-File -FilePath $errorLog -Append
+  Write-Host "ERROR: Unable to deploy Azure IPAM solution due to an exception, see $transcriptLog and $errorLog for detailed information!" -ForegroundColor red
+  Write-Host
+  Stop-Transcript | Out-Null
   exit
 }
 
-Stop-Transcript
+Write-Host
+Stop-Transcript | Out-Null

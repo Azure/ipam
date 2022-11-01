@@ -22,9 +22,6 @@ param managedIdentityId string
 @description('Managed Identity ClientId')
 param managedIdentityClientId string
 
-@description('Storage Account Name')
-param storageAccountName string
-
 @description('Log Analytics Worskpace ID')
 param workspaceId string
 
@@ -44,10 +41,6 @@ var acrUri = privateAcr ? privateAcrUri : 'azureipam.azurecr.io'
 var dockerCompose = loadTextContent('../docker-compose.prod.yml')
 var dockerComposeReplace = replace(dockerCompose, 'azureipam.azurecr.io', acrUri)
 var dockerComposeEncode = base64(dockerComposeReplace)
-
-resource storageAccount 'Microsoft.Storage/storageAccounts@2021-06-01' existing = {
-  name: storageAccountName
-}
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
   name: appServicePlanName
@@ -129,15 +122,6 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
           value: 'true'
         }
       ]
-      azureStorageAccounts: {
-        nginx: {
-          type: 'AzureBlob'
-          accountName: storageAccountName
-          shareName: 'nginx'
-          mountPath: '/nginx'
-          accessKey: listkeys(storageAccount.id, storageAccount.apiVersion).keys[0].value
-        }
-      }
     }
   }
 }

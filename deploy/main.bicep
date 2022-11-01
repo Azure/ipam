@@ -104,7 +104,7 @@ module cosmos 'cosmos.bicep' = {
   }
 }
 
-// Storage Account for Nginx Config/ Function Metadata
+// Storage Account for Nginx Config/Function Metadata
 module storageAccount 'storageAccount.bicep' = if (deployAsFunc) {
   scope: resourceGroup
   name: 'storageAccountModule'
@@ -142,7 +142,6 @@ module appService 'appService.bicep' = if (!deployAsFunc) {
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     managedIdentityId: managedIdentity.outputs.id
     managedIdentityClientId: managedIdentity.outputs.clientId
-    storageAccountName: storageAccount.outputs.name
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     privateAcr: privateAcr
     privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
@@ -162,7 +161,7 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     managedIdentityId: managedIdentity.outputs.id
     managedIdentityClientId: managedIdentity.outputs.clientId
-    storageAccountName: storageAccount.outputs.name
+    storageAccountName: resourceNames.storageAccountName
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     privateAcr: privateAcr
     privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''

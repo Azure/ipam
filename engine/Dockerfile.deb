@@ -1,0 +1,29 @@
+ARG BASE_IMAGE=python:3.9-slim
+FROM $BASE_IMAGE
+
+ARG PORT=80
+
+# Set Environment Variable
+ENV PORT=${PORT}
+
+# Set the Working Directory
+WORKDIR /ipam
+
+# Copy Requirements File
+ADD ./requirements.txt .
+
+# Install Dependencies
+RUN pip install --no-cache-dir --upgrade -r ./requirements.txt --progress-bar off
+
+# Copy Application Scripts & Sources
+ADD ./app ./app
+ADD ./init.sh .
+
+# Set Script Execute Permissions
+RUN chmod +x init.sh
+
+# Expose Port
+EXPOSE $PORT
+
+# Execute Startup Script
+ENTRYPOINT ./init.sh ${PORT}

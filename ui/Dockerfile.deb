@@ -1,0 +1,29 @@
+ARG BASE_IMAGE=node:16-slim
+FROM $BASE_IMAGE
+
+ARG PORT=80
+
+# Set Environment Variable
+ENV PORT=${PORT}
+
+# Set the Working Directory
+WORKDIR /ipam
+
+# Add Application Sources
+ADD . .
+
+# Install Dependencies
+RUN npm install
+
+# Build Application
+RUN npm run build
+
+# Set Script Execute Permissions
+RUN chmod +x init.sh
+RUN rm -rf src
+
+# Expose Port
+EXPOSE $PORT
+
+# Execute Startup Script
+ENTRYPOINT ./init.sh ${PORT}

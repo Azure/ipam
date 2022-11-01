@@ -1,26 +1,33 @@
-ARG BASE_IMAGE=python:3.9-slim
+ARG BASE_IMAGE=registry.access.redhat.com/ubi8/python-39
 FROM $BASE_IMAGE
 
-ARG PORT=80
+ARG PORT=8080
 
 # Set Environment Variable
 ENV PORT=${PORT}
 
+# Set the Working Directory
+WORKDIR /ipam
+
+# Switch to Root User
+USER root
+
 # Copy Requirements File
-ADD ./requirements.txt $HOME
+ADD ./requirements.txt /ipam
 
 # Install Dependencies
 RUN pip install --no-cache-dir --upgrade -r ./requirements.txt --progress-bar off
 
 # Copy Application Scripts & Sources
-ADD ./init.sh $HOME
-ADD ./app $HOME/app
-
-# Switch to Root User
-USER root
+ADD ./app ./app
+ADD ./init.sh .
 
 # Set Script Execute Permissions
 RUN chmod +x init.sh
+RUN chown -R 1001:0 /ipam
+
+# Switch to Standard User
+USER 1001
 
 # Expose Port
 EXPOSE $PORT
