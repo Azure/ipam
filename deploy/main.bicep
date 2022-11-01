@@ -111,10 +111,10 @@ module storageAccount 'storageAccount.bicep' = if (deployAsFunc) {
   params: {
     location: location
     storageAccountName: resourceNames.storageAccountName
-    principalId: managedIdentity.outputs.principalId
+    // principalId: managedIdentity.outputs.principalId
     // managedIdentityId: managedIdentity.outputs.id
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
-    deployAsFunc: deployAsFunc
+    // deployAsFunc: deployAsFunc
   }
 }
 
