@@ -10,4 +10,3 @@ export REACT_APP_CONTAINER_IMAGE
 
 npx --yes react-inject-env set
 npx --yes http-server -a 0.0.0.0 -P http://localhost? -p ${PORT} build
-
