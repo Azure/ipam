@@ -10,3 +10,4 @@ eval $(printenv | sed -n "s/^\([^=]\+\)=\(.*\)$/export \1=\2/p" | sed 's/"/\\\"/
 npx --yes react-inject-env set -d /code/app/build &
 
 uvicorn "app.main:app" --reload --host "0.0.0.0" --port 80
+
