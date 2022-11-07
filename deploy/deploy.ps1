@@ -693,6 +693,7 @@ Function Update-UIApplication {
   Write-Verbose -Message "UI Application SPA configuration update complete"
 }
 
+# Main Deployment Script Section
 Write-Host
 Write-Host "NOTE: IPAM Deployment Type: $($PSCmdlet.ParameterSetName)" -ForegroundColor Magenta
 
@@ -734,14 +735,14 @@ try {
     Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor Green
     Write-Verbose -Message "Fetching Tenant ID from Azure PowerShell SDK"
     $tenantId = (Get-AzContext).Tenant.Id
-  }
 
-  if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly', 'Function', 'FuncTemplateOnly')) {
     # Fetch Azure Cloud Type
     Write-Host "INFO: Fetching Azure Cloud type from Azure PowerShell SDK" -ForegroundColor Green
     Write-Verbose -Message "Fetching Azure Cloud type from Azure PowerShell SDK"
     $azureCloud = $AZURE_ENV_MAP[(Get-AzContext).Environment.Name]
+  }
 
+  if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly', 'Function', 'FuncTemplateOnly')) {
     # Validate Azure Region
     Write-Host "INFO: Validating Azure Region selected for deployment" -ForegroundColor Green
     Write-Verbose -Message "Validating Azure Region selected for deployment"
