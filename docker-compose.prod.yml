@@ -18,8 +18,6 @@ services:
       KEYVAULT_URL: ${KEYVAULT_URL}
     image: azureipam.azurecr.io/ipam-engine:latest
   nginx-proxy:
-    image: nginx:alpine
-    volumes: 
-      - nginx:/etc/nginx/conf.d
+    image: azureipam.azurecr.io/ipam-lb:latest
     ports:
-      - "80:80"
+      - "80:8080"

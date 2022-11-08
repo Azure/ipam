@@ -1,16 +1,13 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi8/nodejs-16
+ARG BASE_IMAGE=node:16-slim
 FROM $BASE_IMAGE
 
-ARG PORT=8080
+ARG PORT=80
 
 # Set Environment Variable
 ENV PORT=${PORT}
 
 # Set the Working Directory
 WORKDIR /ipam
-
-# Switch to Root User
-USER root
 
 # Add Application Sources
 ADD . .
@@ -24,10 +21,6 @@ RUN npm run build
 # Set Script Execute Permissions
 RUN chmod +x init.sh
 RUN rm -rf src
-RUN chown -R 1001:0 /ipam
-
-# Switch to Standard User
-USER 1001
 
 # Expose Port
 EXPOSE $PORT

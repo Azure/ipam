@@ -1,1 +1,5 @@
 local.settings.json
+Dockerfile.*
+.devcontainer
+*.example
+.gitignore

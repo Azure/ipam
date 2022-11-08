@@ -198,7 +198,13 @@ $ErrorActionPreference = "Stop"
 $Env:SuppressAzurePowerShellBreakingChangeWarnings = $true
 
 # Set Log File Location
-$logFile = "./deploy_$(get-date -format `"yyyyMMddhhmmsstt`").log"
+$logPath = [Io.Path]::Combine('..', 'logs')
+New-Item -ItemType Directory -Force -Path $logpath | Out-Null
+
+$errorLog = Join-Path -Path $logPath -ChildPath "error_$(get-date -format `"yyyyMMddhhmmsstt`").log"
+$transcriptLog = Join-Path -Path $logPath -ChildPath "deploy_$(get-date -format `"yyyyMMddhhmmsstt`").log"              
+
+Start-Transcript -Path $transcriptLog | Out-Null
 
 Function Test-Location {
   Param(
@@ -687,6 +693,7 @@ Function Update-UIApplication {
   Write-Verbose -Message "UI Application SPA configuration update complete"
 }
 
+# Main Deployment Script Section
 Write-Host
 Write-Host "NOTE: IPAM Deployment Type: $($PSCmdlet.ParameterSetName)" -ForegroundColor Magenta
 
@@ -728,14 +735,14 @@ try {
     Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor Green
     Write-Verbose -Message "Fetching Tenant ID from Azure PowerShell SDK"
     $tenantId = (Get-AzContext).Tenant.Id
-  }
 
-  if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly', 'Function', 'FuncTemplateOnly')) {
     # Fetch Azure Cloud Type
     Write-Host "INFO: Fetching Azure Cloud type from Azure PowerShell SDK" -ForegroundColor Green
     Write-Verbose -Message "Fetching Azure Cloud type from Azure PowerShell SDK"
     $azureCloud = $AZURE_ENV_MAP[(Get-AzContext).Environment.Name]
+  }
 
+  if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly', 'Function', 'FuncTemplateOnly')) {
     # Validate Azure Region
     Write-Host "INFO: Validating Azure Region selected for deployment" -ForegroundColor Green
     Write-Verbose -Message "Validating Azure Region selected for deployment"
@@ -800,30 +807,37 @@ try {
     Write-Host "INFO: Building and pushing container images to Azure Container Registry" -ForegroundColor Green
     Write-Verbose -Message "Building and pushing container images to Azure Container Registry"
 
-    $enginePath = [Io.Path]::Combine('..', 'engine')
-    $engineDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.rhel'
-    $functionDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.func'
-
-    $uiPath = [Io.Path]::Combine('..', 'ui')
-    $uiDockerFile = Join-Path -Path $uiPath -ChildPath 'Dockerfile.rhel'
-
     $containerMap = @{
       Debian = @{
+        Extension = "deb"
         Port = 80
         Images = @{
           UI     = 'node:16-slim'
           Engine = 'python:3.9-slim'
+          LB     = 'nginx:alpine'
         }
       }
       RHEL = @{
+        Extension = "rhel"
         Port = 8080
         Images = @{
           UI     = 'registry.access.redhat.com/ubi8/nodejs-16'
           Engine = 'registry.access.redhat.com/ubi8/python-39'
+          LB     = 'registry.access.redhat.com/ubi8/nginx-120'
         }
       }
     }
-  
+
+    $enginePath = [Io.Path]::Combine('..', 'engine')
+    $engineDockerFile = Join-Path -Path $enginePath -ChildPath "Dockerfile.$($containerMap[$ContainerType].Extension)"
+    $functionDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.func'
+
+    $uiPath = [Io.Path]::Combine('..', 'ui')
+    $uiDockerFile = Join-Path -Path $uiPath -ChildPath "Dockerfile.$($containerMap[$ContainerType].Extension)"
+
+    $lbPath = [Io.Path]::Combine('..', 'lb')
+    $lbDockerFile = Join-Path -Path $lbPath -ChildPath "Dockerfile"
+
     if($AsFunction) {
       # WRITE-HOST "INFO: Building Function container ($ContainerType)..." -ForegroundColor Green
       # Write-Verbose -Message "INFO: Building Function container ($ContainerType)..."
@@ -893,6 +907,23 @@ try {
         Write-Verbose -Message "UI container image build and push completed successfully"
       }
 
+      WRITE-HOST "INFO: Building Load Balancer container ($ContainerType)..." -ForegroundColor Green
+      Write-Verbose -Message "INFO: Building Load Balancer container ($ContainerType)..."
+
+      $lbBuildOutput = $(
+        az acr build -r $deployment.Outputs["acrName"].Value `
+          -t ipam-lb:latest `
+          -f $lbDockerFile $lbPath `
+          --build-arg BASE_IMAGE=$($containerMap[$ContainerType].Images.LB)
+      ) *>&1
+
+      if ($LASTEXITCODE -ne 0) {
+        throw $lbBuildOutput
+      } else {
+        WRITE-HOST "INFO: Load Balancer container image build and push completed successfully" -ForegroundColor Green
+        Write-Verbose -Message "Load Balancer container image build and push completed successfully"
+      }
+
       Write-Host "INFO: Restarting App Service" -ForegroundColor Green
       Write-Verbose -Message "Restarting App Service"
 
@@ -902,9 +933,6 @@ try {
 
   Write-Host "INFO: Azure IPAM Solution deployed successfully" -ForegroundColor Green
   Write-Verbose -Message "Azure IPAM Solution deployed successfully"
-
-  # ADD OUTPUT HERE TO INFORM USERS TO UPDATE UI APP HOSTNAME W/ TEMPLATEONLY DEPLOYMENT
-  # https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/d71404fa-ee4c-41ae-ab40-62265574ad32
 
   if ($($PSCmdlet.ParameterSetName -eq 'TemplateOnly') -and $(-not $AsFunction)) {
     $updateUrl = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/$($appDetails.UIAppId)"
@@ -919,11 +947,14 @@ try {
     Write-Host $updateAddr -ForegroundColor White
     Write-Host "##############################################" -ForegroundColor Yellow
   }
-
-  Write-Host
 }
 catch {
-  $_ | Out-File -FilePath $logFile -Append
-  Write-Host "ERROR: Unable to deploy Azure IPAM solution due to an exception, see $logFile for detailed information!" -ForegroundColor red
+  $_ | Out-File -FilePath $errorLog -Append
+  Write-Host "ERROR: Unable to deploy Azure IPAM solution due to an exception, see $transcriptLog and $errorLog for detailed information!" -ForegroundColor red
+  Write-Host
+  Stop-Transcript | Out-Null
   exit
 }
+
+Write-Host
+Stop-Transcript | Out-Null
