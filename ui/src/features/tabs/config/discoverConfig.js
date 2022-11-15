@@ -104,7 +104,7 @@ export const vnets = {
     { field: "parentBlock", headerName: "Block", type: 'string', headerAlign: "left", align: "left", flex: 0.85, renderCell: (params) => params.value ?? "<Unassigned>" },
     { field: "size", headerName: "Total IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.35 },
     { field: "used", headerName: "Allocated IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.45 },
-    { field: "prefixes", headerName: "IP Space", type: 'string', headerAlign: "right", align: "right", flex: 0.75 },
+    { field: "prefixes", headerName: "IP Space", type: 'string', headerAlign: "right", align: "right", flex: 0.75, renderCell: (params) => params.value.join(", ") },
   ],
   filterSettings: [
     { type: "select", title: "vNet Name", dataField: "name" },

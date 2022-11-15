@@ -174,7 +174,7 @@ const opt = {
             </div>
             <div class="data">
               <span style="font-weight: bold">Prefixes:&nbsp;</span>
-              ${d.value.prefixes}
+              ${d.value.prefixes.join(', ')}
             </div>
             <div class="data">
               <span style="font-weight: bold">Size:&nbsp;</span>

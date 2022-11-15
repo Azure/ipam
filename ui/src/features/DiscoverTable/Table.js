@@ -62,10 +62,13 @@ export default function DiscoverTable(props) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [menuExpand, setMenuExpand] = React.useState(false);
   const [sortModel, setSortModel] = React.useState([{field: 'name', sort: 'asc'}]);
+  const [filterModel, setFilterModel] = React.useState({items: []});
 
   const stateData = useSelector(config.apiFunc);
   const filteredData = filterArray(stateData, dataFilters);
   const selectedRow = selectionModel.length ? filteredData.find((obj) => { return config.idFunc(obj) === selectionModel[0] }) : null;
+
+  const location = useLocation();
 
   const anchorEl = React.useRef();
 
@@ -112,6 +115,12 @@ export default function DiscoverTable(props) {
       </Tooltip>
     );
   }
+
+  React.useEffect(() => {
+    if(location.state) {
+      setFilterModel({items: [location.state]});
+    }
+  },[location]);
 
   React.useEffect(() => {
     stateData && setLoading(false);
@@ -280,6 +289,8 @@ export default function DiscoverTable(props) {
           getRowId={config.idFunc || null}
           sortModel={sortModel}
           onSortModelChange={(model) => setSortModel(model)}
+          filterModel={filterModel}
+          onFilterModelChange={(newFilterModel) => setFilterModel(newFilterModel)}
           components={{
             Toolbar: CustomToolbar,
             LoadingOverlay: CustomLoadingOverlay,

@@ -9,7 +9,10 @@ import { useSnackbar } from "notistack";
 import { styled, alpha } from "@mui/material/styles";
 import { SvgIcon } from "@mui/material";
 
-import { Routes, Route, Link, Navigate } from "react-router-dom";
+import { orderBy } from 'lodash';
+import { plural, singular } from 'pluralize';
+
+import { Routes, Route, Link, Navigate, useNavigate } from "react-router-dom";
 
 import { callMsGraph } from "../../msal/graph";
 
@@ -19,10 +22,14 @@ import {
   Toolbar,
   IconButton,
   Typography,
-  InputBase,
   Menu,
   MenuItem,
+  Autocomplete,
+  TextField,
+  InputAdornment
 } from "@mui/material";
+
+import { createFilterOptions } from '@mui/material/Autocomplete';
 
 import {
   Menu as MenuIcon,
@@ -62,7 +69,7 @@ import Configure from "../../img/Configure";
 import Admin from "../../img/Admin";
 import Visualize from "../../img/Visualize";
 import Peering from "../../img/Peering";
-import Conflict from "../../img/Conflict";
+// import Conflict from "../../img/Conflict";
 import Person from "../../img/Person";
 import Rule from "../../img/Rule";
 
@@ -72,13 +79,15 @@ import Welcome from "../welcome/Welcome";
 import DiscoverTabs from "../tabs/discoverTabs";
 import AnalyzeTabs from "../tabs/analyzeTabs";
 import AdminTabs from "../tabs/adminTabs";
-// import AnalysisTool from "../analysis/analysis";
 import ConfigureIPAM from "../configure/configure";
 
 import Refresh from "./refresh";
 
 import {
-  getAdminStatus
+  getAdminStatus,
+  selectVNets,
+  selectSubnets,
+  selectEndpoints
 } from "../ipam/ipamSlice";
 
 import { apiRequest } from "../../msal/authConfig";
@@ -100,30 +109,6 @@ const Search = styled("div")(({ theme }) => ({
   },
 }));
 
-const SearchIconWrapper = styled("div")(({ theme }) => ({
-  padding: theme.spacing(0, 2),
-  height: "100%",
-  position: "absolute",
-  pointerEvents: "none",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-}));
-
-const StyledInputBase = styled(InputBase)(({ theme }) => ({
-  color: "inherit",
-  "& .MuiInputBase-input": {
-    padding: theme.spacing(1, 1, 1, 0),
-    // vertical padding + font size from searchIcon
-    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
-    transition: theme.transitions.create("width"),
-    width: "100%",
-    [theme.breakpoints.up("md")]: {
-      width: "20ch",
-    },
-  },
-}));
-
 export default function NavDrawer() {
   const { instance, inProgress, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
@@ -134,7 +119,16 @@ export default function NavDrawer() {
   const [navChildOpen, setNavChildOpen] = React.useState({});
   const [drawerState, setDrawerState] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [searchData, setSearchData] = React.useState([]);
+  const [searchInput, setSearchInput] = React.useState('');
+  const [searchValue, setSearchValue] = React.useState(null);
+
+  const navigate = useNavigate();
+
   const isAdmin = useSelector(getAdminStatus);
+  const vNets = useSelector(selectVNets);
+  const subnets = useSelector(selectSubnets);
+  const endpoints = useSelector(selectEndpoints);
 
   const isMenuOpen = Boolean(menuAnchorEl);
   const isMobileMenuOpen = Boolean(mobileMenuAnchorEl);
@@ -213,12 +207,6 @@ export default function NavDrawer() {
         link: "configure",
         admin: false
       },
-      // {
-      //   title: "Admin",
-      //   icon: Admin,
-      //   link: "admin",
-      //   admin: true
-      // },
       {
         title: "Admin",
         icon: Admin,
@@ -294,6 +282,102 @@ export default function NavDrawer() {
 
     setDrawerState(open);
   };
+
+  React.useEffect(() => {
+    function getTitleCase(str) {
+      const titleCase = str
+        .toLowerCase()
+        .split('_')
+        .map(word => {
+          return word.charAt(0).toUpperCase() + word.slice(1);
+        })
+        .join(' ');
+    
+      return titleCase;
+    }
+
+    function objToFilter(data, header, path, exclusions) {
+      const searchObj = data.reduce((prev, curr) => {
+
+        Object.entries(curr).forEach(([key, value]) => {
+          const newKey = key.replace(/([a-zA-Z])(?=[A-Z])/g, '$1_').toLowerCase();
+          const titleKey = getTitleCase(newKey);
+          const keyNoun = Array.isArray(value) ? plural(titleKey) : singular(titleKey);
+
+          if(!exclusions.includes(newKey)) {
+            if(!prev.hasOwnProperty(newKey)) {
+              prev[newKey] = {
+                searchKey: key,
+                noun: keyNoun,
+                comparator: Array.isArray(value) ? 'contains' : 'like',
+                values: []
+              };
+            }
+
+            Array.isArray(value) ? prev[newKey].values = prev[newKey].values.concat(value) : prev[newKey].values.push(value);
+          }
+        });
+
+        return prev;
+      }, {});
+
+      var searchItems = [];
+
+      Object.entries(searchObj).forEach(([key, props]) => {
+        searchObj[key].values = [...new Set(props.values)];
+      });
+
+      Object.values(searchObj).forEach((props) => {
+        props.values.forEach((value) => {
+          const phrase = props.noun + ' ' + props.comparator + ' ' + String(value);
+
+          var searchItem = {
+            category: header,
+            path: path,
+            phrase: phrase,
+            value: value,
+            filter: {
+              id: 1,
+              columnField: props.searchKey,
+              operatorValue: 'contains',
+              value: value
+            }
+          };
+
+          searchItems.push(searchItem);
+        });
+      });
+
+      return searchItems;
+    }
+
+    var newSearchData = [];
+
+    if(vNets) {
+      const vNetExclusions = ['id', 'peerings', 'resv', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_space', 'subscription_id', 'tenant_id'];
+      const vNetResults = objToFilter(vNets, 'Virtual Networks', '/discover/vnet', vNetExclusions);
+
+      const subnetExclusions = ['id', 'vnet_id', 'size', 'used', 'available', 'utilization', 'subscription_id', 'tenant_id'];
+      const subnetResults = objToFilter(subnets, 'Subnets', '/discover/subnet', subnetExclusions);
+
+      newSearchData = [...newSearchData, ...vNetResults, ...subnetResults];
+    }
+
+    if(endpoints) {
+      const endpointExclusions = ['id', 'vnet_id', 'subnet_id', 'metadata', 'subscription_id', 'tenant_id'];
+      const endpointResults = objToFilter(endpoints, 'Endpoints', '/discover/endpoint', endpointExclusions);
+
+      newSearchData = [...newSearchData, ...endpointResults];
+    }
+
+    setSearchData(newSearchData);
+  }, [vNets, endpoints]);
+
+  const filterOptions = createFilterOptions({
+    matchFrom: 'any',
+    limit: 100,
+    stringify: (option) => String(option.value),
+  });
 
   const navList = () => (
     <Box
@@ -597,12 +681,53 @@ export default function NavDrawer() {
             <Typography variant="h6" noWrap component="div" sx={{ display: { xs: "none", sm: "block" } }}>
               Azure IPAM
             </Typography>
-            {/* <Search>
-              <SearchIconWrapper>
-                <SearchIcon />
-              </SearchIconWrapper>
-              <StyledInputBase placeholder="Search…" inputProps={{ "aria-label": "search" }} />
-            </Search> */}
+            <Search>
+              <Autocomplete filterOptions={filterOptions}
+                freeSolo
+                id="ipam-search-bar"
+                disableClearable
+                options={searchData ? orderBy(searchData, 'category', 'asc') : []}
+                groupBy={(option) => option.category}
+                getOptionLabel={(option) => option.phrase}
+                disabled={searchData.length > 0 ? false : true}
+                inputValue={searchInput}
+                onInputChange={(event, newSearchInput) => {
+                  setSearchInput(newSearchInput);
+                }}
+                value={searchValue}
+                onChange={(event, newValue) => {
+                  setSearchInput('');
+                  setSearchValue(null);
+                  navigate(newValue.path, {state: newValue.filter});
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder={searchData.length > 0 ? "Search..." : "Loading..."}
+                    fullWidth
+                    variant="standard"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment:
+                        <InputAdornment position="start">
+                          <SearchIcon sx={{ color: 'white', pl: 1}}/>
+                        </InputAdornment>,
+                      disableUnderline: true,
+                      type: 'search',
+                      sx: {
+                        color: 'inherit'
+                      }
+                    }}
+                  />
+                )}
+                sx={{
+                  display: 'flex',
+                  color: 'inherit',
+                  width: '20ch',
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)'
+                }}
+              />
+            </Search>
             <Box sx={{ flexGrow: 1 }} />
             <Box sx={{ display: { xs: "none", md: "flex" } }}>
               <IconButton
@@ -662,3 +787,131 @@ export default function NavDrawer() {
     </React.Fragment>
   );
 }
+
+// Top 100 films as rated by IMDb users. http://www.imdb.com/chart/top
+const top100Films = [
+  { title: 'The Shawshank Redemption', year: 1994 },
+  { title: 'The Godfather', year: 1972 },
+  { title: 'The Godfather: Part II', year: 1974 },
+  { title: 'The Dark Knight', year: 2008 },
+  { title: '12 Angry Men', year: 1957 },
+  { title: "Schindler's List", year: 1993 },
+  { title: 'Pulp Fiction', year: 1994 },
+  {
+    title: 'The Lord of the Rings: The Return of the King',
+    year: 2003,
+  },
+  { title: 'The Good, the Bad and the Ugly', year: 1966 },
+  { title: 'Fight Club', year: 1999 },
+  {
+    title: 'The Lord of the Rings: The Fellowship of the Ring',
+    year: 2001,
+  },
+  {
+    title: 'Star Wars: Episode V - The Empire Strikes Back',
+    year: 1980,
+  },
+  { title: 'Forrest Gump', year: 1994 },
+  { title: 'Inception', year: 2010 },
+  {
+    title: 'The Lord of the Rings: The Two Towers',
+    year: 2002,
+  },
+  { title: "One Flew Over the Cuckoo's Nest", year: 1975 },
+  { title: 'Goodfellas', year: 1990 },
+  { title: 'The Matrix', year: 1999 },
+  { title: 'Seven Samurai', year: 1954 },
+  {
+    title: 'Star Wars: Episode IV - A New Hope',
+    year: 1977,
+  },
+  { title: 'City of God', year: 2002 },
+  { title: 'Se7en', year: 1995 },
+  { title: 'The Silence of the Lambs', year: 1991 },
+  { title: "It's a Wonderful Life", year: 1946 },
+  { title: 'Life Is Beautiful', year: 1997 },
+  { title: 'The Usual Suspects', year: 1995 },
+  { title: 'Léon: The Professional', year: 1994 },
+  { title: 'Spirited Away', year: 2001 },
+  { title: 'Saving Private Ryan', year: 1998 },
+  { title: 'Once Upon a Time in the West', year: 1968 },
+  { title: 'American History X', year: 1998 },
+  { title: 'Interstellar', year: 2014 },
+  { title: 'Casablanca', year: 1942 },
+  { title: 'City Lights', year: 1931 },
+  { title: 'Psycho', year: 1960 },
+  { title: 'The Green Mile', year: 1999 },
+  { title: 'The Intouchables', year: 2011 },
+  { title: 'Modern Times', year: 1936 },
+  { title: 'Raiders of the Lost Ark', year: 1981 },
+  { title: 'Rear Window', year: 1954 },
+  { title: 'The Pianist', year: 2002 },
+  { title: 'The Departed', year: 2006 },
+  { title: 'Terminator 2: Judgment Day', year: 1991 },
+  { title: 'Back to the Future', year: 1985 },
+  { title: 'Whiplash', year: 2014 },
+  { title: 'Gladiator', year: 2000 },
+  { title: 'Memento', year: 2000 },
+  { title: 'The Prestige', year: 2006 },
+  { title: 'The Lion King', year: 1994 },
+  { title: 'Apocalypse Now', year: 1979 },
+  { title: 'Alien', year: 1979 },
+  { title: 'Sunset Boulevard', year: 1950 },
+  {
+    title: 'Dr. Strangelove or: How I Learned to Stop Worrying and Love the Bomb',
+    year: 1964,
+  },
+  { title: 'The Great Dictator', year: 1940 },
+  { title: 'Cinema Paradiso', year: 1988 },
+  { title: 'The Lives of Others', year: 2006 },
+  { title: 'Grave of the Fireflies', year: 1988 },
+  { title: 'Paths of Glory', year: 1957 },
+  { title: 'Django Unchained', year: 2012 },
+  { title: 'The Shining', year: 1980 },
+  { title: 'WALL·E', year: 2008 },
+  { title: 'American Beauty', year: 1999 },
+  { title: 'The Dark Knight Rises', year: 2012 },
+  { title: 'Princess Mononoke', year: 1997 },
+  { title: 'Aliens', year: 1986 },
+  { title: 'Oldboy', year: 2003 },
+  { title: 'Once Upon a Time in America', year: 1984 },
+  { title: 'Witness for the Prosecution', year: 1957 },
+  { title: 'Das Boot', year: 1981 },
+  { title: 'Citizen Kane', year: 1941 },
+  { title: 'North by Northwest', year: 1959 },
+  { title: 'Vertigo', year: 1958 },
+  {
+    title: 'Star Wars: Episode VI - Return of the Jedi',
+    year: 1983,
+  },
+  { title: 'Reservoir Dogs', year: 1992 },
+  { title: 'Braveheart', year: 1995 },
+  { title: 'M', year: 1931 },
+  { title: 'Requiem for a Dream', year: 2000 },
+  { title: 'Amélie', year: 2001 },
+  { title: 'A Clockwork Orange', year: 1971 },
+  { title: 'Like Stars on Earth', year: 2007 },
+  { title: 'Taxi Driver', year: 1976 },
+  { title: 'Lawrence of Arabia', year: 1962 },
+  { title: 'Double Indemnity', year: 1944 },
+  {
+    title: 'Eternal Sunshine of the Spotless Mind',
+    year: 2004,
+  },
+  { title: 'Amadeus', year: 1984 },
+  { title: 'To Kill a Mockingbird', year: 1962 },
+  { title: 'Toy Story 3', year: 2010 },
+  { title: 'Logan', year: 2017 },
+  { title: 'Full Metal Jacket', year: 1987 },
+  { title: 'Dangal', year: 2016 },
+  { title: 'The Sting', year: 1973 },
+  { title: '2001: A Space Odyssey', year: 1968 },
+  { title: "Singin' in the Rain", year: 1952 },
+  { title: 'Toy Story', year: 1995 },
+  { title: 'Bicycle Thieves', year: 1948 },
+  { title: 'The Kid', year: 1921 },
+  { title: 'Inglourious Basterds', year: 2009 },
+  { title: 'Snatch', year: 2000 },
+  { title: '3 Idiots', year: 2009 },
+  { title: 'Monty Python and the Holy Grail', year: 1975 },
+];

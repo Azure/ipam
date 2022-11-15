@@ -37,7 +37,7 @@ const columns = [
   { field: "name", headerName: "Name", headerAlign: "left", align: "left", flex: 1 },
   { field: "subscription_id", headerName: "Subscription", headerAlign: "left", align: "left", flex: 1 },
   { field: "resource_group", headerName: "Resource Group", headerAlign: "left", align: "left", flex: 1 },
-  { field: "prefixes", headerName: "Prefixes", headerAlign: "right", align: "right", flex: 0.75 },
+  { field: "prefixes", headerName: "Prefixes", headerAlign: "right", align: "right", flex: 0.75, renderCell: (params) => params.value.join(", ") },
 ];
 
 const Spotlight = styled("span")({

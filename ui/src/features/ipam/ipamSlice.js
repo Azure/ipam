@@ -172,7 +172,7 @@ export const ipamSlice = createSlice({
           const vnets = action.payload[1].value.map((vnet) => {
             vnet.available = (vnet.size - vnet.used);
             vnet.utilization = Math.round((vnet.used / vnet.size) * 100);
-            vnet.prefixes = vnet.prefixes.join(", ");
+            // vnet.prefixes = vnet.prefixes.join(", ");
 
             return vnet;
           });
