@@ -1,15 +1,18 @@
-import * as React from "react";
+import * as React from 'react';
 import { useDispatch } from 'react-redux';
-import { styled } from "@mui/material/styles";
+import { styled } from '@mui/material/styles';
 
-import { useSnackbar } from "notistack";
+import { useSnackbar } from 'notistack';
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
+import { useMsal } from '@azure/msal-react';
+import { InteractionRequiredAuthError } from '@azure/msal-browser';
 
 import { isEqual } from 'lodash';
 
-import { DataGrid, GridOverlay } from "@mui/x-data-grid";
+import { DataGrid, GridOverlay } from '@mui/x-data-grid';
+
+import ReactDataGrid from '@inovua/reactdatagrid-community';
+import '@inovua/reactdatagrid-community/index.css';
 
 import {
   Box,
@@ -106,9 +109,15 @@ const StyledGridOverlay = styled("div")({
 });
 
 const columns = [
-  { field: "subscription_id", headerName: "Subscription ID", headerAlign: "left", align: "left", flex: 1 },
-  { field: "name", headerName: "Subscription Name", headerAlign: "left", align: "left", flex: 2 },
-  { field: "type", headerName: "Subscription Type", headerAlign: "left", align: "left", flex: 0.75 },
+  { name: "subscription_id", header: "Subscription ID", defaultFlex: 1 },
+  { name: "name", header: "Subscription Name", defaultFlex: 1 },
+  { name: "type", header: "Subscription Type", defaultFlex: 1 },
+];
+
+const filterValue = [
+  { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
+  { name: 'name', operator: 'contains', type: 'string', value: '' },
+  { name: 'type', operator: 'contains', type: 'string', value: '' }
 ];
 
 export default function ManageExclusions() {
@@ -121,12 +130,15 @@ export default function ManageExclusions() {
   const [rowData, setRowData] = React.useState([]);
   const [loadedExclusions, setLoadedExclusions] = React.useState([]);
   const [sending, setSending] = React.useState(false);
+  const [selected, setSelected] = React.useState({});
 
   const dispatch = useDispatch();
 
   const unchanged = isEqual(excluded, loadedExclusions);
 
   const message = `Click to Include/Exclude`;
+
+  const gridStyle = { height: '100%' }
 
   React.useEffect(() => {
     const request = {
@@ -235,7 +247,16 @@ export default function ManageExclusions() {
   }
 
   function onClick(elem) {
-    excluded.includes(elem) ? subscriptionInclude(elem) : subscriptionExclude(elem);
+    // excluded.includes(elem) ? subscriptionInclude(elem) : subscriptionExclude(elem);
+    var id = elem.id;
+
+    setSelected(prevState => {
+      let newState = Object.assign({}, prevState);
+
+      newState.hasOwnProperty(id) ? delete newState[id] : newState[id] = true;      
+          
+      return newState;
+    });
   }
 
   function getClass(elem) {
@@ -287,36 +308,19 @@ export default function ManageExclusions() {
         </FloatingHeader>
         <DataSection>
           <GridBody>
-            <DataGrid
-              disableColumnMenu
-              // disableSelectionOnClick
-              // hideFooter
-              // hideFooterPagination
-              pagination
-              autoPageSize
-              hideFooterSelectedRowCount
-              density="compact"
-              rows={rowData}
+            <ReactDataGrid
+              idProperty="id"
               columns={columns}
-              onRowClick={(rowData) => onClick(rowData.row)}
-              getRowClassName={(params) => getClass(params.row)}
+              defaultFilterValue={filterValue}
+              style={gridStyle}
+              dataSource={rowData}
               loading={loading}
-              components={{
-                LoadingOverlay: CustomLoadingOverlay,
-                NoRowsOverlay: CustomNoRowsOverlay,
-              }}
-              initialState={{
-                sorting: {
-                  sortModel: [{ field: 'name', sort: 'asc' }],
-                },
-              }}
-              sx={{
-                "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus":
-                  {
-                    outline: "none",
-                  },
-                border: "none",
-              }}
+              showZebraRows={false}
+              toggleRowSelectOnClick={true}
+              multiSelect={true}
+              onRowClick={(rowData) => onClick(rowData.data)}
+              selected={selected}
+              showActiveRowIndicator={false}
             />
           </GridBody>
         </DataSection>
