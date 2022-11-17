@@ -9,15 +9,11 @@ import { InteractionRequiredAuthError } from '@azure/msal-browser';
 
 import { isEqual } from 'lodash';
 
-import { DataGrid, GridOverlay } from '@mui/x-data-grid';
-
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
 
 import {
   Box,
-  Typography,
-  LinearProgress,
   Tooltip,
   IconButton
 } from "@mui/material";
@@ -76,7 +72,7 @@ const DataSection = styled("div")(({ theme }) => ({
   flexDirection: "column",
   height: "100%",
   width: "100%",
-  border: "1px solid rgba(224, 224, 224, 1)",
+  // border: "1px solid rgba(224, 224, 224, 1)",
   borderRadius: "4px",
   marginBottom: theme.spacing(1.5)
 }));
@@ -86,16 +82,14 @@ const DataSection = styled("div")(({ theme }) => ({
 const GridBody = styled("div")({
   height: "100%",
   width: "100%",
-  '& .ipam-sub-excluded': {
-    backgroundColor: "rgb(255, 230, 230) !important",
-    '&:hover': {
-      backgroundColor: "rgb(255, 220, 220) !important",
-    }
-  },
-  '& .ipam-sub-included': {
-    backgroundColor: "rgb(255, 255, 255, 0.1) !important",
-    '&:hover': {
-      backgroundColor: "none",
+  '& .ipam-subscription-exclusions': {
+    '.InovuaReactDataGrid__row--selected': {
+        background: 'rgb(255, 230, 230)',
+      '.InovuaReactDataGrid__row-hover-target': {
+        '&:hover': {
+          background: 'rgb(255, 220, 220) !important',
+        }
+      }
     }
   }
 });
@@ -125,20 +119,22 @@ export default function ManageExclusions() {
   const { enqueueSnackbar } = useSnackbar();
 
   const [loading, setLoading] = React.useState(false);
-  const [included, setIncluded] = React.useState([]);
-  const [excluded, setExcluded] = React.useState([]);
-  const [rowData, setRowData] = React.useState([]);
-  const [loadedExclusions, setLoadedExclusions] = React.useState([]);
   const [sending, setSending] = React.useState(false);
+  const [subscriptions, setSubscriptions] = React.useState([]);
   const [selected, setSelected] = React.useState({});
+  const [loadedExclusions, setLoadedExclusions] = React.useState([]);
 
   const dispatch = useDispatch();
 
-  const unchanged = isEqual(excluded, loadedExclusions);
+  const unchanged = isEqual(selected, loadedExclusions);
 
   const message = `Click to Include/Exclude`;
 
-  const gridStyle = { height: '100%' }
+  const gridStyle = {
+    height: '100%',
+    border: "1px solid rgba(224, 224, 224, 1)",
+    fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
+  }
 
   React.useEffect(() => {
     const request = {
@@ -157,22 +153,19 @@ export default function ManageExclusions() {
         ];
 
         Promise.all(stack).then((results) => {
-          var includedSubs = results[0];
-          var excludedSubs = [];
+          var excluded = {};
 
           results[1].forEach(exclusion => {
-            includedSubs = includedSubs.filter(object => {
-              return object.subscription_id !== exclusion;
-            });
+            var targetSub = results[0].find((sub) => sub.subscription_id === exclusion);
 
-            const excludeObj = results[0].find(element => element.subscription_id == exclusion);
-
-            excludedSubs = [...excludedSubs, excludeObj];
+            if(targetSub) {
+              excluded[targetSub.id] = targetSub;
+            }
           });
 
-          setIncluded(includedSubs);
-          setExcluded(excludedSubs);
-          setLoadedExclusions(excludedSubs);
+          setSubscriptions(results[0]);
+          setSelected(excluded);
+          setLoadedExclusions(excluded);
           setLoading(false);
         });
       } catch (e) {
@@ -191,30 +184,6 @@ export default function ManageExclusions() {
     })();
   }, []);
 
-  React.useEffect(() => {
-    setRowData(included.concat(excluded));
-  }, [included, excluded]);
-
-  function subscriptionExclude(elem) {
-    const newArr = included.filter(object => {
-      return object.id !== elem.id;
-    });
-
-    setIncluded(newArr);
-
-    setExcluded(excluded => [...excluded, elem]);
-  }
-
-  function subscriptionInclude(elem) {
-    const newArr = excluded.filter(object => {
-      return object.id !== elem.id;
-    });
-
-    setExcluded(newArr);
-
-    setIncluded(included => [...included, elem]);
-  }
-
   function onSave() {
     const request = {
       scopes: apiRequest.scopes,
@@ -224,11 +193,12 @@ export default function ManageExclusions() {
     (async () => {
       try {
         setSending(true);
-        let update = excluded.map(item => item.subscription_id);
+        let selectedValues = Object.values(selected);
+        let update = selectedValues.map(item => item.subscription_id);
         const response = await instance.acquireTokenSilent(request);
         const data = await replaceExclusions(response.accessToken, update);
         enqueueSnackbar("Successfully updated exclusions", { variant: "success" });
-        setLoadedExclusions(excluded);
+        setLoadedExclusions(selected);
         dispatch(refreshAllAsync(response.accessToken))
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
@@ -247,40 +217,15 @@ export default function ManageExclusions() {
   }
 
   function onClick(elem) {
-    // excluded.includes(elem) ? subscriptionInclude(elem) : subscriptionExclude(elem);
     var id = elem.id;
 
     setSelected(prevState => {
       let newState = Object.assign({}, prevState);
 
-      newState.hasOwnProperty(id) ? delete newState[id] : newState[id] = true;      
+      newState.hasOwnProperty(id) ? delete newState[id] : newState[id] = elem;      
           
       return newState;
     });
-  }
-
-  function getClass(elem) {
-    return excluded.includes(elem) ? 'ipam-sub-excluded' : 'ipam-sub-included';
-  }
-
-  function CustomLoadingOverlay() {
-    return (
-      <GridOverlay>
-        <div style={{ position: "absolute", top: 0, width: "100%" }}>
-          <LinearProgress />
-        </div>
-      </GridOverlay>
-    );
-  }
-
-  function CustomNoRowsOverlay() {
-    return (
-      <StyledGridOverlay>
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-          No Subscriptions Selected
-        </Typography>
-      </StyledGridOverlay>
-    );
   }
 
   return (
@@ -296,7 +241,7 @@ export default function ManageExclusions() {
                 aria-label="upload picture"
                 component="span"
                 style={{
-                  visibility: unchanged ? 'hidden' : 'visible'
+                  visibility: (unchanged || loading) ? 'hidden' : 'visible'
                 }}
                 disabled={sending}
                 onClick={onSave}
@@ -313,7 +258,7 @@ export default function ManageExclusions() {
               columns={columns}
               defaultFilterValue={filterValue}
               style={gridStyle}
-              dataSource={rowData}
+              dataSource={subscriptions}
               loading={loading}
               showZebraRows={false}
               toggleRowSelectOnClick={true}
@@ -321,6 +266,7 @@ export default function ManageExclusions() {
               onRowClick={(rowData) => onClick(rowData.data)}
               selected={selected}
               showActiveRowIndicator={false}
+              className="ipam-subscription-exclusions"
             />
           </GridBody>
         </DataSection>
