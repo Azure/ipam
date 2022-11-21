@@ -212,7 +212,13 @@ export const ipamSlice = createSlice({
         }
 
         if(action.payload[2].status === 'fulfilled') {
-          state.endpoints = action.payload[2].value;
+          const endpoints = action.payload[2].value.map((endpoint) => {
+            endpoint.uniqueId = `${endpoint.id}@$${endpoint.private_ip}`
+
+            return endpoint;
+          });
+
+          state.endpoints = endpoints;
         } else {
           state.endpoints = [];
         }

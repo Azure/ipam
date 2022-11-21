@@ -11,18 +11,20 @@ import {
   selectEndpoints
 } from '../../ipam/ipamSlice';
 
-function renderProgress(params) {
+import NumberFilter from '@inovua/reactdatagrid-community/NumberFilter'
+
+function renderProgress(value) {
   return (
     <Box sx={{ width: "100%" }}>
       <LinearProgress
         variant="determinate"
-        value={params.value <= 100 ? params.value : 100}
+        value={value <= 100 ? value : 100}
         color={
-          params.value >= 0 && params.value <= 70
+          value >= 0 && value <= 70
             ? "success"
-            : params.value > 70 && params.value < 90
+            : value > 70 && value < 90
             ? "warning"
-            : params.value > 90
+            : value > 90
             ? "error"
             : null
         }
@@ -35,18 +37,22 @@ export const spaces = {
   config: {
     title: "Space",
     apiFunc: selectSpaces,
-    idFunc: (row) => row.name
+    idFunc: () => "name",
+    idProp: "name"
   },
   columns: [
-    { field: "name", headerName: "Space Name", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "utilization", headerName: "Utilization", type: 'number', headerAlign: "left", align: "left", flex: 0.5, renderCell: renderProgress },
-    { field: "desc", headerName: "Description", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "size", headerName: "Total IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.35 },
-    { field: "used", headerName: "Allocated IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.45 },
+    { name: "name", header: "Space Name", defaultFlex: 0.85 },
+    { name: "utilization", header: "Utilization", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value) },
+    { name: "desc", header: "Description", defaultFlex: 0.85 },
+    { name: "size", header: "Total IP's", defaultFlex: 0.35 },
+    { name: "used", header: "Allocated IP's", defaultFlex: 0.45 },
   ],
   filterSettings: [
-    { type: "select", title: "Space Name", dataField: "name" },
-    { type: "range", title: "Assigned IP's", dataField: "used", step: 16 }
+    { name: 'name', operator: 'contains', type: 'string', value: '' },
+    { name: 'utilization', operator: 'inrange', type: 'number', value: { start: 0, end: 100 } },
+    { name: 'desc', operator: 'contains', type: 'string', value: '' },
+    { name: 'size', operator: 'gte', type: 'number', value: 0 },
+    { name: 'used', operator: 'gte', type: 'number', value: 0 }
   ],
   detailsMap: {
     showProgress: true,
@@ -64,20 +70,24 @@ export const blocks = {
   config: {
     title: "Block",
     apiFunc: selectBlocks,
-    idFunc: (row) => row.id
+    idFunc: () => "id",
+    idProp: "id"
   },
   columns: [
-    { field: "name", headerName: "Block Name", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "utilization", headerName: "Utilization", type: 'number', headerAlign: "left", align: "left", flex: 0.5, renderCell: renderProgress },
-    { field: "parentSpace", headerName: "Space", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "size", headerName: "Total IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.35 },
-    { field: "used", headerName: "Allocated IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.45 },
-    { field: "cidr", headerName: "CIDR Block", type: 'string', headerAlign: "right", align: "right", flex: 0.75 },
+    { name: "name", header: "Block Name", defaultFlex: 0.85 },
+    { name: "utilization", header: "Utilization", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value) },
+    { name: "parentSpace", header: "Space", defaultFlex: 0.85 },
+    { name: "size", header: "Total IP's", defaultFlex: 0.35 },
+    { name: "used", header: "Allocated IP's", defaultFlex: 0.45 },
+    { name: "cidr", header: "CIDR Block", defaultFlex: 0.75 },
   ],
   filterSettings: [
-    { type: "select", title: "Block Name", dataField: "name" },
-    { type: "select", title: "Space Name", dataField: "parentSpace" },
-    { type: "range", title: "Assigned IP's", dataField: "used", step: 16 }
+    { name: 'name', operator: 'contains', type: 'string', value: '' },
+    { name: 'utilization', operator: 'inrange', type: 'number', value: { start: 0, end: 100 } },
+    { name: 'parentSpace', operator: 'contains', type: 'string', value: '' },
+    { name: 'size', operator: 'gte', type: 'number', value: 0 },
+    { name: 'used', operator: 'gte', type: 'number', value: 0 },
+    { name: 'cidr', operator: 'contains', type: 'string', value: '' }
   ],
   detailsMap: {
     showProgress: true,
@@ -96,21 +106,24 @@ export const vnets = {
   config: {
     title: "Virtual Network",
     apiFunc: selectVNets,
-    idFunc: (row) => row.id
+    idFunc: () => "id",
+    idProp: "id"
   },
   columns: [
-    { field: "name", headerName: "vNet Name", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "utilization", headerName: "Utilization", type: 'number', headerAlign: "left", align: "left", flex: 0.5, renderCell: renderProgress },
-    { field: "parentBlock", headerName: "Block", type: 'string', headerAlign: "left", align: "left", flex: 0.85, renderCell: (params) => params.value ?? "<Unassigned>" },
-    { field: "size", headerName: "Total IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.35 },
-    { field: "used", headerName: "Allocated IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.45 },
-    { field: "prefixes", headerName: "IP Space", type: 'string', headerAlign: "right", align: "right", flex: 0.75, renderCell: (params) => params.value.join(", ") },
+    { name: "name", header: "vNet Name", defaultFlex: 0.85 },
+    { name: "utilization", header: "Utilization", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value) },
+    { name: "parentBlock", header: "Block", defaultFlex: 0.85, render: ({value}) => value ?? "<Unassigned>" },
+    { name: "size", header: "Total IP's", defaultFlex: 0.35 },
+    { name: "used", header: "Allocated IP's", defaultFlex: 0.45 },
+    { name: "prefixes", header: "IP Space", defaultFlex: 0.75, render: ({value}) => value.join(", ") },
   ],
   filterSettings: [
-    { type: "select", title: "vNet Name", dataField: "name" },
-    { type: "select", title: "Block Name", dataField: "parentBlock" },
-    { type: "select", title: "Resource Group", dataField: "resource_group" },
-    { type: "range", title: "Total IP's", dataField: "size", step: 16 }
+    { name: 'name', operator: 'contains', type: 'string', value: '' },
+    { name: 'utilization', operator: 'inrange', type: 'number', value: { start: 0, end: 100 } },
+    { name: 'parentBlock', operator: 'contains', type: 'string', value: '' },
+    { name: 'size', operator: 'gte', type: 'number', value: 0 },
+    { name: 'used', operator: 'gte', type: 'number', value: 0 },
+    { name: 'prefixes', operator: 'contains', type: 'string', value: '' }
   ],
   detailsMap: {
     showProgress: true,
@@ -134,21 +147,24 @@ export const subnets = {
   config: {
     title: "Subnet",
     apiFunc: selectSubnets,
-    idFunc: (row) => row.id
+    idFunc: () => "id",
+    idProp: "id"
   },
   columns: [
-    { field: "name", headerName: "Subnet Name", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "utilization", headerName: "Utilization", type: 'number', headerAlign: "left", align: "left", flex: 0.5, renderCell: renderProgress },
-    { field: "vnet_name", headerName: "Parent vNet", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "size", headerName: "Total IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.35 },
-    { field: "used", headerName: "Assigned IP's", type: 'number', headerAlign: "right", align: "right", flex: 0.45 },
-    { field: "prefix", headerName: "IP Space", type: 'string', headerAlign: "right", align: "right", flex: 0.75 },
+    { name: "name", header: "Subnet Name", defaultFlex: 0.85 },
+    { name: "utilization", header: "Utilization", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value) },
+    { name: "vnet_name", header: "Parent vNet", defaultFlex: 0.85 },
+    { name: "size", header: "Total IP's", defaultFlex: 0.35 },
+    { name: "used", header: "Assigned IP's", defaultFlex: 0.45 },
+    { name: "prefix", header: "IP Space", defaultFlex: 0.75 },
   ],
   filterSettings: [
-    { type: "select", title: "Subnet Name", dataField: "name" },
-    { type: "select", title: "vNet Name", dataField: "vnet_name" },
-    { type: "select", title: "Resource Group", dataField: "resource_group" },
-    { type: "range", title: "Total IP's", dataField: "size", step: 16 }
+    { name: 'name', operator: 'contains', type: 'string', value: '' },
+    { name: 'utilization', operator: 'inrange', type: 'number', value: { start: 0, end: 100 } },
+    { name: 'vnet_name', operator: 'contains', type: 'string', value: '' },
+    { name: 'size', operator: 'gte', type: 'number', value: 0 },
+    { name: 'used', operator: 'gte', type: 'number', value: 0 },
+    { name: 'prefix', operator: 'contains', type: 'string', value: '' }
   ],
   detailsMap: {
     showProgress: true,
@@ -172,19 +188,22 @@ export const endpoints = {
   config: {
     title: "Endpoint",
     apiFunc: selectEndpoints,
-    idFunc: (row) => `${row.id}@$${row.private_ip}`
+    idFunc: (row) => `${row.id}@$${row.private_ip}`,
+    idProp: "uniqueId"
   },
   columns: [
-    { field: "name", headerName: "Endpoint Name", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "vnet_name", headerName: "Parent vNet", type: 'string', headerAlign: "left", align: "left", flex: 0.5 },
-    { field: "subnet_name", headerName: "Parent Subnet", type: 'string', headerAlign: "left", align: "left", flex: 0.85 },
-    { field: "resource_group", headerName: "Resource Group", type: 'string', headerAlign: "left", align: "left", flex: 0.35 },
-    { field: "private_ip", headerName: "Private IP", type: 'string', headerAlign: "right", align: "right", flex: 0.75, valueGetter: (params) => params.value || "N/A" },
+    { name: "name", header: "Endpoint Name", defaultFlex: 0.85 },
+    { name: "vnet_name", header: "Parent vNet", defaultFlex: 0.5 },
+    { name: "subnet_name", header: "Parent Subnet", defaultFlex: 0.85 },
+    { name: "resource_group", header: "Resource Group", defaultFlex: 0.35 },
+    { name: "private_ip", header: "Private IP", defaultFlex: 0.75, valueGetter: (params) => params.value || "N/A" },
   ],
   filterSettings: [
-    { type: "select", title: "Resource Group", dataField: "resource_group" },
-    { type: "select", title: "vNet Name", dataField: "vnet_name" },
-    { type: "select", title: "Subnet Name", dataField: "subnet_name" },
+    { name: 'name', operator: 'contains', type: 'string', value: '' },
+    { name: 'vnet_name', operator: 'contains', type: 'string', value: '' },
+    { name: 'subnet_name', operator: 'contains', type: 'string', value: '' },
+    { name: 'resource_group', operator: 'contains', type: 'string', value: '' },
+    { name: 'private_ip', operator: 'contains', type: 'string', value: '' }
   ],
   detailsMap: {
     showProgress: false,

@@ -9,19 +9,15 @@ import { useSnackbar } from 'notistack';
 
 import { isEqual, throttle } from 'lodash';
 
-import {
-  DataGrid,
-  GridOverlay
-} from "@mui/x-data-grid";
+import ReactDataGrid from '@inovua/reactdatagrid-community';
+import '@inovua/reactdatagrid-community/index.css';
 
 import {
   Box,
-  Typography,
   Tooltip,
   IconButton,
   Autocomplete,
   TextField,
-  LinearProgress,
   CircularProgress,
   Popper,
 }  from "@mui/material";
@@ -30,8 +26,6 @@ import {
   SaveAlt,
   HighlightOff
 } from "@mui/icons-material";
-
-import Shrug from "../../img/pam/Shrug";
 
 import {
   getAdmins,
@@ -78,7 +72,6 @@ const DataSection = styled("div")(({ theme }) => ({
   flexDirection: "column",
   height: "100%",
   width: "100%",
-  border: "1px solid rgba(224, 224, 224, 1)",
   borderRadius: "4px",
   marginBottom: theme.spacing(1.5)
 }));
@@ -87,27 +80,7 @@ const DataSection = styled("div")(({ theme }) => ({
 
 const GridBody = styled("div")({
   height: "100%",
-  width: "100%",
-  '& .ipam-sub-excluded': {
-    backgroundColor: "rgb(255, 230, 230) !important",
-    '&:hover': {
-      backgroundColor: "rgb(255, 220, 220) !important",
-    }
-  },
-  '& .ipam-sub-included': {
-    backgroundColor: "rgb(255, 255, 255, 0.1) !important",
-    '&:hover': {
-      backgroundColor: "none",
-    }
-  }
-});
-
-const StyledGridOverlay = styled("div")({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  height: "100%",
+  width: "100%"
 });
 
 export default function Administration() {
@@ -116,7 +89,7 @@ export default function Administration() {
 
   const [admins, setAdmins] = React.useState([]);
   const [loadedAdmins, setLoadedAdmins] = React.useState([]);
-  const [selectionModel, setSelectionModel] = React.useState([]);
+  const [selectionModel, setSelectionModel] = React.useState({});
   const [loading, setLoading] = React.useState(false);
 
   const [open, setOpen] = React.useState(false);
@@ -126,16 +99,28 @@ export default function Administration() {
   const [sending, setSending] = React.useState(false);
 
   const columns = [
-    { field: "name", headerName: "Name", flex: 0.5 },
-    { field: "email", headerName: "Email", flex: 1 },
-    { field: "id", headerName: "Object ID", flex: 0.75 },
-    { field: "", headerName: "", headerAlign: "center", align: "center", width: 25, sortable: false, renderCell: renderDelete }
+    { name: "name", header: "Name", lockable: false, defaultFlex: 0.5 },
+    { name: "email", header: "Email", lockable: false, defaultFlex: 1 },
+    { name: "id", header: "Object ID", lockable: false, defaultFlex: 0.75 },
+    { name: "delete", header: "Delete", width: 50, resizable: false, hideable: false, showColumnMenuTool: false, renderHeader: () => "", render: ({data}) => renderDelete(data) }
+  ];
+
+  const filterValue = [
+    { name: 'name', operator: 'contains', type: 'string', value: '' },
+    { name: 'email', operator: 'contains', type: 'string', value: '' },
+    { name: 'id', operator: 'contains', type: 'string', value: '' }
   ];
 
   const fetchUsers = React.useMemo(() => throttle((input) => SearchUsers(input), 500), []);
 
   const usersLoading = open && !options;
   const unchanged = isEqual(admins, loadedAdmins);
+
+  const gridStyle = {
+    height: '100%',
+    border: "1px solid rgba(224, 224, 224, 1)",
+    fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
+  };
 
   React.useEffect(() => {
     refreshData();
@@ -245,7 +230,7 @@ export default function Administration() {
     })();
   }
 
-  function renderDelete(params) {  
+  function renderDelete(data) {  
     const flexCenter = {
       display: "flex",
       alignItems: "center",
@@ -259,12 +244,12 @@ export default function Administration() {
             color="error"
             sx={{
               padding: 0,
-              display: (isEqual([params.row.id], selectionModel)) ? "flex" : "none"
+              display: (isEqual([data.id], Object.keys(selectionModel))) ? "flex" : "none"
             }}
             disableFocusRipple
             disableTouchRipple
             disableRipple
-            onClick={() => setAdmins(admins.filter(x => x.id !== params.row.id))}
+            onClick={() => setAdmins(admins.filter(x => x.id !== data.id))}
           >
             <HighlightOff />
           </IconButton>
@@ -300,33 +285,17 @@ export default function Administration() {
     return <Popper {...props} style={{ popperStyle }} placement="bottom-start" />;
   };
 
-  function onModelChange(newModel) {
-    if(isEqual(newModel, selectionModel)) {
-      setSelectionModel([]);
-    } else {
-      setSelectionModel(newModel);
-    }
-  }
+  function onClick(data) {
+    var id = data.id;
+    var newSelectionModel = {};
 
-  function CustomNoRowsOverlay() {
-    return (
-      <StyledGridOverlay>
-        <Shrug />
-        <Typography variant="overline" display="block"  sx={{ mt: 1 }}>
-          Nothing yet...
-        </Typography>
-      </StyledGridOverlay>
-    );
-  }
-
-  function CustomLoadingOverlay() {
-    return (
-      <GridOverlay>
-        <div style={{ position: "absolute", top: 0, width: "100%" }}>
-          <LinearProgress />
-        </div>
-      </GridOverlay>
-    );
+    setSelectionModel(prevState => {
+      if(!prevState.hasOwnProperty(id)) {
+        newSelectionModel[id] = data;
+      }
+      
+      return newSelectionModel;
+    });
   }
 
   return (
@@ -402,32 +371,21 @@ export default function Administration() {
         </FloatingHeader>
         <DataSection>
           <GridBody>
-            <DataGrid
-              disableColumnMenu
-              hideFooter
-              hideFooterPagination
-              hideFooterSelectedRowCount
-              density="compact"
-              rows={admins}
+            <ReactDataGrid
+              idProperty="id"
+              showCellBorders="horizontal"
+              showZebraRows={false}
+              multiSelect={true}
+              showActiveRowIndicator={false}
+              enableColumnAutosize={false}
+              showColumnMenuGroupOptions={false}
               columns={columns}
               loading={loading}
-              onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
-              selectionModel={selectionModel}
-              components={{
-                NoRowsOverlay: CustomNoRowsOverlay,
-                LoadingOverlay: CustomLoadingOverlay,
-              }}
-              sx={{
-                "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus-within":
-                  {
-                    outline: "none",
-                  },
-                "&.MuiDataGrid-root .MuiDataGrid-columnHeader--moving":
-                  {
-                    backgroundColor: "rgba(255, 255, 255, 0.1)"
-                  },
-                border: "none"
-              }}
+              dataSource={admins}
+              defaultFilterValue={filterValue}
+              onRowClick={(rowData) => onClick(rowData.data)}
+              selected={selectionModel}
+              style={gridStyle}
             />
           </GridBody>
         </DataSection>

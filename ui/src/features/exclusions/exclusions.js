@@ -72,7 +72,6 @@ const DataSection = styled("div")(({ theme }) => ({
   flexDirection: "column",
   height: "100%",
   width: "100%",
-  // border: "1px solid rgba(224, 224, 224, 1)",
   borderRadius: "4px",
   marginBottom: theme.spacing(1.5)
 }));
@@ -94,18 +93,10 @@ const GridBody = styled("div")({
   }
 });
 
-const StyledGridOverlay = styled("div")({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  height: "100%",
-});
-
 const columns = [
-  { name: "subscription_id", header: "Subscription ID", defaultFlex: 1 },
-  { name: "name", header: "Subscription Name", defaultFlex: 1 },
-  { name: "type", header: "Subscription Type", defaultFlex: 1 },
+  { name: "subscription_id", header: "Subscription ID", lockable: false, defaultFlex: 1 },
+  { name: "name", header: "Subscription Name", lockable: false, defaultFlex: 1 },
+  { name: "type", header: "Subscription Type", lockable: false, defaultFlex: 1 },
 ];
 
 const filterValue = [
@@ -134,7 +125,7 @@ export default function ManageExclusions() {
     height: '100%',
     border: "1px solid rgba(224, 224, 224, 1)",
     fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
-  }
+  };
 
   React.useEffect(() => {
     const request = {
@@ -255,17 +246,20 @@ export default function ManageExclusions() {
           <GridBody>
             <ReactDataGrid
               idProperty="id"
-              columns={columns}
-              defaultFilterValue={filterValue}
-              style={gridStyle}
-              dataSource={subscriptions}
-              loading={loading}
+              showCellBorders="horizontal"
               showZebraRows={false}
-              toggleRowSelectOnClick={true}
               multiSelect={true}
+              showActiveRowIndicator={false}
+              enableColumnAutosize={false}
+              showColumnMenuGroupOptions={false}
+              columns={columns}
+              toggleRowSelectOnClick={true}
+              loading={loading}
+              dataSource={subscriptions}
+              defaultFilterValue={filterValue}
               onRowClick={(rowData) => onClick(rowData.data)}
               selected={selected}
-              showActiveRowIndicator={false}
+              style={gridStyle}
               className="ipam-subscription-exclusions"
             />
           </GridBody>
