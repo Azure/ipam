@@ -37,15 +37,14 @@ export const spaces = {
   config: {
     title: "Space",
     apiFunc: selectSpaces,
-    idFunc: () => "name",
     idProp: "name"
   },
   columns: [
     { name: "name", header: "Space Name", defaultFlex: 0.85 },
     { name: "utilization", header: "Utilization", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value) },
     { name: "desc", header: "Description", defaultFlex: 0.85 },
-    { name: "size", header: "Total IP's", defaultFlex: 0.35 },
-    { name: "used", header: "Allocated IP's", defaultFlex: 0.45 },
+    { name: "size", header: "Total IP's", defaultFlex: 0.35, filterEditor: NumberFilter },
+    { name: "used", header: "Allocated IP's", defaultFlex: 0.45, filterEditor: NumberFilter },
   ],
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },
@@ -70,7 +69,6 @@ export const blocks = {
   config: {
     title: "Block",
     apiFunc: selectBlocks,
-    idFunc: () => "id",
     idProp: "id"
   },
   columns: [
@@ -106,7 +104,6 @@ export const vnets = {
   config: {
     title: "Virtual Network",
     apiFunc: selectVNets,
-    idFunc: () => "id",
     idProp: "id"
   },
   columns: [
@@ -147,7 +144,6 @@ export const subnets = {
   config: {
     title: "Subnet",
     apiFunc: selectSubnets,
-    idFunc: () => "id",
     idProp: "id"
   },
   columns: [
@@ -188,7 +184,6 @@ export const endpoints = {
   config: {
     title: "Endpoint",
     apiFunc: selectEndpoints,
-    idFunc: (row) => `${row.id}@$${row.private_ip}`,
     idProp: "uniqueId"
   },
   columns: [

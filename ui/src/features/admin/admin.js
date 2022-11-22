@@ -20,12 +20,15 @@ import {
   TextField,
   CircularProgress,
   Popper,
+  Typography
 }  from "@mui/material";
 
 import {
   SaveAlt,
   HighlightOff
 } from "@mui/icons-material";
+
+import Shrug from "../../img/pam/Shrug";
 
 import {
   getAdmins,
@@ -83,6 +86,12 @@ const GridBody = styled("div")({
   width: "100%"
 });
 
+const gridStyle = {
+  height: '100%',
+  border: "1px solid rgba(224, 224, 224, 1)",
+  fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
+};
+
 export default function Administration() {
   const { instance, inProgress, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
@@ -115,12 +124,6 @@ export default function Administration() {
 
   const usersLoading = open && !options;
   const unchanged = isEqual(admins, loadedAdmins);
-
-  const gridStyle = {
-    height: '100%',
-    border: "1px solid rgba(224, 224, 224, 1)",
-    fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
-  };
 
   React.useEffect(() => {
     refreshData();
@@ -298,6 +301,17 @@ export default function Administration() {
     });
   }
 
+  function NoRowsOverlay() {
+    return (
+      <React.Fragment>
+        <Shrug />
+        <Typography variant="overline" display="block"  sx={{ mt: 1 }}>
+          Nothing yet...
+        </Typography>
+      </React.Fragment>
+    );
+  }
+
   return (
     <Wrapper>
       <MainBody>
@@ -385,6 +399,7 @@ export default function Administration() {
               defaultFilterValue={filterValue}
               onRowClick={(rowData) => onClick(rowData.data)}
               selected={selectionModel}
+              emptyText={NoRowsOverlay}
               style={gridStyle}
             />
           </GridBody>

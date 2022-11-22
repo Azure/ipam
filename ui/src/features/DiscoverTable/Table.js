@@ -10,12 +10,15 @@ import {
   Box,
   Tooltip,
   IconButton,
-  ClickAwayListener
+  ClickAwayListener,
+  Typography
 } from "@mui/material";
 
 import {
   ChevronRight,
 } from "@mui/icons-material";
+
+import Shrug from "../../img/pam/Shrug";
 
 import { TableContext } from "./TableContext";
 import ItemDetails from "./Utils/Details";
@@ -30,6 +33,12 @@ const closedStyle = {
   transition: "all 0.5s ease-in-out",
 };
 
+const gridStyle = {
+  height: '100%',
+  border: "1px solid rgba(224, 224, 224, 1)",
+  fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
+};
+
 export default function DiscoverTable(props) {
   const { config, columns, filterSettings, detailsMap } = props.map;
 
@@ -42,12 +51,6 @@ export default function DiscoverTable(props) {
   const stateData = useSelector(config.apiFunc);
 
   const location = useLocation();
-
-  const gridStyle = {
-    height: '100%',
-    border: "1px solid rgba(224, 224, 224, 1)",
-    fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
-  };
 
   function renderExpand(data) {  
     const onClick = (e) => {
@@ -136,6 +139,17 @@ export default function DiscoverTable(props) {
     );
   }
 
+  function NoRowsOverlay() {
+    return (
+      <React.Fragment>
+        <Shrug />
+        <Typography variant="overline" display="block"  sx={{ mt: 1 }}>
+          Nothing yet...
+        </Typography>
+      </React.Fragment>
+    );
+  }
+
   return (
     <TableContext.Provider value={{ stateData, rowData, menuExpand }}>
       {renderDetails()}
@@ -147,11 +161,13 @@ export default function DiscoverTable(props) {
           showActiveRowIndicator={false}
           enableColumnAutosize={false}
           showColumnMenuGroupOptions={false}
+          enableColumnFilterContextMenu={true}
           columns={columnData}
           loading={loading}
           dataSource={gridData}
           defaultFilterValue={filterSettings}
           defaultSortInfo={{ name: 'name', dir: 1, type: 'string' }}
+          emptyText={NoRowsOverlay}
           style={gridStyle}
         />
       </Box>

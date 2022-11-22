@@ -2,7 +2,8 @@ import * as React from "react";
 import { useSelector } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
-import { DataGrid, GridOverlay } from "@mui/x-data-grid";
+import ReactDataGrid from '@inovua/reactdatagrid-community';
+import '@inovua/reactdatagrid-community/index.css';
 
 import {
   Box,
@@ -12,8 +13,7 @@ import {
   MenuItem,
   ListItemIcon,
   Divider,
-  Typography,
-  LinearProgress,
+  Typography
 } from "@mui/material";
 
 import {
@@ -22,8 +22,6 @@ import {
   MoreVert as MoreVertIcon,
   CloudQueue as CloudQueueIcon,
 } from "@mui/icons-material";
-
-import Shrug from "../../../img/pam/Shrug";
 
 import AddSpace from "./Utils/addSpace";
 import EditSpace from "./Utils/editSpace";
@@ -52,17 +50,15 @@ const GridBody = styled("div")({
   width: "100%",
 });
 
-const StyledGridOverlay = styled("div")({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  height: "100%",
-});
+const gridStyle = {
+  height: '100%',
+  border: 'none',
+  fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
+};
 
 const columns = [
-  { field: "name", headerName: "Name", headerAlign: "left", align: "left", flex: 0.5 },
-  { field: "desc", headerName: "Description", headerAlign: "left", align: "left", flex: 1 },
+  { name: "name", header: "Name", defaultFlex: 0.5 },
+  { name: "desc", header: "Description", defaultFlex: 1 },
 ];
 
 export default function SpaceDataGrid(props) {
@@ -91,28 +87,8 @@ export default function SpaceDataGrid(props) {
   },[spaces]);
 
   React.useEffect(() => {
-    setSelected(selectedRow);
-  }, [selectedRow]);
-
-  function CustomLoadingOverlay() {
-    return (
-      <GridOverlay>
-        <div style={{ position: "absolute", top: 0, width: "100%" }}>
-          <LinearProgress />
-        </div>
-      </GridOverlay>
-    );
-  }
-
-  function CustomNoRowsOverlay() {
-    return (
-      <StyledGridOverlay>
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-          No Spaces Found, Create a Space to Begin
-        </Typography>
-      </StyledGridOverlay>
-    );
-  }
+    setSelected(Object.values(selectionModel)[0]);
+  }, [selectionModel]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -137,12 +113,27 @@ export default function SpaceDataGrid(props) {
     setDeleteSpaceOpen(true);
   };
 
-  function onModelChange(newModel) {
-    if (JSON.stringify(newModel) === JSON.stringify(selectionModel)) {
-      setSelectionModel([]);
-    } else {
-      setSelectionModel(newModel);
-    }
+  function onClick(data) {
+    var id = data.id;
+    var newSelectionModel = {};
+
+    setSelectionModel(prevState => {
+      if(!prevState.hasOwnProperty(id)) {
+        newSelectionModel[id] = data;
+      }
+      
+      return newSelectionModel;
+    });
+  }
+
+  function NoRowsOverlay() {
+    return (
+      <React.Fragment>
+        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+          No Spaces Found, Create a Space to Begin
+        </Typography>
+      </React.Fragment>
+    );
   }
 
   return (
@@ -266,29 +257,22 @@ export default function SpaceDataGrid(props) {
         </Box>
       </GridHeader>
       <GridBody>
-        <DataGrid
-          disableColumnMenu
-          hideFooter
-          hideFooterPagination
-          hideFooterSelectedRowCount
-          density="compact"
-          rows={spaces || []}
+        <ReactDataGrid
+          idProperty="name"
+          showCellBorders="horizontal"
+          showZebraRows={false}
+          multiSelect={true}
+          showActiveRowIndicator={false}
+          enableColumnAutosize={false}
+          showColumnMenuGroupOptions={false}
           columns={columns}
           loading={loading}
-          getRowId={(row) => row.name}
-          onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
-          selectionModel={selectionModel}
-          components={{
-            LoadingOverlay: CustomLoadingOverlay,
-            NoRowsOverlay: CustomNoRowsOverlay,
-          }}
-          sx={{
-            "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus":
-              {
-                outline: "none",
-              },
-            border: "none",
-          }}
+          dataSource={spaces || []}
+          // defaultFilterValue={filterValue}
+          onRowClick={(rowData) => onClick(rowData.data)}
+          selected={selectionModel}
+          emptyText={NoRowsOverlay}
+          style={gridStyle}
         />
       </GridBody>
     </React.Fragment>

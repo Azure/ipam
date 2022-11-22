@@ -2,7 +2,8 @@ import * as React from "react";
 import { useSelector } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
-import { DataGrid, GridOverlay } from "@mui/x-data-grid";
+import ReactDataGrid from '@inovua/reactdatagrid-community';
+import '@inovua/reactdatagrid-community/index.css';
 
 import {
   Box,
@@ -12,8 +13,7 @@ import {
   MenuItem,
   ListItemIcon,
   Divider,
-  Typography,
-  LinearProgress,
+  Typography
 } from "@mui/material";
 
 import {
@@ -52,18 +52,16 @@ const GridBody = styled("div")({
   width: "100%",
 });
 
-const StyledGridOverlay = styled("div")({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  height: "100%",
-});
+const gridStyle = {
+  height: '100%',
+  border: 'none',
+  fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
+};
 
 const columns = [
-  { field: "name", headerName: "Name", headerAlign: "left", align: "left", flex: 1 },
-  { field: "space", headerName: "Parent Space", headerAlign: "left", align: "left", flex: 1 },
-  { field: "cidr", headerName: "CIDR", headerAlign: "right", align: "right", flex: 0.75 },
+  { name: "name", header: "Name", defaultFlex: 1 },
+  { name: "space", header: "Parent Space", defaultFlex: 1 },
+  { name: "cidr", header: "CIDR", defaultFlex: 0.75 },
 ];
 
 export default function BlockDataGrid(props) {
@@ -73,6 +71,7 @@ export default function BlockDataGrid(props) {
   const [blocks, setBlocks] = React.useState([]);
   const [previous, setPrevious] = React.useState(null);
   const [selectionModel, setSelectionModel] = React.useState([]);
+  const [selectedRow, setSelectedRow] = React.useState(null);
   const [addBlockOpen, setAddBlockOpen] = React.useState(false);
   const [editVNetsOpen, setEditVNetsOpen] = React.useState(false);
   const [editResvOpen, setEditResvOpen] = React.useState(false);
@@ -80,12 +79,6 @@ export default function BlockDataGrid(props) {
   const [anchorEl, setAnchorEl] = React.useState(null);
 
   const isAdmin = useSelector(getAdminStatus);
-
-  const selectedRow = selectionModel.length
-    ? blocks.find((obj) => {
-        return obj.name === selectionModel[0];
-      })
-    : null;
 
   const menuOpen = Boolean(anchorEl);
 
@@ -103,30 +96,9 @@ export default function BlockDataGrid(props) {
     }
   }, [selected]);
 
-  function CustomLoadingOverlay() {
-    return (
-      <GridOverlay>
-        <div style={{ position: "absolute", top: 0, width: "100%" }}>
-          <LinearProgress />
-        </div>
-      </GridOverlay>
-    );
-  }
-
-  function CustomNoRowsOverlay() {
-    return (
-      <StyledGridOverlay>
-        { selected
-          ? <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-              No Blocks Found in Selected Space
-            </Typography>
-          : <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-              Please Select a Space
-            </Typography>
-        }
-      </StyledGridOverlay>
-    );
-  }
+  React.useEffect(() => {
+    setSelectedRow(Object.values(selectionModel)[0])
+  }, [selectionModel]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -156,12 +128,32 @@ export default function BlockDataGrid(props) {
     setDeleteBlockOpen(true);
   };
 
-  function onModelChange(newModel) {
-    if (JSON.stringify(newModel) === JSON.stringify(selectionModel)) {
-      setSelectionModel([]);
-    } else {
-      setSelectionModel(newModel);
-    }
+  function onClick(data) {
+    var id = data.id;
+    var newSelectionModel = {};
+
+    setSelectionModel(prevState => {
+      if(!prevState.hasOwnProperty(id)) {
+        newSelectionModel[id] = data;
+      }
+      
+      return newSelectionModel;
+    });
+  }
+
+  function NoRowsOverlay() {
+    return (
+      <React.Fragment>
+        { selected
+          ? <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+              No Blocks Found in Selected Space
+            </Typography>
+          : <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+              Please Select a Space
+            </Typography>
+        }
+      </React.Fragment>
+    );
   }
 
   return (
@@ -312,28 +304,22 @@ export default function BlockDataGrid(props) {
         </Box>
       </GridHeader>
       <GridBody>
-        <DataGrid
-          disableColumnMenu
-          hideFooter
-          hideFooterPagination
-          hideFooterSelectedRowCount
-          density="compact"
-          getRowId={(row) => row.name}
-          rows={blocks}
+        <ReactDataGrid
+          idProperty="name"
+          showCellBorders="horizontal"
+          showZebraRows={false}
+          multiSelect={true}
+          showActiveRowIndicator={false}
+          enableColumnAutosize={false}
+          showColumnMenuGroupOptions={false}
           columns={columns}
-          onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
-          selectionModel={selectionModel}
-          components={{
-            LoadingOverlay: CustomLoadingOverlay,
-            NoRowsOverlay: CustomNoRowsOverlay,
-          }}
-          sx={{
-            "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus":
-              {
-                outline: "none",
-              },
-            border: "none",
-          }}
+          // loading={loading}
+          dataSource={blocks || []}
+          // defaultFilterValue={filterValue}
+          onRowClick={(rowData) => onClick(rowData.data)}
+          selected={selectionModel}
+          emptyText={NoRowsOverlay}
+          style={gridStyle}
         />
       </GridBody>
     </React.Fragment>

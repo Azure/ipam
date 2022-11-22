@@ -15,12 +15,15 @@ import '@inovua/reactdatagrid-community/index.css';
 import {
   Box,
   Tooltip,
-  IconButton
+  IconButton,
+  Typography
 } from "@mui/material";
 
 import {
   SaveAlt
 } from "@mui/icons-material";
+
+import Shrug from "../../img/pam/Shrug";
 
 import {
   fetchSubscriptions,
@@ -93,6 +96,12 @@ const GridBody = styled("div")({
   }
 });
 
+const gridStyle = {
+  height: '100%',
+  border: "1px solid rgba(224, 224, 224, 1)",
+  fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
+};
+
 const columns = [
   { name: "subscription_id", header: "Subscription ID", lockable: false, defaultFlex: 1 },
   { name: "name", header: "Subscription Name", lockable: false, defaultFlex: 1 },
@@ -120,12 +129,6 @@ export default function ManageExclusions() {
   const unchanged = isEqual(selected, loadedExclusions);
 
   const message = `Click to Include/Exclude`;
-
-  const gridStyle = {
-    height: '100%',
-    border: "1px solid rgba(224, 224, 224, 1)",
-    fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
-  };
 
   React.useEffect(() => {
     const request = {
@@ -219,6 +222,17 @@ export default function ManageExclusions() {
     });
   }
 
+  function NoRowsOverlay() {
+    return (
+      <React.Fragment>
+        <Shrug />
+        <Typography variant="overline" display="block"  sx={{ mt: 1 }}>
+          Nothing yet...
+        </Typography>
+      </React.Fragment>
+    );
+  }
+
   return (
     <Wrapper>
       <MainBody>
@@ -259,6 +273,7 @@ export default function ManageExclusions() {
               defaultFilterValue={filterValue}
               onRowClick={(rowData) => onClick(rowData.data)}
               selected={selected}
+              emptyText={NoRowsOverlay}
               style={gridStyle}
               className="ipam-subscription-exclusions"
             />
