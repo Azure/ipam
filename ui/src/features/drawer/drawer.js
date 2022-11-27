@@ -337,9 +337,9 @@ export default function NavDrawer() {
             phrase: phrase,
             value: value,
             filter: {
-              id: 1,
-              columnField: props.searchKey,
-              operatorValue: 'contains',
+              name: props.searchKey,
+              operator: 'contains',
+              type: 'string',
               value: value
             }
           };
@@ -364,7 +364,7 @@ export default function NavDrawer() {
     }
 
     if(endpoints) {
-      const endpointExclusions = ['id', 'vnet_id', 'subnet_id', 'metadata', 'subscription_id', 'tenant_id'];
+      const endpointExclusions = ['id', 'unique_id', 'vnet_id', 'subnet_id', 'metadata', 'subscription_id', 'tenant_id'];
       const endpointResults = objToFilter(endpoints, 'Endpoints', '/discover/endpoint', endpointExclusions);
 
       newSearchData = [...newSearchData, ...endpointResults];

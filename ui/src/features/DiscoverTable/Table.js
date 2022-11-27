@@ -1,9 +1,9 @@
 import * as React from "react";
 import { useSelector } from 'react-redux';
 import { useLocation } from "react-router-dom";
-import { styled } from "@mui/material/styles";
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
+import filter from '@inovua/reactdatagrid-community/filter'
 import '@inovua/reactdatagrid-community/index.css';
 
 import {
@@ -44,8 +44,9 @@ export default function DiscoverTable(props) {
 
   const [loading, setLoading] = React.useState(true);
   const [columnData, setColumnData] = React.useState([]);
-  const [gridData, setGridData] = React.useState([]);
+  const [gridData, setGridData] = React.useState(null);
   const [rowData, setRowData] = React.useState({});
+  const [filterData, setFilterData] = React.useState(filterSettings);
   const [menuExpand, setMenuExpand] = React.useState(false);
 
   const stateData = useSelector(config.apiFunc);
@@ -97,16 +98,43 @@ export default function DiscoverTable(props) {
     setColumnData(newColumns);
   },[]);
 
-  // React.useEffect(() => {
-  //   if(location.state) {
-  //     setFilterModel({items: [location.state]});
-  //   }
-  // },[location]);
+  React.useEffect(() => {
+    if(location.state) {
+      var searchFilter = [...filterData];
+
+      const target = searchFilter.find((obj) => obj.name === location.state.name);
+
+      Object.assign(target, location.state);
+
+      onFilterValueChange(searchFilter);
+    }
+  },[location]);
 
   React.useEffect(() => {
-    stateData && setLoading(false);
-    stateData && setGridData(stateData);
+    stateData && setGridData(filter(stateData, filterData));
   },[stateData]);
+
+  React.useEffect(() => {
+    gridData && setLoading(false);
+  },[gridData]);
+
+  const onFilterValueChange = React.useCallback((filterValue) => {
+    console.log("===FILTER VALUE===");
+    console.log(filterValue);
+    console.log("==================");
+
+    console.log("===STATE DATA===");
+    console.log(stateData);
+    console.log("================");
+
+    if(stateData) {
+      const data = filter(stateData, filterValue)
+
+      setGridData(data);
+    }
+
+    setFilterData(filterValue);
+  }, [stateData])
 
   function renderDetails() {
     return (
@@ -164,8 +192,9 @@ export default function DiscoverTable(props) {
           enableColumnFilterContextMenu={true}
           columns={columnData}
           loading={loading}
-          dataSource={gridData}
-          defaultFilterValue={filterSettings}
+          dataSource={gridData || []}
+          filterValue={filterData}
+          onFilterValueChange={onFilterValueChange}
           defaultSortInfo={{ name: 'name', dir: 1, type: 'string' }}
           emptyText={NoRowsOverlay}
           style={gridStyle}

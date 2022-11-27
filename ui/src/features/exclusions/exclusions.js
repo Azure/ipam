@@ -118,10 +118,10 @@ export default function ManageExclusions() {
   const { instance, inProgress, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
   const [sending, setSending] = React.useState(false);
-  const [subscriptions, setSubscriptions] = React.useState([]);
-  const [selected, setSelected] = React.useState({});
+  const [subscriptions, setSubscriptions] = React.useState(null);
+  const [selected, setSelected] = React.useState(null);
   const [loadedExclusions, setLoadedExclusions] = React.useState([]);
 
   const dispatch = useDispatch();
@@ -131,6 +131,10 @@ export default function ManageExclusions() {
   const message = `Click to Include/Exclude`;
 
   React.useEffect(() => {
+    (subscriptions && selected) && setLoading(false);
+  }, [subscriptions, selected]);
+
+  React.useEffect(() => {
     const request = {
       scopes: apiRequest.scopes,
       account: accounts[0],
@@ -138,7 +142,7 @@ export default function ManageExclusions() {
 
     (async () => {
       try {
-        setLoading(true);
+        // setLoading(true);
         const response = await instance.acquireTokenSilent(request);
 
         const stack = [
@@ -160,7 +164,7 @@ export default function ManageExclusions() {
           setSubscriptions(results[0]);
           setSelected(excluded);
           setLoadedExclusions(excluded);
-          setLoading(false);
+          // setLoading(false);
         });
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
@@ -172,8 +176,8 @@ export default function ManageExclusions() {
           console.log("------------------");
           enqueueSnackbar("Error fetching subscriptions/exclusions", { variant: "error" });
         }
-
-        setLoading(false);
+      } finally {
+        // setLoading(false);
       }
     })();
   }, []);
@@ -269,10 +273,10 @@ export default function ManageExclusions() {
               columns={columns}
               toggleRowSelectOnClick={true}
               loading={loading}
-              dataSource={subscriptions}
+              dataSource={subscriptions || []}
               defaultFilterValue={filterValue}
               onRowClick={(rowData) => onClick(rowData.data)}
-              selected={selected}
+              selected={selected || {}}
               emptyText={NoRowsOverlay}
               style={gridStyle}
               className="ipam-subscription-exclusions"

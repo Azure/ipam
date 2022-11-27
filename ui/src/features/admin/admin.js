@@ -96,10 +96,10 @@ export default function Administration() {
   const { instance, inProgress, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
-  const [admins, setAdmins] = React.useState([]);
+  const [admins, setAdmins] = React.useState(null);
   const [loadedAdmins, setLoadedAdmins] = React.useState([]);
   const [selectionModel, setSelectionModel] = React.useState({});
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
 
   const [open, setOpen] = React.useState(false);
   const [options, setOptions] = React.useState(null);
@@ -149,6 +149,10 @@ export default function Administration() {
     }
   }, [input, open]);
 
+  React.useEffect(() => {
+    admins && setLoading(false);
+  }, [admins]);
+
   function refreshData() {
     const request = {
       scopes: apiRequest.scopes,
@@ -157,7 +161,7 @@ export default function Administration() {
 
     (async () => {
       try {
-        setLoading(true);
+        // setLoading(true);
         const response = await instance.acquireTokenSilent(request);
         const data = await getAdmins(response.accessToken);
         setAdmins(data);
@@ -173,7 +177,7 @@ export default function Administration() {
           enqueueSnackbar("Error fetching admins", { variant: "error" });
         }
       } finally {
-        setLoading(false);
+        // setLoading(false);
       }
     })();
   }
@@ -395,7 +399,7 @@ export default function Administration() {
               showColumnMenuGroupOptions={false}
               columns={columns}
               loading={loading}
-              dataSource={admins}
+              dataSource={admins || []}
               defaultFilterValue={filterValue}
               onRowClick={(rowData) => onClick(rowData.data)}
               selected={selectionModel}
