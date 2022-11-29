@@ -129,7 +129,7 @@ export default function BlockDataGrid(props) {
   };
 
   function onClick(data) {
-    var id = data.id;
+    var id = data.name;
     var newSelectionModel = {};
 
     setSelectionModel(prevState => {

@@ -121,8 +121,10 @@ export default function ManageExclusions() {
   const [loading, setLoading] = React.useState(true);
   const [sending, setSending] = React.useState(false);
   const [subscriptions, setSubscriptions] = React.useState(null);
-  const [selected, setSelected] = React.useState(null);
+  const [selected, setSelected] = React.useState({});
   const [loadedExclusions, setLoadedExclusions] = React.useState([]);
+
+  const dataLoadedRef = React.useRef(false);
 
   const dispatch = useDispatch();
 
@@ -140,46 +142,55 @@ export default function ManageExclusions() {
       account: accounts[0],
     };
 
-    (async () => {
-      try {
-        // setLoading(true);
-        const response = await instance.acquireTokenSilent(request);
+    if(!dataLoadedRef.current) {
+      dataLoadedRef.current = true;
 
-        const stack = [
-          (async () => await fetchSubscriptions(response.accessToken))(),
-          (async () => await getExclusions(response.accessToken))()
-        ];
+      (async () => {
+        try {
+          // setLoading(true);
+          const response = await instance.acquireTokenSilent(request);
 
-        Promise.all(stack).then((results) => {
-          var excluded = {};
+          const stack = [
+            (async () => await fetchSubscriptions(response.accessToken))(),
+            (async () => await getExclusions(response.accessToken))()
+          ];
 
-          results[1].forEach(exclusion => {
-            var targetSub = results[0].find((sub) => sub.subscription_id === exclusion);
+          Promise.all(stack).then((results) => {
+            var excluded = {};
 
-            if(targetSub) {
-              excluded[targetSub.id] = targetSub;
-            }
+            results[1].forEach(exclusion => {
+              var targetSub = results[0].find((sub) => sub.subscription_id === exclusion);
+
+              if(targetSub) {
+                excluded[targetSub.id] = targetSub;
+              }
+            });
+
+            setSubscriptions(results[0]);
+            setSelected(prevState => {
+              return {
+                ...prevState,
+                ...excluded
+              }
+            });
+            setLoadedExclusions(excluded);
+            // setLoading(false);
           });
-
-          setSubscriptions(results[0]);
-          setSelected(excluded);
-          setLoadedExclusions(excluded);
+        } catch (e) {
+          if (e instanceof InteractionRequiredAuthError) {
+            instance.acquireTokenRedirect(request);
+          } else {
+            console.log("ERROR");
+            console.log("------------------");
+            console.log(e);
+            console.log("------------------");
+            enqueueSnackbar("Error fetching subscriptions/exclusions", { variant: "error" });
+          }
+        } finally {
           // setLoading(false);
-        });
-      } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar("Error fetching subscriptions/exclusions", { variant: "error" });
         }
-      } finally {
-        // setLoading(false);
-      }
-    })();
+      })();
+    }
   }, []);
 
   function onSave() {
@@ -218,10 +229,10 @@ export default function ManageExclusions() {
     var id = elem.id;
 
     setSelected(prevState => {
-      let newState = Object.assign({}, prevState);
+      let newState = {...prevState};
 
-      newState.hasOwnProperty(id) ? delete newState[id] : newState[id] = elem;      
-          
+      newState.hasOwnProperty(id) ? delete newState[id] : newState[id] = elem;
+
       return newState;
     });
   }
@@ -230,7 +241,7 @@ export default function ManageExclusions() {
     return (
       <React.Fragment>
         <Shrug />
-        <Typography variant="overline" display="block"  sx={{ mt: 1 }}>
+        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
           Nothing yet...
         </Typography>
       </React.Fragment>

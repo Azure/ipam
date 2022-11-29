@@ -62,11 +62,12 @@ const columns = [
 ];
 
 export default function SpaceDataGrid(props) {
-  const { setSelected } = props;
+  const { selected, setSelected } = props;
   const { spaces, refresh } = React.useContext(ConfigureContext);
 
   const [loading, setLoading] = React.useState(true);
   const [selectionModel, setSelectionModel] = React.useState([]);
+  // const [selectedRow, setSelectedRow] = React.useState(null);
   const [addSpaceOpen, setAddSpaceOpen] = React.useState(false);
   const [editSpaceOpen, setEditSpaceOpen] = React.useState(false);
   const [deleteSpaceOpen, setDeleteSpaceOpen] = React.useState(false);
@@ -74,11 +75,7 @@ export default function SpaceDataGrid(props) {
 
   const isAdmin = useSelector(getAdminStatus);
 
-  const selectedRow = selectionModel.length
-    ? spaces.find((obj) => {
-        return obj.name === selectionModel[0];
-      })
-    : null;
+  // const selectedRow = selectionModel.length ? selectionModel[0].name : null;
 
   const menuOpen = Boolean(anchorEl);
 
@@ -114,7 +111,7 @@ export default function SpaceDataGrid(props) {
   };
 
   function onClick(data) {
-    var id = data.id;
+    var id = data.name;
     var newSelectionModel = {};
 
     setSelectionModel(prevState => {
@@ -143,7 +140,7 @@ export default function SpaceDataGrid(props) {
         <EditSpace
           open={editSpaceOpen}
           handleClose={() => setEditSpaceOpen(false)}
-          space={selectedRow ? selectedRow : null}
+          space={selected ? selected : null}
           spaces={spaces}
           refresh={refresh}
         />
@@ -156,7 +153,7 @@ export default function SpaceDataGrid(props) {
         <ConfirmDelete
           open={deleteSpaceOpen}
           handleClose={() => setDeleteSpaceOpen(false)}
-          space={selectedRow ? selectedRow.name : null}
+          space={selected ? selected.name : null}
           refresh={refresh}
         />
         </React.Fragment>
@@ -164,11 +161,11 @@ export default function SpaceDataGrid(props) {
       <GridHeader
         style={{
           borderBottom: "1px solid rgba(224, 224, 224, 1)",
-          backgroundColor: selectedRow ? "rgba(25, 118, 210, 0.12)" : "unset",
+          backgroundColor: selected ? "rgba(25, 118, 210, 0.12)" : "unset",
         }}
       >
         <Box sx={{ width: "20%" }}></Box>
-        <GridTitle>{selectedRow ? `'${selectedRow.name}' selected` : "Spaces"}</GridTitle>
+        <GridTitle>{selected ? `'${selected.name}' selected` : "Spaces"}</GridTitle>
         <Box sx={{ width: "20%", display: "flex", justifyContent: "flex-end" }}>
           { isAdmin &&
             <React.Fragment>
@@ -234,7 +231,7 @@ export default function SpaceDataGrid(props) {
                 </MenuItem>
                 <MenuItem
                   onClick={handleEditSpace}
-                  disabled={!selectedRow}
+                  disabled={!selected}
                 >
                   <ListItemIcon>
                     <EditIcon fontSize="small" />
@@ -244,7 +241,7 @@ export default function SpaceDataGrid(props) {
                 <Divider />
                 <MenuItem
                   onClick={handleDeleteSpace}
-                  disabled={!selectedRow}
+                  disabled={!selected}
                 >
                   <ListItemIcon>
                     <DeleteOutlineIcon fontSize="small" />

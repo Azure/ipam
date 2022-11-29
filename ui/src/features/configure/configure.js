@@ -114,7 +114,8 @@ export default function ConfigureIPAM() {
         </Header>
         <MainBody>
           <TopSection>
-            <SpaceDataGrid 
+            <SpaceDataGrid
+              selected={selectedSpace}
               setSelected={setSelectedSpace}
             />
           </TopSection>
