@@ -355,17 +355,20 @@ export default function NavDrawer() {
 
     if(vNets) {
       const vNetExclusions = ['id', 'peerings', 'resv', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_space', 'subscription_id', 'tenant_id'];
-      const vNetResults = objToFilter(vNets, 'Virtual Networks', '/discover/vnet', vNetExclusions);
+      const vNetFiltered = objToFilter(vNets, 'Virtual Networks', '/discover/vnet', vNetExclusions);
+      const vNetResults = orderBy(vNetFiltered, 'phrase', 'asc');
 
       const subnetExclusions = ['id', 'vnet_id', 'size', 'used', 'available', 'utilization', 'subscription_id', 'tenant_id'];
-      const subnetResults = objToFilter(subnets, 'Subnets', '/discover/subnet', subnetExclusions);
+      const subnetFiltered = objToFilter(subnets, 'Subnets', '/discover/subnet', subnetExclusions);
+      const subnetResults = orderBy(subnetFiltered, 'phrase', 'asc');
 
       newSearchData = [...newSearchData, ...vNetResults, ...subnetResults];
     }
 
     if(endpoints) {
       const endpointExclusions = ['id', 'unique_id', 'vnet_id', 'subnet_id', 'metadata', 'subscription_id', 'tenant_id'];
-      const endpointResults = objToFilter(endpoints, 'Endpoints', '/discover/endpoint', endpointExclusions);
+      const endpointFiltered = objToFilter(endpoints, 'Endpoints', '/discover/endpoint', endpointExclusions);
+      const endpointResults = orderBy(endpointFiltered, 'phrase', 'asc');
 
       newSearchData = [...newSearchData, ...endpointResults];
     }

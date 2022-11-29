@@ -2,6 +2,8 @@ import * as React from "react";
 import { useSelector } from 'react-redux';
 import { useLocation } from "react-router-dom";
 
+import { cloneDeep } from 'lodash';
+
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import filter from '@inovua/reactdatagrid-community/filter'
 import '@inovua/reactdatagrid-community/index.css';
@@ -100,41 +102,23 @@ export default function DiscoverTable(props) {
 
   React.useEffect(() => {
     if(location.state) {
-      var searchFilter = [...filterData];
+      var searchFilter = cloneDeep(filterSettings);
 
       const target = searchFilter.find((obj) => obj.name === location.state.name);
 
       Object.assign(target, location.state);
 
-      onFilterValueChange(searchFilter);
+      setFilterData(searchFilter);
     }
   },[location]);
 
   React.useEffect(() => {
     stateData && setGridData(filter(stateData, filterData));
-  },[stateData]);
+  },[stateData, filterData]);
 
   React.useEffect(() => {
     gridData && setLoading(false);
   },[gridData]);
-
-  const onFilterValueChange = React.useCallback((filterValue) => {
-    console.log("===FILTER VALUE===");
-    console.log(filterValue);
-    console.log("==================");
-
-    console.log("===STATE DATA===");
-    console.log(stateData);
-    console.log("================");
-
-    if(stateData) {
-      const data = filter(stateData, filterValue)
-
-      setGridData(data);
-    }
-
-    setFilterData(filterValue);
-  }, [stateData])
 
   function renderDetails() {
     return (
@@ -194,7 +178,7 @@ export default function DiscoverTable(props) {
           loading={loading}
           dataSource={gridData || []}
           filterValue={filterData}
-          onFilterValueChange={onFilterValueChange}
+          onFilterValueChange={(newFilterValue) => setFilterData(newFilterValue)}
           defaultSortInfo={{ name: 'name', dir: 1, type: 'string' }}
           emptyText={NoRowsOverlay}
           style={gridStyle}

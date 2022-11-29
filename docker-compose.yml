@@ -40,8 +40,8 @@ services:
           - ipam-engine-name
   nginx-proxy-dev:
     depends_on:
-      - ipam-ui
-      - ipam-engine
+      - ipam-ui-dev
+      - ipam-engine-dev
     build:
       context: ./lb
       dockerfile: Dockerfile.dev
