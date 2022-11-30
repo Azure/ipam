@@ -32,7 +32,7 @@ export default function ConfirmDelete(props) {
   const { open, handleClose, space, block, refresh } = props;
 
   const { instance, accounts } = useMsal();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+  const { enqueueSnackbar } = useSnackbar();
 
   const [force, setForce] = React.useState(false);
   const [verify, setVerify] = React.useState(false);
@@ -55,7 +55,7 @@ export default function ConfirmDelete(props) {
         try {
           setSending(true);
           const response = await instance.acquireTokenSilent(request);
-          const data = await deleteBlock(response.accessToken, space, block, force);
+          await deleteBlock(response.accessToken, space, block, force);
           refresh();
           handleCancel();
         } catch (e) {

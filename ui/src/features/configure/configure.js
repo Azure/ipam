@@ -66,16 +66,16 @@ export default function ConfigureIPAM() {
   const [refreshing, setRefreshing] = React.useState(false);
   const [selectedSpace, setSelectedSpace] = React.useState(null);
 
+  const configLoadedRef = React.useRef(false);
+
   const spaces = useSelector(selectSpaces);
 
   const dispatch = useDispatch();
 
-  var loaded = false;
-
   React.useEffect(() => {
-    if(!loaded) {
+    if(!configLoadedRef.current) {
       refresh();
-      loaded = true;
+      configLoadedRef.current = true;
     }
   }, []);
 

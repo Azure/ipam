@@ -56,7 +56,7 @@ export default function AddSpace(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        const data = await createSpace(response.accessToken, body);
+        await createSpace(response.accessToken, body);
         setSpaceName({ value: "", error: false });
         setDescription({ value: "", error: false });
         refresh();

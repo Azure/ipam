@@ -68,7 +68,7 @@ export default function EditReservations(props) {
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
-  const empty = selectionModel.length == 0;
+  const empty = selectionModel.length === 0;
 
   const timer = React.useRef();
 
@@ -188,7 +188,7 @@ export default function EditReservations(props) {
   }, [block]);
 
   React.useEffect(() => {
-    if(copied != "") {
+    if(copied !== "") {
       clearTimeout(timer.current);
 
       timer.current = setTimeout(
@@ -247,7 +247,7 @@ export default function EditReservations(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        const data = await deleteBlockResvs(response.accessToken, space, block, selectionModel);
+        await deleteBlockResvs(response.accessToken, space, block, selectionModel);
         handleClose();
         enqueueSnackbar("Successfully deleted IP Block reservations", { variant: "success" });
         refreshData();

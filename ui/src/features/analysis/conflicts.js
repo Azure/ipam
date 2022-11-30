@@ -1,7 +1,7 @@
 import * as React from 'react';
 import PropTypes from 'prop-types';
 import SvgIcon from '@mui/material/SvgIcon';
-import { alpha, styled } from '@mui/material/styles';
+// import { alpha, styled } from '@mui/material/styles';
 import TreeView from '@mui/lab/TreeView';
 import TreeItem, { treeItemClasses } from '@mui/lab/TreeItem';
 import Collapse from '@mui/material/Collapse';
@@ -11,10 +11,10 @@ import { Typography } from '@mui/material';
 import { useSpring, animated } from '@react-spring/web';
 
 import Space from "../../img/Space";
-import Block from "../../img/Block";
-import VNet from "../../img/VNet";
-import Subnet from "../../img/Subnet";
-import Endpoint from "../../img/Endpoint";
+// import Block from "../../img/Block";
+// import VNet from "../../img/VNet";
+// import Subnet from "../../img/Subnet";
+// import Endpoint from "../../img/Endpoint";
 
 function MinusSquare(props) {
   return (

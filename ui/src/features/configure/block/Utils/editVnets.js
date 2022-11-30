@@ -1,7 +1,7 @@
 import * as React from "react";
 import { styled } from "@mui/material/styles";
 
-import { isEqual, unset } from 'lodash';
+import { isEqual } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
@@ -158,7 +158,7 @@ export default function EditVnets(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        const data = await replaceBlockNetworks(response.accessToken, space, block.name, selectionModel);
+        await replaceBlockNetworks(response.accessToken, space, block.name, selectionModel);
         handleClose();
         enqueueSnackbar("Successfully updated IP Block vNets", { variant: "success" });
         refresh();

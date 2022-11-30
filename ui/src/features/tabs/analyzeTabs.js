@@ -8,8 +8,6 @@ import Box from '@mui/material/Box';
 
 import Visualize from '../analysis/visualize';
 import Peering from '../analysis/peering';
-import AnalysisTool from '../analysis/analysis';
-import GmailTreeView from '../analysis/conflicts';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;

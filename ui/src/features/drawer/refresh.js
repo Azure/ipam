@@ -2,8 +2,7 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
 import {
-  useMsal,
-  useIsAuthenticated
+  useMsal
 } from "@azure/msal-react";
 
 import { InteractionRequiredAuthError } from "@azure/msal-browser";
@@ -22,10 +21,14 @@ function Refresh() {
   const { instance, accounts } = useMsal();
   const [intervalAllId, setIntervalAllId] = React.useState();
   const [intervalMeId, setIntervalMeId] = React.useState();
+
   const refreshInterval = useSelector(getRefreshInterval);
+
   const dispatch = useDispatch();
+
   const refreshAllRef = React.useRef();
-  const refreshMeRef = React.useRef();
+  const refreshMeRef = React.useRef(null);
+  const refreshLoadedRef = React.useRef(false);
 
   refreshAllRef.current = React.useCallback(() => {
     const request = {
@@ -58,6 +61,7 @@ function Refresh() {
 
     (async() => {
       try {
+        console.log("REFRESH ME...");
         const response = await instance.acquireTokenSilent(request)
         dispatch(getMeAsync(response.accessToken))
       } catch (e) {
@@ -83,13 +87,16 @@ function Refresh() {
   }, [refreshInterval]);
 
   React.useEffect(()=>{
-    refreshMeRef.current()
-    clearInterval(intervalMeId);
-    setIntervalMeId(
-      setInterval(() => refreshMeRef.current(), 60 * 1000)
-    );
-    return () => {
+    if(!refreshLoadedRef.current) {
+      refreshLoadedRef.current = true;
+      refreshMeRef.current()
       clearInterval(intervalMeId);
+      setIntervalMeId(
+        setInterval(() => refreshMeRef.current(), 60 * 1000)
+      );
+      return () => {
+        clearInterval(intervalMeId);
+      }
     }
   }, []);
 

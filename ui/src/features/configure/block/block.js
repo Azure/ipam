@@ -84,7 +84,7 @@ export default function BlockDataGrid(props) {
 
   React.useEffect(() => {
     if(selected) {
-      if(selected.name != previous) {
+      if(selected.name !== previous) {
         setSelectionModel([]);
       }
 

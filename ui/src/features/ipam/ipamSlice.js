@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { values } from 'lodash';
+
 import {
   fetchSpaces,
   fetchVNets,
@@ -234,7 +234,7 @@ export const ipamSlice = createSlice({
         console.log("-----------------");
       })
       .addCase(getMeAsync.fulfilled, (state, action) => {
-        if(state.refreshInterval != action.payload['apiRefresh']) {
+        if(state.refreshInterval !== action.payload['apiRefresh']) {
           state.refreshInterval = action.payload['apiRefresh'];
         }
 

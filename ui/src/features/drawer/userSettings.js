@@ -13,11 +13,7 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Switch,
-  Stack,
-  Typography
+  DialogTitle
 } from "@mui/material";
 
 import {
@@ -60,7 +56,7 @@ export default function UserSettings(props) {
 
   const dispatch = useDispatch();
 
-  const changed = (refreshInterval == refreshValue) ? false : true;
+  const changed = (refreshInterval === refreshValue) ? false : true;
 
   React.useEffect(()=>{
     setRefreshValue(refreshInterval);
@@ -80,7 +76,7 @@ export default function UserSettings(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        const data = await updateMe(response.accessToken, body);
+        await updateMe(response.accessToken, body);
         enqueueSnackbar("User settings updated", { variant: "success" });
         dispatch(getMeAsync(response.accessToken));
         handleClose();

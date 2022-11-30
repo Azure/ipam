@@ -49,7 +49,7 @@ export async function callMsGraphUsersFilter(accessToken, nameFilter = "") {
       headers: headers,
   };
 
-  if (nameFilter != "") {
+  if (nameFilter !== "") {
     endpoint += `$filter=startsWith(userPrincipalName,'${nameFilter}') OR startsWith(displayName, '${nameFilter}')&`;
   }
 

@@ -56,7 +56,7 @@ export default function AddBlock(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        const data = await createBlock(response.accessToken, space, body);
+        await createBlock(response.accessToken, space, body);
         refresh();
         onCancel();
       } catch (e) {

@@ -115,7 +115,7 @@ const filterValue = [
 ];
 
 export default function ManageExclusions() {
-  const { instance, inProgress, accounts } = useMsal();
+  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [loading, setLoading] = React.useState(true);
@@ -130,7 +130,7 @@ export default function ManageExclusions() {
 
   const unchanged = isEqual(selected, loadedExclusions);
 
-  const message = `Click to Include/Exclude`;
+  // const message = `Click to Include/Exclude`;
 
   React.useEffect(() => {
     (subscriptions && selected) && setLoading(false);
@@ -205,7 +205,7 @@ export default function ManageExclusions() {
         let selectedValues = Object.values(selected);
         let update = selectedValues.map(item => item.subscription_id);
         const response = await instance.acquireTokenSilent(request);
-        const data = await replaceExclusions(response.accessToken, update);
+        await replaceExclusions(response.accessToken, update);
         enqueueSnackbar("Successfully updated exclusions", { variant: "success" });
         setLoadedExclusions(selected);
         dispatch(refreshAllAsync(response.accessToken))

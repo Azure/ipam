@@ -2,7 +2,7 @@ import * as React from "react";
 import { styled } from '@mui/material/styles';
 
 import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError, InteractionStatus } from "@azure/msal-browser";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
 import { callMsGraphUsersFilter } from "../../msal/graph";
 
 import { useSnackbar } from 'notistack';
@@ -93,7 +93,7 @@ const gridStyle = {
 };
 
 export default function Administration() {
-  const { instance, inProgress, accounts } = useMsal();
+  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [admins, setAdmins] = React.useState(null);
@@ -106,6 +106,8 @@ export default function Administration() {
   const [input, setInput] = React.useState("");
   const [selected, setSelected] = React.useState(null);
   const [sending, setSending] = React.useState(false);
+
+  const adminLoadedRef = React.useRef(false);
 
   const columns = [
     { name: "name", header: "Name", lockable: false, defaultFlex: 0.5 },
@@ -126,7 +128,11 @@ export default function Administration() {
   const unchanged = isEqual(admins, loadedAdmins);
 
   React.useEffect(() => {
-    refreshData();
+    if(!adminLoadedRef.current) {
+      adminLoadedRef.current = true;
+
+      refreshData();
+    }
   }, []);
 
   React.useEffect(() => {
@@ -218,7 +224,7 @@ export default function Administration() {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        const data = await replaceAdmins(response.accessToken, admins);
+        await replaceAdmins(response.accessToken, admins);
         enqueueSnackbar("Successfully updated admins", { variant: "success" });
         refreshData();
       } catch (e) {

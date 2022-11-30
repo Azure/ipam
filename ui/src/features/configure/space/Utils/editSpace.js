@@ -80,7 +80,7 @@ export default function EditSpace(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        const data = await updateSpace(response.accessToken, space.name, body);
+        await updateSpace(response.accessToken, space.name, body);
         refresh();
         onCancel();
       } catch (e) {

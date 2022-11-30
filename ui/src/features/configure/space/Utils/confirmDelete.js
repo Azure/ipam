@@ -55,7 +55,7 @@ export default function ConfirmDelete(props) {
         try {
           setSending(true);
           const response = await instance.acquireTokenSilent(request);
-          const data = await deleteSpace(response.accessToken, space, force);
+          await deleteSpace(response.accessToken, space, force);
           refresh();
           handleCancel();
         } catch (e) {
