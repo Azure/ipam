@@ -563,8 +563,6 @@ const Visualize = () => {
           return opt.name;
         })
       );
-
-      console.log(options);
     }
   }, [spaces, vnets, endpoints]);
 

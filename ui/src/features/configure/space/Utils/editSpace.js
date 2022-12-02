@@ -122,6 +122,7 @@ export default function EditSpace(props) {
 
   function validateDescription(description) {
     const regex = new RegExp(
+      //eslint-disable-next-line
       "^([a-zA-Z0-9 \._-]){1,32}$"
     );
 

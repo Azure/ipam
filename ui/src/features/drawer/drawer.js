@@ -374,7 +374,7 @@ export default function NavDrawer() {
     }
 
     setSearchData(newSearchData);
-  }, [vNets, endpoints]);
+  }, [vNets, subnets, endpoints]);
 
   const filterOptions = createFilterOptions({
     matchFrom: 'any',

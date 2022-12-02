@@ -8,7 +8,8 @@ import { useSnackbar } from "notistack";
 import { useMsal } from "@azure/msal-react";
 import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
-import { DataGrid, GridOverlay } from "@mui/x-data-grid";
+import ReactDataGrid from '@inovua/reactdatagrid-community';
+import '@inovua/reactdatagrid-community/index.css';
 
 import {
   Box,
@@ -18,7 +19,6 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
-  LinearProgress,
   IconButton,
 } from "@mui/material";
 
@@ -33,17 +33,23 @@ import {
 
 import { apiRequest } from "../../../../msal/authConfig";
 
-const columns = [
-  { field: "name", headerName: "Name", headerAlign: "left", align: "left", flex: 1 },
-  { field: "subscription_id", headerName: "Subscription", headerAlign: "left", align: "left", flex: 1 },
-  { field: "resource_group", headerName: "Resource Group", headerAlign: "left", align: "left", flex: 1 },
-  { field: "prefixes", headerName: "Prefixes", headerAlign: "right", align: "right", flex: 0.75, renderCell: (params) => params.value.join(", ") },
-];
-
 const Spotlight = styled("span")({
   fontWeight: "bold",
   color: "mediumblue"
 });
+
+const gridStyle = {
+  height: '100%',
+  border: '1px solid rgba(224, 224, 224, 1)',
+  fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
+};
+
+const columns = [
+  { name: "name", header: "Name", defaultFlex: 1 },
+  { name: "subscription_id", header: "Subscription", defaultFlex: 1 },
+  { name: "resource_group", header: "Resource Group", defaultFlex: 1 },
+  { name: "prefixes", header: "Prefixes", defaultFlex: 0.75, render: ({value}) => value.join(", ") },
+];
 
 export default function EditVnets(props) {
   const { open, handleClose, space, block, refresh, refreshingState } = props;
@@ -51,25 +57,23 @@ export default function EditVnets(props) {
   const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
-  const [loading, setLoading] = React.useState(false);
   const [vNets, setVNets] = React.useState([]);
   const [selectionModel, setSelectionModel] = React.useState([]);
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
-  const unchanged = block ? isEqual(block['vnets'].map(vnet => vnet.id).sort(), selectionModel.sort()) : false;
+  //eslint-disable-next-line
+  const unchanged = block ? isEqual(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}), selectionModel) : false;
 
   React.useEffect(() => {
-      (block && !refreshing && !refreshingState) && refreshData();
+    block && refreshData();
   }, [block]);
 
   React.useEffect(() => {
     if(space && block) {
       !refreshingState && setSelectionModel(block['vnets'].map(vnet => vnet.id));
     }
-
-    refreshingState && setLoading(true);
-  }, [refreshingState]);
+  }, [space, block, refreshingState]);
 
   function refreshData() {
     const request = {
@@ -79,7 +83,6 @@ export default function EditVnets(props) {
 
     (async () => {
       setVNets([]);
-      setLoading(true);
 
       if(space && block) {
         try {
@@ -90,13 +93,13 @@ export default function EditVnets(props) {
           data.forEach((item) => {
             item['active'] = true;
           });
-          // const found = block['vnets'].map(vnet => vnet.id).filter(item => data.map(a => a.id).includes(item));
           const missing = block['vnets'].map(vnet => vnet.id).filter(item => !data.map(a => a.id).includes(item));
           missing.forEach((item) => {
             data.push(mockVNet(item));
           });
           setVNets(data);
-          setSelectionModel(block['vnets'].map(vnet => vnet.id));
+          //eslint-disable-next-line
+          setSelectionModel(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}));
         } catch (e) {
           if (e instanceof InteractionRequiredAuthError) {
             instance.acquireTokenRedirect(request);
@@ -110,11 +113,7 @@ export default function EditVnets(props) {
         } finally {
           setRefreshing(false);
         }
-      } else {
-        setVNets([])
       }
-
-      setLoading(false);
     })();
   }
 
@@ -130,7 +129,7 @@ export default function EditVnets(props) {
     const mockNet = {
       name: name,
       id: id,
-      prefixes: "ErrNotFound",
+      prefixes: ["ErrNotFound"],
       subnets: [],
       resource_group: resourceGroup.toLowerCase(),
       subscription_id: subscription,
@@ -142,9 +141,6 @@ export default function EditVnets(props) {
   }
 
   function manualRefresh() {
-    console.log("MANUAL REFRESH");
-    setLoading(true);
-    setVNets([]);
     refresh();
   }
 
@@ -178,16 +174,6 @@ export default function EditVnets(props) {
     })();
   }
 
-  function CustomLoadingOverlay() {
-    return (
-      <GridOverlay>
-        <div style={{ position: "absolute", top: 0, width: "100%" }}>
-          <LinearProgress />
-        </div>
-      </GridOverlay>
-    );
-  }
-
   return (
     <div sx={{ height: "300px", width: "100%" }}>
       <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
@@ -201,7 +187,7 @@ export default function EditVnets(props) {
                 color="primary"
                 size="small"
                 onClick={manualRefresh}
-                disabled={refreshing}
+                disabled={refreshing || refreshingState}
               >
                 <Refresh />
               </IconButton>
@@ -217,58 +203,47 @@ export default function EditVnets(props) {
               pt: 4,
               height: "300px",
               '& .ipam-block-vnet-stale': {
-                bgcolor: "rgb(255, 230, 230) !important",
-                '&:hover': {
-                  bgcolor: "rgb(255, 220, 220) !important",
+                  background: 'rgb(255, 230, 230) !important',
+                '.InovuaReactDataGrid__row-hover-target': {
+                  '&:hover': {
+                    background: 'rgb(255, 220, 220) !important',
+                  }
                 }
               },
               '& .ipam-block-vnet-normal': {
-                bgcolor: "white",
-                '&:hover': {
-                  bgcolor: "white",
+                  background: 'white',
+                '.InovuaReactDataGrid__row-hover-target': {
+                  '&:hover': {
+                    background: 'rgb(208, 213, 237) !important',
+                  }
                 }
               }
             }}
           >
-            <DataGrid
-              checkboxSelection
-              disableColumnMenu
-              hideFooter
-              hideFooterPagination
-              hideFooterSelectedRowCount
-              density="compact"
-              rows={vNets}
+            <ReactDataGrid
+              idProperty="id"
+              showCellBorders="horizontal"
+              checkboxColumn
+              checkboxOnlyRowSelect
+              showZebraRows={false}
+              multiSelect={true}
+              click
+              showActiveRowIndicator={false}
+              enableColumnAutosize={false}
+              showColumnMenuGroupOptions={false}
               columns={columns}
-              loading={loading || refreshingState}
-              onSelectionModelChange={(newSelectionModel) => setSelectionModel(newSelectionModel)}
-              selectionModel={selectionModel}
-              getRowClassName={(params) => `ipam-block-vnet-${!params.row.active ? 'stale' : 'normal'}`}
-              components={{
-                LoadingOverlay: CustomLoadingOverlay,
-                // NoRowsOverlay: CustomNoRowsOverlay,
-              }}
-              sx={{
-                "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus":
-                  {
-                    outline: "none",
-                  }
-              }}
-              initialState={{
-                sorting: {
-                  sortModel: [
-                    {
-                      field: 'name',
-                      sort: 'asc',
-                    },
-                  ],
-                },
-              }}
+              loading={refreshing}
+              dataSource={vNets}
+              selected={selectionModel}
+              onSelectionChange={({selected}) => setSelectionModel(selected)}
+              rowClassName={({data}) => `ipam-block-vnet-${!data.active ? 'stale' : 'normal'}`}
+              style={gridStyle}
             />
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={onSubmit} disabled={unchanged || sending || loading || refreshingState}>
+          <Button onClick={onSubmit} disabled={unchanged || sending || refreshing || refreshingState}>
             Apply
           </Button>
         </DialogActions>

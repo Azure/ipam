@@ -1,7 +1,6 @@
 import React from "react";
 import { styled } from '@mui/system';
-import { createTheme, useTheme } from "@mui/material/styles";
-import useMediaQuery from "@mui/material/useMediaQuery";
+import { createTheme } from "@mui/material/styles";
 
 import { get } from 'lodash';
 
@@ -89,14 +88,11 @@ function NumberCircularProgress(props) {
 }
 
 export default function ItemDetails(props) {
-  const { data, rowData, menuExpand } = React.useContext(TableContext);
+  const { rowData } = React.useContext(TableContext);
   const { title, map, setExpand } = props;
 
   var isTarget = Object.keys(rowData).length;
   var progress = isTarget ? (Math.round((rowData[map.progressUsed] / rowData[map.progressTotal]) * 100) || 0) : 0;
-
-  const rootTheme = useTheme();
-  const isSmallScreen = useMediaQuery(rootTheme.breakpoints.down("xl"));
 
   const Wrapper = styled(Box)({
     display: "flex",
@@ -129,19 +125,9 @@ export default function ItemDetails(props) {
     paddingBottom: "8px",
   });
 
-  const linkStyle = {
-    fontSize: isSmallScreen ? 14 : 18,
-    marginTop: "10px"
-  }
-
   return isTarget ? (
     <ThemeProvider theme={theme}>
       <Wrapper>
-        {/* <Box width="40px" sx={{ marginLeft: "auto" }}>
-          <IconButton size="small" sx={{ padding: 0 }} onClick={() => setExpand(false)}>
-            <CloseIcon />
-          </IconButton>
-        </Box> */}
         <Box sx={{ display: "flex" }}>
           <Box sx={{ width: "40px" }} />
           <Box sx={{ width: "100%" }}>

@@ -88,17 +88,21 @@ export default function DiscoverTable(props) {
     );
   }
 
-  React.useEffect(() => {
+  const addDetailsColumn = React.useCallback(() => {
     let newColumns = [...columns];
 
     if (!newColumns.find( x => x['field'] === 'id' )) {
       newColumns.push(
-        { name: "id", header: "Details", width: 50, resizable: false, hideable: false, showColumnMenuTool: false, renderHeader: () => "", render: ({data}) => renderExpand(data) }
+        { name: "id", header: "Details", width: 50, resizable: false, hideable: false, sortable: false, showColumnMenuTool: false, renderHeader: () => "", render: ({data}) => renderExpand(data) }
       );
     }
 
     setColumnData(newColumns);
-  },[]);
+  }, [columns]);
+
+  React.useEffect(() => {
+    addDetailsColumn();
+  },[addDetailsColumn]);
 
   React.useEffect(() => {
     if(location.state) {
@@ -110,7 +114,7 @@ export default function DiscoverTable(props) {
 
       setFilterData(searchFilter);
     }
-  },[location]);
+  },[location, filterSettings]);
 
   React.useEffect(() => {
     stateData && setGridData(filter(stateData, filterData));

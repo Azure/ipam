@@ -62,30 +62,24 @@ const columns = [
 ];
 
 export default function SpaceDataGrid(props) {
-  const { selected, setSelected } = props;
+  const { selectedSpace, setSelectedSpace } = props;
   const { spaces, refresh } = React.useContext(ConfigureContext);
 
-  const [loading, setLoading] = React.useState(true);
   const [selectionModel, setSelectionModel] = React.useState([]);
-  // const [selectedRow, setSelectedRow] = React.useState(null);
+
   const [addSpaceOpen, setAddSpaceOpen] = React.useState(false);
   const [editSpaceOpen, setEditSpaceOpen] = React.useState(false);
   const [deleteSpaceOpen, setDeleteSpaceOpen] = React.useState(false);
+
   const [anchorEl, setAnchorEl] = React.useState(null);
 
   const isAdmin = useSelector(getAdminStatus);
 
-  // const selectedRow = selectionModel.length ? selectionModel[0].name : null;
-
   const menuOpen = Boolean(anchorEl);
 
   React.useEffect(() => {
-    spaces && setLoading(false);
-  },[spaces]);
-
-  React.useEffect(() => {
-    setSelected(Object.values(selectionModel)[0]);
-  }, [selectionModel]);
+    setSelectedSpace(Object.values(selectionModel)[0]);
+  }, [selectionModel, setSelectedSpace]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -140,7 +134,7 @@ export default function SpaceDataGrid(props) {
         <EditSpace
           open={editSpaceOpen}
           handleClose={() => setEditSpaceOpen(false)}
-          space={selected ? selected : null}
+          space={selectedSpace ? selectedSpace : null}
           spaces={spaces}
           refresh={refresh}
         />
@@ -153,7 +147,7 @@ export default function SpaceDataGrid(props) {
         <ConfirmDelete
           open={deleteSpaceOpen}
           handleClose={() => setDeleteSpaceOpen(false)}
-          space={selected ? selected.name : null}
+          space={selectedSpace ? selectedSpace.name : null}
           refresh={refresh}
         />
         </React.Fragment>
@@ -161,11 +155,11 @@ export default function SpaceDataGrid(props) {
       <GridHeader
         style={{
           borderBottom: "1px solid rgba(224, 224, 224, 1)",
-          backgroundColor: selected ? "rgba(25, 118, 210, 0.12)" : "unset",
+          backgroundColor: selectedSpace ? "rgba(25, 118, 210, 0.12)" : "unset",
         }}
       >
         <Box sx={{ width: "20%" }}></Box>
-        <GridTitle>{selected ? `'${selected.name}' selected` : "Spaces"}</GridTitle>
+        <GridTitle>{selectedSpace ? `'${selectedSpace.name}' selected` : "Spaces"}</GridTitle>
         <Box sx={{ width: "20%", display: "flex", justifyContent: "flex-end" }}>
           { isAdmin &&
             <React.Fragment>
@@ -231,7 +225,7 @@ export default function SpaceDataGrid(props) {
                 </MenuItem>
                 <MenuItem
                   onClick={handleEditSpace}
-                  disabled={!selected}
+                  disabled={!selectedSpace}
                 >
                   <ListItemIcon>
                     <EditIcon fontSize="small" />
@@ -241,7 +235,7 @@ export default function SpaceDataGrid(props) {
                 <Divider />
                 <MenuItem
                   onClick={handleDeleteSpace}
-                  disabled={!selected}
+                  disabled={!selectedSpace}
                 >
                   <ListItemIcon>
                     <DeleteOutlineIcon fontSize="small" />
@@ -263,9 +257,8 @@ export default function SpaceDataGrid(props) {
           enableColumnAutosize={false}
           showColumnMenuGroupOptions={false}
           columns={columns}
-          loading={loading}
+          loading={spaces ? false : true}
           dataSource={spaces || []}
-          // defaultFilterValue={filterValue}
           onRowClick={(rowData) => onClick(rowData.data)}
           selected={selectionModel}
           emptyText={NoRowsOverlay}

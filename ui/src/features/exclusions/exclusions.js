@@ -136,62 +136,65 @@ export default function ManageExclusions() {
     (subscriptions && selected) && setLoading(false);
   }, [subscriptions, selected]);
 
-  React.useEffect(() => {
+  const loadData = React.useCallback(() => {
     const request = {
       scopes: apiRequest.scopes,
       account: accounts[0],
     };
 
+    (async () => {
+      try {
+        // setLoading(true);
+        const response = await instance.acquireTokenSilent(request);
+
+        const stack = [
+          (async () => await fetchSubscriptions(response.accessToken))(),
+          (async () => await getExclusions(response.accessToken))()
+        ];
+
+        Promise.all(stack).then((results) => {
+          var excluded = {};
+
+          results[1].forEach(exclusion => {
+            var targetSub = results[0].find((sub) => sub.subscription_id === exclusion);
+
+            if(targetSub) {
+              excluded[targetSub.id] = targetSub;
+            }
+          });
+
+          setSubscriptions(results[0]);
+          setSelected(prevState => {
+            return {
+              ...prevState,
+              ...excluded
+            }
+          });
+          setLoadedExclusions(excluded);
+          // setLoading(false);
+        });
+      } catch (e) {
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar("Error fetching subscriptions/exclusions", { variant: "error" });
+        }
+      } finally {
+        // setLoading(false);
+      }
+    })();
+  }, [accounts, enqueueSnackbar, instance]);
+
+  React.useEffect(() => {
     if(!dataLoadedRef.current) {
       dataLoadedRef.current = true;
-
-      (async () => {
-        try {
-          // setLoading(true);
-          const response = await instance.acquireTokenSilent(request);
-
-          const stack = [
-            (async () => await fetchSubscriptions(response.accessToken))(),
-            (async () => await getExclusions(response.accessToken))()
-          ];
-
-          Promise.all(stack).then((results) => {
-            var excluded = {};
-
-            results[1].forEach(exclusion => {
-              var targetSub = results[0].find((sub) => sub.subscription_id === exclusion);
-
-              if(targetSub) {
-                excluded[targetSub.id] = targetSub;
-              }
-            });
-
-            setSubscriptions(results[0]);
-            setSelected(prevState => {
-              return {
-                ...prevState,
-                ...excluded
-              }
-            });
-            setLoadedExclusions(excluded);
-            // setLoading(false);
-          });
-        } catch (e) {
-          if (e instanceof InteractionRequiredAuthError) {
-            instance.acquireTokenRedirect(request);
-          } else {
-            console.log("ERROR");
-            console.log("------------------");
-            console.log(e);
-            console.log("------------------");
-            enqueueSnackbar("Error fetching subscriptions/exclusions", { variant: "error" });
-          }
-        } finally {
-          // setLoading(false);
-        }
-      })();
+      loadData();
     }
-  }, []);
+  }, [loadData]);
 
   function onSave() {
     const request = {

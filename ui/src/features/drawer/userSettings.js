@@ -59,8 +59,8 @@ export default function UserSettings(props) {
   const changed = (refreshInterval === refreshValue) ? false : true;
 
   React.useEffect(()=>{
-    setRefreshValue(refreshInterval);
-  }, [open]);
+    open && setRefreshValue(refreshInterval);
+  }, [open, refreshInterval]);
 
   function onSubmit() {
     var body = [

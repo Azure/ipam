@@ -112,7 +112,7 @@ export const vnets = {
     { name: "parentBlock", header: "Block", defaultFlex: 0.85, render: ({value}) => value ?? "<Unassigned>" },
     { name: "size", header: "Total IP's", defaultFlex: 0.35 },
     { name: "used", header: "Allocated IP's", defaultFlex: 0.45 },
-    { name: "prefixes", header: "IP Space", defaultFlex: 0.75, render: ({value}) => value.join(", ") },
+    { name: "prefixes", header: "IP Space", defaultFlex: 0.75, render: ({value}) => value.join(", ") }
   ],
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },

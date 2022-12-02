@@ -12,7 +12,11 @@ import BlockDataGrid from "./block/block";
 
 import { ConfigureContext } from "./configureContext";
 
-import { selectSpaces, fetchSpacesAsync } from "../ipam/ipamSlice";
+import {
+  selectSpaces,
+  selectBlocks,
+  fetchSpacesAsync
+} from "../ipam/ipamSlice";
 
 import { apiRequest } from "../../msal/authConfig";
 
@@ -65,21 +69,16 @@ export default function ConfigureIPAM() {
 
   const [refreshing, setRefreshing] = React.useState(false);
   const [selectedSpace, setSelectedSpace] = React.useState(null);
+  const [selectedBlock, setSelectedBlock] = React.useState(null);
 
   const configLoadedRef = React.useRef(false);
 
   const spaces = useSelector(selectSpaces);
+  const blocks = useSelector(selectBlocks);
 
   const dispatch = useDispatch();
 
-  React.useEffect(() => {
-    if(!configLoadedRef.current) {
-      refresh();
-      configLoadedRef.current = true;
-    }
-  }, []);
-
-  function refresh() {
+  const refresh = React.useCallback(() => {
     console.log("REFRESH SPACES");
     const request = {
       scopes: apiRequest.scopes,
@@ -104,10 +103,17 @@ export default function ConfigureIPAM() {
         }
       }
     })();
-  }
+  }, [accounts, dispatch, enqueueSnackbar, instance]);
+
+  React.useEffect(() => {
+    if(!configLoadedRef.current) {
+      refresh();
+      configLoadedRef.current = true;
+    }
+  }, [refresh]);
 
   return (
-    <ConfigureContext.Provider value={{ refreshing, spaces, refresh }}>
+    <ConfigureContext.Provider value={{ spaces, blocks, refreshing, refresh }}>
       <Wrapper>
         <Header>
           Configure Azure IPAM
@@ -115,13 +121,15 @@ export default function ConfigureIPAM() {
         <MainBody>
           <TopSection>
             <SpaceDataGrid
-              selected={selectedSpace}
-              setSelected={setSelectedSpace}
+              selectedSpace={selectedSpace}
+              setSelectedSpace={setSelectedSpace}
             />
           </TopSection>
           <BottomSection>
             <BlockDataGrid
-              selected={selectedSpace}
+              selectedSpace={selectedSpace}
+              selectedBlock={selectedBlock}
+              setSelectedBlock={setSelectedBlock}
             />
           </BottomSection>
         </MainBody>

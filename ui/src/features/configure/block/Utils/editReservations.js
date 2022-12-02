@@ -6,7 +6,8 @@ import { useSnackbar } from "notistack";
 import { useMsal } from "@azure/msal-react";
 import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
-import { DataGrid, GridOverlay } from "@mui/x-data-grid";
+import ReactDataGrid from '@inovua/reactdatagrid-community';
+import '@inovua/reactdatagrid-community/index.css';
 
 import {
   Box,
@@ -16,7 +17,6 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
-  LinearProgress,
   Tooltip,
   IconButton,
 } from "@mui/material";
@@ -55,6 +55,12 @@ const Spotlight = styled("span")({
   color: "mediumblue"
 });
 
+const gridStyle = {
+  height: '100%',
+  border: '1px solid rgba(224, 224, 224, 1)',
+  fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
+};
+
 export default function EditReservations(props) {
   const { open, handleClose, space, block } = props;
 
@@ -73,24 +79,19 @@ export default function EditReservations(props) {
   const timer = React.useRef();
 
   const columns = [
-    { field: "cidr", headerName: "CIDR", headerAlign: "left", align: "left", flex: 0.5 },
-    { field: "userId", headerName: "User ID", headerAlign: "left", align: "left", flex: 1 },
-    { field: "createdOn", headerName: "Created Date", headerAlign: "left", align: "left", flex: 0.75, renderCell: (params) => new Date(params.value * 1000).toLocaleString() },
-    { field: "status", headerName: "Status", headerAlign: "center", align: "center", width: 75, renderCell: renderStatus },
-    { field: "id", headerName: "", headerAlign: "center", align: "center", width: 25, renderCell: renderId }
+    { name: "cidr", header: "CIDR", defaultFlex: 0.5 },
+    { name: "userId", header: "User ID", defaultFlex: 1 },
+    { name: "createdOn", header: "Created Date", defaultFlex: 0.75, render: ({value}) => new Date(value * 1000).toLocaleString() },
+    { name: "status", header: "Status", headerAlign: "center", width: 90, resizable: false, hideable: false, sortable: false, showColumnMenuTool: false, render: renderStatus },
+    { name: "id", header: "", width: 25, resizable: false, hideable: false, showColumnMenuTool: false, sortable: false, renderHeader: () => "", render: renderId }
   ];
 
-  function renderStatus(params) {
-    const MsgIcon = params.value.includes("wait") ? Autorenew : params.value.includes("warn") ? WarningAmber : ErrorOutline
-    const MsgColor = params.value.includes("wait") ? "primary" : params.value.includes("warn") ? "warning" : "error"
+  function renderStatus({value}) {
+    const MsgIcon = value.includes("wait") ? Autorenew : value.includes("warn") ? WarningAmber : ErrorOutline
+    const MsgColor = value.includes("wait") ? "primary" : value.includes("warn") ? "warning" : "error"
 
     const onClick = (e) => {
       e.stopPropagation();
-      console.log("CLICK!");
-      console.log(params);
-      // console.log(params.row.id);
-      // navigator.clipboard.writeText(params.row.id);
-      // setCopied(params.row.id)
     };
   
     const flexCenter = {
@@ -106,7 +107,7 @@ export default function EditReservations(props) {
         placement="top"
         title={
           <div style={{ textAlign: "center" }}>
-            {msgMap[params.value]}
+            {msgMap[value]}
           </div>
         }
       >
@@ -129,15 +130,13 @@ export default function EditReservations(props) {
     );
   }
 
-  function renderId(params) {
-    const contentCopied = (copied === params.row.id);
+  function renderId({value}) {
+    const contentCopied = (copied === value);
 
     const onClick = (e) => {
       e.stopPropagation();
-      console.log("CLICK!");
-      console.log(params.row.id);
-      navigator.clipboard.writeText(params.row.id);
-      setCopied(params.row.id)
+      navigator.clipboard.writeText(value);
+      setCopied(value)
     };
   
     const flexCenter = {
@@ -155,7 +154,7 @@ export default function EditReservations(props) {
           <div style={{ textAlign: "center" }}>
             Click to Copy
             <br />
-            <br />{params.row.id}
+            <br />{value}
           </div>
         }
       >
@@ -183,27 +182,11 @@ export default function EditReservations(props) {
     );
   }
 
-  React.useEffect(() => {
-    refreshData();
-  }, [block]);
-
-  React.useEffect(() => {
-    if(copied !== "") {
-      clearTimeout(timer.current);
-
-      timer.current = setTimeout(
-        function() {
-          setCopied("");
-        }, 3000
-      );
-    }
-  }, [timer, copied]);
-
-  function refreshData() {
-      const request = {
+  const refreshData = React.useCallback(() => {
+    const request = {
       scopes: apiRequest.scopes,
       account: accounts[0],
-    };
+    }
 
     setReservations([]);
     setSelectionModel([]);
@@ -235,7 +218,23 @@ export default function EditReservations(props) {
 
       setLoading(false);
     })();
-  }
+  }, [accounts, block, enqueueSnackbar, instance, space]);
+
+  React.useEffect(() => {
+    refreshData();
+  }, [block, refreshData]);
+
+  React.useEffect(() => {
+    if(copied !== "") {
+      clearTimeout(timer.current);
+
+      timer.current = setTimeout(
+        function() {
+          setCopied("");
+        }, 3000
+      );
+    }
+  }, [timer, copied]);
 
   function onSubmit() {
     const request = {
@@ -267,16 +266,6 @@ export default function EditReservations(props) {
     })();
   }
 
-  function CustomLoadingOverlay() {
-    return (
-      <GridOverlay>
-        <div style={{ position: "absolute", top: 0, width: "100%" }}>
-          <LinearProgress />
-        </div>
-      </GridOverlay>
-    );
-  }
-
   return (
     <div sx={{ height: "300px", width: "100%" }}>
       <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
@@ -302,29 +291,22 @@ export default function EditReservations(props) {
             Select the CIDR reservations for Block <Spotlight>'{block}'</Spotlight> to be deleted
           </DialogContentText>
           <Box sx={{ pt: 4, height: "300px" }}>
-            <DataGrid
-              checkboxSelection
-              disableColumnMenu
-              hideFooter
-              hideFooterPagination
-              hideFooterSelectedRowCount
-              density="compact"
-              rows={reservations}
+            <ReactDataGrid
+              idProperty="id"
+              showCellBorders="horizontal"
+              checkboxColumn
+              checkboxOnlyRowSelect
+              showZebraRows={false}
+              multiSelect={true}
+              showActiveRowIndicator={false}
+              enableColumnAutosize={false}
+              showColumnMenuGroupOptions={false}
               columns={columns}
               loading={loading}
-              onSelectionModelChange={(newSelectionModel) => setSelectionModel(newSelectionModel)}
-              selectionModel={selectionModel}
-              components={{
-                LoadingOverlay: CustomLoadingOverlay,
-                // NoRowsOverlay: CustomNoRowsOverlay,
-              }}
-              sx={{
-                "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus-within":
-                  {
-                    outline: "none",
-                  },
-                // border: "none",
-              }}
+              dataSource={reservations}
+              selected={selectionModel}
+              onSelectionChange={({selected}) => setSelectionModel(selected)}
+              style={gridStyle}
             />
           </Box>
         </DialogContent>

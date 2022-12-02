@@ -122,44 +122,38 @@ export default function Administration() {
     { name: 'id', operator: 'contains', type: 'string', value: '' }
   ];
 
-  const fetchUsers = React.useMemo(() => throttle((input) => SearchUsers(input), 500), []);
-
   const usersLoading = open && !options;
   const unchanged = isEqual(admins, loadedAdmins);
 
-  React.useEffect(() => {
-    if(!adminLoadedRef.current) {
-      adminLoadedRef.current = true;
+  const SearchUsers = React.useCallback((nameFilter) => {
+    const request = {
+      scopes: ["Directory.Read.All"],
+      account: accounts[0],
+    };
 
-      refreshData();
-    }
-  }, []);
-
-  React.useEffect(() => {
-    if(open) {
-      let active = true;
-
-      if (active) {
-        fetchUsers(input);
+    (async () => {
+      try {
+        setOptions(null);
+        const response = await instance.acquireTokenSilent(request);
+        const userData = await callMsGraphUsersFilter(response.accessToken, nameFilter);
+        setOptions(userData.value);
+      } catch (e) {
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar(e.response.data.error, { variant: "error" });
+        }
       }
+    })();
+  }, [accounts, enqueueSnackbar, instance]);
 
-      return () => {
-        active = false;
-      };
-    }
-  }, [open, input, fetchUsers]);
+  const fetchUsers = React.useMemo(() => throttle((input) => SearchUsers(input), 500), [SearchUsers]);
 
-  React.useEffect(() => {
-    if (!open) {
-      setOptions(null);
-    }
-  }, [input, open]);
-
-  React.useEffect(() => {
-    admins && setLoading(false);
-  }, [admins]);
-
-  function refreshData() {
+  const refreshData = React.useCallback(() => {
     const request = {
       scopes: apiRequest.scopes,
       account: accounts[0],
@@ -186,33 +180,39 @@ export default function Administration() {
         // setLoading(false);
       }
     })();
-  }
+  }, [accounts, enqueueSnackbar, instance]);
 
-  function SearchUsers(nameFilter) {
-    const request = {
-      scopes: ["Directory.Read.All"],
-      account: accounts[0],
-    };
+  React.useEffect(() => {
+    if(!adminLoadedRef.current) {
+      adminLoadedRef.current = true;
 
-    (async () => {
-      try {
-        setOptions(null);
-        const response = await instance.acquireTokenSilent(request);
-        const userData = await callMsGraphUsersFilter(response.accessToken, nameFilter);
-        setOptions(userData.value);
-      } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar(e.response.data.error, { variant: "error" });
-        }
+      refreshData();
+    }
+  }, [refreshData]);
+
+  React.useEffect(() => {
+    if(open) {
+      let active = true;
+
+      if (active) {
+        fetchUsers(input);
       }
-    })();
-  }
+
+      return () => {
+        active = false;
+      };
+    }
+  }, [open, input, fetchUsers]);
+
+  React.useEffect(() => {
+    if (!open) {
+      setOptions(null);
+    }
+  }, [input, open]);
+
+  React.useEffect(() => {
+    admins && setLoading(false);
+  }, [admins]);
 
   function onSave() {
     const request = {

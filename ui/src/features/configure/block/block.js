@@ -60,45 +60,45 @@ const gridStyle = {
 
 const columns = [
   { name: "name", header: "Name", defaultFlex: 1 },
-  { name: "space", header: "Parent Space", defaultFlex: 1 },
+  { name: "parentSpace", header: "Parent Space", defaultFlex: 1 },
   { name: "cidr", header: "CIDR", defaultFlex: 0.75 },
 ];
 
 export default function BlockDataGrid(props) {
-  const { selected } = props;
-  const { refresh, refreshing } = React.useContext(ConfigureContext);
+  const { selectedSpace, selectedBlock, setSelectedBlock } = props;
+  const { blocks, refreshing, refresh } = React.useContext(ConfigureContext);
 
-  const [blocks, setBlocks] = React.useState([]);
-  const [previous, setPrevious] = React.useState(null);
+  const [previousSpace, setPreviousSpace] = React.useState(null);
   const [selectionModel, setSelectionModel] = React.useState([]);
-  const [selectedRow, setSelectedRow] = React.useState(null);
+
   const [addBlockOpen, setAddBlockOpen] = React.useState(false);
   const [editVNetsOpen, setEditVNetsOpen] = React.useState(false);
   const [editResvOpen, setEditResvOpen] = React.useState(false);
   const [deleteBlockOpen, setDeleteBlockOpen] = React.useState(false);
+
   const [anchorEl, setAnchorEl] = React.useState(null);
 
   const isAdmin = useSelector(getAdminStatus);
 
   const menuOpen = Boolean(anchorEl);
 
-  React.useEffect(() => {
-    if(selected) {
-      if(selected.name !== previous) {
+  const onSpaceChange = React.useCallback(() => {
+    if(selectedSpace) {
+      if(selectedSpace.name !== previousSpace) {
         setSelectionModel([]);
       }
-
-      setBlocks(selected.blocks)
-      setPrevious(selected.name);
-    } else {
-      setBlocks([]);
-      setPrevious(null);
     }
-  }, [selected]);
+
+    setPreviousSpace(selectedSpace ? selectedSpace.name : null);
+  }, [selectedSpace, previousSpace]);
 
   React.useEffect(() => {
-    setSelectedRow(Object.values(selectionModel)[0])
-  }, [selectionModel]);
+    onSpaceChange()
+  }, [selectedSpace, onSpaceChange]);
+
+  React.useEffect(() => {
+    setSelectedBlock(Object.values(selectionModel)[0])
+  }, [selectionModel, setSelectedBlock]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -144,7 +144,7 @@ export default function BlockDataGrid(props) {
   function NoRowsOverlay() {
     return (
       <React.Fragment>
-        { selected
+        { selectedSpace
           ? <Typography variant="overline" display="block" sx={{ mt: 1 }}>
               No Blocks Found in Selected Space
             </Typography>
@@ -163,23 +163,23 @@ export default function BlockDataGrid(props) {
           <AddBlock
             open={addBlockOpen}
             handleClose={() => setAddBlockOpen(false)}
-            space={selected ? selected.name : null}
-            blocks={selected ? selected.blocks : null}
+            space={selectedSpace ? selectedSpace.name : null}
+            blocks={selectedSpace ? selectedSpace.blocks : null}
             refresh={refresh}
           />
           <EditVnets
             open={editVNetsOpen}
             handleClose={() => setEditVNetsOpen(false)}
-            space={selected ? selected.name : null}
-            block={selectedRow ? selectedRow : null}
+            space={selectedSpace ? selectedSpace.name : null}
+            block={selectedBlock ? selectedBlock : null}
             refresh={refresh}
             refreshingState={refreshing}
           />
           <ConfirmDelete
             open={deleteBlockOpen}
             handleClose={() => setDeleteBlockOpen(false)}
-            space={selected ? selected.name : null}
-            block={selectedRow ? selectedRow.name : null}
+            space={selectedSpace ? selectedSpace.name : null}
+            block={selectedBlock ? selectedBlock.name : null}
             refresh={refresh}
           />
         </React.Fragment>
@@ -187,17 +187,17 @@ export default function BlockDataGrid(props) {
       <EditReservations
         open={editResvOpen}
         handleClose={() => setEditResvOpen(false)}
-        space={selected ? selected.name : null}
-        block={selectedRow ? selectedRow.name : null}
+        space={selectedSpace ? selectedSpace.name : null}
+        block={selectedBlock ? selectedBlock.name : null}
       />
       <GridHeader
         style={{
           borderBottom: "1px solid rgba(224, 224, 224, 1)",
-          backgroundColor: selectedRow ? "rgba(25, 118, 210, 0.12)" : "unset",
+          backgroundColor: selectedBlock ? "rgba(25, 118, 210, 0.12)" : "unset",
         }}
       >
         <Box sx={{ width: "20%" }}></Box>
-        <GridTitle>{selectedRow ? `'${selectedRow.name}' selected` : "Blocks"}</GridTitle>
+        <GridTitle>{selectedBlock ? `'${selectedBlock.name}' selected` : "Blocks"}</GridTitle>
         <Box sx={{ width: "20%", display: "flex", justifyContent: "flex-end" }}>
           <React.Fragment>
             <Tooltip title="Actions">
@@ -257,7 +257,7 @@ export default function BlockDataGrid(props) {
               { isAdmin &&
                 <MenuItem
                   onClick={handleAddBlock}
-                  disabled={!selected}
+                  disabled={!selectedSpace}
                 >
                   <ListItemIcon>
                     <GridViewIcon fontSize="small" />
@@ -268,7 +268,7 @@ export default function BlockDataGrid(props) {
               { isAdmin &&
                 <MenuItem
                   onClick={handleEditVNets}
-                  disabled={!selectedRow}
+                  disabled={!selectedBlock}
                 >
                   <ListItemIcon>
                     <SettingsEthernetIcon fontSize="small" />
@@ -278,7 +278,7 @@ export default function BlockDataGrid(props) {
               }
               <MenuItem
                 onClick={handleEditResv}
-                disabled={!selectedRow}
+                disabled={!selectedBlock}
               >
                 <ListItemIcon>
                   <PieChartOutlineIcon fontSize="small" />
@@ -291,7 +291,7 @@ export default function BlockDataGrid(props) {
               { isAdmin &&
                 <MenuItem
                   onClick={handleDeleteBlock}
-                  disabled={!selectedRow}
+                  disabled={!selectedBlock}
                 >
                   <ListItemIcon>
                     <DeleteOutlineIcon fontSize="small" />
@@ -313,9 +313,7 @@ export default function BlockDataGrid(props) {
           enableColumnAutosize={false}
           showColumnMenuGroupOptions={false}
           columns={columns}
-          // loading={loading}
-          dataSource={blocks || []}
-          // defaultFilterValue={filterValue}
+          dataSource={selectedSpace ? blocks.filter((block) => block.parentSpace === selectedSpace.name) : []}
           onRowClick={(rowData) => onClick(rowData.data)}
           selected={selectionModel}
           emptyText={NoRowsOverlay}
