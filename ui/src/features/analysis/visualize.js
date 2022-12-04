@@ -568,11 +568,6 @@ const Visualize = () => {
 
   function setDataFocus(target) {
     if(eChartsRef && !isEmpty(options.series)) {
-      console.log("SET DATA FOCUS");
-      console.log(options);
-      console.log("TARGET");
-      console.log(target);
-
       let newOptions = cloneDeep(options);
 
       newOptions.title.show = target ? false : true;
@@ -580,11 +575,7 @@ const Visualize = () => {
 
       eChartsRef.getEchartsInstance().setOption(newOptions);
 
-      console.log("NEW OPTIONS");
-      console.log(newOptions);
-
       if(!target) {
-        console.log("CLEARING LEGEND SELECT");
         eChartsRef.getEchartsInstance().dispatchAction({
           type: 'legendAllSelect'
         });
@@ -593,7 +584,6 @@ const Visualize = () => {
           type: 'legendInverseSelect'
         });
       } else {
-        console.log("SELECTING LEGEND TARGET");
         eChartsRef.getEchartsInstance().dispatchAction({
           type: 'legendSelect',
           name: target

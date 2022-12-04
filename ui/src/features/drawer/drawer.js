@@ -296,6 +296,16 @@ export default function NavDrawer() {
       return titleCase;
     }
 
+    function GetInstanceType(target) {
+      var instanceType = typeof target;
+    
+      if(instanceType === 'object') {
+        instanceType = Array.isArray(target) ? 'array': 'object';
+      }
+    
+      return instanceType;
+    }
+
     function objToFilter(data, header, path, exclusions) {
       const searchObj = data.reduce((prev, curr) => {
 
@@ -310,6 +320,7 @@ export default function NavDrawer() {
                 searchKey: key,
                 noun: keyNoun,
                 comparator: Array.isArray(value) ? 'contains' : 'like',
+                type: GetInstanceType(value),
                 values: []
               };
             }
@@ -339,7 +350,7 @@ export default function NavDrawer() {
             filter: {
               name: props.searchKey,
               operator: 'contains',
-              type: 'string',
+              type: props.type,
               value: value
             }
           };

@@ -71,7 +71,7 @@ export default function EditVnets(props) {
 
   React.useEffect(() => {
     if(space && block) {
-      !refreshingState && setSelectionModel(block['vnets'].map(vnet => vnet.id));
+      !refreshingState && setSelectionModel(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}));
     }
   }, [space, block, refreshingState]);
 
@@ -232,7 +232,7 @@ export default function EditVnets(props) {
               enableColumnAutosize={false}
               showColumnMenuGroupOptions={false}
               columns={columns}
-              loading={refreshing}
+              loading={refreshing || refreshingState}
               dataSource={vNets}
               selected={selectionModel}
               onSelectionChange={({selected}) => setSelectionModel(selected)}

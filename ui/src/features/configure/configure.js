@@ -79,7 +79,6 @@ export default function ConfigureIPAM() {
   const dispatch = useDispatch();
 
   const refresh = React.useCallback(() => {
-    console.log("REFRESH SPACES");
     const request = {
       scopes: apiRequest.scopes,
       account: accounts[0],

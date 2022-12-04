@@ -60,7 +60,6 @@ function Refresh() {
 
     (async() => {
       try {
-        console.log("REFRESH ME...");
         const response = await instance.acquireTokenSilent(request)
         dispatch(getMeAsync(response.accessToken))
       } catch (e) {

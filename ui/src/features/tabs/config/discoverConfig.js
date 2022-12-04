@@ -120,7 +120,7 @@ export const vnets = {
     { name: 'parentBlock', operator: 'contains', type: 'string', value: '' },
     { name: 'size', operator: 'gte', type: 'number', value: 0 },
     { name: 'used', operator: 'gte', type: 'number', value: 0 },
-    { name: 'prefixes', operator: 'contains', type: 'string', value: '' }
+    { name: 'prefixes', operator: 'contains', type: 'array', value: '' }
   ],
   detailsMap: {
     showProgress: true,

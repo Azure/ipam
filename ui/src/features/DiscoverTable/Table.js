@@ -25,6 +25,39 @@ import Shrug from "../../img/pam/Shrug";
 import { TableContext } from "./TableContext";
 import ItemDetails from "./Utils/Details";
 
+const filterTypes = Object.assign({}, ReactDataGrid.defaultProps.filterTypes, {
+  array: {
+    name: 'array',
+    emptyValue: null,
+    operators: [
+      {
+        name: 'contains',
+        fn: ({ value, filterValue, data }) => {
+          return filterValue !== (null || '') ? value.join(",").includes(filterValue) : true;
+        }
+      },
+      {
+        name: 'notContains',
+        fn: ({ value, filterValue, data }) => {
+          return filterValue !== (null || '') ? !value.join(",").includes(filterValue) : true;
+        }
+      },
+      {
+        name: 'eq',
+        fn: ({ value, filterValue, data }) => {
+          return filterValue !== (null || '') ? value.includes(filterValue) : true;
+        }
+      },
+      {
+        name: 'neq',
+        fn: ({ value, filterValue, data }) => {
+          return filterValue !== (null || '') ? !value.includes(filterValue) : true;
+        }
+      }
+    ]
+  }
+});
+
 const openStyle = {
   right: 0,
   transition: "all 0.5s ease-in-out",
@@ -117,7 +150,7 @@ export default function DiscoverTable(props) {
   },[location, filterSettings]);
 
   React.useEffect(() => {
-    stateData && setGridData(filter(stateData, filterData));
+    stateData && setGridData(filter(stateData, filterData, filterTypes));
   },[stateData, filterData]);
 
   React.useEffect(() => {
@@ -178,6 +211,7 @@ export default function DiscoverTable(props) {
           enableColumnAutosize={false}
           showColumnMenuGroupOptions={false}
           enableColumnFilterContextMenu={true}
+          filterTypes={filterTypes}
           columns={columnData}
           loading={loading}
           dataSource={gridData || []}
@@ -191,3 +225,5 @@ export default function DiscoverTable(props) {
     </TableContext.Provider>
   );
 }
+
+// data.map((item) => Object.entries(item).reduce((obj, [k, v]) => { Array.isArray(v) ? obj[k] = v.join(", ") : obj[k] = v; return obj; }, {}));
