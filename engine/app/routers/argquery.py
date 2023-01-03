@@ -65,7 +65,7 @@ VNET = """
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
 | where subscriptionId !in~ {}
-| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes = array_slice(properties.addressSpace.addressPrefixes, 0, 0), resv = tostring(coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id']))
+| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes = properties.addressSpace.addressPrefixes, resv = tostring(coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id']))
 | join kind = leftouter(
     resources
     | where type =~ 'Microsoft.Network/virtualNetworks'
@@ -77,7 +77,7 @@ resources
     | extend subnetType = coalesce(nameResult, appGwResult)
     | extend subnetPrefix = todynamic(subnet.properties.addressPrefix)
     | extend subnetPrefixes = todynamic(subnet.properties.addressPrefixes)
-    | extend subnet_details = pack("name", subnet.name, "prefix", tostring(iff(isnotnull(subnetPrefixes), subnetPrefixes[0], subnetPrefix)), "used", coalesce(array_length(subnet.properties.ipConfigurations), 0) + 5, "type", todynamic(subnetType))
+    | extend subnet_details = pack("name", subnet.name, "prefix", iff(isnotnull(subnetPrefixes), subnetPrefixes, pack_array(subnetPrefix)), "used", coalesce(array_length(subnet.properties.ipConfigurations), 0) + 5, "type", todynamic(subnetType))
     | summarize subnet_bag = make_bag(subnet_details) by tostring(subnet.id), id
 ) on id
 | join kind = leftouter(
@@ -120,7 +120,7 @@ resources
 | extend subnetType = coalesce(nameResult, appGwResult)
 | extend subnetPrefix = todynamic(subnet.properties.addressPrefix)
 | extend subnetPrefixes = todynamic(subnet.properties.addressPrefixes)
-| project name = subnet.name, id = subnet.id, prefix = tostring(iff(isnotnull(subnetPrefixes), subnetPrefixes[0], subnetPrefix)), resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), type = todynamic(subnetType)
+| project name = subnet.name, id = subnet.id, prefix = iff(isnotnull(subnetPrefixes), subnetPrefixes, pack_array(subnetPrefix)), resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), type = todynamic(subnetType)
 """
 
 PRIVATE_ENDPOINT = """

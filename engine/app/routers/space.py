@@ -34,7 +34,8 @@ from app.routers.common.helper import (
     cosmos_replace,
     cosmos_delete,
     cosmos_retry,
-    arg_query
+    arg_query,
+    vnet_fixup
 )
 
 logger = logging.getLogger(__name__)
@@ -108,6 +109,7 @@ async def get_spaces(
 
     if expand or utilization:
         vnets = await arg_query(authorization, True, argquery.VNET)
+        vnets = vnet_fixup(vnets)
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
@@ -248,6 +250,7 @@ async def get_space(
 
     if expand or utilization:
         vnets = await arg_query(authorization, is_admin, argquery.VNET)
+        vnets = vnet_fixup(vnets)
 
     if utilization:
         target_space['size'] = 0
@@ -432,6 +435,7 @@ async def get_blocks(
 
     if expand or utilization:
         vnets = await arg_query(authorization, is_admin, argquery.VNET)
+        vnets = vnet_fixup(vnets)
 
     for block in block_list:
         if expand:
@@ -576,6 +580,7 @@ async def get_block(
 
     if expand or utilization:
         vnets = await arg_query(authorization, is_admin, argquery.VNET)
+        vnets = vnet_fixup(vnets)
 
     if expand:
         expanded_vnets = []
@@ -707,6 +712,7 @@ async def available_block_vnets(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     vnet_list = await arg_query(authorization, True, argquery.VNET)
+    vnet_list = vnet_fixup(vnet_list)
 
     for vnet in vnet_list:
         valid = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), vnet['prefixes']))
@@ -773,6 +779,7 @@ async def available_block_vnets(
 
     if expand:
         vnet_list = await arg_query(authorization, True, argquery.VNET)
+        vnet_list = vnet_fixup(vnet_list)
 
         for block_vnet in target_block['vnets']:
             target_vnet = next((x for x in vnet_list if x['id'].lower() == block_vnet['id'].lower()), None)
@@ -825,6 +832,7 @@ async def create_block_vnet(
         raise HTTPException(status_code=400, detail="vNet already exists in block.")
 
     vnet_list = await arg_query(authorization, True, argquery.VNET)
+    vnet_list = vnet_fixup(vnet_list)
 
     target_vnet = next((x for x in vnet_list if x['id'].lower() == vnet.id.lower()), None)
 
@@ -904,6 +912,7 @@ async def update_block_vnets(
         raise HTTPException(status_code=400, detail="List contains duplicate vNets.")
 
     vnet_list = await arg_query(authorization, True, argquery.VNET)
+    vnet_list = vnet_fixup(vnet_list)
 
     invalid_vnets = []
     outside_block_cidr = []
@@ -1085,6 +1094,7 @@ async def create_block_reservation(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     vnet_list = await arg_query(authorization, True, argquery.VNET)
+    vnet_list = vnet_fixup(vnet_list)
 
     block_all_cidrs = []
 

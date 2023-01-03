@@ -140,6 +140,8 @@ module appService 'appService.bicep' = if (!deployAsFunc) {
     appServiceName: resourceNames.appServiceName
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
+    databaseName: resourceNames.cosmosDatabaseName
+    containerName: resourceNames.cosmosContainerName
     managedIdentityId: managedIdentity.outputs.id
     managedIdentityClientId: managedIdentity.outputs.clientId
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
@@ -159,6 +161,8 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
     functionAppName: resourceNames.appServiceName
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
+    databaseName: resourceNames.cosmosDatabaseName
+    containerName: resourceNames.cosmosContainerName
     managedIdentityId: managedIdentity.outputs.id
     managedIdentityClientId: managedIdentity.outputs.clientId
     storageAccountName: resourceNames.storageAccountName

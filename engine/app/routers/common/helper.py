@@ -15,6 +15,7 @@ import azure.cosmos.exceptions as exceptions
 
 import os
 import jwt
+from netaddr import IPNetwork
 from functools import wraps
 
 from requests import options
@@ -22,6 +23,52 @@ from requests import options
 from app.globals import globals
 
 # SCOPE = "https://management.azure.com/user_impersonation"
+
+def valid_ipv4(addr):
+    try:
+        ip_net = IPNetwork(addr, version=4)
+    except:
+        return False
+
+    return True
+
+def valid_ipv6(addr):
+    try:
+        ip_net = IPNetwork(addr, version=6)
+    except:
+        return False
+
+    return True
+
+def vnet_fixup(vnet_list):
+    for vnet in vnet_list:
+        # Filter out IPv4 & IPv6 prefixes
+        ipv4_prefixes = list(filter(lambda x: valid_ipv4(x), vnet['prefixes']))
+        # ipv6_prefixes = list(filter(lambda x: valid_ipv6(x), vnet['prefixes']))
+
+        vnet['prefixes'] = ipv4_prefixes
+        # vnet['prefixes_v6'] = ipv6_prefixes
+
+        for subnet in vnet['subnets']:
+            # Subnet IPv4 & IPv6 prefix
+            ipv4_prefix = subnet['prefix'][0]
+            # ipv6_prefix = subnet['prefix'][1] if len(subnet['prefix']) > 1 else None
+
+            subnet['prefix'] = ipv4_prefix
+            # subnet['prefix_v6'] = ipv6_prefix
+
+    return vnet_list
+
+def subnet_fixup(subnet_list):
+    for subnet in subnet_list:
+        # Subnet IPv4 & IPv6 prefix
+        ipv4_prefix = subnet['prefix'][0]
+        # ipv6_prefix = subnet['prefix'][1] if len(subnet['prefix']) > 1 else None
+
+        subnet['prefix'] = ipv4_prefix
+        # subnet['prefix_v6'] = ipv6_prefix
+
+    return subnet_list
 
 def get_tenant_from_jwt(token):
     """DOCSTRING"""

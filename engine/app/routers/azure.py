@@ -35,7 +35,9 @@ from app.routers.common.helper import (
     cosmos_upsert,
     cosmos_replace,
     cosmos_retry,
-    arg_query
+    arg_query,
+    vnet_fixup,
+    subnet_fixup
 )
 
 from app.routers.space import (
@@ -158,6 +160,24 @@ async def get_vmss_interfaces_sdk(credentials, vmss_list):
     tasks = []
     vmss_interfaces = []
 
+    # print("-----VMSS LIST-----")
+    # print(vmss_list)
+    # print("-------------------")
+
+    fake_vmss = {
+        'name': 'IPAM-VXYzz',
+        'id': '/subscriptions/13655656-04c8-46a7-bc1b-244981d76d95/resourceGroups/IPAM-RG/providers/Microsoft.Compute/virtualMachineScaleSets/IPAM-VZYzz',
+        'size': 'Standard_D2as_v4',
+        'resource_group_name': 'IPAM-RG',
+        'resource_group_id': '/subscriptions/13655656-04c8-46a7-bc1b-244981d76d95/resourceGroups/IPAM-RG',
+        'subscription': {
+            'tenant_id': '43471573-c274-4a46-a3e7-bce8a198ec28',
+            'subscription_id': '13655656-04c8-46a7-bc1b-244981d76d95'
+        }
+    }
+
+    vmss_list.append(fake_vmss)
+
     for vmss in vmss_list:
         tasks.append(asyncio.create_task(get_vmss_interfaces_sdk_helper(credentials, vmss, vmss_interfaces)))
 
@@ -178,40 +198,46 @@ async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
       credential_scopes=[azure_arm_scope]
     )
 
-    async for poll in network_client.network_interfaces.list_virtual_machine_scale_set_network_interfaces(vmss['resource_group_name'], vmss['name']):
-        for ip_config in poll.ip_configurations:
-            vnet_name_search = re.search(r"(?<=virtualNetworks/).*(?=/subnets)", ip_config.subnet.id)
-            vnet_name = vnet_name_search.group(0)
+    try:
+        async for poll in network_client.network_interfaces.list_virtual_machine_scale_set_network_interfaces(vmss['resource_group_name'], vmss['name']):
+            for ip_config in poll.ip_configurations:
+                vnet_name_search = re.search(r"(?<=virtualNetworks/).*(?=/subnets)", ip_config.subnet.id)
+                vnet_name = vnet_name_search.group(0)
 
-            vnet_id_search = re.search(r".*(?=/subnets)", ip_config.subnet.id)
-            vnet_id = vnet_id_search.group(0)
+                vnet_id_search = re.search(r".*(?=/subnets)", ip_config.subnet.id)
+                vnet_id = vnet_id_search.group(0)
 
-            subnet_name_search = re.search(r"(?<=subnets/).*", ip_config.subnet.id)
-            subnet_name = subnet_name_search.group(0)
+                subnet_name_search = re.search(r"(?<=subnets/).*", ip_config.subnet.id)
+                subnet_name = subnet_name_search.group(0)
 
-            vmss_num_search = re.search(r"(?<=virtualMachines/).*", poll.virtual_machine.id)
-            vmss_vm_num = vmss_num_search.group(0)
+                vmss_num_search = re.search(r"(?<=virtualMachines/).*", poll.virtual_machine.id)
+                vmss_vm_num = vmss_num_search.group(0)
 
-            vmss_data = {
-                "name": (vmss['name'] + '_' + vmss_vm_num),
-                "id": poll.virtual_machine.id,
-                "private_ip": ip_config.private_ip_address,
-                "resource_group": vmss['resource_group_name'],
-                "subscription_id": vmss['subscription']['subscription_id'],
-                "tenant_id": vmss['subscription']['tenant_id'],
-                "vnet_name": vnet_name,
-                "vnet_id": vnet_id,
-                "subnet_name": subnet_name,
-                "subnet_id": ip_config.subnet.id,
-                "metadata": {
-                    "size": vmss['size'],
-                    "vmss_name": vmss['name'],
-                    "vmss_vm_num": vmss_vm_num,
-                    "vmss_id": vmss['id']
+                vmss_data = {
+                    "name": (vmss['name'] + '_' + vmss_vm_num),
+                    "id": poll.virtual_machine.id,
+                    "private_ip": ip_config.private_ip_address,
+                    "resource_group": vmss['resource_group_name'],
+                    "subscription_id": vmss['subscription']['subscription_id'],
+                    "tenant_id": vmss['subscription']['tenant_id'],
+                    "vnet_name": vnet_name,
+                    "vnet_id": vnet_id,
+                    "subnet_name": subnet_name,
+                    "subnet_id": ip_config.subnet.id,
+                    "metadata": {
+                        "size": vmss['size'],
+                        "vmss_name": vmss['name'],
+                        "vmss_vm_num": vmss_vm_num,
+                        "vmss_id": vmss['id']
+                    }
                 }
-            }
 
-            list.append(vmss_data)
+                list.append(vmss_data)
+    except Exception as e:
+        logger.error("Error processing VMSS '{}'".format(vmss['name']))
+        logger.error(vmss)
+        logger.error(e.args)
+        pass
 
     await network_client.close()
 
@@ -247,6 +273,7 @@ async def get_vnet(
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
     vnet_list = await arg_query(authorization, admin, argquery.VNET)
+    vnet_list = vnet_fixup(vnet_list)
 
     updated_vnet_list = []
 
@@ -317,6 +344,7 @@ async def get_subnet(
     # ]
 
     subnet_list = await arg_query(authorization, admin, argquery.SUBNET)
+    subnet_list = subnet_fixup(subnet_list)
 
     updated_subnet_list = []
 

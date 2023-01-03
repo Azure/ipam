@@ -7,6 +7,12 @@ param functionAppPlanName string
 @description('CosmosDB URI')
 param cosmosDbUri string
 
+@description('CosmosDB Database Name')
+param databaseName
+
+@description('CosmosDB Container Name')
+param containerName
+
 @description('KeyVault URI')
 param keyVaultUri string
 
@@ -84,6 +90,14 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
         {
           name: 'COSMOS_KEY'
           value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/COSMOS-KEY/)'
+        }
+        {
+          name: 'DATABASE_NAME'
+          value: databaseName
+        }
+        {
+          name: 'CONTAINER_NAME'
+          value: containerName
         }
         {
           name: 'CLIENT_ID'
