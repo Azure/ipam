@@ -72,12 +72,16 @@ import Peering from "../../img/Peering";
 // import Conflict from "../../img/Conflict";
 import Person from "../../img/Person";
 import Rule from "../../img/Rule";
+import Tools from "../../img/Tools";
+import Planner from "../../img/Planner";
 
 import UserSettings from "./userSettings";
 
 import Welcome from "../welcome/Welcome";
 import DiscoverTabs from "../tabs/discoverTabs";
 import AnalyzeTabs from "../tabs/analyzeTabs";
+import ToolsTabs from "../tabs/toolsTabs";
+
 import AdminTabs from "../tabs/adminTabs";
 import ConfigureIPAM from "../configure/configure";
 
@@ -140,7 +144,7 @@ export default function NavDrawer() {
         icon: Home,
         link: "/",
         admin: false
-      },
+      }
     ],
     [
       {
@@ -199,6 +203,19 @@ export default function NavDrawer() {
           }
         ]
       },
+      {
+        title: "Tools",
+        icon: Tools,
+        admin: false,
+        children: [
+          {
+            title: "Planner",
+            icon: Planner,
+            link: "tools/planner",
+            admin: false
+          }
+        ]
+      }
     ],
     [
       {
@@ -225,7 +242,7 @@ export default function NavDrawer() {
             admin: true
           }
         ]
-      },
+      }
     ]
   ];
 
@@ -791,6 +808,7 @@ export default function NavDrawer() {
           <Route path="discover/endpoint" element={<DiscoverTabs />} />
           <Route path="analyze/visualize" element={<AnalyzeTabs />} />
           <Route path="analyze/peering" element={<AnalyzeTabs />} />
+          <Route path="tools/planner" element={<ToolsTabs />} />
           <Route path="configure" element={<ConfigureIPAM />} />
           {/* <Route path="admin" element={<Administration />} /> */}
           <Route path="admin/admins" element={<AdminTabs />} />
