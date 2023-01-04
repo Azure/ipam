@@ -6,7 +6,7 @@
 
 # Set minimum version requirements
 #Requires -Version 7.2
-#Requires -Modules @{ ModuleName="Az"; ModuleVersion="7.5.0"}
+#Requires -Modules @{ ModuleName="Az"; ModuleVersion="8.0.0"}
 #Requires -Modules @{ ModuleName="Microsoft.Graph"; ModuleVersion="1.9.6"}
 
 # Intake and set global parameters
