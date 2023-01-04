@@ -122,6 +122,7 @@ export default function ConfigureIPAM() {
             <SpaceDataGrid
               selectedSpace={selectedSpace}
               setSelectedSpace={setSelectedSpace}
+              setSelectedBlock={setSelectedBlock}
             />
           </TopSection>
           <BottomSection>

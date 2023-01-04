@@ -69,7 +69,7 @@ export default function BlockDataGrid(props) {
   const { blocks, refreshing, refresh } = React.useContext(ConfigureContext);
 
   const [previousSpace, setPreviousSpace] = React.useState(null);
-  const [selectionModel, setSelectionModel] = React.useState([]);
+  const [selectionModel, setSelectionModel] = React.useState({});
 
   const [addBlockOpen, setAddBlockOpen] = React.useState(false);
   const [editVNetsOpen, setEditVNetsOpen] = React.useState(false);
@@ -85,7 +85,7 @@ export default function BlockDataGrid(props) {
   const onSpaceChange = React.useCallback(() => {
     if(selectedSpace) {
       if(selectedSpace.name !== previousSpace) {
-        setSelectionModel([]);
+        setSelectionModel({});
       }
     }
 

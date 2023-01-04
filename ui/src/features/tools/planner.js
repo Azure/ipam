@@ -49,7 +49,7 @@ const Item = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(1),
   textAlign: "center",
   color: theme.palette.text.secondary,
-  fontSize: "clamp(12px, 1vw, 20px)"
+  fontSize: "clamp(12px, 1vw, 16px)"
 }));
 
 const cidrMasks = [
@@ -263,8 +263,8 @@ const Planner = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
-      <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 1, pb: 1, pr: 3, pl: 3, alignItems: 'center' }}>
-        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 1, pb: 1 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
           <Autocomplete
             freeSolo
             id="grouped-demo"
@@ -295,7 +295,7 @@ const Planner = () => {
             )}
             renderGroup={(params) => (
               <li key={params.group}>
-                <Box sx={{ top: '-8px', padding: '4px 10px' }}>{params.group}</Box>
+                <Box sx={{ top: '-8px', padding: '4px 10px', whiteSpace: 'nowrap' }}>{params.group}</Box>
                 <ul style={{ padding: 0 }}>{params.children}</ul>
               </li>
             )}
@@ -305,6 +305,13 @@ const Planner = () => {
                   {option.name}
                 </li>
               );
+            }}
+            componentsProps={{
+              paper: {
+                sx: {
+                  width: 'fit-content'
+                }
+              }
             }}
           />
           <FormControl size="small">
@@ -357,7 +364,7 @@ const Planner = () => {
             renderInput={(params) => <TextField {...params} label="Mask" placeholder="Max" />}
           />
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 1, mb: 1, marginLeft: 'auto' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', marginLeft: 'auto' }}>
           <ToggleButtonGroup
             size="small"
             color="primary"
@@ -378,7 +385,7 @@ const Planner = () => {
           </ToggleButtonGroup>
         </Box>
       </Box>
-      <Box sx={{ flexGrow: 1, pb: 3, pr: 3, pl: 3, overflowY: 'scroll', overflowX: 'hidden' }}>
+      <Box sx={{ flexGrow: 1, pb: 3, pr: 3, pl: 3, overflowY: 'auto', overflowX: 'hidden' }}>
         {
           subnetData &&
           [...new Set(subnetData.subnets.map((x) => x.mask))].map((mask) => {
@@ -389,7 +396,7 @@ const Planner = () => {
                 {
                   subnetData?.subnets.filter((x) => x.mask === mask).map((item) => {
                     return (
-                      <Grid key={`grid-item-${item.network}-${mask}`} xs={5} sm={3} md={2}>
+                      <Grid key={`grid-item-${item.network}-${mask}`} xs={5} sm={3} md={2} xl={1}>
                         <Item
                           style={{
                             backgroundColor: item.overlap ? "orangered" : "lawngreen",

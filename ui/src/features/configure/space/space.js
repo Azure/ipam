@@ -2,6 +2,8 @@ import * as React from "react";
 import { useSelector } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
+import { isEmpty } from 'lodash';
+
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
 
@@ -62,10 +64,10 @@ const columns = [
 ];
 
 export default function SpaceDataGrid(props) {
-  const { selectedSpace, setSelectedSpace } = props;
+  const { selectedSpace, setSelectedSpace, setSelectedBlock } = props;
   const { spaces, refresh } = React.useContext(ConfigureContext);
 
-  const [selectionModel, setSelectionModel] = React.useState([]);
+  const [selectionModel, setSelectionModel] = React.useState({});
 
   const [addSpaceOpen, setAddSpaceOpen] = React.useState(false);
   const [editSpaceOpen, setEditSpaceOpen] = React.useState(false);
@@ -78,8 +80,9 @@ export default function SpaceDataGrid(props) {
   const menuOpen = Boolean(anchorEl);
 
   React.useEffect(() => {
-    setSelectedSpace(Object.values(selectionModel)[0]);
-  }, [selectionModel, setSelectedSpace]);
+    setSelectedBlock(null);
+    setSelectedSpace(!isEmpty(selectionModel) ? Object.values(selectionModel)[0] : null);
+  }, [selectionModel, setSelectedSpace, setSelectedBlock]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -111,6 +114,8 @@ export default function SpaceDataGrid(props) {
     setSelectionModel(prevState => {
       if(!prevState.hasOwnProperty(id)) {
         newSelectionModel[id] = data;
+      } else {
+        setSelectedBlock(null);
       }
       
       return newSelectionModel;

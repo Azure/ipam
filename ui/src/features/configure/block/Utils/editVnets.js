@@ -154,7 +154,7 @@ export default function EditVnets(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        await replaceBlockNetworks(response.accessToken, space, block.name, selectionModel);
+        await replaceBlockNetworks(response.accessToken, space, block.name, Object.keys(selectionModel));
         handleClose();
         enqueueSnackbar("Successfully updated IP Block vNets", { variant: "success" });
         refresh();

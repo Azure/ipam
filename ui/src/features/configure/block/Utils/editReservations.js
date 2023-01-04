@@ -246,7 +246,7 @@ export default function EditReservations(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        await deleteBlockResvs(response.accessToken, space, block, selectionModel);
+        await deleteBlockResvs(response.accessToken, space, block, Object.keys(selectionModel));
         handleClose();
         enqueueSnackbar("Successfully deleted IP Block reservations", { variant: "success" });
         refreshData();
