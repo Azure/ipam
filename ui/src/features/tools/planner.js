@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useSelector } from 'react-redux';
-import { styled } from '@mui/material/styles';
+import { ThemeProvider, createTheme, styled } from '@mui/material/styles';
 
 import { useMsal } from "@azure/msal-react";
 import { InteractionRequiredAuthError } from "@azure/msal-browser";
@@ -43,6 +43,19 @@ import {
 import { apiRequest } from "../../msal/authConfig";
 
 import { availableSubnets } from './utils/iputils';
+
+const plannerTheme = createTheme({
+  breakpoints: {
+    values: {
+      xs: 0,
+      sm: 600,
+      md: 900,
+      lg: 1200,
+      xl: 1536,
+      xxl: 1920
+    },
+  },
+});
 
 const Item = styled(Paper)(({ theme }) => ({
   backgroundColor: "red",
@@ -262,6 +275,7 @@ const Planner = () => {
   };
 
   return (
+    <ThemeProvider theme={plannerTheme}>
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
       <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
         <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
@@ -396,7 +410,7 @@ const Planner = () => {
                 {
                   subnetData?.subnets.filter((x) => x.mask === mask).map((item) => {
                     return (
-                      <Grid key={`grid-item-${item.network}-${mask}`} xs={5} sm={3} md={2} xl={1}>
+                      <Grid key={`grid-item-${item.network}-${mask}`} xs={5} sm={3} md={2} xxl={1}>
                         <Item
                           style={{
                             backgroundColor: item.overlap ? "orangered" : "lawngreen",
@@ -416,6 +430,7 @@ const Planner = () => {
         })}
       </Box>
     </Box>
+    </ThemeProvider>
   );
 }
 
