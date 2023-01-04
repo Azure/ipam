@@ -8,10 +8,10 @@ param functionAppPlanName string
 param cosmosDbUri string
 
 @description('CosmosDB Database Name')
-param databaseName
+param databaseName string
 
 @description('CosmosDB Container Name')
-param containerName
+param containerName string
 
 @description('KeyVault URI')
 param keyVaultUri string

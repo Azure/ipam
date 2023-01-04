@@ -160,24 +160,6 @@ async def get_vmss_interfaces_sdk(credentials, vmss_list):
     tasks = []
     vmss_interfaces = []
 
-    # print("-----VMSS LIST-----")
-    # print(vmss_list)
-    # print("-------------------")
-
-    fake_vmss = {
-        'name': 'IPAM-VXYzz',
-        'id': '/subscriptions/13655656-04c8-46a7-bc1b-244981d76d95/resourceGroups/IPAM-RG/providers/Microsoft.Compute/virtualMachineScaleSets/IPAM-VZYzz',
-        'size': 'Standard_D2as_v4',
-        'resource_group_name': 'IPAM-RG',
-        'resource_group_id': '/subscriptions/13655656-04c8-46a7-bc1b-244981d76d95/resourceGroups/IPAM-RG',
-        'subscription': {
-            'tenant_id': '43471573-c274-4a46-a3e7-bce8a198ec28',
-            'subscription_id': '13655656-04c8-46a7-bc1b-244981d76d95'
-        }
-    }
-
-    vmss_list.append(fake_vmss)
-
     for vmss in vmss_list:
         tasks.append(asyncio.create_task(get_vmss_interfaces_sdk_helper(credentials, vmss, vmss_interfaces)))
 
