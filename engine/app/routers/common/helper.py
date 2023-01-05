@@ -7,7 +7,7 @@ from azure.core import MatchConditions
 from azure.core.exceptions import ClientAuthenticationError, HttpResponseError, ServiceRequestError
 
 from azure.mgmt.resourcegraph.aio import ResourceGraphClient
-from azure.mgmt.resourcegraph.models import *
+from azure.mgmt.resourcegraph.models import QueryRequest, QueryRequestOptions, ResultFormat
 from azure.mgmt.managementgroups.aio import ManagementGroupsAPI
 
 from azure.cosmos.aio import CosmosClient
@@ -133,7 +133,7 @@ async def get_mgmt_group_name(tenant_id):
         await mgmt_group_api.close()
         await client_creds.close()
 
-    return results
+    return result
 
 async def cosmos_query(query: str, tenant_id: str):
     """DOCSTRING"""

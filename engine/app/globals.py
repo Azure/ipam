@@ -8,24 +8,24 @@ from azure.identity import AzureAuthorityHosts
 
 AZURE_ENV_MAP = {
     'AZURE_PUBLIC': {
-      'AZURE_ARM': 'management.azure.com',
-      'AZURE_MGMT': 'management.core.windows.net',
-      'AUTH_HOST': AzureAuthorityHosts.AZURE_PUBLIC_CLOUD
+        'AZURE_ARM': 'management.azure.com',
+        'AZURE_MGMT': 'management.core.windows.net',
+        'AUTH_HOST': AzureAuthorityHosts.AZURE_PUBLIC_CLOUD
     },
     'AZURE_US_GOV': {
-      'AZURE_ARM': 'management.usgovcloudapi.net',
-      'AZURE_MGMT': 'management.core.usgovcloudapi.net',
-      'AUTH_HOST': AzureAuthorityHosts.AZURE_GOVERNMENT
+        'AZURE_ARM': 'management.usgovcloudapi.net',
+        'AZURE_MGMT': 'management.core.usgovcloudapi.net',
+        'AUTH_HOST': AzureAuthorityHosts.AZURE_GOVERNMENT
     },
     'AZURE_GERMANY': {
-      'AZURE_ARM': 'management.microsoftazure.de',
-      'AZURE_MGMT': 'management.core.cloudapi.de',
-      'AUTH_HOST': AzureAuthorityHosts.AZURE_GERMANY
+        'AZURE_ARM': 'management.microsoftazure.de',
+        'AZURE_MGMT': 'management.core.cloudapi.de',
+        'AUTH_HOST': AzureAuthorityHosts.AZURE_GERMANY
     },
     'AZURE_CHINA': {
-      'AZURE_ARM': 'management.chinacloudapi.cn',
-      'AZURE_MGMT': 'management.core.chinacloudapi.cn',
-      'AUTH_HOST': AzureAuthorityHosts.AZURE_CHINA
+        'AZURE_ARM': 'management.chinacloudapi.cn',
+        'AZURE_MGMT': 'management.core.chinacloudapi.cn',
+        'AUTH_HOST': AzureAuthorityHosts.AZURE_CHINA
     }
 }
 

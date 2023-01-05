@@ -47,8 +47,8 @@ async def new_user(user_id, tenant_id):
         "type": "user",
         "tenant_id": tenant_id,
         "data": {
-          "id": user_id,
-          "apiRefresh": 5
+            "id": user_id,
+            "apiRefresh": 5
         }
     }
 

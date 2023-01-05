@@ -66,9 +66,9 @@ async def get_subscriptions_sdk(credentials):
     subscriptions = []
 
     subscription_client = SubscriptionClient(
-      credential=credentials,
-      base_url=azure_arm_url,
-      credential_scopes=[azure_arm_scope]
+        credential=credentials,
+        base_url=azure_arm_url,
+        credential_scopes=[azure_arm_scope]
     )
 
     async for poll in subscription_client.subscriptions.list():
@@ -124,10 +124,10 @@ async def get_vmss_list_sdk_helper(credentials, subscription, list):
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
 
     compute_client = ComputeManagementClient(
-      credential=credentials,
-      subscription_id=subscription['subscription_id'],
-      base_url=azure_arm_url,
-      credential_scopes=[azure_arm_scope]
+        credential=credentials,
+        subscription_id=subscription['subscription_id'],
+        base_url=azure_arm_url,
+        credential_scopes=[azure_arm_scope]
     )
 
     try:
@@ -174,10 +174,10 @@ async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
 
     network_client = NetworkManagementClient(
-      credential=credentials,
-      subscription_id=vmss['subscription']['subscription_id'],
-      base_url=azure_arm_url,
-      credential_scopes=[azure_arm_scope]
+        credential=credentials,
+        subscription_id=vmss['subscription']['subscription_id'],
+        base_url=azure_arm_url,
+        credential_scopes=[azure_arm_scope]
     )
 
     try:
@@ -657,12 +657,12 @@ async def match_resv_to_vnets():
 
         for block in space['blocks']:
             for vnet in block['vnets']:
-              active = next((x for x in vnet_list if x['id'] == vnet['id']), None)
+                active = next((x for x in vnet_list if x['id'] == vnet['id']), None)
 
-              if active:
-                vnet['active'] = True
-              else:
-                vnet['active'] = False
+                if active:
+                    vnet['active'] = True
+                else:
+                    vnet['active'] = False
 
             for index, resv in enumerate(block['resv']):
                 if resv['id'] in stale_resv:

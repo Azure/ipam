@@ -45,6 +45,7 @@ param(
     ParameterSetName = 'TemplateOnly')]
   [Parameter(Mandatory = $false,
     ParameterSetName = 'Function')]
+  [ValidateLength(1,7)]
   [string]
   $NamePrefix,
 

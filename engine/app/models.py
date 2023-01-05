@@ -170,9 +170,9 @@ class Reservation(BaseModel):
 
     @root_validator
     def format_tag(cls, values) -> dict:
-      values["tag"] = { "X-IPAM-RES-ID": values["id"]}
-      
-      return values
+        values["tag"] = { "X-IPAM-RES-ID": values["id"]}
+        
+        return values
 
 class BlockBasic(BaseModel):
     """DOCSTRING"""

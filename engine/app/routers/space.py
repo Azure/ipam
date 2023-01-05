@@ -947,12 +947,12 @@ async def update_block_vnets(
     new_vnet_list = []
 
     for vnet in vnets:
-      new_vnet = {
-        "id": vnet,
-        "active": True
-      }
+        new_vnet = {
+            "id": vnet,
+            "active": True
+        }
 
-      new_vnet_list.append(new_vnet)
+        new_vnet_list.append(new_vnet)
 
     target_block['vnets'] = new_vnet_list
 

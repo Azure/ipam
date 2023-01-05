@@ -7,6 +7,7 @@ param guid string = newGuid()
 @description('Deployment Location')
 param location string = deployment().location
 
+@maxLength(7)
 @description('Prefix for Resource Naming')
 param namePrefix string = 'ipam'
 
