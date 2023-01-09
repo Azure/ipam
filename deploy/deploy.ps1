@@ -228,6 +228,7 @@ process {
 
   # Set preference variables
   $ErrorActionPreference = "Stop"
+  $DebugPreference = 'SilentlyContinue'
 
   # Hide Azure PowerShell SDK Warnings
   $Env:SuppressAzurePowerShellBreakingChangeWarnings = $true
@@ -240,10 +241,7 @@ process {
   $errorLog = Join-Path -Path $logPath -ChildPath "error_$(get-date -format `"yyyyMMddhhmmsstt`").log"
   $transcriptLog = Join-Path -Path $logPath -ChildPath "deploy_$(get-date -format `"yyyyMMddhhmmsstt`").log"
 
-  if ($DEBUG_MODE) {
-    $DebugPreference = 'SilentlyContinue'
-    $debugSetting = 'Continue'
-  }
+  $debugSetting = $DEBUG_MODE ? 'Continue' : 'SilentlyContinue'
 
   Start-Transcript -Path $transcriptLog | Out-Null
 
@@ -710,7 +708,7 @@ process {
       5>$($DEBUG_MODE ? $debugLog : $null)
     }
 
-    $DebugPreference = 'Continue'
+    $DebugPreference = 'SilentlyContinue'
 
     Write-Host "INFO: IPAM bicep templates deployed successfully" -ForegroundColor Green
     Write-Verbose -Message "IPAM bicep template deployed successfully"
