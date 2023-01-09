@@ -125,10 +125,14 @@ You have the ability to pass optional flags to the deployment script:
 | `-UIAppName <name>`                             | Changes the name of the UI app registration                               |
 | `-EngineAppName <name>`                         | Changes the name of the Engine app registration                           |
 | `-Tags @{​​​​​​<tag> = '​<value>'; ​<tag> = '​<value>'}` | Attaches the hashtable as tags on the deployed IPAM resource group        |
-| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **(See note below)** |
-| `-NamePrefix <prefix>`                          | Replaces the default resource prefix of "ipam" with an alternative prefix |
+| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **<sup>1</sup>** |
+| `-NamePrefix <prefix>`                          | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>2</sup>** |
 | `-AsFunction`                                   | Deploys the engine container only to an Azure Function                    |
 | `-PrivateACR`                                   | Deploys a private Azure Container Registry and builds the IPAM containers |
+
+> **NOTE 1:** This must include ALL resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
+
+> **NOTE 2:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
 
 **Customize the name of the App Registrations:**
 
@@ -192,8 +196,6 @@ $ResourceNames = @{
   -Location "westus3" `
   -ResourceNames $ResourceNames
   ```
-
-> **NOTE:** This must include ALL resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
 
 ## App Registration Only Deployment
 
@@ -247,9 +249,13 @@ You have the ability to pass optional flags to the deployment script:
 | Parameter                                       | Description                                                               |
 | :---------------------------------------------- | :------------------------------------------------------------------------ |
 | `-Tags @{​​​​​​<tag> = '​<value>'; ​<tag> = '​<value>'}`​ | Attaches the hashtable as tags on the deployed IPAM resource group        |
-| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **(See note below)** |
-| `-NamePrefix <prefix>`                          | Replaces the default resource prefix of "ipam" with an alternative prefix |
+| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **<sup>1</sup>** |
+| `-NamePrefix <prefix>`                          | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>2</sup>** |
 | `-PrivateACR`                                   | Deploys a private Azure Container Registry and builds the IPAM containers |
+
+> **NOTE 1:** This must include ALL resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
+
+> **NOTE 2:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
 
 **Add custom tags to the Azure resources:**
 
@@ -301,4 +307,5 @@ $ResourceNames = @{
   -ResourceNames $ResourceNames
   ```
 
-> **NOTE:** This must include ALL resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
+## Infrastructure Stack (Only) Deployment
+
