@@ -707,7 +707,7 @@ process {
       -Location $location `
       -TemplateFile main.bicep `
       -TemplateParameterObject $deploymentParameters `
-      5>$debugLog
+      5>$($DEBUG_MODE ? $debugLog : $null)
     }
 
     $DebugPreference = 'Continue'
