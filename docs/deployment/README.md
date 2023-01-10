@@ -306,6 +306,3 @@ $ResourceNames = @{
   -ParameterFile ./main.parameters.json `
   -ResourceNames $ResourceNames
   ```
-
-## Infrastructure Stack (Only) Deployment
-
