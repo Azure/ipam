@@ -15,7 +15,6 @@ import uuid
 import copy
 import shortuuid
 import jsonpatch
-import logging
 from netaddr import IPSet, IPNetwork
 
 from app.dependencies import (
@@ -37,11 +36,6 @@ from app.routers.common.helper import (
     arg_query,
     vnet_fixup
 )
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-console = logging.StreamHandler()
-logger.addHandler(console)
 
 router = APIRouter(
     prefix="/spaces",

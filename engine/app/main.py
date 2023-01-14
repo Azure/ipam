@@ -11,10 +11,10 @@ from azure.cosmos import PartitionKey
 from azure.cosmos.exceptions import CosmosResourceExistsError, CosmosResourceNotFoundError
 
 from app.routers import azure, admin, user, space
+from app.logs.logs import ipam_logger as logger
 
 import os
 import uuid
-import logging
 from pathlib import Path
 
 from app.globals import globals
@@ -24,11 +24,6 @@ from app.routers.common.helper import (
 )
 
 BUILD_DIR = os.path.join(os.getcwd(), "app", "build")
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-console = logging.StreamHandler()
-logger.addHandler(console)
 
 description = """
 Azure IPAM is a lightweight solution developed on top of the Azure platform designed to help Azure customers manage their enterprise IP Address space easily and effectively.
@@ -47,6 +42,8 @@ app = FastAPI(
     docs_url = "/api/docs",
     redoc_url = "/api/docs"
 )
+
+app.logger = logger
 
 app.include_router(
     azure.router,
@@ -118,7 +115,7 @@ if os.path.isdir(BUILD_DIR):
     def read_index(request: Request, full_path: str):
         target_file = BUILD_DIR + "/" + full_path
 
-        print('look for: ', full_path, target_file)
+        # print('look for: ', full_path, target_file)
         if os.path.exists(target_file):
             return FileResponse(target_file)
 

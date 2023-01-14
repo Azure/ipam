@@ -13,7 +13,6 @@ import azure.cosmos.exceptions as exceptions
 import re
 import copy
 import asyncio
-import logging
 from ipaddress import IPv4Network
 from netaddr import IPSet, IPNetwork
 from uuid import uuid4
@@ -46,10 +45,7 @@ from app.routers.space import (
 
 from app.globals import globals
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-console = logging.StreamHandler()
-logger.addHandler(console)
+from app.logs.logs import ipam_logger as logger
 
 router = APIRouter(
     prefix="/azure",
@@ -149,7 +145,7 @@ async def get_vmss_list_sdk_helper(credentials, subscription, list):
 
             list.append(vmss_data)
     except HttpResponseError:
-        print("Error fetching VMSS on subscription {}".format(subscription['subscription_id']))
+        logger.error("Error fetching VMSS on subscription {}".format(subscription['subscription_id']))
         pass
 
     await compute_client.close()
