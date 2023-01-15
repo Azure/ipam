@@ -150,17 +150,17 @@ DynamicParam {
   $attrFull = [System.Management.Automation.ParameterAttribute]::new()
   $attrFull.ParameterSetName = 'ResourceNames'
   $attrFull.ParameterSetName = "Full"
-  $attrFull.Mandatory = $true
+  $attrFull.Mandatory = $false
 
   $attrTemplateOnly = [System.Management.Automation.ParameterAttribute]::new()
   $attrTemplateOnly.ParameterSetName = 'ResourceNames'
   $attrTemplateOnly.ParameterSetName = "TemplateOnly"
-  $attrTemplateOnly.Mandatory = $true
+  $attrTemplateOnly.Mandatory = $false
 
   $attrFunction = [System.Management.Automation.ParameterAttribute]::new()
   $attrFunction.ParameterSetName = 'ResourceNames'
   $attrFunction.ParameterSetName = "Function"
-  $attrFunction.Mandatory = $true
+  $attrFunction.Mandatory = $false
 
   $attrValidation = [System.Management.Automation.ValidateScriptAttribute]::new({
     $invalidFields = [System.Collections.ArrayList]@()
@@ -1002,12 +1002,10 @@ process {
     if($DEBUG_MODE) {
       Write-Host "Debug Log: $debugLog" -ForegroundColor Red
     }
-
+  }
+  finally {
     Write-Host
     Stop-Transcript | Out-Null
     exit
   }
-
-  Write-Host
-  Stop-Transcript | Out-Null
 }
