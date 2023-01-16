@@ -16,7 +16,7 @@ IPAM was developed to give customers a simple, straightforward way to manage the
 | ![IPAM Architecture](./images/ipam_architecture_full.png ':size=70%') | ![IPAM Architecture](./images/ipam_architecture_function.png ':size=70%') |
 
 ## IPAM Infrastructure
-The IPAM solution is comprised of containers running on Azure App Services. IPAM can also be deployed in an API-only fashion with an Azure Function if no UI is required (e.g. pure IaC model). The containers are built and published to a public Azure Container Registry (ACR), but you may also choose to build your own containers and host them in your own registry. More details on this can be found in the [Contributing](./contributing/README.md) section. All of the supporting infrastructure is deployed and runs within your Azure Tenant, none of the resources are shared with other IPAM users (outside of the public ACR).
+The IPAM solution is comprised of containers running on Azure App Services. IPAM can also be deployed in an API-only fashion with an Azure Function if no UI is required (e.g. pure IaC model). The containers are built and published to a public Azure Container Registry (ACR), but you may also choose to build your own containers and host them in a Private Container Registry. More details on this can be found in the [Deployment](./deployment/README.md) section. All of the supporting infrastructure is deployed and runs within your Azure Tenant, none of the resources are shared with other IPAM users (outside of the publicly hosted ACR).
 
 Here is a more specific breakdown of the components used:
 
@@ -31,13 +31,12 @@ Here is a more specific breakdown of the components used:
       - Authentication point for the IPAM UI ([auth code](https://learn.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow) flow)
 - **Resource Group**
   - House all Azure infrastructure related resources
-- **App Service Plan with App Service**
-  - Run the IPAM Engine & UI containers or...
-- **App Service Plan with Function App**
+- **App Service Plan with App Service** *(Full Deployment only)*
+  - Run the IPAM Engine, UI, and Load Balancer containers as a multi-container App Service
+- **App Service Plan with Function App** *(Function Deployment only)*
   - Run IPAM Engine as an Azure Function
-- **Storage Account with Blob Container**
-  - When deployed as an App Service, this account stores the NGINX related configuration data
-  - When deployed as an Azure Function, this account stores the Function metadata
+- **Storage Account with Blob Container** *(Function Deployment only)*
+  - This account stores the Function metadata
 - **Cosmos DB**
   - Backend NoSQL datastore for the IPAM application
 - **KeyVault**
@@ -50,7 +49,7 @@ Here is a more specific breakdown of the components used:
 
 ## How IPAM Works
 
-As mentioned above, the IPAM application is made up of two containers, one that runs the front end user interface, and the other that runs the backend engine. IPAM has been designed as such to accommodate the following use cases...
+As mentioned above, the IPAM application is made up of two containers, one that runs the front end user interface, and the other that runs the backend engine. For the *Full* deployment, there is also a Load Balancer container running [NGINX](https://www.nginx.com/) for path-based routing. IPAM has been designed as such to accommodate the following use cases...
 
 - A user interface is not needed or you plan on providing your own user interface (API-only)
 - You plan on interfacing with IPAM exclusively via the RESTful API
@@ -58,8 +57,8 @@ As mentioned above, the IPAM application is made up of two containers, one that 
 
 ## User Interface
 
-The front end is written in [React](https://reactjs.org/) and we leverage the [Material UI](https://mui.com/) for the UI components. The UI handles AuthN/AuthZ with AzureAD via [MSAL](https://learn.microsoft.com/en-us/azure/active-directory/develop/msal-overview), and manages token acquisition & refresh for communication to the backend Engine API (on your behalf).
+The front end is written in [React](https://reactjs.org/) and leverages the [Material UI](https://mui.com/) for the UI components. The UI handles AuthN/AuthZ with AzureAD via [MSAL](https://learn.microsoft.com/en-us/azure/active-directory/develop/msal-overview), and manages token acquisition & refresh for communication to the backend Engine API (on your behalf).
 
 ## Backend Engine
 
-The engine is written in [Python](https://www.python.org/) and we leverage the [FastAPI Framework](https://fastapi.tiangolo.com/) for building the APIs. It handles interfacing with Azure Resource Graph on the user's behalf to gather information about various Azure Networking related resources, and their states.
+The engine is written in [Python](https://www.python.org/) and leverages the [FastAPI Framework](https://fastapi.tiangolo.com/) for building the APIs. It handles interfacing with Azure Resource Graph on the user's behalf to gather information about various Azure Networking related resources, and their states.

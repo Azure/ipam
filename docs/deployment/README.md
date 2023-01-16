@@ -125,14 +125,16 @@ You have the ability to pass optional flags to the deployment script:
 | `-UIAppName <name>`                             | Changes the name of the UI app registration                               |
 | `-EngineAppName <name>`                         | Changes the name of the Engine app registration                           |
 | `-Tags @{​​​​​​<tag> = '​<value>'; ​<tag> = '​<value>'}` | Attaches the hashtable as tags on the deployed IPAM resource group        |
-| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **<sup>1</sup>** |
-| `-NamePrefix <prefix>`                          | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>2</sup>** |
+| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **<sup>1,2</sup>** |
+| `-NamePrefix <prefix>`                          | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>3</sup>** |
 | `-AsFunction`                                   | Deploys the engine container only to an Azure Function                    |
 | `-PrivateACR`                                   | Deploys a private Azure Container Registry and builds the IPAM containers |
 
-> **NOTE 1:** This must include ALL resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
+> **NOTE 1:** The required values will vary based on the deployment type.
 
-> **NOTE 2:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
+> **NOTE 2:** This must include ALL required resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
+
+> **NOTE 3:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
 
 **Customize the name of the App Registrations:**
 
@@ -188,14 +190,56 @@ $ResourceNames = @{
   workspaceName = 'myworkspace01'
   managedIdentityName = 'mymanagedid01'
   resourceGroupName = 'myresourcegroup01'
-  storageAccountName = 'mystorageaccount01'
+}
+
+./deploy.ps1 `
+  -Location "westus3" `
+  -ResourceNames $ResourceNames
+```
+
+**Override default resource names with custom resource names and deploy as an Azure Function:**
+
+```powershell
+$ResourceNames = @{
+  appServiceName = 'myappservice01'
+  appServicePlanName = 'myappserviceplan01'
+  cosmosAccountName = 'mycosmosaccount01'
+  cosmosContainerName = 'mycontainer01'
+  cosmosDatabaseName = 'mydatabase01'
+  keyVaultName = 'mykeyvault01'
+  workspaceName = 'myworkspace01'
+  managedIdentityName = 'mymanagedid01'
+  resourceGroupName = 'myresourcegroup01'
   containerRegistryName = 'mycontainerregistry01'
 }
 
 ./deploy.ps1 `
   -Location "westus3" `
   -ResourceNames $ResourceNames
-  ```
+  -PrivateACR
+```
+
+**Override default resource names with custom resource names and use a private Container Registry:**
+
+```powershell
+$ResourceNames = @{
+  functionName = 'myfunction01'
+  appServicePlanName = 'myappserviceplan01'
+  cosmosAccountName = 'mycosmosaccount01'
+  cosmosContainerName = 'mycontainer01'
+  cosmosDatabaseName = 'mydatabase01'
+  keyVaultName = 'mykeyvault01'
+  workspaceName = 'myworkspace01'
+  managedIdentityName = 'mymanagedid01'
+  resourceGroupName = 'myresourcegroup01'
+  storageAccountName = 'mystorageaccount01'
+}
+
+./deploy.ps1 `
+  -Location "westus3" `
+  -ResourceNames $ResourceNames
+  -AsFunction
+```
 
 ## App Registration Only Deployment
 
@@ -249,13 +293,15 @@ You have the ability to pass optional flags to the deployment script:
 | Parameter                                       | Description                                                               |
 | :---------------------------------------------- | :------------------------------------------------------------------------ |
 | `-Tags @{​​​​​​<tag> = '​<value>'; ​<tag> = '​<value>'}`​ | Attaches the hashtable as tags on the deployed IPAM resource group        |
-| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **<sup>1</sup>** |
-| `-NamePrefix <prefix>`                          | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>2</sup>** |
+| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **<sup>1,2</sup>** |
+| `-NamePrefix <prefix>`                          | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>3</sup>** |
 | `-PrivateACR`                                   | Deploys a private Azure Container Registry and builds the IPAM containers |
 
-> **NOTE 1:** This must include ALL resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
+> **NOTE 1:** The required values will vary based on the deployment type.
 
-> **NOTE 2:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
+> **NOTE 2:** This must include ALL required resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
+
+> **NOTE 3:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
 
 **Add custom tags to the Azure resources:**
 
@@ -297,7 +343,27 @@ $ResourceNames = @{
   workspaceName = 'myworkspace01'
   managedIdentityName = 'mymanagedid01'
   resourceGroupName = 'myresourcegroup01'
-  storageAccountName = 'mystorageaccount01'
+}
+
+./deploy.ps1 `
+  -Location "westus3" `
+  -ParameterFile ./main.parameters.json `
+  -ResourceNames $ResourceNames
+```
+
+**Override default resource names with custom resource names and use a private Container Registry:**
+
+```powershell
+$ResourceNames = @{
+  appServiceName = 'myappservice01'
+  appServicePlanName = 'myappserviceplan01'
+  cosmosAccountName = 'mycosmosaccount01'
+  cosmosContainerName = 'mycontainer01'
+  cosmosDatabaseName = 'mydatabase01'
+  keyVaultName = 'mykeyvault01'
+  workspaceName = 'myworkspace01'
+  managedIdentityName = 'mymanagedid01'
+  resourceGroupName = 'myresourcegroup01'
   containerRegistryName = 'mycontainerregistry01'
 }
 
@@ -305,4 +371,29 @@ $ResourceNames = @{
   -Location "westus3" `
   -ParameterFile ./main.parameters.json `
   -ResourceNames $ResourceNames
-  ```
+  -PrivateACR
+```
+
+**Override default resource names with custom resource names and deploy as an Azure Function:**
+
+```powershell
+$ResourceNames = @{
+  functionName = 'myappservice01'
+  appServicePlanName = 'myappserviceplan01'
+  cosmosAccountName = 'mycosmosaccount01'
+  cosmosContainerName = 'mycontainer01'
+  cosmosDatabaseName = 'mydatabase01'
+  keyVaultName = 'mykeyvault01'
+  workspaceName = 'myworkspace01'
+  managedIdentityName = 'mymanagedid01'
+  resourceGroupName = 'myresourcegroup01'
+  storageAccountName = 'mystorageaccount01'
+}
+
+./deploy.ps1 `
+  -Location "westus3" `
+  -ParameterFile ./main.parameters.json `
+  -ResourceNames $ResourceNames
+```
+
+> **NOTE:** Use this format when the `-AsFunction` flag was used during the *App Registration Only* step above

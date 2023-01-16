@@ -6,5 +6,6 @@
     },
     "[javascript]": {
       "editor.tabSize": 2
-    }
+    },
+    "editor.wordWrap": "off"
 }
