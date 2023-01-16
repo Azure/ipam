@@ -256,7 +256,7 @@ export default function ManageExclusions() {
       <MainBody>
         <FloatingHeader>
           <Box sx={{ width: "20%" }}></Box>
-          <HeaderTitle>Subscription Management</HeaderTitle>
+          <HeaderTitle>Subscription Exclusions</HeaderTitle>
           <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ width: "20%", ml: 2, mr: 2 }}>
             <Tooltip title="Save" >
               <IconButton

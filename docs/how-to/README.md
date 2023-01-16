@@ -20,7 +20,7 @@ As an IPAM administrator, you have the ability to include/exclude subscriptions 
 
 ![IPAM Admin Subscriptions](./images/ipam_admin_subscriptions.png)
 
-From this screen, you can select Subscriptions which are to be excluded from IPAM by clicking on them. Once selected for exclusion, the subscription will be highlighted in **red**. Don't forget to click **save** in the upper-right once complete.
+From this screen, you can select Subscriptions which are to be <u>**excluded**</u> from IPAM by clicking on them. Once selected for exclusion, the subscription will be highlighted in **red**. Don't forget to click **save** in the upper-right once complete.
 
 ![IPAM Admin Subscriptions Config](./images/ipam_admin_subscriptions_config.png)
 
