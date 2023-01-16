@@ -11,7 +11,9 @@ Taxonomies for products and languages: https://review.docs.microsoft.com/new-hop
 ## Overview and Architecture
 IPAM was developed to give customers a simple, straightforward way to manage their IP address space in Azure.  IPAM enables end-to-end planning, deploying, managing and monitoring of your IP address space, with an intuitive user experience. IPAM automatically discovers IP address utilization in your Azure tenant and enables you to manage it all from a centralized UI. You can also interface with IPAM programmatically via a RESTful API to facilitate IP address management at scale via Infrastructure as Code (IaC). IPAM is designed and architected based on the 5 pillars of the [Microsoft Azure Well Architected Framework](https://docs.microsoft.com/en-us/azure/architecture/framework/).
 
-![IPAM Architecture](./images/ipam_architecture.png ':size=70%')
+| Full (App Service)                                               | Function |
+:-----------------------------------------------------------------:|:---------:
+| ![IPAM Architecture](./images/ipam_architecture.png ':size=70%') | ![]()    |
 
 ## IPAM Infrastructure
 The IPAM solution is comprised of containers running on Azure App Services. IPAM can also be deployed in an API-only fashion with an Azure Function if no UI is required (e.g. pure IaC model). The containers are built and published to a public Azure Container Registry (ACR), but you may also choose to build your own containers and host them in your own registry. More details on this can be found in the [Contributing](./contributing/README.md) section. All of the supporting infrastructure is deployed and runs within your Azure Tenant, none of the resources are shared with other IPAM users (outside of the public ACR).

@@ -8,7 +8,7 @@ During the deployment of Azure IPAM, you see an error similar to the following:
 
 ![New-AzRoleAssignment Failure](./images/new_az_role_assignment_error.png)
 
-HTTP 502 responses are visible for the "spaces/vnet/multi" calls in the Developer Tools networking view
+HTTP 502 responses are visible for the "spaces/vnet/multi" calls in the Developer Tools networking view.
 
 ![Data Fails To Load & HTTP 403 Responses](./images/fail_to_load_all_403.png)
 
@@ -52,7 +52,7 @@ During the deployment of Azure IPAM, you see an error similar to the following:
 
 ![New-AzRoleAssignment Failure](./images/new_mg_oauth2_permission_grant_error.png)
 
-When signing into Azure IPAM fore the first time, you are presented with a *Permissions Requested* screen:
+When authenticating to Azure IPAM for the first time, you are presented with a *Permissions Requested* screen.
 
 ![Permissions Requested](./images/permissions_requested.png)
 
@@ -60,7 +60,7 @@ When signing into Azure IPAM fore the first time, you are presented with a *Perm
 
 The role of [Global Administrator](https://learn.microsoft.com/en-us/azure/active-directory/roles/permissions-reference#global-administrator) is required to deploy the Azure IPAM solution. This role is needed to [grant admin consent](https://learn.microsoft.com/en-us/azure/active-directory/manage-apps/grant-admin-consent?pivots=portal) for the API permissions used by the Azure IPAM [App Registrations](https://learn.microsoft.com/en-us/azure/active-directory/develop/app-objects-and-service-principals#application-registration).
 
-Navigate to your user in Azure Active Directory and check your current [Role Assignments](https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/active-directory-users-assign-role-azure-portal)
+Navigate to your user in Azure Active Directory and check your current [Role Assignments](https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/active-directory-users-assign-role-azure-portal).
 
 ![Global Admin Missing](./images/global_admin_role_missing.png)
 
