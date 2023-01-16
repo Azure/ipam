@@ -8,6 +8,14 @@ During the deployment of Azure IPAM, you see an error similar to the following:
 
 ![New-AzRoleAssignment Failure](./images/new_az_role_assignment_error.png)
 
+HTTP 502 responses are visible for the "spaces/vnet/multi" calls in the Developer Tools networking view
+
+![Data Fails To Load & HTTP 403 Responses](./images/fail_to_load_all_403.png)
+
+- An error in the Application Log for the App Service stating that the *Access is denied to the requested resource. The user might not have enough permission*.
+
+![Access Denied Errors](./images/access_denied_not_enough_permission.png)
+
 #### <u>Verify</u>
 
 You can check to see if you have the necessary permissions on the Tenant Root Group in the Azure Portal by navigating to [Management Groups](https://learn.microsoft.com/en-us/azure/governance/management-groups/overview)
@@ -43,6 +51,10 @@ You can read more about the requirements for deploying Azure IPAM in the [Prereq
 During the deployment of Azure IPAM, you see an error similar to the following:
 
 ![New-AzRoleAssignment Failure](./images/new_mg_oauth2_permission_grant_error.png)
+
+When signing into Azure IPAM fore the first time, you are presented with a *Permissions Requested* screen:
+
+![Permissions Requested](./images/permissions_requested.png)
 
 #### <u>Verify</u>
 
