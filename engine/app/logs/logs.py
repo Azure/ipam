@@ -1,3 +1,4 @@
+import os
 import sys
 import logging
 import json
@@ -36,7 +37,6 @@ class InterceptHandler(logging.Handler):
             exception=record.exc_info
         ).log(level,record.getMessage())
 
-
 class IPAMLogger:
 
     @classmethod
@@ -63,13 +63,12 @@ class IPAMLogger:
         retention: str,
         format: str
     ):
-
         logger.remove()
         logger.add(
             sys.stdout,
             enqueue=True,
             backtrace=False,
-            colorize=True,
+            colorize=(False if os.environ.get('WEBSITE_HOSTNAME') else True),
             level=level.upper(),
             format=format
         )

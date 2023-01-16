@@ -20,11 +20,11 @@ Once you select the Tenant Root Group, under *Access Control (IAM)* you can clic
 
 ![Insufficient Tenant Root Group Permissions](./images/tenant_root_group_permissions.png)
 
-You can see from the above image, this user only has the ```Reader``` role, which isn't sufficient to deploy the Azure IPAM solution.
+You can see from the above image, this user only has the `Reader` role, which isn't sufficient to deploy the Azure IPAM solution.
 
 #### <u>Resolve</u>
 
-Contact your Azure Administrator (or equivalent) to request a role which has ```Microsoft.Authorization/roleAssignments/write``` at the *Tenant Root Group* level.
+Contact your Azure Administrator (or equivalent) to request a role which has `Microsoft.Authorization/roleAssignments/write` at the *Tenant Root Group* level.
 
 This role could be one of the following:
 
@@ -78,13 +78,13 @@ You can read more about the requirements for deploying Azure IPAM in the [Prereq
 
 ![Data Fails To Load & HTTP 502 Responses](./images/fail_to_load_me_502.png)
 
-- An error in the Application Log for the App Service stating that the *Operation is not allow through the Azure Cosmos DB endpoint*.
+- An error in the Application Log for the App Service stating that the *Operation...is not allow through the Azure Cosmos DB endpoint*.
 
 ![Cosmos DB Not Allowed Though Endpoint](./images/cosmos_db_not_allowed.png)
 
 #### <u>Verify</u>
 
-You can check to see if the flag ```DisableKeyBasedMetadataWriteAccess``` is set on your Cosmos DB resource by running one of the following commands:
+You can check to see if the flag `DisableKeyBasedMetadataWriteAccess` is set on your Cosmos DB resource by running one of the following commands:
 
 **Azure PowerShell**
 
@@ -103,7 +103,7 @@ az cosmosdb show --resource-group <ResourceGroupName> --name <CosmosDBAccountNam
 
 #### <u>Resolve</u>
 
-Set the ```DisableKeyBasedMetadataWriteAccess``` flag to ```false``` using one of the following commands:
+Set the `DisableKeyBasedMetadataWriteAccess` flag to `false` using one of the following commands:
 
 **Azure PowerShell**
 
