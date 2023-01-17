@@ -1,4 +1,3 @@
-from ast import Break
 from fastapi import APIRouter, Depends, Request, Response, HTTPException, Header, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.exceptions import HTTPException as StarletteHTTPException
@@ -1069,7 +1068,7 @@ async def create_block_reservation(
     """
     Create a CIDR Reservation for the target Block with the following information:
 
-    - **size**: Subnet mask bits
+    - **size**: Network mask bits
     """
 
     user_assertion = authorization.split(' ')[1]
@@ -1107,7 +1106,7 @@ async def create_block_reservation(
     available_block = next((net for net in list(available_set.iter_cidrs()) if net.prefixlen <= req.size), None)
 
     if not available_block:
-        raise HTTPException(status_code=500, detail="Subnet of requested size unavailable in target block.")
+        raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block.")
 
     next_cidr = list(available_block.subnet(req.size))[0]
 

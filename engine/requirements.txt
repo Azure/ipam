@@ -8,6 +8,8 @@ netaddr
 shortuuid
 aiohttp
 jsonpatch
+loguru
+regex
 azure-common
 azure-identity
 azure-core
@@ -21,4 +23,3 @@ azure-keyvault-secrets
 azure-cosmos==4.3.0
 azure-functions
 nest_asyncio
-loguru

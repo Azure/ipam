@@ -323,3 +323,18 @@ class JSONPatch(BaseModel):
 
 class UserUpdate(List[JSONPatch]):
     """DOCSTRING"""
+
+###################
+#   TOOL MODELS   #
+###################
+
+class SubnetCIDRReq(BaseModel):
+    """DOCSTRING"""
+
+    vnet_id: str
+    size: int
+
+class NewSubnetCIDR(BaseModel):
+    """DOCSTRING"""
+
+    cidr: str
