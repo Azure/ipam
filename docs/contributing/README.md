@@ -1,4 +1,5 @@
-## Contributing
+# Contributing
+
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
 the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
@@ -11,89 +12,66 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
-## Building and Running Your Own Container Images
-The IPAM application code is available to you via this project. We do maintain and host both the engine and UI container images for you, but if you'd like to build your own images, here are instructions on how to do so.
+## Running an IPAM Development Environment with Docker Compose
+We have included a Docker Compose file in the root directory of the project (`docker-compose.yml`), to quickly build a fully functional Azure IPAM development environment. The Docker Compose file is also dependant on an `env` file to correctly pass all of the required environment variables into the containers. You can use the `env.example` file, also found at the root directory of the project, as a template to create your own `env` file. 
 
-### Engine Container
-You can build a development or production image. To do so, run the following Docker commands from within the `engine` directory of this project.
+To start a development environment of the Azure IPAM solution via Docker Compose, run the following commands from the root directory of the project:
 
-To build a development image:
 ```shell
-docker build --rm --no-cache -t ipam-engine -f Dockerfile.dev .
-docker build --rm --build-arg PORT=8000 --no-cache -t ipam-engine -f Dockerfile.dev .
-```
-To build a production image:
-```shell
-docker build --rm --no-cache -t ipam-engine -f Dockerfile.prod .
-docker build --rm --build-arg PORT=80 --no-cache -t ipam-engine -f Dockerfile.prod .
-```
-To run your container in development mode on Linux:
-```shell
-docker run -it --rm -v ${​​​​​​​​PWD}​​​​​​​​/app:/code/app --env-file .env -p 8000:80 ipam-engine:latest
-```
-To run your container in development mode on Windows:
-```shell
-docker run -it --rm -v %cd%/app:/code/app --env-file .env -p 8000:80 ipam-engine:latest
-```
-To push your container image to DockerHub:
-```shell
-docker tag ipam-engine <Repository Name>/ipam-engine:latest
-docker push <Repository Name>/ipam-engine:latest
-```
-To push your container image to Azure Container Registry, run the following Azure CLI commands:
-```shell
-az login --use-device-code
-az account set --subscription <Subscription ID>
-az acr build -r <Azure Container Registry Name> -f .\Dockerfile.prod -t ipam-engine:latest .
-```
-
-### UI Container
-You can build a development or production image. To do so, run the following Docker commands from within the `ui` directory of this project.
-
-To build a development image:
-```shell
-docker build --rm --no-cache -t ipam-ui -f Dockerfile.dev .
-docker build --rm --build-arg PORT=3000 --no-cache -t ipam-ui -f Dockerfile.dev .
-```
-To build a production image:
-```shell
-docker build --rm --no-cache -t ipam-ui -f Dockerfile.prod .
-docker build --rm --build-arg PORT=80 --no-cache -t ipam-ui -f Dockerfile.prod .
-```
-To run your container in development mode on Linux:
-```shell
-docker run -it --rm -v ${​​​​​​​​PWD}​​​​​​​​/app:/code/app --env-file .env -p 3000:80 ipam-ui:latest
-```
-To run your container in development mode on Windows:
-```shell
-docker run -it --rm -v %cd%/app:/code/app --env-file .env -p 3000:80 ipam-ui:latest
-```
-To push your container image to DockerHub:
-```shell
-docker tag ipam-ui <Repository Name>/ipam-ui:latest
-docker push <Repository Name>/ipam-ui:latest
-```
-To push your container image to Azure Container Registry, run the following Azure CLI commands:
-```shell
-az login --use-device-code
-az account set --subscription <Subscription ID>
-az acr build -r <Azure Container Registry Name> -f .\Dockerfile.prod -t ipam-ui:latest .
-```
-### Running an IPAM Development Environment with Docker Compose
-We have included a Docker Compose file in the root directory of the project, `docker-compose.yml`, to run the complete solution easily. The Compose file is also dependant on an `env` file. You can use the `env.example` file, also found at the root directory of the project, as a template to create your own `env` file. 
-
-To run a development environment of the IPAM solution via Docker Compose, run the following commands from the root directory of the project:
-```shell
+# Build the Container Images
 docker compose build --no-cache
+
+# Start IPAM Development Environment
 docker compose up --force-recreate
+
+# Stop & Remove Containers when Finished
 docker compose rm -s -v -f
 ```
-### Building Production Containers Images and Pushing them to DockerHub
-We have included a Docker file at the root directory of the project, `Dockerfile`, so you can build and push the production containers all at once. 
+
+## Building Production Containers Images and Pushing them to DockerHub
+We user Dockerfiles to build the containers for each of the Azure IPAM supporting components including the Engine, UI, and Load Balancer. If you choose, you can build these containers yourself and host them in DockerHub.
 
 To do so, run the following Docker commands from the root directory of the project:
- ```shell
-docker build --rm --no-cache -t ipam .
-docker tag ipam <Repository Name>/ipam:latest
-docker push <Repository Name>/ipam:latest
+
+```shell
+# Engine Container
+docker build --rm --no-cache -t <Repository Name>/ipam-engine:latest -f ./engine/Dockerfile.deb ./engine
+docker push <Repository Name>/ipam-engine:latest
+
+# Function Container
+docker build --rm --no-cache -t <Repository Name>/ipam-func:latest -f ./engine/Dockerfile.func ./engine
+docker push <Repository Name>/ipam-func:latest
+
+# UI Container
+docker build --rm --no-cache -t <Repository Name>/ipam-ui:latest -f ./ui/Dockerfile.deb ./ui
+docker push <Repository Name>/ipam-ui:latest
+
+# Load Balancer Container
+docker build --rm --no-cache -t <Repository Name>/ipam-lb:latest -f ./lb/Dockerfile ./lb
+docker push <Repository Name>/ipam-lb:latest
+```
+
+## Building Production Containers Images Using a Private ACR
+In addition to the DockerHub option (above), alternatively you may choose to leverage an Azure Container Registry to host your Azure IPAM containers. Also, you may have selected the `-PrivateACR` flag during the deployment of your Azure IPAM environment, and from time to time you will need to update your containers as new code is released.
+
+To do so, run the following Azure CLI commands from the root directory of the project:
+
+```shell
+# Authenicate to Azure CLI
+az login
+
+# Set Target Azure Subscription
+az account set --subscription "<Target Subscription Name/GUID>"
+
+# Engine Container
+az acr build -r <ACR Name> -t ipam-engine:latest -f ./engine/Dockerfile.deb ./engine
+
+# Function Container
+az acr build -r <ACR Name> -t ipam-func:latest -f ./engine/Dockerfile.func ./engine
+
+# UI Container
+az acr build -r <ACR Name> -t ipam-ui:latest -f ./ui/Dockerfile.deb ./ui
+
+# Load Balancer Container
+az acr build -r <ACR Name> -t ipam-lb:latest -f ./lb/Dockerfile ./lb
 ```
