@@ -97,7 +97,13 @@ class SpaceUpdate(List[JSONPatch]):
 class VNetsUpdate(List[str]):
     """DOCSTRING"""
 
-class CIDRReq(BaseModel):
+class SpaceCIDRReq(BaseModel):
+    """DOCSTRING"""
+
+    blocks: set
+    size: int
+
+class BlockCIDRReq(BaseModel):
     """DOCSTRING"""
 
     size: int
@@ -162,6 +168,8 @@ class Reservation(BaseModel):
     """DOCSTRING"""
 
     id: str
+    space: Optional[str]
+    block: Optional[str]
     cidr: str
     userId: str
     createdOn: float

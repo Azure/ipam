@@ -36,6 +36,8 @@ from app.routers.common.helper import (
     vnet_fixup
 )
 
+from app.logs.logs import ipam_logger as logger
+
 router = APIRouter(
     prefix="/spaces",
     tags=["spaces"],
@@ -527,6 +529,99 @@ async def create_block(
     await cosmos_replace(space_query[0], target_space)
 
     return new_block
+
+@router.post(
+    "/{space}/reservations",
+    summary = "Create CIDR Reservation from List of Blocks",
+    response_model = Reservation,
+    status_code = 201
+)
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error creating cidr reservation, please try again."
+)
+async def create_multi_block_reservation(
+    space: str,
+    req: SpaceCIDRReq,
+    authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id)
+):
+    """
+    Create a CIDR Reservation for the first available Block from a list of Blocks with the following information:
+
+    - **blocks**: Array of Block names (Evaluated in the oder provided)
+    - **size**: Network mask bits
+    """
+
+    user_assertion = authorization.split(' ')[1]
+    decoded = jwt.decode(user_assertion, options={"verify_signature": False})
+
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
+
+    space_blocks = set([x['name'] for x in target_space['blocks']])
+    invalid_blocks = (req.blocks - space_blocks)
+
+    if invalid_blocks:
+        raise HTTPException(status_code=400, detail="Invalid Block(s) in Block list: {}.".format(list(invalid_blocks)))
+
+    vnet_list = await arg_query(authorization, True, argquery.VNET)
+    vnet_list = vnet_fixup(vnet_list)
+
+    available_block = None
+    available_block_name = None
+
+    for block in req.blocks:
+        if not available_block:
+            target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
+
+            block_all_cidrs = []
+
+            for v in target_block['vnets']:
+                target = next((x for x in vnet_list if x['id'].lower() == v['id'].lower()), None)
+                prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes'])) if target else []
+                block_all_cidrs += prefixes
+
+            for r in target_block['resv']:
+                block_all_cidrs.append(r['cidr'])
+
+            block_set = IPSet([target_block['cidr']])
+            reserved_set = IPSet(block_all_cidrs)
+            available_set = block_set ^ reserved_set
+
+            available_block = next((net for net in list(available_set.iter_cidrs()) if net.prefixlen <= req.size), None)
+            available_block_name = block if available_block else None
+
+    if not available_block:
+        raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block(s).")
+
+    next_cidr = list(available_block.subnet(req.size))[0]
+
+    if "preferred_username" in decoded:
+        creator_id = decoded["preferred_username"]
+    else:
+        creator_id = f"spn:{decoded['oid']}"
+
+    new_cidr = {
+        "id": shortuuid.uuid(),
+        "cidr": str(next_cidr),
+        "userId": creator_id,
+        "createdOn": time.time(),
+        "status": "wait"
+    }
+
+    target_block['resv'].append(new_cidr)
+
+    await cosmos_replace(space_query[0], target_space)
+
+    new_cidr['space'] = target_space['name']
+    new_cidr['block'] = available_block_name
+
+    return new_cidr
 
 @router.get(
     "/{space}/blocks/{block}",
@@ -1056,12 +1151,12 @@ async def get_block_reservations(
 )
 @cosmos_retry(
     max_retry = 5,
-    error_msg = "Error creating block reservation, please try again."
+    error_msg = "Error creating cidr reservation, please try again."
 )
 async def create_block_reservation(
     space: str,
     block: str,
-    req: CIDRReq,
+    req: BlockCIDRReq,
     authorization: str = Header(None),
     tenant_id: str = Depends(get_tenant_id)
 ):
@@ -1125,9 +1220,10 @@ async def create_block_reservation(
 
     target_block['resv'].append(new_cidr)
 
-    # NEED TO RETURN GUID FOR USER TO APPEND TO AZURE TAG ON VNET
-
     await cosmos_replace(space_query[0], target_space)
+
+    new_cidr['space'] = target_space['name']
+    new_cidr['block'] = available_block['name']
 
     return new_cidr
 
