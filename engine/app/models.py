@@ -100,7 +100,7 @@ class VNetsUpdate(List[str]):
 class SpaceCIDRReq(BaseModel):
     """DOCSTRING"""
 
-    blocks: set
+    blocks: list
     size: int
 
 class BlockCIDRReq(BaseModel):

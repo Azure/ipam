@@ -563,8 +563,9 @@ async def create_multi_block_reservation(
     except:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
+    request_blocks = set(req.blocks)
     space_blocks = set([x['name'] for x in target_space['blocks']])
-    invalid_blocks = (req.blocks - space_blocks)
+    invalid_blocks = (request_blocks - space_blocks)
 
     if invalid_blocks:
         raise HTTPException(status_code=400, detail="Invalid Block(s) in Block list: {}.".format(list(invalid_blocks)))
