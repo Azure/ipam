@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const ENGINE_URL = window.location.origin
+import { getEngineURL } from '../../global/globals';
+
+// const ENGINE_URL = window.location.origin
+const ENGINE_URL = getEngineURL();
 
 export function fetchSpaces(token, utilization = false) {
   var url = new URL(`${ENGINE_URL}/api/spaces`);
