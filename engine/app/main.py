@@ -16,6 +16,7 @@ from app.logs.logs import ipam_logger as logger
 import os
 import uuid
 from pathlib import Path
+from urllib.parse import urlparse
 
 from app.globals import globals
 
@@ -88,6 +89,12 @@ origins = [
 
 if os.environ.get('WEBSITE_HOSTNAME'):
     origins.append("https://" + os.environ.get('WEBSITE_HOSTNAME'))
+
+if os.environ.get('IPAM_UI_URL'):
+    ui_url = urlparse(os.environ.get('UI_URL'))
+
+    if (ui_url.scheme and ui_url.netloc):
+        origins.append(ui_url.scheme + "://" + ui_url.netloc)
 
 app.add_middleware(
     CORSMiddleware,
