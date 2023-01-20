@@ -3,7 +3,7 @@ from azure.functions._http_asgi import AsgiResponse, AsgiRequest
 
 # https://github.com/Azure-Samples/fastapi-on-azure-functions/issues/4
 # https://github.com/Azure/azure-functions-python-library/pull/143
-# import nest_asyncio
+import nest_asyncio
 
 from app.main import app as ipam
 
@@ -11,7 +11,7 @@ IS_INITED = False
 
 # https://github.com/Azure-Samples/fastapi-on-azure-functions/issues/4
 # https://github.com/Azure/azure-functions-python-library/pull/143
-# nest_asyncio.apply()
+nest_asyncio.apply()
 
 async def run_setup(app):
     """Workaround to run Starlette startup events on Azure Function Workers."""
