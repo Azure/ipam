@@ -1,9 +1,5 @@
 import os
 
-from azure.identity import ClientSecretCredential
-from azure.core.exceptions import HttpResponseError
-from azure.mgmt.managementgroups import ManagementGroupsAPI
-
 from azure.identity import AzureAuthorityHosts
 
 AZURE_ENV_MAP = {
@@ -30,41 +26,6 @@ AZURE_ENV_MAP = {
 }
 
 class Globals:
-    # def __init__(self):
-    #     azure_env = os.environ.get('AZURE_ENV')
-    #     azure_arm_host = AZURE_ENV_MAP[azure_env]['AZURE_ARM'] if azure_env in AZURE_ENV_MAP else AZURE_ENV_MAP['AZURE_PUBLIC']['AZURE_ARM']
-    #     azure_auth_host = AZURE_ENV_MAP[azure_env]['AUTH_HOST'] if azure_env in AZURE_ENV_MAP else AZURE_ENV_MAP['AZURE_PUBLIC']['AUTH_HOST']
-    #     azure_arm_url = 'https://{}'.format(azure_arm_host)
-    #     azure_arm_scope = '{}/.default'.format(azure_arm_url)
-    #     mgmt_group_id = '/providers/Microsoft.Management/managementGroups/{}'.format(os.environ.get('TENANT_ID'))
-
-    #     print("---------------------------")
-    #     print("********GLOBAL INIT********")
-    #     print("---------------------------")
-    #     print("TENANT_ID: {}".format(os.environ.get('TENANT_ID')))
-    #     print("CLIENT_ID: {}".format(os.environ.get('CLIENT_ID')))
-    #     print("CLIENT_SECRET: {}".format(os.environ.get('CLIENT_SECRET')))
-    #     print("AUTHORITY_HOST: {}".format(azure_auth_host))
-    #     print("AZURE_MGMT_URL: {}".format(azure_arm_url))
-    #     print("---------------------------")
-
-    #     client_creds = ClientSecretCredential(
-    #         tenant_id=os.environ.get('TENANT_ID'),
-    #         client_id=os.environ.get('CLIENT_ID'),
-    #         client_secret=os.environ.get('CLIENT_SECRET'),
-    #         authority=azure_auth_host
-    #     )
-
-    #     mgmt_group_api = ManagementGroupsAPI(
-    #         credential=client_creds,
-    #         base_url=azure_arm_url,
-    #         credential_scopes=[azure_arm_scope]
-    #     )
-
-    #     target_group = mgmt_group_api.management_groups.get(os.environ.get('TENANT_ID'))
-
-    #     self.root_mgmt_group = target_group.name
-
     @property
     def CLIENT_ID(self):
         return os.environ.get('CLIENT_ID')
