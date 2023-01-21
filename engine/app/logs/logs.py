@@ -85,7 +85,7 @@ class IPAMLogger:
         logging.basicConfig(handlers=[InterceptHandler()], level=40)
         logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]
 
-        for _log in ['uvicorn', 'fastapi']:
+        for _log in ['uvicorn', 'fastapi', 'azure']:
             _logger = logging.getLogger(_log)
             _logger.handlers = [InterceptHandler()]
 
