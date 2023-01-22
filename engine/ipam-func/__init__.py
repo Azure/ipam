@@ -3,15 +3,21 @@ from azure.functions._http_asgi import AsgiResponse, AsgiRequest
 
 # https://github.com/Azure-Samples/fastapi-on-azure-functions/issues/4
 # https://github.com/Azure/azure-functions-python-library/pull/143
-import nest_asyncio
+# import nest_asyncio
+
+import sys
+import logging
 
 from app.main import app as ipam
 
-IS_INITED = False
-
 # https://github.com/Azure-Samples/fastapi-on-azure-functions/issues/4
 # https://github.com/Azure/azure-functions-python-library/pull/143
-nest_asyncio.apply()
+# nest_asyncio.apply()
+
+logger = logging.getLogger('azure')
+logger.setLevel(logging.ERROR)
+
+IS_INITED = False
 
 async def run_setup(app):
     """Workaround to run Starlette startup events on Azure Function Workers."""
@@ -45,3 +51,8 @@ async def main(req: func.HttpRequest, context: func.Context) -> func.HttpRespons
 
 # Keeping an eye on this fix as well:
 # https://github.com/Azure/azure-functions-python-library/pull/148
+
+# Log Stream Flood Issue(s)
+# https://github.com/Azure/azure-functions-dotnet-worker/issues/796
+# https://github.com/Azure/azure-functions-host/issues/8973
+# See logging.getLogger('azure') workaround above...
