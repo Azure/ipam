@@ -8,12 +8,21 @@ import {
 
 import './App.css';
 
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+
 import { SnackbarProvider } from 'notistack';
 import Slide from '@mui/material/Slide';
 
 import Login from "./features/login/Login";
 
 import NavDrawer from './features/drawer/drawer';
+
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+  },
+});
 
 function App() {
   return (
@@ -27,7 +36,10 @@ function App() {
           TransitionComponent={Slide}
         >
           <Router>
-            <NavDrawer />
+            <ThemeProvider theme={darkTheme}>
+              <CssBaseline />
+              <NavDrawer />
+            </ThemeProvider>
           </Router>
         </SnackbarProvider>
       </AuthenticatedTemplate>

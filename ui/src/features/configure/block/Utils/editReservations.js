@@ -8,6 +8,9 @@ import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
+import '@inovua/reactdatagrid-community/theme/default-dark.css'
+
+import { useTheme } from '@mui/material/styles';
 
 import {
   Box,
@@ -73,6 +76,8 @@ export default function EditReservations(props) {
   const [copied, setCopied] = React.useState("");
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+
+  const theme = useTheme();
 
   const empty = selectionModel.length === 0;
 
@@ -292,6 +297,7 @@ export default function EditReservations(props) {
           </DialogContentText>
           <Box sx={{ pt: 4, height: "300px" }}>
             <ReactDataGrid
+              theme={theme.palette.mode == 'dark' ? "default-dark" : "default-light"}
               idProperty="id"
               showCellBorders="horizontal"
               checkboxColumn

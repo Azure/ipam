@@ -11,6 +11,9 @@ import { isEqual, throttle } from 'lodash';
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
+import '@inovua/reactdatagrid-community/theme/default-dark.css'
+
+import { useTheme } from '@mui/material/styles';
 
 import {
   Box,
@@ -106,6 +109,8 @@ export default function Administration() {
   const [input, setInput] = React.useState("");
   const [selected, setSelected] = React.useState(null);
   const [sending, setSending] = React.useState(false);
+
+  const theme = useTheme();
 
   const adminLoadedRef = React.useRef(false);
 
@@ -396,6 +401,7 @@ export default function Administration() {
         <DataSection>
           <GridBody>
             <ReactDataGrid
+              theme={theme.palette.mode == 'dark' ? "default-dark" : "default-light"}
               idProperty="id"
               showCellBorders="horizontal"
               showZebraRows={false}

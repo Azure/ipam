@@ -44,7 +44,8 @@ import { apiRequest } from "../../msal/authConfig";
 
 import { availableSubnets } from './utils/iputils';
 
-const plannerTheme = createTheme({
+const plannerTheme = (theme) => createTheme({
+  ...theme,
   breakpoints: {
     values: {
       xs: 0,
@@ -275,12 +276,13 @@ const Planner = () => {
   };
 
   return (
-    <ThemeProvider theme={plannerTheme}>
+    <ThemeProvider theme={(theme) => plannerTheme(theme)}>
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
       <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
         <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
           <Autocomplete
-            freeSolo
+            // freeSolo
+            forcePopupIcon={false}
             id="grouped-demo"
             size="small"
             options={vNetOptions}
@@ -364,7 +366,8 @@ const Planner = () => {
             </Select>
           </FormControl> 
           <Autocomplete
-            freeSolo
+            // freeSolo
+            forcePopupIcon={false}
             disabled={selectedPrefix === ''}
             id="cidr-mask-max"
             size="small"
@@ -375,7 +378,21 @@ const Planner = () => {
             value={selectedMask}
             onChange={(event, newValue) => setSelectedMask(newValue)}
             sx={{ width: '5ch' }}
-            renderInput={(params) => <TextField {...params} label="Mask" placeholder="Max" />}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                // inputProps={{
+                //   ...params.inputProps,
+                //   onKeyDown: (e) => {
+                //     if (e.key === 'Enter') {
+                //       e.stopPropagation();
+                //     }
+                //   },
+                // }}
+                label="Mask"
+                placeholder="Max"
+              />
+            )}
           />
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', marginLeft: 'auto' }}>

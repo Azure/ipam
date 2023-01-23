@@ -4,6 +4,9 @@ import { styled } from "@mui/material/styles";
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
+import '@inovua/reactdatagrid-community/theme/default-dark.css'
+
+import { useTheme } from '@mui/material/styles';
 
 import {
   Box,
@@ -79,6 +82,8 @@ export default function BlockDataGrid(props) {
   const [anchorEl, setAnchorEl] = React.useState(null);
 
   const isAdmin = useSelector(getAdminStatus);
+
+  const theme = useTheme();
 
   const menuOpen = Boolean(anchorEl);
 
@@ -305,6 +310,7 @@ export default function BlockDataGrid(props) {
       </GridHeader>
       <GridBody>
         <ReactDataGrid
+          theme={theme.palette.mode == 'dark' ? "default-dark" : "default-light"}
           idProperty="name"
           showCellBorders="horizontal"
           showZebraRows={false}

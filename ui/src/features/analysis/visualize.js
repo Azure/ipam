@@ -3,6 +3,8 @@ import { useSelector } from 'react-redux';
 
 import ReactECharts from "echarts-for-react";
 
+import { useTheme } from '@mui/material/styles';
+
 import {
   TextField,
   Autocomplete,
@@ -459,6 +461,8 @@ const Search = React.forwardRef((props, ref) => {
   const [inputValue, setInputValue] = React.useState('');
   const [searchOptions, setSearchOptions] = React.useState([]);
 
+  const theme = useTheme();
+
   React.useImperativeHandle(ref, () => ({
     getValue() {
       return value;
@@ -516,7 +520,7 @@ const Search = React.forwardRef((props, ref) => {
       sx={{ background: "white" }}
       style={{
         position: "absolute",
-        backgroundColor: "white",
+        backgroundColor: theme.palette.mode == 'dark' ? "black" : "white",
         borderRadius: "4px",
         width: "300px",
         top: 137,
@@ -538,6 +542,8 @@ const Visualize = () => {
   const vnets = useSelector(selectVNets);
   const endpoints = useSelector(selectEndpoints);
 
+  const theme = useTheme();
+
   const ref = React.useCallback(node => {
     if (node !== null) {
       setEChartsRef(node);
@@ -549,6 +555,7 @@ const Visualize = () => {
       var newOptions = cloneDeep(opt);
 
       delete newOptions.graphic;
+      newOptions.darkMode = theme.palette.mode == 'dark' ? true : false;
       newOptions.series = parseTree(spaces, vnets, endpoints);
       newOptions.legend.data = newOptions.series.map((option) => {
         return {

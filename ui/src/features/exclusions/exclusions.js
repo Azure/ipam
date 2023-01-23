@@ -11,6 +11,9 @@ import { isEqual } from 'lodash';
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
+import '@inovua/reactdatagrid-community/theme/default-dark.css'
+
+import { useTheme } from '@mui/material/styles';
 
 import {
   Box,
@@ -79,28 +82,27 @@ const DataSection = styled("div")(({ theme }) => ({
   marginBottom: theme.spacing(1.5)
 }));
 
-// Grid Styles
-
-const GridBody = styled("div")({
-  height: "100%",
-  width: "100%",
-  '& .ipam-subscription-exclusions': {
-    '.InovuaReactDataGrid__row--selected': {
-        background: 'rgb(255, 230, 230)',
-      '.InovuaReactDataGrid__row-hover-target': {
-        '&:hover': {
-          background: 'rgb(255, 220, 220) !important',
-        }
-      }
-    }
-  }
-});
-
 const gridStyle = {
   height: '100%',
   border: "1px solid rgba(224, 224, 224, 1)",
   fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
 };
+
+// Grid Style(s)
+const GridBody = styled("div")(({ theme }) => ({
+  height: "100%",
+  width: "100%",
+  '& .ipam-subscription-exclusions': {
+    '.InovuaReactDataGrid__row--selected': {
+        background: theme.palette.mode == 'dark' ? 'rgb(220, 20, 20) !important' : 'rgb(255, 230, 230) !important',
+      '.InovuaReactDataGrid__row-hover-target': {
+        '&:hover': {
+          background: theme.palette.mode == 'dark' ? 'rgb(220, 100, 100) !important' : 'rgb(255, 220, 220) !important',
+        }
+      }
+    }
+  }
+}));
 
 const columns = [
   { name: "subscription_id", header: "Subscription ID", lockable: false, defaultFlex: 1 },
@@ -127,6 +129,8 @@ export default function ManageExclusions() {
   const dataLoadedRef = React.useRef(false);
 
   const dispatch = useDispatch();
+
+  const theme = useTheme();
 
   const unchanged = isEqual(selected, loadedExclusions);
 
@@ -277,6 +281,7 @@ export default function ManageExclusions() {
         <DataSection>
           <GridBody>
             <ReactDataGrid
+              theme={theme.palette.mode == 'dark' ? "default-dark" : "default-light"}
               idProperty="id"
               showCellBorders="horizontal"
               showZebraRows={false}

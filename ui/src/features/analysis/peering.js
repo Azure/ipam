@@ -3,6 +3,8 @@ import { useSelector } from 'react-redux';
 
 import ReactECharts from "echarts-for-react";
 
+import { useTheme } from '@mui/material/styles';
+
 import {
   TextField,
   Autocomplete,
@@ -526,6 +528,8 @@ const Search = React.forwardRef((props, ref) => {
   const [inputValue, setInputValue] = React.useState('');
   const [searchOptions, setSearchOptions] = React.useState([]);
 
+  const theme = useTheme();
+
   const pattern = "/Microsoft.Network/virtualNetworks/";
 
   React.useImperativeHandle(ref, () => ({
@@ -595,7 +599,7 @@ const Search = React.forwardRef((props, ref) => {
       sx={{ background: "white" }}
       style={{
         position: "absolute",
-        backgroundColor: "white",
+        backgroundColor: theme.palette.mode == "dark" ? "black" : "white",
         borderRadius: "4px",
         width: "300px",
         top: 137,
@@ -614,6 +618,8 @@ const Peering = () => {
 
   const vnets = useSelector(selectVNets);
 
+  const theme = useTheme();
+
   const pattern = "/Microsoft.Network/virtualNetworks/";
 
   const ref = React.useCallback(node => {
@@ -624,7 +630,11 @@ const Peering = () => {
 
   React.useEffect(() => {
     if(vnets) {
-      setOptions(parseNets(vnets));
+      let vnetOptions = parseNets(vnets);
+
+      vnetOptions.darkMode = theme.palette.mode == "dark" ? true : false;
+
+      setOptions(vnetOptions);
     }
   }, [vnets]);
 

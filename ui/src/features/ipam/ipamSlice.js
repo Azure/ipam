@@ -24,6 +24,7 @@ const initialState = {
   vNets: null,
   subnets: null,
   endpoints: null,
+  darkMode: true,
   refreshing: false,
 };
 
@@ -266,5 +267,7 @@ export const selectBlocks = (state) => state.ipam.blocks;
 export const selectVNets = (state) => state.ipam.vNets;
 export const selectSubnets = (state) => state.ipam.subnets;
 export const selectEndpoints = (state) => state.ipam.endpoints;
+
+export const isDarkMode = (state) => state.ipam.darkMode;
 
 export default ipamSlice.reducer;

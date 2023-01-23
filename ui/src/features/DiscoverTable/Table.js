@@ -7,6 +7,9 @@ import { cloneDeep } from 'lodash';
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import filter from '@inovua/reactdatagrid-community/filter'
 import '@inovua/reactdatagrid-community/index.css';
+import '@inovua/reactdatagrid-community/theme/default-dark.css'
+
+import { useTheme } from '@mui/material/styles';
 
 import {
   Box,
@@ -87,6 +90,8 @@ export default function DiscoverTable(props) {
   const stateData = useSelector(config.apiFunc);
 
   const location = useLocation();
+
+  const theme = useTheme();
 
   function renderExpand(data) {  
     const onClick = (e) => {
@@ -204,6 +209,7 @@ export default function DiscoverTable(props) {
       {renderDetails()}
       <Box sx={{ flexGrow: 1, height: "100%" }}>
         <ReactDataGrid
+          theme={theme.palette.mode == 'dark' ? "default-dark" : "default-light"}
           idProperty={config.idProp}
           showCellBorders="horizontal"
           showZebraRows={false}
