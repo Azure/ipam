@@ -297,7 +297,7 @@ export default function EditReservations(props) {
           </DialogContentText>
           <Box sx={{ pt: 4, height: "300px" }}>
             <ReactDataGrid
-              theme={theme.palette.mode == 'dark' ? "default-dark" : "default-light"}
+              theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
               idProperty="id"
               showCellBorders="horizontal"
               checkboxColumn

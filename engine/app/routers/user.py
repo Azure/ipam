@@ -48,6 +48,7 @@ async def new_user(user_id, tenant_id):
         "tenant_id": tenant_id,
         "data": {
             "id": user_id,
+            "darkMode": False,
             "apiRefresh": 5
         }
     }
@@ -65,6 +66,12 @@ async def scrub_patch(patch):
             "path": "/apiRefresh",
             "valid": "(?:(?:^|, )(5|10|15|30))+$",
             "error": "apiRefresh must have a value in [5|10|15|30]."
+        },
+        {
+            "op": "replace",
+            "path": "/darkMode",
+            "valid": "^(?:true|false)$",
+            "error": "darkMode must be 'true' or 'false'."
         }
     ]
 
@@ -72,7 +79,7 @@ async def scrub_patch(patch):
         target = next((x for x in allowed_ops if (x['op'] == item['op'] and x['path'] == item['path'])), None)
 
         if target:
-            if re.match(target['valid'], str(item['value'])):
+            if re.match(target['valid'], str(item['value']), re.IGNORECASE):
                 scrubbed_patch.append(item)
             else:
                 raise HTTPException(status_code=400, detail=target['error'])
@@ -185,6 +192,7 @@ async def update_user(
     - **replace**
 
     Allowed paths:
+    - **/darkMode**
     - **/apiRefresh**
     """
 

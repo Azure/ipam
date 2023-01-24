@@ -208,25 +208,25 @@ export default function EditVnets(props) {
               pt: 4,
               height: "300px",
               '& .ipam-block-vnet-stale': {
-                  background: theme.palette.mode == 'dark' ? 'rgb(220, 20, 20) !important' : 'rgb(255, 230, 230) !important',
+                  background: theme.palette.mode === 'dark' ? 'rgb(220, 20, 20) !important' : 'rgb(255, 230, 230) !important',
                 '.InovuaReactDataGrid__row-hover-target': {
                   '&:hover': {
-                    background: theme.palette.mode == 'dark' ? 'rgb(220, 100, 100) !important' : 'rgb(255, 220, 220) !important',
+                    background: theme.palette.mode === 'dark' ? 'rgb(220, 100, 100) !important' : 'rgb(255, 220, 220) !important',
                   }
                 }
               },
               '& .ipam-block-vnet-normal': {
-                  background: theme.palette.mode == 'dark' ? 'rgb(49, 57, 67)' : 'white',
+                  background: theme.palette.mode === 'dark' ? 'rgb(49, 57, 67)' : 'white',
                 '.InovuaReactDataGrid__row-hover-target': {
                   '&:hover': {
-                    background: theme.palette.mode == 'dark' ? 'rgb(74, 84, 115) !important' : 'rgb(208, 213, 237) !important',
+                    background: theme.palette.mode === 'dark' ? 'rgb(74, 84, 115) !important' : 'rgb(208, 213, 237) !important',
                   }
                 }
               }
             }}
           >
             <ReactDataGrid
-              theme={theme.palette.mode == 'dark' ? "default-dark" : "default-light"}
+              theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
               idProperty="id"
               showCellBorders="horizontal"
               checkboxColumn

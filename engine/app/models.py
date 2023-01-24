@@ -314,6 +314,7 @@ class User(BaseModel):
     """DOCSTRING"""
 
     id: UUID
+    darkMode: bool
     apiRefresh: int
     isAdmin: bool
 

@@ -310,7 +310,7 @@ export default function BlockDataGrid(props) {
       </GridHeader>
       <GridBody>
         <ReactDataGrid
-          theme={theme.palette.mode == 'dark' ? "default-dark" : "default-light"}
+          theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
           idProperty="name"
           showCellBorders="horizontal"
           showZebraRows={false}

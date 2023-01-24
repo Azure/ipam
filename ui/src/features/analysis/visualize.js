@@ -520,7 +520,7 @@ const Search = React.forwardRef((props, ref) => {
       sx={{ background: "white" }}
       style={{
         position: "absolute",
-        backgroundColor: theme.palette.mode == 'dark' ? "black" : "white",
+        backgroundColor: theme.palette.mode === 'dark' ? "black" : "white",
         borderRadius: "4px",
         width: "300px",
         top: 137,
@@ -555,7 +555,7 @@ const Visualize = () => {
       var newOptions = cloneDeep(opt);
 
       delete newOptions.graphic;
-      newOptions.darkMode = theme.palette.mode == 'dark' ? true : false;
+      newOptions.darkMode = theme.palette.mode === 'dark' ? true : false;
       newOptions.series = parseTree(spaces, vnets, endpoints);
       newOptions.legend.data = newOptions.series.map((option) => {
         return {
@@ -571,7 +571,7 @@ const Visualize = () => {
         })
       );
     }
-  }, [spaces, vnets, endpoints]);
+  }, [spaces, vnets, endpoints, theme]);
 
   function setDataFocus(target) {
     if(eChartsRef && !isEmpty(options.series)) {

@@ -26,7 +26,8 @@ import {
   MenuItem,
   Autocomplete,
   TextField,
-  InputAdornment
+  InputAdornment,
+  Backdrop
 } from "@mui/material";
 
 import { createFilterOptions } from '@mui/material/Autocomplete';
@@ -56,6 +57,8 @@ import {
   ExpandMore,
   Settings as SettingsIcon,
 } from "@mui/icons-material";
+
+import { SpinnerDotted, SpinnerInfinity, SpinnerCircular } from 'spinners-react';
 
 import Home from "../../img/Home";
 import Discover from "../../img/Discover";
@@ -89,6 +92,7 @@ import Refresh from "./refresh";
 
 import {
   getAdminStatus,
+  getMeLoaded,
   selectVNets,
   selectSubnets,
   selectEndpoints
@@ -130,6 +134,7 @@ export default function NavDrawer() {
   const navigate = useNavigate();
 
   const isAdmin = useSelector(getAdminStatus);
+  const meLoaded = useSelector(getMeLoaded);
   const vNets = useSelector(selectVNets);
   const subnets = useSelector(selectSubnets);
   const endpoints = useSelector(selectEndpoints);
@@ -695,6 +700,12 @@ export default function NavDrawer() {
 
   return (
     <React.Fragment>
+      <Backdrop
+        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        open={!meLoaded}
+      >
+        <SpinnerCircular size={250} thickness={100} speed={100} color="#33ccff" />
+      </Backdrop>
       <Refresh />
       <Box sx={{ flexGrow: 1 }}>
         <AppBar position="static">

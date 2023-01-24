@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router} from "react-router-dom";
+import { useSelector } from 'react-redux';
 
 import {
   AuthenticatedTemplate,
@@ -18,13 +19,19 @@ import Login from "./features/login/Login";
 
 import NavDrawer from './features/drawer/drawer';
 
-const darkTheme = createTheme({
-  palette: {
-    mode: 'dark',
-  },
-});
+import {
+  getDarkMode
+} from "./features/ipam/ipamSlice";
 
 function App() {
+  const darkModeSetting = useSelector(getDarkMode);
+
+  const darkTheme = createTheme({
+    palette: {
+      mode: darkModeSetting ? 'dark' : 'light',
+    },
+  });
+
   return (
     <div className="App">
       <AuthenticatedTemplate>

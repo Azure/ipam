@@ -599,7 +599,7 @@ const Search = React.forwardRef((props, ref) => {
       sx={{ background: "white" }}
       style={{
         position: "absolute",
-        backgroundColor: theme.palette.mode == "dark" ? "black" : "white",
+        backgroundColor: theme.palette.mode === "dark" ? "black" : "white",
         borderRadius: "4px",
         width: "300px",
         top: 137,
@@ -632,11 +632,11 @@ const Peering = () => {
     if(vnets) {
       let vnetOptions = parseNets(vnets);
 
-      vnetOptions.darkMode = theme.palette.mode == "dark" ? true : false;
+      vnetOptions.darkMode = theme.palette.mode === "dark" ? true : false;
 
       setOptions(vnetOptions);
     }
-  }, [vnets]);
+  }, [vnets, theme]);
 
   function filterByVnet(options, target, previousTarget, currentMembers) {
     const members = [];

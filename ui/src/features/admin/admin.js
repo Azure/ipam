@@ -401,7 +401,7 @@ export default function Administration() {
         <DataSection>
           <GridBody>
             <ReactDataGrid
-              theme={theme.palette.mode == 'dark' ? "default-dark" : "default-light"}
+              theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
               idProperty="id"
               showCellBorders="horizontal"
               showZebraRows={false}

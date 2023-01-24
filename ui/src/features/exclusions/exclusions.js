@@ -94,10 +94,10 @@ const GridBody = styled("div")(({ theme }) => ({
   width: "100%",
   '& .ipam-subscription-exclusions': {
     '.InovuaReactDataGrid__row--selected': {
-        background: theme.palette.mode == 'dark' ? 'rgb(220, 20, 20) !important' : 'rgb(255, 230, 230) !important',
+        background: theme.palette.mode === 'dark' ? 'rgb(220, 20, 20) !important' : 'rgb(255, 230, 230) !important',
       '.InovuaReactDataGrid__row-hover-target': {
         '&:hover': {
-          background: theme.palette.mode == 'dark' ? 'rgb(220, 100, 100) !important' : 'rgb(255, 220, 220) !important',
+          background: theme.palette.mode === 'dark' ? 'rgb(220, 100, 100) !important' : 'rgb(255, 220, 220) !important',
         }
       }
     }
@@ -281,7 +281,7 @@ export default function ManageExclusions() {
         <DataSection>
           <GridBody>
             <ReactDataGrid
-              theme={theme.palette.mode == 'dark' ? "default-dark" : "default-light"}
+              theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
               idProperty="id"
               showCellBorders="horizontal"
               showZebraRows={false}

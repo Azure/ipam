@@ -15,13 +15,16 @@ from app.logs.logs import ipam_logger as logger
 
 import os
 import uuid
+import copy
 from pathlib import Path
 from urllib.parse import urlparse
 
 from app.globals import globals
 
 from app.routers.common.helper import (
-    cosmos_upsert
+    cosmos_query,
+    cosmos_upsert,
+    cosmos_replace
 )
 
 BUILD_DIR = os.path.join(os.getcwd(), "app", "build")
@@ -204,6 +207,19 @@ async def db_upgrade():
     except CosmosResourceNotFoundError:
         logger.info('No existing admins to convert...')
         pass
+
+    users_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND NOT IS_DEFINED(c['data']['darkMode']))", globals.TENANT_ID)
+
+    if users_query:
+        for user in users_query:
+            user_data = copy.deepcopy(user)
+            user_data['data']['darkMode'] = False
+
+            await cosmos_replace(user, user_data)
+
+        logger.info('User object patching complete!')
+    else:
+        logger.info("No existing user objects to patch...")
 
     await cosmos_client.close()
 

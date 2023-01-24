@@ -209,7 +209,7 @@ export default function DiscoverTable(props) {
       {renderDetails()}
       <Box sx={{ flexGrow: 1, height: "100%" }}>
         <ReactDataGrid
-          theme={theme.palette.mode == 'dark' ? "default-dark" : "default-light"}
+          theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
           idProperty={config.idProp}
           showCellBorders="horizontal"
           showZebraRows={false}
