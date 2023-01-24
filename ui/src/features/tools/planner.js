@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useSelector } from 'react-redux';
-import { ThemeProvider, createTheme, styled } from '@mui/material/styles';
+import { ThemeProvider, createTheme, useTheme, styled } from '@mui/material/styles';
 
 import { useMsal } from "@azure/msal-react";
 import { InteractionRequiredAuthError } from "@azure/msal-browser";
@@ -59,11 +59,12 @@ const plannerTheme = (theme) => createTheme({
 });
 
 const Item = styled(Paper)(({ theme }) => ({
-  backgroundColor: "red",
   padding: theme.spacing(1),
-  textAlign: "center",
+  textAlign: 'center',
   color: theme.palette.text.secondary,
-  fontSize: "clamp(12px, 1vw, 16px)"
+  fontSize: 'clamp(12px, 1vw, 16px)',
+  textOverflow: 'ellipsis',
+  overflow: 'hidden'
 }));
 
 const cidrMasks = [
@@ -138,6 +139,8 @@ const Planner = () => {
   const subsLoadingRef = React.useRef(false);
 
   const vNets = useSelector(selectVNets);
+
+  const theme = useTheme();
 
   const loading = !vNets || subsLoadingRef.current;
 
@@ -430,9 +433,7 @@ const Planner = () => {
                       <Grid key={`grid-item-${item.network}-${mask}`} xs={5} sm={3} md={2} xxl={1}>
                         <Item
                           style={{
-                            backgroundColor: item.overlap ? "orangered" : "lawngreen",
-                            textOverflow: 'ellipsis',
-                            overflow: 'hidden'
+                            backgroundColor: item.overlap ? (theme.palette.mode == 'dark' ? 'darkred' : 'orangered') : (theme.palette.mode == 'dark' ? 'darkgreen' : 'lawngreen')
                           }}
                         >
                           {item.network}/{mask}

@@ -58,7 +58,7 @@ import {
   Settings as SettingsIcon,
 } from "@mui/icons-material";
 
-import { SpinnerDotted, SpinnerInfinity, SpinnerCircular } from 'spinners-react';
+import { SpinnerCircular } from 'spinners-react';
 
 import Home from "../../img/Home";
 import Discover from "../../img/Discover";
@@ -701,7 +701,8 @@ export default function NavDrawer() {
   return (
     <React.Fragment>
       <Backdrop
-        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        sx={{ color: '#fff', backgroundColor: 'rgba(192, 200, 200, 1)', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        transitionDuration={{ appear: 0, enter: 0, exit: 500 }}
         open={!meLoaded}
       >
         <SpinnerCircular size={250} thickness={100} speed={100} color="#33ccff" />
