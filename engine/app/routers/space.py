@@ -549,7 +549,7 @@ async def create_multi_block_reservation(
     """
     Create a CIDR Reservation for the first available Block from a list of Blocks with the following information:
 
-    - **blocks**: Array of Block names (*Evaluated in the oder provided*)
+    - **blocks**: Array of Block names (*Evaluated in the order provided*)
     - **size**: Network mask bits
     - **reverse_search**:
         - **True**: New networks will be created as close to the <u>end</u> of the block as possible
