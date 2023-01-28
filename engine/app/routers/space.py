@@ -552,11 +552,11 @@ async def create_multi_block_reservation(
     - **blocks**: Array of Block names (*Evaluated in the order provided*)
     - **size**: Network mask bits
     - **reverse_search**:
-        - **True**: New networks will be created as close to the <u>end</u> of the block as possible
-        - **False (default)**: New networks will be created as close to the <u>beginning</u> of the block as possible
+        - **true**: New networks will be created as close to the <u>end</u> of the block as possible
+        - **false (default)**: New networks will be created as close to the <u>beginning</u> of the block as possible
     - **smallest_cidr**:
-        - **True**: New networks will be created using the smallest possible available block (e.g. it will not break up large blocks when possible)
-        - **False (default)**: New networks will be created using the first available block, regardless of size
+        - **true**: New networks will be created using the smallest possible available block (e.g. it will not break up large blocks when possible)
+        - **false (default)**: New networks will be created using the first available block, regardless of size
     """
 
     user_assertion = authorization.split(' ')[1]
@@ -1181,11 +1181,11 @@ async def create_block_reservation(
 
     - **size**: Network mask bits
     - **reverse_search**:
-        - **True**: New networks will be created as close to the <u>end</u> of the block as possible
-        - **False (default)**: New networks will be created as close to the <u>beginning</u> of the block as possible
+        - **true**: New networks will be created as close to the <u>end</u> of the block as possible
+        - **false (default)**: New networks will be created as close to the <u>beginning</u> of the block as possible
     - **smallest_cidr**:
-        - **True**: New networks will be created using the smallest possible available block (e.g. it will not break up large blocks when possible)
-        - **False (default)**: New networks will be created using the first available block, regardless of size
+        - **true**: New networks will be created using the smallest possible available block (e.g. it will not break up large blocks when possible)
+        - **false (default)**: New networks will be created using the first available block, regardless of size
     """
 
     user_assertion = authorization.split(' ')[1]
