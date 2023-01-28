@@ -58,13 +58,14 @@ const plannerTheme = (theme) => createTheme({
   },
 });
 
-const Item = styled(Paper)(({ theme }) => ({
+const Item = styled(Paper)(({ theme, overlap }) => ({
   padding: theme.spacing(1),
   textAlign: 'center',
   color: theme.palette.text.secondary,
   fontSize: 'clamp(12px, 1vw, 16px)',
   textOverflow: 'ellipsis',
-  overflow: 'hidden'
+  overflow: 'hidden',
+  backgroundColor: overlap ? (theme.palette.mode === 'dark' ? 'darkred' : 'orangered') : (theme.palette.mode === 'dark' ? 'darkgreen' : 'lawngreen')
 }));
 
 const cidrMasks = [
@@ -432,9 +433,7 @@ const Planner = () => {
                     return (
                       <Grid key={`grid-item-${item.network}-${mask}`} xs={5} sm={3} md={2} xxl={1}>
                         <Item
-                          style={{
-                            backgroundColor: item.overlap ? (theme.palette.mode == 'dark' ? 'darkred' : 'orangered') : (theme.palette.mode == 'dark' ? 'darkgreen' : 'lawngreen')
-                          }}
+                          overlap={item.overlap}
                         >
                           {item.network}/{mask}
                         </Item>
