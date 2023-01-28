@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useSelector } from 'react-redux';
-import { ThemeProvider, createTheme, useTheme, styled } from '@mui/material/styles';
+import { ThemeProvider, createTheme, styled } from '@mui/material/styles';
 
 import { useMsal } from "@azure/msal-react";
 import { InteractionRequiredAuthError } from "@azure/msal-browser";
@@ -140,8 +140,6 @@ const Planner = () => {
   const subsLoadingRef = React.useRef(false);
 
   const vNets = useSelector(selectVNets);
-
-  const theme = useTheme();
 
   const loading = !vNets || subsLoadingRef.current;
 

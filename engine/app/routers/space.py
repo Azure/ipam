@@ -549,8 +549,14 @@ async def create_multi_block_reservation(
     """
     Create a CIDR Reservation for the first available Block from a list of Blocks with the following information:
 
-    - **blocks**: Array of Block names (Evaluated in the oder provided)
+    - **blocks**: Array of Block names (*Evaluated in the oder provided*)
     - **size**: Network mask bits
+    - **reverse_search**:
+        - **True**: New networks will be created as close to the <u>end</u> of the block as possible
+        - **False (default)**: New networks will be created as close to the <u>beginning</u> of the block as possible
+    - **smallest_cidr**:
+        - **True**: New networks will be created using the smallest possible available block (e.g. it will not break up large blocks when possible)
+        - **False (default)**: New networks will be created using the first available block, regardless of size
     """
 
     user_assertion = authorization.split(' ')[1]
@@ -573,6 +579,9 @@ async def create_multi_block_reservation(
     vnet_list = await arg_query(authorization, True, argquery.VNET)
     vnet_list = vnet_fixup(vnet_list)
 
+    available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
+    next_selector = -1 if req.reverse_search else 0
+
     available_block = None
     available_block_name = None
 
@@ -594,13 +603,19 @@ async def create_multi_block_reservation(
             reserved_set = IPSet(block_all_cidrs)
             available_set = block_set ^ reserved_set
 
-            available_block = next((net for net in list(available_set.iter_cidrs()) if net.prefixlen <= req.size), None)
+            if req.smallest_cidr:
+                cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
+                max_mask = max(cidr_list).prefixlen
+                available_block = next((net for net in list(filter(lambda network: network.prefixlen == max_mask, cidr_list))), None)
+            else:
+                available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
+
             available_block_name = block if available_block else None
 
     if not available_block:
         raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block(s).")
 
-    next_cidr = list(available_block.subnet(req.size))[0]
+    next_cidr = list(available_block.subnet(req.size))[next_selector]
 
     if "preferred_username" in decoded:
         creator_id = decoded["preferred_username"]
@@ -1165,6 +1180,12 @@ async def create_block_reservation(
     Create a CIDR Reservation for the target Block with the following information:
 
     - **size**: Network mask bits
+    - **reverse_search**:
+        - **True**: New networks will be created as close to the <u>end</u> of the block as possible
+        - **False (default)**: New networks will be created as close to the <u>beginning</u> of the block as possible
+    - **smallest_cidr**:
+        - **True**: New networks will be created using the smallest possible available block (e.g. it will not break up large blocks when possible)
+        - **False (default)**: New networks will be created using the first available block, regardless of size
     """
 
     user_assertion = authorization.split(' ')[1]
@@ -1199,12 +1220,20 @@ async def create_block_reservation(
     reserved_set = IPSet(block_all_cidrs)
     available_set = block_set ^ reserved_set
 
-    available_block = next((net for net in list(available_set.iter_cidrs()) if net.prefixlen <= req.size), None)
+    available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
+    next_selector = -1 if req.reverse_search else 0
+
+    if req.smallest_cidr:
+        cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
+        max_mask = max(cidr_list).prefixlen
+        available_block = next((net for net in list(filter(lambda network: network.prefixlen == max_mask, cidr_list))), None)
+    else:
+        available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
 
     if not available_block:
         raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block.")
 
-    next_cidr = list(available_block.subnet(req.size))[0]
+    next_cidr = list(available_block.subnet(req.size))[next_selector]
 
     if "preferred_username" in decoded:
         creator_id = decoded["preferred_username"]
@@ -1224,7 +1253,7 @@ async def create_block_reservation(
     await cosmos_replace(space_query[0], target_space)
 
     new_cidr['space'] = target_space['name']
-    new_cidr['block'] = available_block['name']
+    new_cidr['block'] = target_block['name']
 
     return new_cidr
 

@@ -102,11 +102,15 @@ class SpaceCIDRReq(BaseModel):
 
     blocks: list
     size: int
+    reverse_search: Optional[bool] = False
+    smallest_cidr: Optional[bool] = False
 
 class BlockCIDRReq(BaseModel):
     """DOCSTRING"""
 
     size: int
+    reverse_search: Optional[bool] = False
+    smallest_cidr: Optional[bool] = False
 
 class DeleteResvReq(List[str]):
     """DOCSTRING"""

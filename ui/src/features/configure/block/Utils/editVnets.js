@@ -147,6 +147,7 @@ export default function EditVnets(props) {
 
   function manualRefresh() {
     refresh();
+    refreshData();
   }
 
   function onSubmit() {

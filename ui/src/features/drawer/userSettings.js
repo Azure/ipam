@@ -20,7 +20,7 @@ import {
   DialogTitle,
   // FormGroup,
   // FormControlLabel,
-  Switch,
+  // Switch,
   Typography,
   ToggleButton,
   ToggleButtonGroup
@@ -142,7 +142,7 @@ export default function UserSettings(props) {
       setRefreshValue(openState.apiRefresh);
       setPrevOpen(open);
     }
-  }, [open, openState, dispatch]);
+  }, [open, prevOpen, openState, dispatch]);
 
   React.useEffect(()=>{
     if(open && (open !== prevOpen)) {
