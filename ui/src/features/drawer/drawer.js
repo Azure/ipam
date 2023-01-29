@@ -14,7 +14,7 @@ import { plural, singular } from 'pluralize';
 
 import { Routes, Route, Link, Navigate, useNavigate } from "react-router-dom";
 
-import { callMsGraph } from "../../msal/graph";
+import { callMsGraph, callMsGraphPhoto } from "../../msal/graph";
 
 import {
   AppBar,
@@ -124,6 +124,7 @@ export default function NavDrawer() {
   const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
   const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = React.useState(null);
   const [graphData, setGraphData] = React.useState(null);
+  const [graphPhoto, setGraphPhoto] = React.useState(null);
   const [navChildOpen, setNavChildOpen] = React.useState({});
   const [drawerState, setDrawerState] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
@@ -264,6 +265,8 @@ export default function NavDrawer() {
         try {
           const response = await instance.acquireTokenSilent(request);
           const graphResponse = await callMsGraph(response.accessToken);
+          const photoResponse = await callMsGraphPhoto(response.accessToken);
+          await setGraphPhoto(photoResponse);
           await setGraphData(graphResponse);
         } catch (e) {
           if (e instanceof InteractionRequiredAuthError) {
@@ -782,7 +785,12 @@ export default function NavDrawer() {
                 onClick={handleProfileMenuOpen}
                 color="inherit"
               >
-                {graphData ? <Avatar {...stringAvatar(graphData.displayName)} /> : <Avatar />}
+                { graphData ? 
+                  graphPhoto ?
+                  <Avatar alt={graphData.displayName} src={graphPhoto} /> :
+                  <Avatar {...stringAvatar(graphData.displayName)} /> :
+                  <Avatar />
+                }
               </IconButton>
             </Box>
             <Box sx={{ display: { xs: "flex", md: "none" } }}>

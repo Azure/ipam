@@ -36,7 +36,7 @@ Azure IPAM is a lightweight solution developed on top of the Azure platform desi
 app = FastAPI(
     title = "Azure IPAM",
     description = description,
-    version = "0.1.0",
+    version = "1.0.0",
     contact = {
         "name": "Azure IPAM Team",
         "url": "https://github.com/azure/ipam",

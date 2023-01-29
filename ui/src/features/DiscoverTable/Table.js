@@ -216,6 +216,7 @@ export default function DiscoverTable(props) {
           showActiveRowIndicator={false}
           enableColumnAutosize={false}
           showColumnMenuGroupOptions={false}
+          showColumnMenuLockOptions={false}
           enableColumnFilterContextMenu={true}
           filterTypes={filterTypes}
           columns={columnData}

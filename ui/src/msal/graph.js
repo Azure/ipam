@@ -4,35 +4,35 @@ import { graphConfig } from "./authConfig";
  * Attaches a given access token to a Microsoft Graph API call. Returns information about the user
  */
 export async function callMsGraph(accessToken) {
-    const headers = new Headers();
-    const bearer = `Bearer ${accessToken}`;
+  const headers = new Headers();
+  const bearer = `Bearer ${accessToken}`;
 
-    headers.append("Authorization", bearer);
+  headers.append("Authorization", bearer);
 
-    const options = {
-        method: "GET",
-        headers: headers,
-    };
+  const options = {
+    method: "GET",
+    headers: headers,
+  };
 
-    return fetch(graphConfig.graphMeEndpoint, options)
-        .then((response) => response.json())
-        .catch((error) => console.log(error));
+  return fetch(graphConfig.graphMeEndpoint, options)
+    .then((response) => response.json())
+    .catch((error) => console.log(error));
 }
 
 export async function callMsGraphUsers(accessToken) {
-    const headers = new Headers();
-    const bearer = `Bearer ${accessToken}`;
+  const headers = new Headers();
+  const bearer = `Bearer ${accessToken}`;
 
-    headers.append("Authorization", bearer);
+  headers.append("Authorization", bearer);
 
-    const options = {
-        method: "GET",
-        headers: headers,
-    };
+  const options = {
+    method: "GET",
+    headers: headers,
+  };
 
-    return fetch(graphConfig.graphUsersEndpoint, options)
-        .then((response) => response.json())
-        .catch((error) => console.log(error));
+  return fetch(graphConfig.graphUsersEndpoint, options)
+    .then((response) => response.json())
+    .catch((error) => console.log(error));
 }
 
 export async function callMsGraphUsersFilter(accessToken, nameFilter = "") {
@@ -45,8 +45,8 @@ export async function callMsGraphUsersFilter(accessToken, nameFilter = "") {
   headers.append("ConsistencyLevel", "eventual");
 
   const options = {
-      method: "GET",
-      headers: headers,
+    method: "GET",
+    headers: headers,
   };
 
   if (nameFilter !== "") {
@@ -56,55 +56,57 @@ export async function callMsGraphUsersFilter(accessToken, nameFilter = "") {
   endpoint += "$orderby=displayName&$count=true";
 
   return fetch(endpoint, options)
-      .then((response) => response.json())
-      .catch((error) => console.log(error));
+    .then((response) => response.json())
+    .catch((error) => console.log(error));
 }
 
 // export async function callMsGraphUsersFilter(accessToken, search) {
-//     const headers = new Headers();
-//     const bearer = `Bearer ${accessToken}`;
+//   const headers = new Headers();
+//   const bearer = `Bearer ${accessToken}`;
 
-//     headers.append("Authorization", bearer);
-//     headers.append("ConsistencyLevel", "eventual");
+//   headers.append("Authorization", bearer);
+//   headers.append("ConsistencyLevel", "eventual");
 
-//     const options = {
-//         method: "GET",
-//         headers: headers,
-//     };
+//   const options = {
+//     method: "GET",
+//     headers: headers,
+//   };
 
-//     let filter = `?$filter=startsWith(userPrincipalName,'${search}') OR startsWith(displayName, '${search}')`
+//   let filter = `?$filter=startsWith(userPrincipalName,'${search}') OR startsWith(displayName, '${search}')`
 
-//     let sort = "&$orderby=displayName&$count=true";
+//   let sort = "&$orderby=displayName&$count=true";
 
-//     return fetch((graphConfig.graphUsersEndpoint + filter + sort), options)
-//         .then((response) => response.json())
-//         .catch((error) => console.log(error));
+//   return fetch((graphConfig.graphUsersEndpoint + filter + sort), options)
+//     .then((response) => response.json())
+//     .catch((error) => console.log(error));
 // }
 
 export async function callMsGraphPhoto(accessToken) {
-    const headers = new Headers();
-    const bearer = `Bearer ${accessToken}`;
+  const headers = new Headers();
+  const bearer = `Bearer ${accessToken}`;
 
-    headers.append("Authorization", bearer);
-    headers.append("Content-Type", "image/jpeg");
+  headers.append("Authorization", bearer);
+  headers.append("Content-Type", "image/jpeg");
 
-    const options = {
-        method: "GET",
-        headers: headers,
-    };
+  const options = {
+    method: "GET",
+    headers: headers,
+  };
 
-    return fetch(graphConfig.graphMePhotoEndpoint, options)
-        .then((response) => {
-            console.log("-----------------")
-            console.log(response);
-            console.log("-----------------")
-            response.json();
-        })
-        .catch((error) => console.log(error));
-}
+  return fetch(graphConfig.graphMePhotoEndpoint, options)
+    .then(response => {
+      if(response.ok) {
+        return response.blob();
+      } else {
+        throw new Error("Profile image not found");
+      }
+    })
+    .then((imageBlob) => {
+      const imageObjectURL = URL.createObjectURL(imageBlob);
 
-/*
-   .catch((error) => {
-      throw new Error("Profile image not found");
+      return imageObjectURL;
+    })
+    .catch((error) => {
+      console.log(error)
     });
- */
+}

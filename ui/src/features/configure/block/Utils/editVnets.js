@@ -76,6 +76,7 @@ export default function EditVnets(props) {
 
   React.useEffect(() => {
     if(space && block) {
+      // eslint-disable-next-line
       !refreshingState && setSelectionModel(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}));
     }
   }, [space, block, refreshingState]);
