@@ -20,12 +20,13 @@ import { AZURE_PORTAL } from "../../../global/azureClouds";
 
 import { TableContext } from "../TableContext";
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: "#1a90ff",
-    },
-  },
+const detailsTheme = (theme) => createTheme({
+  ...theme,
+  // palette: {
+  //   primary: {
+  //     main: "#1a90ff",
+  //   },
+  // },
   overrides: {
     MuiLinearProgress: {
       root: {
@@ -81,7 +82,14 @@ function NumberCircularProgress(props) {
         alignItems="center"
         justifyContent="center"
       >
-        <Typography variant="h6" component="div" color="textSecondary">{`${props.value}%`}</Typography>
+        <Typography
+          variant="h6"
+          component="div"
+          color="textSecondary"
+          sx={{ mb: 1 }}
+        >
+          {`${props.value}%`}
+        </Typography>
       </Box>
     </Box>
   );
@@ -126,7 +134,7 @@ export default function ItemDetails(props) {
   });
 
   return isTarget ? (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={detailsTheme}>
       <Wrapper>
         <Box sx={{ display: "flex" }}>
           <Box sx={{ width: "40px" }} />

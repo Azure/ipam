@@ -36,10 +36,10 @@ import {
 
 import { apiRequest } from "../../../../msal/authConfig";
 
-const Spotlight = styled("span")({
-  fontWeight: "bold",
-  color: "mediumblue"
-});
+const Spotlight = styled("span")(({ theme }) => ({
+  fontWeight: 'bold',
+  color: theme.palette.mode === 'dark' ? 'cornflowerblue' : 'mediumblue'
+}));
 
 const gridStyle = {
   height: '100%',

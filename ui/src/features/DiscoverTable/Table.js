@@ -182,7 +182,7 @@ export default function DiscoverTable(props) {
             sx={{
               height: "100%",
               width: "300px",
-              backgroundColor: "white",
+              backgroundColor: theme.palette.background.default,
               borderLeft: "1px solid lightgrey"
             }}
           >

@@ -23,10 +23,10 @@ import { deleteBlock } from "../../../ipam/ipamAPI";
 
 import { apiRequest } from '../../../../msal/authConfig';
 
-const Spotlight = styled("span")({
-  fontWeight: "bold",
-  color: "mediumblue"
-});
+const Spotlight = styled("span")(({ theme }) => ({
+  fontWeight: 'bold',
+  color: theme.palette.mode === 'dark' ? 'cornflowerblue' : 'mediumblue'
+}));
 
 export default function ConfirmDelete(props) {
   const { open, handleClose, space, block, refresh } = props;
@@ -92,7 +92,7 @@ export default function ConfirmDelete(props) {
             Please confirm you want to delete Block <Spotlight>'{block}'</Spotlight>
           </DialogContentText>
           <Box sx={{ display: "flex", justifyContent: "center", width: "100%", pt: 3 }}>
-            <FormGroup sx={{ pl: 1, pr: 1, border: "1px solid rgba(224, 224, 224, 1)", borderRadius: "4px" }}>
+            <FormGroup sx={{ pl: 2.5, pr: 1, border: "1px solid rgba(224, 224, 224, 1)", borderRadius: "4px" }}>
               <FormControlLabel
                 control={
                   <Checkbox
