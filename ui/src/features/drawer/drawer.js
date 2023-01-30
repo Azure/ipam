@@ -266,8 +266,8 @@ export default function NavDrawer() {
           const response = await instance.acquireTokenSilent(request);
           const graphResponse = await callMsGraph(response.accessToken);
           const photoResponse = await callMsGraphPhoto(response.accessToken);
-          await setGraphPhoto(photoResponse);
-          await setGraphData(graphResponse);
+          setGraphPhoto(photoResponse);
+          setGraphData(graphResponse);
         } catch (e) {
           if (e instanceof InteractionRequiredAuthError) {
             instance.acquireTokenRedirect(request);
