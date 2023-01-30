@@ -94,7 +94,7 @@ if os.environ.get('WEBSITE_HOSTNAME'):
     origins.append("https://" + os.environ.get('WEBSITE_HOSTNAME'))
 
 if os.environ.get('IPAM_UI_URL'):
-    ui_url = urlparse(os.environ.get('UI_URL'))
+    ui_url = urlparse(os.environ.get('IPAM_UI_URL'))
 
     if (ui_url.scheme and ui_url.netloc):
         origins.append(ui_url.scheme + "://" + ui_url.netloc)

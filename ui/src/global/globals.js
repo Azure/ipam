@@ -4,7 +4,7 @@ export const TENANT_ID = process.env.REACT_APP_TENANT_ID || window['env'].REACT_
 
 export const getEngineURL = () => {
   try {
-    const engineURL = new URL(process.env.REACT_APP_ENGINE_URL || window['env'].REACT_APP_ENGINE_URL);
+    const engineURL = new URL(process.env.REACT_APP_IPAM_ENGINE_URL || window['env'].REACT_APP_IPAM_ENGINE_URL);
 
     return engineURL.origin;
   } catch {
