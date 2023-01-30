@@ -706,7 +706,7 @@ export default function NavDrawer() {
       <Backdrop
         sx={{ color: '#fff', backgroundColor: 'rgba(192, 200, 200, 1)', zIndex: (theme) => theme.zIndex.drawer + 1 }}
         transitionDuration={{ appear: 0, enter: 0, exit: 500 }}
-        open={!meLoaded}
+        open={!meLoaded || !graphData}
       >
         <SpinnerCircular size={250} thickness={100} speed={100} color="#33ccff" />
       </Backdrop>
