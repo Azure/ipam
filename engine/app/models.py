@@ -346,6 +346,8 @@ class SubnetCIDRReq(BaseModel):
 
     vnet_id: str
     size: int
+    reverse_search: Optional[bool] = False
+    smallest_cidr: Optional[bool] = False
 
 class NewSubnetCIDR(BaseModel):
     """DOCSTRING"""

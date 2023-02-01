@@ -41,6 +41,12 @@ async def next_available_subnet(
 
     - **vnet_id**: Virtual Network ID
     - **size**: Network mask bits
+    - **reverse_search**:
+        - **true**: New subnets will be located as close to the <u>end</u> of the Virtual Network CIDR as possible
+        - **false (default)**: New subnets will be located as close to the <u>beginning</u> of the Virtual Network CIDR as possible
+    - **smallest_cidr**:
+        - **true**: New subnets will be created using the smallest possible available CIDR (e.g. it will not break up large CIDR blocks when possible)
+        - **false (default)**: New subnets will be created using the first available CIDR, regardless of size
 
     <font color='red'>**EXPERIMENTAL**: This API is currently in testing and may change in future releases!</font>
     """
@@ -69,12 +75,20 @@ async def next_available_subnet(
     reserved_set = IPSet(vnet_all_cidrs)
     available_set = vnet_set ^ reserved_set
 
-    available_block = next((net for net in list(available_set.iter_cidrs()) if net.prefixlen <= req.size), None)
+    available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
+    next_selector = -1 if req.reverse_search else 0
+
+    if req.smallest_cidr:
+        cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
+        max_mask = max(cidr_list).prefixlen
+        available_block = next((net for net in list(filter(lambda network: network.prefixlen == max_mask, cidr_list))), None)
+    else:
+        available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
 
     if not available_block:
         raise HTTPException(status_code=500, detail="Subnet of requested size unavailable in target virtual network.")
 
-    next_cidr = list(available_block.subnet(req.size))[0]
+    next_cidr = list(available_block.subnet(req.size))[next_selector]
 
     new_cidr = {
         "cidr": str(next_cidr)

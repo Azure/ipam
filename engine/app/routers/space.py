@@ -555,7 +555,7 @@ async def create_multi_block_reservation(
         - **true**: New networks will be created as close to the <u>end</u> of the block as possible
         - **false (default)**: New networks will be created as close to the <u>beginning</u> of the block as possible
     - **smallest_cidr**:
-        - **true**: New networks will be created using the smallest possible available block (e.g. it will not break up large blocks when possible)
+        - **true**: New networks will be created using the smallest possible available block (e.g. it will not break up large CIDR blocks when possible)
         - **false (default)**: New networks will be created using the first available block, regardless of size
     """
 
@@ -1184,7 +1184,7 @@ async def create_block_reservation(
         - **true**: New networks will be created as close to the <u>end</u> of the block as possible
         - **false (default)**: New networks will be created as close to the <u>beginning</u> of the block as possible
     - **smallest_cidr**:
-        - **true**: New networks will be created using the smallest possible available block (e.g. it will not break up large blocks when possible)
+        - **true**: New networks will be created using the smallest possible available block (e.g. it will not break up large CIDR blocks when possible)
         - **false (default)**: New networks will be created using the first available block, regardless of size
     """
 

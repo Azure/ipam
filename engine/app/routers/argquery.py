@@ -14,6 +14,7 @@ ResourceContainers
     quotaId startswith "EnterpriseAgreement", "Enterprise Agreement",
     quotaId startswith "MSDNDevTest", "Dev/Test",
     quotaId startswith "MSDN_2014-09-0", "PAYGO",
+    quotaId startswith "Internal", "Microsoft Internal",
     "Unknown"
 )
 | project name, id, type, subscription_id = subscriptionId, tenant_id = tenantId
