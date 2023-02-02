@@ -352,4 +352,7 @@ class SubnetCIDRReq(BaseModel):
 class NewSubnetCIDR(BaseModel):
     """DOCSTRING"""
 
+    vnet_name: str
+    resource_group: str
+    subscription_id: str
     cidr: str

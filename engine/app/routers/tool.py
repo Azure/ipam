@@ -91,6 +91,9 @@ async def next_available_subnet(
     next_cidr = list(available_block.subnet(req.size))[next_selector]
 
     new_cidr = {
+        "vnet_name": target['name'],
+        "resource_group": target['resource_group'],
+        "subscription_id": target['subscription_id'],
         "cidr": str(next_cidr)
     }
 
