@@ -605,8 +605,8 @@ async def create_multi_block_reservation(
 
             if req.smallest_cidr:
                 cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
-                max_mask = max(cidr_list).prefixlen
-                available_block = next((net for net in list(filter(lambda network: network.prefixlen == max_mask, cidr_list))), None)
+                min_mask = max(map(lambda x: x.prefixlen, cidr_list))
+                available_block = next((net for net in list(filter(lambda network: network.prefixlen == min_mask, cidr_list))), None)
             else:
                 available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
 
@@ -1225,8 +1225,8 @@ async def create_block_reservation(
 
     if req.smallest_cidr:
         cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
-        max_mask = max(cidr_list).prefixlen
-        available_block = next((net for net in list(filter(lambda network: network.prefixlen == max_mask, cidr_list))), None)
+        min_mask = max(map(lambda x: x.prefixlen, cidr_list))
+        available_block = next((net for net in list(filter(lambda network: network.prefixlen == min_mask, cidr_list))), None)
     else:
         available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
 
