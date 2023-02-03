@@ -335,22 +335,25 @@ export default function NavDrawer() {
       const searchObj = data.reduce((prev, curr) => {
 
         Object.entries(curr).forEach(([key, value]) => {
-          const newKey = key.replace(/([a-zA-Z])(?=[A-Z])/g, '$1_').toLowerCase();
-          const titleKey = getTitleCase(newKey);
-          const keyNoun = Array.isArray(value) ? plural(titleKey) : singular(titleKey);
+          if(value !== undefined && value !== null) {
+            const newKey = key.replace(/([a-zA-Z])(?=[A-Z])/g, '$1_').toLowerCase();
 
-          if(!exclusions.includes(newKey)) {
-            if(!prev.hasOwnProperty(newKey)) {
-              prev[newKey] = {
-                searchKey: key,
-                noun: keyNoun,
-                comparator: Array.isArray(value) ? 'contains' : 'like',
-                type: GetInstanceType(value),
-                values: []
-              };
+            if(!exclusions.includes(newKey)) {
+              const titleKey = getTitleCase(newKey);
+              const keyNoun = Array.isArray(value) ? plural(titleKey) : singular(titleKey);
+
+              if(!prev.hasOwnProperty(newKey)) {
+                prev[newKey] = {
+                  searchKey: key,
+                  noun: keyNoun,
+                  comparator: Array.isArray(value) ? 'contains' : 'like',
+                  type: GetInstanceType(value),
+                  values: []
+                };
+              }
+
+              Array.isArray(value) ? prev[newKey].values = prev[newKey].values.concat(value) : prev[newKey].values.push(value);
             }
-
-            Array.isArray(value) ? prev[newKey].values = prev[newKey].values.concat(value) : prev[newKey].values.push(value);
           }
         });
 
@@ -390,11 +393,11 @@ export default function NavDrawer() {
     var newSearchData = [];
 
     if(vNets) {
-      const vNetExclusions = ['id', 'peerings', 'resv', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_space', 'subscription_id', 'tenant_id'];
+      const vNetExclusions = ['id', 'peerings', 'resv', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_space', 'subscription_id', 'tenant_id', 'metadata'];
       const vNetFiltered = objToFilter(vNets, 'Virtual Networks', '/discover/vnet', vNetExclusions);
       const vNetResults = orderBy(vNetFiltered, 'phrase', 'asc');
 
-      const subnetExclusions = ['id', 'vnet_id', 'size', 'used', 'available', 'utilization', 'subscription_id', 'tenant_id'];
+      const subnetExclusions = ['id', 'vnet_id', 'size', 'used', 'available', 'utilization', 'subscription_id', 'tenant_id', 'metadata'];
       const subnetFiltered = objToFilter(subnets, 'Subnets', '/discover/subnet', subnetExclusions);
       const subnetResults = orderBy(subnetFiltered, 'phrase', 'asc');
 
@@ -402,7 +405,7 @@ export default function NavDrawer() {
     }
 
     if(endpoints) {
-      const endpointExclusions = ['id', 'unique_id', 'vnet_id', 'subnet_id', 'metadata', 'subscription_id', 'tenant_id'];
+      const endpointExclusions = ['id', 'unique_id', 'vnet_id', 'subnet_id', 'subscription_id', 'tenant_id', 'metadata'];
       const endpointFiltered = objToFilter(endpoints, 'Endpoints', '/discover/endpoint', endpointExclusions);
       const endpointResults = orderBy(endpointFiltered, 'phrase', 'asc');
 
