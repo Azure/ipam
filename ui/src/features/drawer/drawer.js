@@ -47,6 +47,7 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  ListItemButton,
   Divider,
   Collapse,
   Avatar,
@@ -456,8 +457,7 @@ export default function NavDrawer() {
                     <List component="div" disablePadding>
                       {item.children.map((child, childIndex) => (
                         ((item.admin && isAdmin) || !item.admin) &&
-                        <ListItem
-                          button
+                        <ListItemButton
                           key={child.title}
                           component={Link}
                           to={child.link}
@@ -471,14 +471,13 @@ export default function NavDrawer() {
                             </SvgIcon>
                           </ListItemIcon>
                           <ListItemText primary={child.title} />
-                        </ListItem>
+                        </ListItemButton>
                       ))}
                     </List>
                     </Collapse>
                   </React.Fragment>
                 : ((item.admin && isAdmin) || !item.admin) &&
-                  <ListItem
-                    button
+                  <ListItemButton
                     key={item.title}
                     component={Link}
                     to={item.link}
@@ -491,7 +490,7 @@ export default function NavDrawer() {
                       </SvgIcon>
                     </ListItemIcon>
                     <ListItemText primary={item.title} />
-                  </ListItem>
+                  </ListItemButton>
               })}
             </List>
             {(navIndex < (navItems.length - 1)) && <Divider />}
