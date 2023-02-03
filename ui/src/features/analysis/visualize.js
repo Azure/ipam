@@ -507,6 +507,9 @@ const Search = React.forwardRef((props, ref) => {
           <TextField
             {...params}
             label="Select Space"
+            style={{
+              backgroundColor: theme.palette.mode === "dark" ? "black" : "white"
+            }}
           />
         );
       }}
@@ -520,7 +523,7 @@ const Search = React.forwardRef((props, ref) => {
       sx={{ background: "white" }}
       style={{
         position: "absolute",
-        backgroundColor: theme.palette.mode === 'dark' ? "black" : "white",
+        backgroundColor: "transparent",
         borderRadius: "4px",
         width: "300px",
         top: 137,
