@@ -8,6 +8,8 @@ netaddr
 shortuuid
 aiohttp
 jsonpatch
+loguru
+regex
 azure-common
 azure-identity
 azure-core

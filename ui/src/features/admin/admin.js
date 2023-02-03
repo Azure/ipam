@@ -2,28 +2,28 @@ import * as React from "react";
 import { styled } from '@mui/material/styles';
 
 import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError, InteractionStatus } from "@azure/msal-browser";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
 import { callMsGraphUsersFilter } from "../../msal/graph";
 
 import { useSnackbar } from 'notistack';
 
 import { isEqual, throttle } from 'lodash';
 
-import {
-  DataGrid,
-  GridOverlay
-} from "@mui/x-data-grid";
+import ReactDataGrid from '@inovua/reactdatagrid-community';
+import '@inovua/reactdatagrid-community/index.css';
+import '@inovua/reactdatagrid-community/theme/default-dark.css'
+
+import { useTheme } from '@mui/material/styles';
 
 import {
   Box,
-  Typography,
   Tooltip,
   IconButton,
   Autocomplete,
   TextField,
-  LinearProgress,
   CircularProgress,
   Popper,
+  Typography
 }  from "@mui/material";
 
 import {
@@ -78,7 +78,6 @@ const DataSection = styled("div")(({ theme }) => ({
   flexDirection: "column",
   height: "100%",
   width: "100%",
-  border: "1px solid rgba(224, 224, 224, 1)",
   borderRadius: "4px",
   marginBottom: theme.spacing(1.5)
 }));
@@ -87,37 +86,23 @@ const DataSection = styled("div")(({ theme }) => ({
 
 const GridBody = styled("div")({
   height: "100%",
-  width: "100%",
-  '& .ipam-sub-excluded': {
-    backgroundColor: "rgb(255, 230, 230) !important",
-    '&:hover': {
-      backgroundColor: "rgb(255, 220, 220) !important",
-    }
-  },
-  '& .ipam-sub-included': {
-    backgroundColor: "rgb(255, 255, 255, 0.1) !important",
-    '&:hover': {
-      backgroundColor: "none",
-    }
-  }
+  width: "100%"
 });
 
-const StyledGridOverlay = styled("div")({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  height: "100%",
-});
+const gridStyle = {
+  height: '100%',
+  border: "1px solid rgba(224, 224, 224, 1)",
+  fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
+};
 
 export default function Administration() {
-  const { instance, inProgress, accounts } = useMsal();
+  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
-  const [admins, setAdmins] = React.useState([]);
+  const [admins, setAdmins] = React.useState(null);
   const [loadedAdmins, setLoadedAdmins] = React.useState([]);
-  const [selectionModel, setSelectionModel] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
+  const [selectionModel, setSelectionModel] = React.useState({});
+  const [loading, setLoading] = React.useState(true);
 
   const [open, setOpen] = React.useState(false);
   const [options, setOptions] = React.useState(null);
@@ -125,72 +110,27 @@ export default function Administration() {
   const [selected, setSelected] = React.useState(null);
   const [sending, setSending] = React.useState(false);
 
+  const theme = useTheme();
+
+  const adminLoadedRef = React.useRef(false);
+
   const columns = [
-    { field: "name", headerName: "Name", flex: 0.5 },
-    { field: "email", headerName: "Email", flex: 1 },
-    { field: "id", headerName: "Object ID", flex: 0.75 },
-    { field: "", headerName: "", headerAlign: "center", align: "center", width: 25, sortable: false, renderCell: renderDelete }
+    { name: "name", header: "Name", lockable: false, defaultFlex: 0.5 },
+    { name: "email", header: "Email", lockable: false, defaultFlex: 1 },
+    { name: "id", header: "Object ID", lockable: false, defaultFlex: 0.75 },
+    { name: "delete", header: "Delete", width: 50, resizable: false, hideable: false, showColumnMenuTool: false, renderHeader: () => "", render: ({data}) => renderDelete(data) }
   ];
 
-  const fetchUsers = React.useMemo(() => throttle((input) => SearchUsers(input), 500), []);
+  const filterValue = [
+    { name: 'name', operator: 'contains', type: 'string', value: '' },
+    { name: 'email', operator: 'contains', type: 'string', value: '' },
+    { name: 'id', operator: 'contains', type: 'string', value: '' }
+  ];
 
   const usersLoading = open && !options;
   const unchanged = isEqual(admins, loadedAdmins);
 
-  React.useEffect(() => {
-    refreshData();
-  }, []);
-
-  React.useEffect(() => {
-    if(open) {
-      let active = true;
-
-      if (active) {
-        fetchUsers(input);
-      }
-
-      return () => {
-        active = false;
-      };
-    }
-  }, [open, input, fetchUsers]);
-
-  React.useEffect(() => {
-    if (!open) {
-      setOptions(null);
-    }
-  }, [input, open]);
-
-  function refreshData() {
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
-    (async () => {
-      try {
-        setLoading(true);
-        const response = await instance.acquireTokenSilent(request);
-        const data = await getAdmins(response.accessToken);
-        setAdmins(data);
-        setLoadedAdmins(data);
-      } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar("Error fetching admins", { variant: "error" });
-        }
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }
-
-  function SearchUsers(nameFilter) {
+  const SearchUsers = React.useCallback((nameFilter) => {
     const request = {
       scopes: ["Directory.Read.All"],
       account: accounts[0],
@@ -214,7 +154,70 @@ export default function Administration() {
         }
       }
     })();
-  }
+  }, [accounts, enqueueSnackbar, instance]);
+
+  const fetchUsers = React.useMemo(() => throttle((input) => SearchUsers(input), 500), [SearchUsers]);
+
+  const refreshData = React.useCallback(() => {
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
+
+    (async () => {
+      try {
+        // setLoading(true);
+        const response = await instance.acquireTokenSilent(request);
+        const data = await getAdmins(response.accessToken);
+        setAdmins(data);
+        setLoadedAdmins(data);
+      } catch (e) {
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar("Error fetching admins", { variant: "error" });
+        }
+      } finally {
+        // setLoading(false);
+      }
+    })();
+  }, [accounts, enqueueSnackbar, instance]);
+
+  React.useEffect(() => {
+    if(!adminLoadedRef.current) {
+      adminLoadedRef.current = true;
+
+      refreshData();
+    }
+  }, [refreshData]);
+
+  React.useEffect(() => {
+    if(open) {
+      let active = true;
+
+      if (active) {
+        fetchUsers(input);
+      }
+
+      return () => {
+        active = false;
+      };
+    }
+  }, [open, input, fetchUsers]);
+
+  React.useEffect(() => {
+    if (!open) {
+      setOptions(null);
+    }
+  }, [input, open]);
+
+  React.useEffect(() => {
+    admins && setLoading(false);
+  }, [admins]);
 
   function onSave() {
     const request = {
@@ -226,7 +229,7 @@ export default function Administration() {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        const data = await replaceAdmins(response.accessToken, admins);
+        await replaceAdmins(response.accessToken, admins);
         enqueueSnackbar("Successfully updated admins", { variant: "success" });
         refreshData();
       } catch (e) {
@@ -245,7 +248,7 @@ export default function Administration() {
     })();
   }
 
-  function renderDelete(params) {  
+  function renderDelete(data) {  
     const flexCenter = {
       display: "flex",
       alignItems: "center",
@@ -259,12 +262,12 @@ export default function Administration() {
             color="error"
             sx={{
               padding: 0,
-              display: (isEqual([params.row.id], selectionModel)) ? "flex" : "none"
+              display: (isEqual([data.id], Object.keys(selectionModel))) ? "flex" : "none"
             }}
             disableFocusRipple
             disableTouchRipple
             disableRipple
-            onClick={() => setAdmins(admins.filter(x => x.id !== params.row.id))}
+            onClick={() => setAdmins(admins.filter(x => x.id !== data.id))}
           >
             <HighlightOff />
           </IconButton>
@@ -300,32 +303,27 @@ export default function Administration() {
     return <Popper {...props} style={{ popperStyle }} placement="bottom-start" />;
   };
 
-  function onModelChange(newModel) {
-    if(isEqual(newModel, selectionModel)) {
-      setSelectionModel([]);
-    } else {
-      setSelectionModel(newModel);
-    }
+  function onClick(data) {
+    var id = data.id;
+    var newSelectionModel = {};
+
+    setSelectionModel(prevState => {
+      if(!prevState.hasOwnProperty(id)) {
+        newSelectionModel[id] = data;
+      }
+      
+      return newSelectionModel;
+    });
   }
 
-  function CustomNoRowsOverlay() {
+  function NoRowsOverlay() {
     return (
-      <StyledGridOverlay>
+      <React.Fragment>
         <Shrug />
         <Typography variant="overline" display="block"  sx={{ mt: 1 }}>
           Nothing yet...
         </Typography>
-      </StyledGridOverlay>
-    );
-  }
-
-  function CustomLoadingOverlay() {
-    return (
-      <GridOverlay>
-        <div style={{ position: "absolute", top: 0, width: "100%" }}>
-          <LinearProgress />
-        </div>
-      </GridOverlay>
+      </React.Fragment>
     );
   }
 
@@ -402,32 +400,23 @@ export default function Administration() {
         </FloatingHeader>
         <DataSection>
           <GridBody>
-            <DataGrid
-              disableColumnMenu
-              hideFooter
-              hideFooterPagination
-              hideFooterSelectedRowCount
-              density="compact"
-              rows={admins}
+            <ReactDataGrid
+              theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
+              idProperty="id"
+              showCellBorders="horizontal"
+              showZebraRows={false}
+              multiSelect={true}
+              showActiveRowIndicator={false}
+              enableColumnAutosize={false}
+              showColumnMenuGroupOptions={false}
               columns={columns}
               loading={loading}
-              onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
-              selectionModel={selectionModel}
-              components={{
-                NoRowsOverlay: CustomNoRowsOverlay,
-                LoadingOverlay: CustomLoadingOverlay,
-              }}
-              sx={{
-                "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus-within":
-                  {
-                    outline: "none",
-                  },
-                "&.MuiDataGrid-root .MuiDataGrid-columnHeader--moving":
-                  {
-                    backgroundColor: "rgba(255, 255, 255, 0.1)"
-                  },
-                border: "none"
-              }}
+              dataSource={admins || []}
+              defaultFilterValue={filterValue}
+              onRowClick={(rowData) => onClick(rowData.data)}
+              selected={selectionModel}
+              emptyText={NoRowsOverlay}
+              style={gridStyle}
             />
           </GridBody>
         </DataSection>

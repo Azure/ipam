@@ -1,6 +1,8 @@
 import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 
+import { isEqual } from 'lodash';
+
 import { useSnackbar } from "notistack";
 
 import { useMsal } from "@azure/msal-react";
@@ -9,44 +11,30 @@ import { InteractionRequiredAuthError } from "@azure/msal-browser";
 import {
   Box,
   Button,
-  Slider,
   Dialog,
   DialogActions,
   DialogContent,
-  DialogContentText,
   DialogTitle,
-  Switch,
-  Stack,
-  Typography
+  Typography,
+  ToggleButton,
+  ToggleButtonGroup
 } from "@mui/material";
 
 import {
+  WbSunnyOutlined,
+  DarkModeOutlined,
+} from "@mui/icons-material";
+
+import {
   getMeAsync,
-  getRefreshInterval
+  getRefreshInterval,
+  getDarkMode,
+  setDarkMode
 } from "../ipam/ipamSlice";
 
 import { updateMe } from "../ipam/ipamAPI";
 
 import { apiRequest } from "../../msal/authConfig";
-
-const marks = [
-  {
-    value: 5,
-    label: "5",
-  },
-  {
-    value: 10,
-    label: "10",
-  },
-  {
-    value: 15,
-    label: "15",
-  },
-  {
-    value: 30,
-    label: "30",
-  },
-];
 
 export default function UserSettings(props) {
   const { open, handleClose } = props;
@@ -54,21 +42,54 @@ export default function UserSettings(props) {
   const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
+  const [prevOpen, setPrevOpen] = React.useState(false);
+  const [openState, setOpenState] = React.useState({});
   const [refreshValue, setRefreshValue] = React.useState();
+  const [darkModeValue, setDarkModeValue] = React.useState(false);
   const [sending, setSending] = React.useState(false);
+
+  const darkModeSetting = useSelector(getDarkMode);
   const refreshInterval = useSelector(getRefreshInterval);
 
   const dispatch = useDispatch();
 
-  const changed = (refreshInterval == refreshValue) ? false : true;
+  const changed = React.useMemo(() => {
+    const currentState = {
+      darkMode: darkModeValue,
+      apiRefresh: refreshValue
+    };
+
+    return(!isEqual(openState, currentState));
+  },[darkModeValue, refreshValue, openState]);
 
   React.useEffect(()=>{
-    setRefreshValue(refreshInterval);
-  }, [open]);
+    if(!open && (open !== prevOpen)) {
+      dispatch(setDarkMode(openState.darkMode));
+      setRefreshValue(openState.apiRefresh);
+      setPrevOpen(open);
+    }
+  }, [open, prevOpen, openState, dispatch]);
+
+  React.useEffect(()=>{
+    if(open && (open !== prevOpen)) {
+      setDarkModeValue(darkModeSetting);
+      setRefreshValue(refreshInterval);
+
+      setOpenState(
+        {
+          darkMode: darkModeSetting,
+          apiRefresh: refreshInterval
+        }
+      );
+
+      setPrevOpen(open);
+    }
+  }, [open, prevOpen, darkModeSetting, refreshInterval]);
 
   function onSubmit() {
     var body = [
-      { "op": "replace", "path": "/apiRefresh", "value": refreshValue }
+      { "op": "replace", "path": "/apiRefresh", "value": refreshValue },
+      { "op": "replace", "path": "/darkMode", "value": darkModeValue }
     ];
 
     const request = {
@@ -80,8 +101,14 @@ export default function UserSettings(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        const data = await updateMe(response.accessToken, body);
+        await updateMe(response.accessToken, body);
         enqueueSnackbar("User settings updated", { variant: "success" });
+        setOpenState(
+          {
+            darkMode: darkModeValue,
+            apiRefresh: refreshValue
+          }
+        );
         dispatch(getMeAsync(response.accessToken));
         handleClose();
       } catch (e) {
@@ -92,7 +119,7 @@ export default function UserSettings(props) {
           console.log("------------------");
           console.log(e);
           console.log("------------------");
-          enqueueSnackbar("Error updating refresh timeout", { variant: "error" });
+          enqueueSnackbar("Error updating user settings", { variant: "error" });
         }
       } finally {
         setSending(false);
@@ -107,30 +134,43 @@ export default function UserSettings(props) {
           Settings
         </DialogTitle>
         <DialogContent>
-          {/*
-          <DialogContentText>
-            IP Usage Format:
-          </DialogContentText>
-          <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", p: 1 }}>
-              <Typography>Standard</Typography>
-              <Switch inputProps={{ 'aria-label': 'ant design' }} />
-              <Typography>Azure</Typography>
-          </Box>
-          <DialogContentText>
-            Data refresh interval (minutes):
-          </DialogContentText>
-          */}
-          <Box sx={{ p: 1 }}>
-            <Slider
-              aria-label="Restricted values"
-              min={5}
-              max={30}
-              value={refreshValue}
-              step={null}
-              valueLabelDisplay="auto"
-              marks={marks}
-              onChange={(event, newValue) => setRefreshValue(newValue)}
-            />
+          <Box
+            sx={{ 
+              pt: 1,
+              pb: 2,
+              pl: 2,
+              pr: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              border: '1px solid lightgrey',
+              borderRadius: '4px'
+            }}
+          >
+            <Typography
+              variant="button"
+              sx={{
+                pb: 1,
+                pl: 0.5,
+                fontWeight: 'bold'
+              }}
+            >
+              UI MODE
+            </Typography>
+            <ToggleButtonGroup
+              size="small"
+              color="primary"
+              value={darkModeValue}
+              exclusive
+              onChange={(event, newValue) => {dispatch(setDarkMode(newValue)); setDarkModeValue(newValue)}}
+              aria-label="Platform"
+            >
+              <ToggleButton value={false}>
+                <WbSunnyOutlined />&nbsp;Light
+              </ToggleButton>
+              <ToggleButton value={true}>
+                <DarkModeOutlined />&nbsp;Dark
+              </ToggleButton>
+            </ToggleButtonGroup>
           </Box>
         </DialogContent>
         <DialogActions>

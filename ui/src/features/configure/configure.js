@@ -2,6 +2,8 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
+import { isEqual } from 'lodash';
+
 import { useSnackbar } from "notistack";
 
 import { useMsal } from "@azure/msal-react";
@@ -12,7 +14,11 @@ import BlockDataGrid from "./block/block";
 
 import { ConfigureContext } from "./configureContext";
 
-import { selectSpaces, fetchSpacesAsync } from "../ipam/ipamSlice";
+import {
+  selectSpaces,
+  selectBlocks,
+  fetchSpacesAsync
+} from "../ipam/ipamSlice";
 
 import { apiRequest } from "../../msal/authConfig";
 
@@ -65,22 +71,16 @@ export default function ConfigureIPAM() {
 
   const [refreshing, setRefreshing] = React.useState(false);
   const [selectedSpace, setSelectedSpace] = React.useState(null);
+  const [selectedBlock, setSelectedBlock] = React.useState(null);
+
+  const configLoadedRef = React.useRef(false);
 
   const spaces = useSelector(selectSpaces);
+  const blocks = useSelector(selectBlocks);
 
   const dispatch = useDispatch();
 
-  var loaded = false;
-
-  React.useEffect(() => {
-    if(!loaded) {
-      refresh();
-      loaded = true;
-    }
-  }, []);
-
-  function refresh() {
-    console.log("REFRESH SPACES");
+  const refresh = React.useCallback(() => {
     const request = {
       scopes: apiRequest.scopes,
       account: accounts[0],
@@ -104,23 +104,46 @@ export default function ConfigureIPAM() {
         }
       }
     })();
-  }
+  }, [accounts, dispatch, enqueueSnackbar, instance]);
+
+  React.useEffect(() => {
+    if(!configLoadedRef.current) {
+      refresh();
+      configLoadedRef.current = true;
+    }
+  }, [refresh]);
+
+  React.useEffect(() => {
+    if(blocks && selectedBlock) {
+      let targetBlock = blocks.find(x => x.id === selectedBlock.id);
+
+      if(targetBlock) {
+        if(!isEqual(targetBlock, selectedBlock)) {
+          setSelectedBlock(targetBlock)
+        }
+      }
+    }
+  }, [blocks, selectedBlock]);
 
   return (
-    <ConfigureContext.Provider value={{ refreshing, spaces, refresh }}>
+    <ConfigureContext.Provider value={{ spaces, blocks, refreshing, refresh }}>
       <Wrapper>
         <Header>
           Configure Azure IPAM
         </Header>
         <MainBody>
           <TopSection>
-            <SpaceDataGrid 
-              setSelected={setSelectedSpace}
+            <SpaceDataGrid
+              selectedSpace={selectedSpace}
+              setSelectedSpace={setSelectedSpace}
+              setSelectedBlock={setSelectedBlock}
             />
           </TopSection>
           <BottomSection>
             <BlockDataGrid
-              selected={selectedSpace}
+              selectedSpace={selectedSpace}
+              selectedBlock={selectedBlock}
+              setSelectedBlock={setSelectedBlock}
             />
           </BottomSection>
         </MainBody>

@@ -13,7 +13,6 @@ import azure.cosmos.exceptions as exceptions
 import re
 import copy
 import asyncio
-import logging
 from ipaddress import IPv4Network
 from netaddr import IPSet, IPNetwork
 from uuid import uuid4
@@ -35,7 +34,9 @@ from app.routers.common.helper import (
     cosmos_upsert,
     cosmos_replace,
     cosmos_retry,
-    arg_query
+    arg_query,
+    vnet_fixup,
+    subnet_fixup
 )
 
 from app.routers.space import (
@@ -44,10 +45,7 @@ from app.routers.space import (
 
 from app.globals import globals
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-console = logging.StreamHandler()
-logger.addHandler(console)
+from app.logs.logs import ipam_logger as logger
 
 router = APIRouter(
     prefix="/azure",
@@ -64,9 +62,9 @@ async def get_subscriptions_sdk(credentials):
     subscriptions = []
 
     subscription_client = SubscriptionClient(
-      credential=credentials,
-      base_url=azure_arm_url,
-      credential_scopes=[azure_arm_scope]
+        credential=credentials,
+        base_url=azure_arm_url,
+        credential_scopes=[azure_arm_scope]
     )
 
     async for poll in subscription_client.subscriptions.list():
@@ -122,10 +120,10 @@ async def get_vmss_list_sdk_helper(credentials, subscription, list):
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
 
     compute_client = ComputeManagementClient(
-      credential=credentials,
-      subscription_id=subscription['subscription_id'],
-      base_url=azure_arm_url,
-      credential_scopes=[azure_arm_scope]
+        credential=credentials,
+        subscription_id=subscription['subscription_id'],
+        base_url=azure_arm_url,
+        credential_scopes=[azure_arm_scope]
     )
 
     try:
@@ -147,7 +145,7 @@ async def get_vmss_list_sdk_helper(credentials, subscription, list):
 
             list.append(vmss_data)
     except HttpResponseError:
-        print("Error fetching VMSS on subscription {}".format(subscription['subscription_id']))
+        logger.error("Error fetching VMSS on subscription {}".format(subscription['subscription_id']))
         pass
 
     await compute_client.close()
@@ -172,46 +170,52 @@ async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
 
     network_client = NetworkManagementClient(
-      credential=credentials,
-      subscription_id=vmss['subscription']['subscription_id'],
-      base_url=azure_arm_url,
-      credential_scopes=[azure_arm_scope]
+        credential=credentials,
+        subscription_id=vmss['subscription']['subscription_id'],
+        base_url=azure_arm_url,
+        credential_scopes=[azure_arm_scope]
     )
 
-    async for poll in network_client.network_interfaces.list_virtual_machine_scale_set_network_interfaces(vmss['resource_group_name'], vmss['name']):
-        for ip_config in poll.ip_configurations:
-            vnet_name_search = re.search(r"(?<=virtualNetworks/).*(?=/subnets)", ip_config.subnet.id)
-            vnet_name = vnet_name_search.group(0)
+    try:
+        async for poll in network_client.network_interfaces.list_virtual_machine_scale_set_network_interfaces(vmss['resource_group_name'], vmss['name']):
+            for ip_config in poll.ip_configurations:
+                vnet_name_search = re.search(r"(?<=virtualNetworks/).*(?=/subnets)", ip_config.subnet.id)
+                vnet_name = vnet_name_search.group(0)
 
-            vnet_id_search = re.search(r".*(?=/subnets)", ip_config.subnet.id)
-            vnet_id = vnet_id_search.group(0)
+                vnet_id_search = re.search(r".*(?=/subnets)", ip_config.subnet.id)
+                vnet_id = vnet_id_search.group(0)
 
-            subnet_name_search = re.search(r"(?<=subnets/).*", ip_config.subnet.id)
-            subnet_name = subnet_name_search.group(0)
+                subnet_name_search = re.search(r"(?<=subnets/).*", ip_config.subnet.id)
+                subnet_name = subnet_name_search.group(0)
 
-            vmss_num_search = re.search(r"(?<=virtualMachines/).*", poll.virtual_machine.id)
-            vmss_vm_num = vmss_num_search.group(0)
+                vmss_num_search = re.search(r"(?<=virtualMachines/).*", poll.virtual_machine.id)
+                vmss_vm_num = vmss_num_search.group(0)
 
-            vmss_data = {
-                "name": (vmss['name'] + '_' + vmss_vm_num),
-                "id": poll.virtual_machine.id,
-                "private_ip": ip_config.private_ip_address,
-                "resource_group": vmss['resource_group_name'],
-                "subscription_id": vmss['subscription']['subscription_id'],
-                "tenant_id": vmss['subscription']['tenant_id'],
-                "vnet_name": vnet_name,
-                "vnet_id": vnet_id,
-                "subnet_name": subnet_name,
-                "subnet_id": ip_config.subnet.id,
-                "metadata": {
-                    "size": vmss['size'],
-                    "vmss_name": vmss['name'],
-                    "vmss_vm_num": vmss_vm_num,
-                    "vmss_id": vmss['id']
+                vmss_data = {
+                    "name": (vmss['name'] + '_' + vmss_vm_num),
+                    "id": poll.virtual_machine.id,
+                    "private_ip": ip_config.private_ip_address,
+                    "resource_group": vmss['resource_group_name'],
+                    "subscription_id": vmss['subscription']['subscription_id'],
+                    "tenant_id": vmss['subscription']['tenant_id'],
+                    "vnet_name": vnet_name,
+                    "vnet_id": vnet_id,
+                    "subnet_name": subnet_name,
+                    "subnet_id": ip_config.subnet.id,
+                    "metadata": {
+                        "size": vmss['size'],
+                        "vmss_name": vmss['name'],
+                        "vmss_vm_num": vmss_vm_num,
+                        "vmss_id": vmss['id']
+                    }
                 }
-            }
 
-            list.append(vmss_data)
+                list.append(vmss_data)
+    except Exception as e:
+        logger.error("Error processing VMSS '{}'".format(vmss['name']))
+        logger.error(vmss)
+        logger.error(e.args)
+        pass
 
     await network_client.close()
 
@@ -247,6 +251,7 @@ async def get_vnet(
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
     vnet_list = await arg_query(authorization, admin, argquery.VNET)
+    vnet_list = vnet_fixup(vnet_list)
 
     updated_vnet_list = []
 
@@ -317,6 +322,7 @@ async def get_subnet(
     # ]
 
     subnet_list = await arg_query(authorization, admin, argquery.SUBNET)
+    subnet_list = subnet_fixup(subnet_list)
 
     updated_subnet_list = []
 
@@ -647,12 +653,12 @@ async def match_resv_to_vnets():
 
         for block in space['blocks']:
             for vnet in block['vnets']:
-              active = next((x for x in vnet_list if x['id'] == vnet['id']), None)
+                active = next((x for x in vnet_list if x['id'] == vnet['id']), None)
 
-              if active:
-                vnet['active'] = True
-              else:
-                vnet['active'] = False
+                if active:
+                    vnet['active'] = True
+                else:
+                    vnet['active'] = False
 
             for index, resv in enumerate(block['resv']):
                 if resv['id'] in stale_resv:

@@ -2,8 +2,7 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
 import {
-  useMsal,
-  useIsAuthenticated
+  useMsal
 } from "@azure/msal-react";
 
 import { InteractionRequiredAuthError } from "@azure/msal-browser";
@@ -20,12 +19,15 @@ import {
 
 function Refresh() {
   const { instance, accounts } = useMsal();
-  const [intervalAllId, setIntervalAllId] = React.useState();
-  const [intervalMeId, setIntervalMeId] = React.useState();
-  const refreshInterval = useSelector(getRefreshInterval);
-  const dispatch = useDispatch();
+  const intervalAll = React.useRef(null);
+  const intervalMe = React.useRef(null);
   const refreshAllRef = React.useRef();
-  const refreshMeRef = React.useRef();
+  const refreshMeRef = React.useRef(null);
+  const refreshLoadedRef = React.useRef(false);
+
+  const refreshInterval = useSelector(getRefreshInterval);
+
+  const dispatch = useDispatch();
 
   refreshAllRef.current = React.useCallback(() => {
     const request = {
@@ -48,7 +50,7 @@ function Refresh() {
         }
       }
     })();
-  }, []);
+  }, [accounts, dispatch, instance]);
 
   refreshMeRef.current = React.useCallback(() => {
     const request = {
@@ -67,29 +69,33 @@ function Refresh() {
         console.log("------------------");
       }
     })();
-  }, []);
+  }, [accounts, dispatch, instance]);
 
-  React.useEffect(()=>{
+  React.useEffect(() => {
     if(refreshInterval) {
       refreshAllRef.current()
-      clearInterval(intervalAllId);
-      setIntervalAllId(
-        setInterval(() => refreshAllRef.current(), refreshInterval * 60 * 1000)
-      );
+      clearInterval(intervalAll.current);
+      intervalAll.current = setInterval(() => refreshAllRef.current(), refreshInterval * 60 * 1000);
       return () => {
-        clearInterval(intervalAllId);
+        clearInterval(intervalAll.current);
+        intervalAll.current = null;
       }
     }
   }, [refreshInterval]);
 
-  React.useEffect(()=>{
-    refreshMeRef.current()
-    clearInterval(intervalMeId);
-    setIntervalMeId(
-      setInterval(() => refreshMeRef.current(), 60 * 1000)
-    );
+  React.useEffect(() => {
+    clearInterval(intervalMe.current);
+    intervalMe.current = setInterval(() => refreshMeRef.current(), 60 * 1000);
     return () => {
-      clearInterval(intervalMeId);
+      clearInterval(intervalMe.current);
+      intervalMe.current = null;
+    }
+  }, []);
+
+  React.useEffect(()=>{
+    if(!refreshLoadedRef.current) {
+      refreshLoadedRef.current = true;
+      refreshMeRef.current();
     }
   }, []);
 

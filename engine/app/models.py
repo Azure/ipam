@@ -97,10 +97,20 @@ class SpaceUpdate(List[JSONPatch]):
 class VNetsUpdate(List[str]):
     """DOCSTRING"""
 
-class CIDRReq(BaseModel):
+class SpaceCIDRReq(BaseModel):
+    """DOCSTRING"""
+
+    blocks: list
+    size: int
+    reverse_search: Optional[bool] = False
+    smallest_cidr: Optional[bool] = False
+
+class BlockCIDRReq(BaseModel):
     """DOCSTRING"""
 
     size: int
+    reverse_search: Optional[bool] = False
+    smallest_cidr: Optional[bool] = False
 
 class DeleteResvReq(List[str]):
     """DOCSTRING"""
@@ -162,6 +172,8 @@ class Reservation(BaseModel):
     """DOCSTRING"""
 
     id: str
+    space: Optional[str]
+    block: Optional[str]
     cidr: str
     userId: str
     createdOn: float
@@ -170,9 +182,9 @@ class Reservation(BaseModel):
 
     @root_validator
     def format_tag(cls, values) -> dict:
-      values["tag"] = { "X-IPAM-RES-ID": values["id"]}
-      
-      return values
+        values["tag"] = { "X-IPAM-RES-ID": values["id"]}
+        
+        return values
 
 class BlockBasic(BaseModel):
     """DOCSTRING"""
@@ -306,6 +318,7 @@ class User(BaseModel):
     """DOCSTRING"""
 
     id: UUID
+    darkMode: bool
     apiRefresh: int
     isAdmin: bool
 
@@ -323,3 +336,23 @@ class JSONPatch(BaseModel):
 
 class UserUpdate(List[JSONPatch]):
     """DOCSTRING"""
+
+###################
+#   TOOL MODELS   #
+###################
+
+class SubnetCIDRReq(BaseModel):
+    """DOCSTRING"""
+
+    vnet_id: str
+    size: int
+    reverse_search: Optional[bool] = False
+    smallest_cidr: Optional[bool] = False
+
+class NewSubnetCIDR(BaseModel):
+    """DOCSTRING"""
+
+    vnet_name: str
+    resource_group: str
+    subscription_id: str
+    cidr: str

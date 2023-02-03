@@ -3,6 +3,8 @@ import { useSelector } from 'react-redux';
 
 import ReactECharts from "echarts-for-react";
 
+import { useTheme } from '@mui/material/styles';
+
 import {
   TextField,
   Autocomplete,
@@ -174,7 +176,7 @@ const opt = {
             </div>
             <div class="data">
               <span style="font-weight: bold">Prefixes:&nbsp;</span>
-              ${d.value.prefixes}
+              ${d.value.prefixes.join(', ')}
             </div>
             <div class="data">
               <span style="font-weight: bold">Size:&nbsp;</span>
@@ -459,6 +461,8 @@ const Search = React.forwardRef((props, ref) => {
   const [inputValue, setInputValue] = React.useState('');
   const [searchOptions, setSearchOptions] = React.useState([]);
 
+  const theme = useTheme();
+
   React.useImperativeHandle(ref, () => ({
     getValue() {
       return value;
@@ -503,6 +507,9 @@ const Search = React.forwardRef((props, ref) => {
           <TextField
             {...params}
             label="Select Space"
+            style={{
+              backgroundColor: theme.palette.mode === "dark" ? "black" : "white"
+            }}
           />
         );
       }}
@@ -516,7 +523,7 @@ const Search = React.forwardRef((props, ref) => {
       sx={{ background: "white" }}
       style={{
         position: "absolute",
-        backgroundColor: "white",
+        backgroundColor: "transparent",
         borderRadius: "4px",
         width: "300px",
         top: 137,
@@ -538,6 +545,8 @@ const Visualize = () => {
   const vnets = useSelector(selectVNets);
   const endpoints = useSelector(selectEndpoints);
 
+  const theme = useTheme();
+
   const ref = React.useCallback(node => {
     if (node !== null) {
       setEChartsRef(node);
@@ -549,6 +558,7 @@ const Visualize = () => {
       var newOptions = cloneDeep(opt);
 
       delete newOptions.graphic;
+      newOptions.darkMode = theme.palette.mode === 'dark' ? true : false;
       newOptions.series = parseTree(spaces, vnets, endpoints);
       newOptions.legend.data = newOptions.series.map((option) => {
         return {
@@ -563,18 +573,11 @@ const Visualize = () => {
           return opt.name;
         })
       );
-
-      console.log(options);
     }
-  }, [spaces, vnets, endpoints]);
+  }, [spaces, vnets, endpoints, theme]);
 
   function setDataFocus(target) {
     if(eChartsRef && !isEmpty(options.series)) {
-      console.log("SET DATA FOCUS");
-      console.log(options);
-      console.log("TARGET");
-      console.log(target);
-
       let newOptions = cloneDeep(options);
 
       newOptions.title.show = target ? false : true;
@@ -582,11 +585,7 @@ const Visualize = () => {
 
       eChartsRef.getEchartsInstance().setOption(newOptions);
 
-      console.log("NEW OPTIONS");
-      console.log(newOptions);
-
       if(!target) {
-        console.log("CLEARING LEGEND SELECT");
         eChartsRef.getEchartsInstance().dispatchAction({
           type: 'legendAllSelect'
         });
@@ -595,7 +594,6 @@ const Visualize = () => {
           type: 'legendInverseSelect'
         });
       } else {
-        console.log("SELECTING LEGEND TARGET");
         eChartsRef.getEchartsInstance().dispatchAction({
           type: 'legendSelect',
           name: target

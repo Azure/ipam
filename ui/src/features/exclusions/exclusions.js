@@ -1,27 +1,32 @@
-import * as React from "react";
+import * as React from 'react';
 import { useDispatch } from 'react-redux';
-import { styled } from "@mui/material/styles";
+import { styled } from '@mui/material/styles';
 
-import { useSnackbar } from "notistack";
+import { useSnackbar } from 'notistack';
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
+import { useMsal } from '@azure/msal-react';
+import { InteractionRequiredAuthError } from '@azure/msal-browser';
 
 import { isEqual } from 'lodash';
 
-import { DataGrid, GridOverlay } from "@mui/x-data-grid";
+import ReactDataGrid from '@inovua/reactdatagrid-community';
+import '@inovua/reactdatagrid-community/index.css';
+import '@inovua/reactdatagrid-community/theme/default-dark.css'
+
+import { useTheme } from '@mui/material/styles';
 
 import {
   Box,
-  Typography,
-  LinearProgress,
   Tooltip,
-  IconButton
+  IconButton,
+  Typography
 } from "@mui/material";
 
 import {
   SaveAlt
 } from "@mui/icons-material";
+
+import Shrug from "../../img/pam/Shrug";
 
 import {
   fetchSubscriptions,
@@ -73,62 +78,69 @@ const DataSection = styled("div")(({ theme }) => ({
   flexDirection: "column",
   height: "100%",
   width: "100%",
-  border: "1px solid rgba(224, 224, 224, 1)",
   borderRadius: "4px",
   marginBottom: theme.spacing(1.5)
 }));
 
-// Grid Styles
+const gridStyle = {
+  height: '100%',
+  border: "1px solid rgba(224, 224, 224, 1)",
+  fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
+};
 
-const GridBody = styled("div")({
+// Grid Style(s)
+const GridBody = styled("div")(({ theme }) => ({
   height: "100%",
   width: "100%",
-  '& .ipam-sub-excluded': {
-    backgroundColor: "rgb(255, 230, 230) !important",
-    '&:hover': {
-      backgroundColor: "rgb(255, 220, 220) !important",
-    }
-  },
-  '& .ipam-sub-included': {
-    backgroundColor: "rgb(255, 255, 255, 0.1) !important",
-    '&:hover': {
-      backgroundColor: "none",
+  '& .ipam-subscription-exclusions': {
+    '.InovuaReactDataGrid__row--selected': {
+        background: theme.palette.mode === 'dark' ? 'rgb(220, 20, 20) !important' : 'rgb(255, 230, 230) !important',
+      '.InovuaReactDataGrid__row-hover-target': {
+        '&:hover': {
+          background: theme.palette.mode === 'dark' ? 'rgb(220, 100, 100) !important' : 'rgb(255, 220, 220) !important',
+        }
+      }
     }
   }
-});
-
-const StyledGridOverlay = styled("div")({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  height: "100%",
-});
+}));
 
 const columns = [
-  { field: "subscription_id", headerName: "Subscription ID", headerAlign: "left", align: "left", flex: 1 },
-  { field: "name", headerName: "Subscription Name", headerAlign: "left", align: "left", flex: 2 },
-  { field: "type", headerName: "Subscription Type", headerAlign: "left", align: "left", flex: 0.75 },
+  { name: "subscription_id", header: "Subscription ID", lockable: false, defaultFlex: 1 },
+  { name: "name", header: "Subscription Name", lockable: false, defaultFlex: 1 },
+  { name: "type", header: "Subscription Type", lockable: false, defaultFlex: 1 },
+];
+
+const filterValue = [
+  { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
+  { name: 'name', operator: 'contains', type: 'string', value: '' },
+  { name: 'type', operator: 'contains', type: 'string', value: '' }
 ];
 
 export default function ManageExclusions() {
-  const { instance, inProgress, accounts } = useMsal();
+  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
-  const [loading, setLoading] = React.useState(false);
-  const [included, setIncluded] = React.useState([]);
-  const [excluded, setExcluded] = React.useState([]);
-  const [rowData, setRowData] = React.useState([]);
-  const [loadedExclusions, setLoadedExclusions] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
   const [sending, setSending] = React.useState(false);
+  const [subscriptions, setSubscriptions] = React.useState(null);
+  const [selected, setSelected] = React.useState({});
+  const [loadedExclusions, setLoadedExclusions] = React.useState([]);
+
+  const dataLoadedRef = React.useRef(false);
 
   const dispatch = useDispatch();
 
-  const unchanged = isEqual(excluded, loadedExclusions);
+  const theme = useTheme();
 
-  const message = `Click to Include/Exclude`;
+  const unchanged = isEqual(selected, loadedExclusions);
+
+  // const message = `Click to Include/Exclude`;
 
   React.useEffect(() => {
+    (subscriptions && selected) && setLoading(false);
+  }, [subscriptions, selected]);
+
+  const loadData = React.useCallback(() => {
     const request = {
       scopes: apiRequest.scopes,
       account: accounts[0],
@@ -136,7 +148,7 @@ export default function ManageExclusions() {
 
     (async () => {
       try {
-        setLoading(true);
+        // setLoading(true);
         const response = await instance.acquireTokenSilent(request);
 
         const stack = [
@@ -145,23 +157,25 @@ export default function ManageExclusions() {
         ];
 
         Promise.all(stack).then((results) => {
-          var includedSubs = results[0];
-          var excludedSubs = [];
+          var excluded = {};
 
           results[1].forEach(exclusion => {
-            includedSubs = includedSubs.filter(object => {
-              return object.subscription_id !== exclusion;
-            });
+            var targetSub = results[0].find((sub) => sub.subscription_id === exclusion);
 
-            const excludeObj = results[0].find(element => element.subscription_id == exclusion);
-
-            excludedSubs = [...excludedSubs, excludeObj];
+            if(targetSub) {
+              excluded[targetSub.id] = targetSub;
+            }
           });
 
-          setIncluded(includedSubs);
-          setExcluded(excludedSubs);
-          setLoadedExclusions(excludedSubs);
-          setLoading(false);
+          setSubscriptions(results[0]);
+          setSelected(prevState => {
+            return {
+              ...prevState,
+              ...excluded
+            }
+          });
+          setLoadedExclusions(excluded);
+          // setLoading(false);
         });
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
@@ -173,35 +187,18 @@ export default function ManageExclusions() {
           console.log("------------------");
           enqueueSnackbar("Error fetching subscriptions/exclusions", { variant: "error" });
         }
-
-        setLoading(false);
+      } finally {
+        // setLoading(false);
       }
     })();
-  }, []);
+  }, [accounts, enqueueSnackbar, instance]);
 
   React.useEffect(() => {
-    setRowData(included.concat(excluded));
-  }, [included, excluded]);
-
-  function subscriptionExclude(elem) {
-    const newArr = included.filter(object => {
-      return object.id !== elem.id;
-    });
-
-    setIncluded(newArr);
-
-    setExcluded(excluded => [...excluded, elem]);
-  }
-
-  function subscriptionInclude(elem) {
-    const newArr = excluded.filter(object => {
-      return object.id !== elem.id;
-    });
-
-    setExcluded(newArr);
-
-    setIncluded(included => [...included, elem]);
-  }
+    if(!dataLoadedRef.current) {
+      dataLoadedRef.current = true;
+      loadData();
+    }
+  }, [loadData]);
 
   function onSave() {
     const request = {
@@ -212,11 +209,12 @@ export default function ManageExclusions() {
     (async () => {
       try {
         setSending(true);
-        let update = excluded.map(item => item.subscription_id);
+        let selectedValues = Object.values(selected);
+        let update = selectedValues.map(item => item.subscription_id);
         const response = await instance.acquireTokenSilent(request);
-        const data = await replaceExclusions(response.accessToken, update);
+        await replaceExclusions(response.accessToken, update);
         enqueueSnackbar("Successfully updated exclusions", { variant: "success" });
-        setLoadedExclusions(excluded);
+        setLoadedExclusions(selected);
         dispatch(refreshAllAsync(response.accessToken))
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
@@ -235,30 +233,25 @@ export default function ManageExclusions() {
   }
 
   function onClick(elem) {
-    excluded.includes(elem) ? subscriptionInclude(elem) : subscriptionExclude(elem);
+    var id = elem.id;
+
+    setSelected(prevState => {
+      let newState = {...prevState};
+
+      newState.hasOwnProperty(id) ? delete newState[id] : newState[id] = elem;
+
+      return newState;
+    });
   }
 
-  function getClass(elem) {
-    return excluded.includes(elem) ? 'ipam-sub-excluded' : 'ipam-sub-included';
-  }
-
-  function CustomLoadingOverlay() {
+  function NoRowsOverlay() {
     return (
-      <GridOverlay>
-        <div style={{ position: "absolute", top: 0, width: "100%" }}>
-          <LinearProgress />
-        </div>
-      </GridOverlay>
-    );
-  }
-
-  function CustomNoRowsOverlay() {
-    return (
-      <StyledGridOverlay>
+      <React.Fragment>
+        <Shrug />
         <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-          No Subscriptions Selected
+          Nothing yet...
         </Typography>
-      </StyledGridOverlay>
+      </React.Fragment>
     );
   }
 
@@ -267,7 +260,7 @@ export default function ManageExclusions() {
       <MainBody>
         <FloatingHeader>
           <Box sx={{ width: "20%" }}></Box>
-          <HeaderTitle>Subscription Management</HeaderTitle>
+          <HeaderTitle>Subscription Exclusions</HeaderTitle>
           <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ width: "20%", ml: 2, mr: 2 }}>
             <Tooltip title="Save" >
               <IconButton
@@ -275,7 +268,7 @@ export default function ManageExclusions() {
                 aria-label="upload picture"
                 component="span"
                 style={{
-                  visibility: unchanged ? 'hidden' : 'visible'
+                  visibility: (unchanged || loading) ? 'hidden' : 'visible'
                 }}
                 disabled={sending}
                 onClick={onSave}
@@ -287,36 +280,25 @@ export default function ManageExclusions() {
         </FloatingHeader>
         <DataSection>
           <GridBody>
-            <DataGrid
-              disableColumnMenu
-              // disableSelectionOnClick
-              // hideFooter
-              // hideFooterPagination
-              pagination
-              autoPageSize
-              hideFooterSelectedRowCount
-              density="compact"
-              rows={rowData}
+            <ReactDataGrid
+              theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
+              idProperty="id"
+              showCellBorders="horizontal"
+              showZebraRows={false}
+              multiSelect={true}
+              showActiveRowIndicator={false}
+              enableColumnAutosize={false}
+              showColumnMenuGroupOptions={false}
               columns={columns}
-              onRowClick={(rowData) => onClick(rowData.row)}
-              getRowClassName={(params) => getClass(params.row)}
+              toggleRowSelectOnClick={true}
               loading={loading}
-              components={{
-                LoadingOverlay: CustomLoadingOverlay,
-                NoRowsOverlay: CustomNoRowsOverlay,
-              }}
-              initialState={{
-                sorting: {
-                  sortModel: [{ field: 'name', sort: 'asc' }],
-                },
-              }}
-              sx={{
-                "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus":
-                  {
-                    outline: "none",
-                  },
-                border: "none",
-              }}
+              dataSource={subscriptions || []}
+              defaultFilterValue={filterValue}
+              onRowClick={(rowData) => onClick(rowData.data)}
+              selected={selected || {}}
+              emptyText={NoRowsOverlay}
+              style={gridStyle}
+              className="ipam-subscription-exclusions"
             />
           </GridBody>
         </DataSection>

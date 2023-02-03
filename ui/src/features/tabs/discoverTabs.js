@@ -63,8 +63,8 @@ export default function DiscoverTabs() {
             <Tab label="Blocks" component={Link} to={allTabs[1]} {...a11yProps(1)} />
             <Tab label="vNets" component={Link} to={allTabs[2]} {...a11yProps(2)} />
             <Tab label="Subnets" component={Link} to={allTabs[3]} {...a11yProps(3)} />
-            {/* <Tab label="Endpoints" component={Link} to={allTabs[4]} {...a11yProps(4)} /> */}
-            <Tab label="Endpoints" component={Link} to={allTabs[4]} state={{id: 'hello'}} {...a11yProps(4)} />
+            <Tab label="Endpoints" component={Link} to={allTabs[4]} {...a11yProps(4)} />
+            {/* <Tab label="Endpoints" component={Link} to={allTabs[4]} state={{id: 'hello'}} {...a11yProps(4)} /> */}
           </Tabs>
         </Box>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={0}><DiscoverTable map={spaces} /></TabPanel>

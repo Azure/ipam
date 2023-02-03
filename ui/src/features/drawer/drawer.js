@@ -9,9 +9,12 @@ import { useSnackbar } from "notistack";
 import { styled, alpha } from "@mui/material/styles";
 import { SvgIcon } from "@mui/material";
 
-import { Routes, Route, Link, Navigate } from "react-router-dom";
+import { orderBy } from 'lodash';
+import { plural, singular } from 'pluralize';
 
-import { callMsGraph } from "../../msal/graph";
+import { Routes, Route, Link, Navigate, useNavigate } from "react-router-dom";
+
+import { callMsGraph, callMsGraphPhoto } from "../../msal/graph";
 
 import {
   AppBar,
@@ -19,10 +22,15 @@ import {
   Toolbar,
   IconButton,
   Typography,
-  InputBase,
   Menu,
   MenuItem,
+  Autocomplete,
+  TextField,
+  InputAdornment,
+  Backdrop
 } from "@mui/material";
+
+import { createFilterOptions } from '@mui/material/Autocomplete';
 
 import {
   Menu as MenuIcon,
@@ -39,6 +47,7 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  ListItemButton,
   Divider,
   Collapse,
   Avatar,
@@ -49,6 +58,8 @@ import {
   ExpandMore,
   Settings as SettingsIcon,
 } from "@mui/icons-material";
+
+import { SpinnerCircular } from 'spinners-react';
 
 import Home from "../../img/Home";
 import Discover from "../../img/Discover";
@@ -62,23 +73,31 @@ import Configure from "../../img/Configure";
 import Admin from "../../img/Admin";
 import Visualize from "../../img/Visualize";
 import Peering from "../../img/Peering";
-import Conflict from "../../img/Conflict";
+// import Conflict from "../../img/Conflict";
 import Person from "../../img/Person";
 import Rule from "../../img/Rule";
+import Tools from "../../img/Tools";
+import Planner from "../../img/Planner";
+import Help from "../../img/Help";
 
 import UserSettings from "./userSettings";
 
 import Welcome from "../welcome/Welcome";
 import DiscoverTabs from "../tabs/discoverTabs";
 import AnalyzeTabs from "../tabs/analyzeTabs";
+import ToolsTabs from "../tabs/toolsTabs";
+
 import AdminTabs from "../tabs/adminTabs";
-// import AnalysisTool from "../analysis/analysis";
 import ConfigureIPAM from "../configure/configure";
 
 import Refresh from "./refresh";
 
 import {
-  getAdminStatus
+  getAdminStatus,
+  getMeLoaded,
+  selectVNets,
+  selectSubnets,
+  selectEndpoints
 } from "../ipam/ipamSlice";
 
 import { apiRequest } from "../../msal/authConfig";
@@ -100,30 +119,6 @@ const Search = styled("div")(({ theme }) => ({
   },
 }));
 
-const SearchIconWrapper = styled("div")(({ theme }) => ({
-  padding: theme.spacing(0, 2),
-  height: "100%",
-  position: "absolute",
-  pointerEvents: "none",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-}));
-
-const StyledInputBase = styled(InputBase)(({ theme }) => ({
-  color: "inherit",
-  "& .MuiInputBase-input": {
-    padding: theme.spacing(1, 1, 1, 0),
-    // vertical padding + font size from searchIcon
-    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
-    transition: theme.transitions.create("width"),
-    width: "100%",
-    [theme.breakpoints.up("md")]: {
-      width: "20ch",
-    },
-  },
-}));
-
 export default function NavDrawer() {
   const { instance, inProgress, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
@@ -131,10 +126,21 @@ export default function NavDrawer() {
   const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
   const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = React.useState(null);
   const [graphData, setGraphData] = React.useState(null);
+  const [graphPhoto, setGraphPhoto] = React.useState(null);
   const [navChildOpen, setNavChildOpen] = React.useState({});
   const [drawerState, setDrawerState] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [searchData, setSearchData] = React.useState([]);
+  const [searchInput, setSearchInput] = React.useState('');
+  const [searchValue, setSearchValue] = React.useState(null);
+
+  const navigate = useNavigate();
+
   const isAdmin = useSelector(getAdminStatus);
+  const meLoaded = useSelector(getMeLoaded);
+  const vNets = useSelector(selectVNets);
+  const subnets = useSelector(selectSubnets);
+  const endpoints = useSelector(selectEndpoints);
 
   const isMenuOpen = Boolean(menuAnchorEl);
   const isMobileMenuOpen = Boolean(mobileMenuAnchorEl);
@@ -146,7 +152,7 @@ export default function NavDrawer() {
         icon: Home,
         link: "/",
         admin: false
-      },
+      }
     ],
     [
       {
@@ -205,6 +211,19 @@ export default function NavDrawer() {
           }
         ]
       },
+      {
+        title: "Tools",
+        icon: Tools,
+        admin: false,
+        children: [
+          {
+            title: "Planner",
+            icon: Planner,
+            link: "tools/planner",
+            admin: false
+          }
+        ]
+      }
     ],
     [
       {
@@ -213,12 +232,6 @@ export default function NavDrawer() {
         link: "configure",
         admin: false
       },
-      // {
-      //   title: "Admin",
-      //   icon: Admin,
-      //   link: "admin",
-      //   admin: true
-      // },
       {
         title: "Admin",
         icon: Admin,
@@ -237,7 +250,7 @@ export default function NavDrawer() {
             admin: true
           }
         ]
-      },
+      }
     ]
   ];
 
@@ -254,7 +267,9 @@ export default function NavDrawer() {
         try {
           const response = await instance.acquireTokenSilent(request);
           const graphResponse = await callMsGraph(response.accessToken);
-          await setGraphData(graphResponse);
+          const photoResponse = await callMsGraphPhoto(response.accessToken);
+          setGraphPhoto(photoResponse);
+          setGraphData(graphResponse);
         } catch (e) {
           if (e instanceof InteractionRequiredAuthError) {
             instance.acquireTokenRedirect(request);
@@ -295,6 +310,119 @@ export default function NavDrawer() {
     setDrawerState(open);
   };
 
+  React.useEffect(() => {
+    function getTitleCase(str) {
+      const titleCase = str
+        .toLowerCase()
+        .split('_')
+        .map(word => {
+          return word.charAt(0).toUpperCase() + word.slice(1);
+        })
+        .join(' ');
+    
+      return titleCase;
+    }
+
+    function GetInstanceType(target) {
+      var instanceType = typeof target;
+    
+      if(instanceType === 'object') {
+        instanceType = Array.isArray(target) ? 'array': 'object';
+      }
+    
+      return instanceType;
+    }
+
+    function objToFilter(data, header, path, exclusions) {
+      const searchObj = data.reduce((prev, curr) => {
+
+        Object.entries(curr).forEach(([key, value]) => {
+          if(value !== undefined && value !== null) {
+            const newKey = key.replace(/([a-zA-Z])(?=[A-Z])/g, '$1_').toLowerCase();
+
+            if(!exclusions.includes(newKey)) {
+              const titleKey = getTitleCase(newKey);
+              const keyNoun = Array.isArray(value) ? plural(titleKey) : singular(titleKey);
+
+              if(!prev.hasOwnProperty(newKey)) {
+                prev[newKey] = {
+                  searchKey: key,
+                  noun: keyNoun,
+                  comparator: Array.isArray(value) ? 'contains' : 'like',
+                  type: GetInstanceType(value),
+                  values: []
+                };
+              }
+
+              Array.isArray(value) ? prev[newKey].values = prev[newKey].values.concat(value) : prev[newKey].values.push(value);
+            }
+          }
+        });
+
+        return prev;
+      }, {});
+
+      var searchItems = [];
+
+      Object.entries(searchObj).forEach(([key, props]) => {
+        searchObj[key].values = [...new Set(props.values)];
+      });
+
+      Object.values(searchObj).forEach((props) => {
+        props.values.forEach((value) => {
+          const phrase = props.noun + ' ' + props.comparator + ' ' + String(value);
+
+          var searchItem = {
+            category: header,
+            path: path,
+            phrase: phrase,
+            value: value,
+            filter: {
+              name: props.searchKey,
+              operator: 'contains',
+              type: props.type,
+              value: value
+            }
+          };
+
+          searchItems.push(searchItem);
+        });
+      });
+
+      return searchItems;
+    }
+
+    var newSearchData = [];
+
+    if(vNets) {
+      const vNetExclusions = ['id', 'peerings', 'resv', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_space', 'subscription_id', 'tenant_id', 'metadata'];
+      const vNetFiltered = objToFilter(vNets, 'Virtual Networks', '/discover/vnet', vNetExclusions);
+      const vNetResults = orderBy(vNetFiltered, 'phrase', 'asc');
+
+      const subnetExclusions = ['id', 'vnet_id', 'size', 'used', 'available', 'utilization', 'subscription_id', 'tenant_id', 'metadata'];
+      const subnetFiltered = objToFilter(subnets, 'Subnets', '/discover/subnet', subnetExclusions);
+      const subnetResults = orderBy(subnetFiltered, 'phrase', 'asc');
+
+      newSearchData = [...newSearchData, ...vNetResults, ...subnetResults];
+    }
+
+    if(endpoints) {
+      const endpointExclusions = ['id', 'unique_id', 'vnet_id', 'subnet_id', 'subscription_id', 'tenant_id', 'metadata'];
+      const endpointFiltered = objToFilter(endpoints, 'Endpoints', '/discover/endpoint', endpointExclusions);
+      const endpointResults = orderBy(endpointFiltered, 'phrase', 'asc');
+
+      newSearchData = [...newSearchData, ...endpointResults];
+    }
+
+    setSearchData(newSearchData);
+  }, [vNets, subnets, endpoints]);
+
+  const filterOptions = createFilterOptions({
+    matchFrom: 'any',
+    limit: 100,
+    stringify: (option) => String(option.value),
+  });
+
   const navList = () => (
     <Box
       sx={{ width: 250 }}
@@ -330,8 +458,7 @@ export default function NavDrawer() {
                     <List component="div" disablePadding>
                       {item.children.map((child, childIndex) => (
                         ((item.admin && isAdmin) || !item.admin) &&
-                        <ListItem
-                          button
+                        <ListItemButton
                           key={child.title}
                           component={Link}
                           to={child.link}
@@ -345,14 +472,13 @@ export default function NavDrawer() {
                             </SvgIcon>
                           </ListItemIcon>
                           <ListItemText primary={child.title} />
-                        </ListItem>
+                        </ListItemButton>
                       ))}
                     </List>
                     </Collapse>
                   </React.Fragment>
                 : ((item.admin && isAdmin) || !item.admin) &&
-                  <ListItem
-                    button
+                  <ListItemButton
                     key={item.title}
                     component={Link}
                     to={item.link}
@@ -365,7 +491,7 @@ export default function NavDrawer() {
                       </SvgIcon>
                     </ListItemIcon>
                     <ListItemText primary={item.title} />
-                  </ListItem>
+                  </ListItemButton>
               })}
             </List>
             {(navIndex < (navItems.length - 1)) && <Divider />}
@@ -580,6 +706,13 @@ export default function NavDrawer() {
 
   return (
     <React.Fragment>
+      <Backdrop
+        sx={{ color: '#fff', backgroundColor: 'rgba(192, 200, 200, 1)', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        transitionDuration={{ appear: 0, enter: 0, exit: 500 }}
+        open={!meLoaded || !graphData}
+      >
+        <SpinnerCircular size={250} thickness={100} speed={100} color="#33ccff" />
+      </Backdrop>
       <Refresh />
       <Box sx={{ flexGrow: 1 }}>
         <AppBar position="static">
@@ -597,12 +730,53 @@ export default function NavDrawer() {
             <Typography variant="h6" noWrap component="div" sx={{ display: { xs: "none", sm: "block" } }}>
               Azure IPAM
             </Typography>
-            {/* <Search>
-              <SearchIconWrapper>
-                <SearchIcon />
-              </SearchIconWrapper>
-              <StyledInputBase placeholder="Search…" inputProps={{ "aria-label": "search" }} />
-            </Search> */}
+            <Search>
+              <Autocomplete filterOptions={filterOptions}
+                freeSolo
+                id="ipam-search-bar"
+                disableClearable
+                options={searchData ? orderBy(searchData, 'category', 'asc') : []}
+                groupBy={(option) => option.category}
+                getOptionLabel={(option) => option.phrase}
+                disabled={searchData.length > 0 ? false : true}
+                inputValue={searchInput}
+                onInputChange={(event, newSearchInput) => {
+                  setSearchInput(newSearchInput);
+                }}
+                value={searchValue}
+                onChange={(event, newValue) => {
+                  setSearchInput('');
+                  setSearchValue(null);
+                  navigate(newValue.path, {state: newValue.filter});
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder={searchData.length > 0 ? "Search..." : "Loading..."}
+                    fullWidth
+                    variant="standard"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment:
+                        <InputAdornment position="start">
+                          <SearchIcon sx={{ color: 'white', pl: 1}}/>
+                        </InputAdornment>,
+                      disableUnderline: true,
+                      type: 'search',
+                      sx: {
+                        color: 'inherit'
+                      }
+                    }}
+                  />
+                )}
+                sx={{
+                  display: 'flex',
+                  color: 'inherit',
+                  width: '20ch',
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)'
+                }}
+              />
+            </Search>
             <Box sx={{ flexGrow: 1 }} />
             <Box sx={{ display: { xs: "none", md: "flex" } }}>
               <IconButton
@@ -614,7 +788,12 @@ export default function NavDrawer() {
                 onClick={handleProfileMenuOpen}
                 color="inherit"
               >
-                {graphData ? <Avatar {...stringAvatar(graphData.displayName)} /> : <Avatar />}
+                { graphData ? 
+                  graphPhoto ?
+                  <Avatar alt={graphData.displayName} src={graphPhoto} /> :
+                  <Avatar {...stringAvatar(graphData.displayName)} /> :
+                  <Avatar />
+                }
               </IconButton>
             </Box>
             <Box sx={{ display: { xs: "flex", md: "none" } }}>
@@ -636,6 +815,23 @@ export default function NavDrawer() {
       </Box>
       <Drawer anchor="left" open={drawerState} onClose={toggleDrawer(false)}>
         {navList()}
+        <Box>
+          <Divider />
+          <ListItemButton
+            key="Help"
+            target="_blank"
+            href="https://azure.github.io/ipam/#/README"
+            onClick={toggleDrawer(false)}
+            onKeyDown={toggleDrawer(false)}
+          >
+            <ListItemIcon>
+              <SvgIcon>
+                <Help />
+              </SvgIcon>
+            </ListItemIcon>
+            <ListItemText primary="Help" />
+          </ListItemButton>
+        </Box>
       </Drawer>
       <Box sx={{ height: "calc(100vh - 64px)", overflow: "hidden" }}>
         <UserSettings
@@ -652,6 +848,7 @@ export default function NavDrawer() {
           <Route path="discover/endpoint" element={<DiscoverTabs />} />
           <Route path="analyze/visualize" element={<AnalyzeTabs />} />
           <Route path="analyze/peering" element={<AnalyzeTabs />} />
+          <Route path="tools/planner" element={<ToolsTabs />} />
           <Route path="configure" element={<ConfigureIPAM />} />
           {/* <Route path="admin" element={<Administration />} /> */}
           <Route path="admin/admins" element={<AdminTabs />} />

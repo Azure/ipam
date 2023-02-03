@@ -10,25 +10,24 @@ from azure.cosmos.aio import CosmosClient
 from azure.cosmos import PartitionKey
 from azure.cosmos.exceptions import CosmosResourceExistsError, CosmosResourceNotFoundError
 
-from app.routers import azure, admin, user, space
+from app.routers import azure, admin, user, space, tool
+from app.logs.logs import ipam_logger as logger
 
 import os
 import uuid
-import logging
+import copy
 from pathlib import Path
+from urllib.parse import urlparse
 
 from app.globals import globals
 
 from app.routers.common.helper import (
-    cosmos_upsert
+    cosmos_query,
+    cosmos_upsert,
+    cosmos_replace
 )
 
 BUILD_DIR = os.path.join(os.getcwd(), "app", "build")
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-console = logging.StreamHandler()
-logger.addHandler(console)
 
 description = """
 Azure IPAM is a lightweight solution developed on top of the Azure platform designed to help Azure customers manage their enterprise IP Address space easily and effectively.
@@ -37,7 +36,7 @@ Azure IPAM is a lightweight solution developed on top of the Azure platform desi
 app = FastAPI(
     title = "Azure IPAM",
     description = description,
-    version = "0.1.0",
+    version = "1.0.0",
     contact = {
         "name": "Azure IPAM Team",
         "url": "https://github.com/azure/ipam",
@@ -47,6 +46,8 @@ app = FastAPI(
     docs_url = "/api/docs",
     redoc_url = "/api/docs"
 )
+
+app.logger = logger
 
 app.include_router(
     azure.router,
@@ -61,6 +62,11 @@ app.include_router(
 
 app.include_router(
     user.router,
+    prefix = "/api"
+)
+
+app.include_router(
+    tool.router,
     prefix = "/api"
 )
 
@@ -86,6 +92,12 @@ origins = [
 
 if os.environ.get('WEBSITE_HOSTNAME'):
     origins.append("https://" + os.environ.get('WEBSITE_HOSTNAME'))
+
+if os.environ.get('IPAM_UI_URL'):
+    ui_url = urlparse(os.environ.get('IPAM_UI_URL'))
+
+    if (ui_url.scheme and ui_url.netloc):
+        origins.append(ui_url.scheme + "://" + ui_url.netloc)
 
 app.add_middleware(
     CORSMiddleware,
@@ -118,7 +130,7 @@ if os.path.isdir(BUILD_DIR):
     def read_index(request: Request, full_path: str):
         target_file = BUILD_DIR + "/" + full_path
 
-        print('look for: ', full_path, target_file)
+        # print('look for: ', full_path, target_file)
         if os.path.exists(target_file):
             return FileResponse(target_file)
 
@@ -195,6 +207,19 @@ async def db_upgrade():
     except CosmosResourceNotFoundError:
         logger.info('No existing admins to convert...')
         pass
+
+    users_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND NOT IS_DEFINED(c['data']['darkMode']))", globals.TENANT_ID)
+
+    if users_query:
+        for user in users_query:
+            user_data = copy.deepcopy(user)
+            user_data['data']['darkMode'] = False
+
+            await cosmos_replace(user, user_data)
+
+        logger.info('User object patching complete!')
+    else:
+        logger.info("No existing user objects to patch...")
 
     await cosmos_client.close()
 

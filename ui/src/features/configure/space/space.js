@@ -2,7 +2,13 @@ import * as React from "react";
 import { useSelector } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
-import { DataGrid, GridOverlay } from "@mui/x-data-grid";
+import { isEmpty } from 'lodash';
+
+import ReactDataGrid from '@inovua/reactdatagrid-community';
+import '@inovua/reactdatagrid-community/index.css';
+import '@inovua/reactdatagrid-community/theme/default-dark.css'
+
+import { useTheme } from '@mui/material/styles';
 
 import {
   Box,
@@ -12,8 +18,7 @@ import {
   MenuItem,
   ListItemIcon,
   Divider,
-  Typography,
-  LinearProgress,
+  Typography
 } from "@mui/material";
 
 import {
@@ -22,8 +27,6 @@ import {
   MoreVert as MoreVertIcon,
   CloudQueue as CloudQueueIcon,
 } from "@mui/icons-material";
-
-import Shrug from "../../../img/pam/Shrug";
 
 import AddSpace from "./Utils/addSpace";
 import EditSpace from "./Utils/editSpace";
@@ -52,67 +55,39 @@ const GridBody = styled("div")({
   width: "100%",
 });
 
-const StyledGridOverlay = styled("div")({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  height: "100%",
-});
+const gridStyle = {
+  height: '100%',
+  border: 'none',
+  fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
+};
 
 const columns = [
-  { field: "name", headerName: "Name", headerAlign: "left", align: "left", flex: 0.5 },
-  { field: "desc", headerName: "Description", headerAlign: "left", align: "left", flex: 1 },
+  { name: "name", header: "Name", defaultFlex: 0.5 },
+  { name: "desc", header: "Description", defaultFlex: 1 },
 ];
 
 export default function SpaceDataGrid(props) {
-  const { setSelected } = props;
+  const { selectedSpace, setSelectedSpace, setSelectedBlock } = props;
   const { spaces, refresh } = React.useContext(ConfigureContext);
 
-  const [loading, setLoading] = React.useState(true);
-  const [selectionModel, setSelectionModel] = React.useState([]);
+  const [selectionModel, setSelectionModel] = React.useState({});
+
   const [addSpaceOpen, setAddSpaceOpen] = React.useState(false);
   const [editSpaceOpen, setEditSpaceOpen] = React.useState(false);
   const [deleteSpaceOpen, setDeleteSpaceOpen] = React.useState(false);
+
   const [anchorEl, setAnchorEl] = React.useState(null);
 
   const isAdmin = useSelector(getAdminStatus);
 
-  const selectedRow = selectionModel.length
-    ? spaces.find((obj) => {
-        return obj.name === selectionModel[0];
-      })
-    : null;
+  const theme = useTheme();
 
   const menuOpen = Boolean(anchorEl);
 
   React.useEffect(() => {
-    spaces && setLoading(false);
-  },[spaces]);
-
-  React.useEffect(() => {
-    setSelected(selectedRow);
-  }, [selectedRow]);
-
-  function CustomLoadingOverlay() {
-    return (
-      <GridOverlay>
-        <div style={{ position: "absolute", top: 0, width: "100%" }}>
-          <LinearProgress />
-        </div>
-      </GridOverlay>
-    );
-  }
-
-  function CustomNoRowsOverlay() {
-    return (
-      <StyledGridOverlay>
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-          No Spaces Found, Create a Space to Begin
-        </Typography>
-      </StyledGridOverlay>
-    );
-  }
+    setSelectedBlock(null);
+    setSelectedSpace(!isEmpty(selectionModel) ? Object.values(selectionModel)[0] : null);
+  }, [selectionModel, setSelectedSpace, setSelectedBlock]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -137,12 +112,29 @@ export default function SpaceDataGrid(props) {
     setDeleteSpaceOpen(true);
   };
 
-  function onModelChange(newModel) {
-    if (JSON.stringify(newModel) === JSON.stringify(selectionModel)) {
-      setSelectionModel([]);
-    } else {
-      setSelectionModel(newModel);
-    }
+  function onClick(data) {
+    var id = data.name;
+    var newSelectionModel = {};
+
+    setSelectionModel(prevState => {
+      if(!prevState.hasOwnProperty(id)) {
+        newSelectionModel[id] = data;
+      } else {
+        setSelectedBlock(null);
+      }
+      
+      return newSelectionModel;
+    });
+  }
+
+  function NoRowsOverlay() {
+    return (
+      <React.Fragment>
+        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+          No Spaces Found, Create a Space to Begin
+        </Typography>
+      </React.Fragment>
+    );
   }
 
   return (
@@ -152,7 +144,7 @@ export default function SpaceDataGrid(props) {
         <EditSpace
           open={editSpaceOpen}
           handleClose={() => setEditSpaceOpen(false)}
-          space={selectedRow ? selectedRow : null}
+          space={selectedSpace ? selectedSpace : null}
           spaces={spaces}
           refresh={refresh}
         />
@@ -165,7 +157,7 @@ export default function SpaceDataGrid(props) {
         <ConfirmDelete
           open={deleteSpaceOpen}
           handleClose={() => setDeleteSpaceOpen(false)}
-          space={selectedRow ? selectedRow.name : null}
+          space={selectedSpace ? selectedSpace.name : null}
           refresh={refresh}
         />
         </React.Fragment>
@@ -173,11 +165,11 @@ export default function SpaceDataGrid(props) {
       <GridHeader
         style={{
           borderBottom: "1px solid rgba(224, 224, 224, 1)",
-          backgroundColor: selectedRow ? "rgba(25, 118, 210, 0.12)" : "unset",
+          backgroundColor: selectedSpace ? "rgba(25, 118, 210, 0.12)" : "unset",
         }}
       >
         <Box sx={{ width: "20%" }}></Box>
-        <GridTitle>{selectedRow ? `'${selectedRow.name}' selected` : "Spaces"}</GridTitle>
+        <GridTitle>{selectedSpace ? `'${selectedSpace.name}' selected` : "Spaces"}</GridTitle>
         <Box sx={{ width: "20%", display: "flex", justifyContent: "flex-end" }}>
           { isAdmin &&
             <React.Fragment>
@@ -243,7 +235,7 @@ export default function SpaceDataGrid(props) {
                 </MenuItem>
                 <MenuItem
                   onClick={handleEditSpace}
-                  disabled={!selectedRow}
+                  disabled={!selectedSpace}
                 >
                   <ListItemIcon>
                     <EditIcon fontSize="small" />
@@ -253,7 +245,7 @@ export default function SpaceDataGrid(props) {
                 <Divider />
                 <MenuItem
                   onClick={handleDeleteSpace}
-                  disabled={!selectedRow}
+                  disabled={!selectedSpace}
                 >
                   <ListItemIcon>
                     <DeleteOutlineIcon fontSize="small" />
@@ -266,29 +258,22 @@ export default function SpaceDataGrid(props) {
         </Box>
       </GridHeader>
       <GridBody>
-        <DataGrid
-          disableColumnMenu
-          hideFooter
-          hideFooterPagination
-          hideFooterSelectedRowCount
-          density="compact"
-          rows={spaces || []}
+        <ReactDataGrid
+          theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
+          idProperty="name"
+          showCellBorders="horizontal"
+          showZebraRows={false}
+          multiSelect={true}
+          showActiveRowIndicator={false}
+          enableColumnAutosize={false}
+          showColumnMenuGroupOptions={false}
           columns={columns}
-          loading={loading}
-          getRowId={(row) => row.name}
-          onSelectionModelChange={(newSelectionModel) => onModelChange(newSelectionModel)}
-          selectionModel={selectionModel}
-          components={{
-            LoadingOverlay: CustomLoadingOverlay,
-            NoRowsOverlay: CustomNoRowsOverlay,
-          }}
-          sx={{
-            "&.MuiDataGrid-root .MuiDataGrid-columnHeader:focus, &.MuiDataGrid-root .MuiDataGrid-cell:focus":
-              {
-                outline: "none",
-              },
-            border: "none",
-          }}
+          loading={spaces ? false : true}
+          dataSource={spaces || []}
+          onRowClick={(rowData) => onClick(rowData.data)}
+          selected={selectionModel}
+          emptyText={NoRowsOverlay}
+          style={gridStyle}
         />
       </GridBody>
     </React.Fragment>

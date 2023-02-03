@@ -7,6 +7,7 @@ param guid string = newGuid()
 @description('Deployment Location')
 param location string = deployment().location
 
+@maxLength(7)
 @description('Prefix for Resource Naming')
 param namePrefix string = 'ipam'
 
@@ -34,6 +35,7 @@ param tags object = {}
 
 @description('IPAM Resource Names')
 param resourceNames object = {
+  functionName: '${namePrefix}-${uniqueString(guid)}'
   appServiceName: '${namePrefix}-${uniqueString(guid)}'
   appServicePlanName: '${namePrefix}-asp-${uniqueString(guid)}'
   cosmosAccountName: '${namePrefix}-dbacct-${uniqueString(guid)}'
@@ -140,6 +142,8 @@ module appService 'appService.bicep' = if (!deployAsFunc) {
     appServiceName: resourceNames.appServiceName
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
+    databaseName: resourceNames.cosmosDatabaseName
+    containerName: resourceNames.cosmosContainerName
     managedIdentityId: managedIdentity.outputs.id
     managedIdentityClientId: managedIdentity.outputs.clientId
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
@@ -156,9 +160,11 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
     location: location
     azureCloud: azureCloud
     functionAppPlanName: resourceNames.appServicePlanName
-    functionAppName: resourceNames.appServiceName
+    functionAppName: resourceNames.functionName
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
+    databaseName: resourceNames.cosmosDatabaseName
+    containerName: resourceNames.cosmosContainerName
     managedIdentityId: managedIdentity.outputs.id
     managedIdentityClientId: managedIdentity.outputs.clientId
     storageAccountName: resourceNames.storageAccountName
@@ -170,7 +176,7 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
 
 // Outputs
 output resourceGroupName string = resourceGroup.name
-output appServiceName string = resourceNames.appServiceName
+output appServiceName string = deployAsFunc ? resourceNames.functionName : resourceNames.appServiceName
 output appServiceHostName string = deployAsFunc ? functionApp.outputs.functionAppHostName : appService.outputs.appServiceHostName
 output acrName string = privateAcr ? containerRegistry.outputs.acrName : ''
 output acrUri string = privateAcr ? containerRegistry.outputs.acrUri : ''

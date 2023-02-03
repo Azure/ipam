@@ -56,7 +56,7 @@ export default function AddSpace(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        const data = await createSpace(response.accessToken, body);
+        await createSpace(response.accessToken, body);
         setSpaceName({ value: "", error: false });
         setDescription({ value: "", error: false });
         refresh();
@@ -97,6 +97,7 @@ export default function AddSpace(props) {
 
   function validateDescription(description) {
     const regex = new RegExp(
+      //eslint-disable-next-line
       "^([a-zA-Z0-9 \._-]){1,32}$"
     );
 
