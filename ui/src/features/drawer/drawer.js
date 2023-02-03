@@ -78,6 +78,7 @@ import Person from "../../img/Person";
 import Rule from "../../img/Rule";
 import Tools from "../../img/Tools";
 import Planner from "../../img/Planner";
+import Help from "../../img/Help";
 
 import UserSettings from "./userSettings";
 
@@ -814,6 +815,23 @@ export default function NavDrawer() {
       </Box>
       <Drawer anchor="left" open={drawerState} onClose={toggleDrawer(false)}>
         {navList()}
+        <Box>
+          <Divider />
+          <ListItemButton
+            key="Help"
+            target="_blank"
+            href="https://azure.github.io/ipam/#/README"
+            onClick={toggleDrawer(false)}
+            onKeyDown={toggleDrawer(false)}
+          >
+            <ListItemIcon>
+              <SvgIcon>
+                <Help />
+              </SvgIcon>
+            </ListItemIcon>
+            <ListItemText primary="Help" />
+          </ListItemButton>
+        </Box>
       </Drawer>
       <Box sx={{ height: "calc(100vh - 64px)", overflow: "hidden" }}>
         <UserSettings
