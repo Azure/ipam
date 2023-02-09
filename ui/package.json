@@ -53,6 +53,7 @@
     ]
   },
   "devDependencies": {
-    "react-inject-env": "^2.1.0"
+    "react-inject-env": "^2.1.0",
+    "http-server": "^14.1.1"
   }
 }

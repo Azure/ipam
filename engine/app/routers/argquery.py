@@ -188,13 +188,15 @@ ComputeResources
 | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines"
 | where subscriptionId !in~ {}
 | project name, tostring(id), resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId
+| extend lower_id = tolower(id)
 | join kind = leftouter (
     ComputeResources
     | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines/networkinterfaces"
     | mv-expand ipConfig = properties.ipConfigurations
     | project id = tostring(properties.virtualMachine.id), private_ip = ipConfig.properties.privateIPAddress, subnet_id = ipConfig.properties.subnet.id
+    | extend lower_id = tolower(id)
     | extend lower_subnet_id = tolower(tostring(subnet_id))
-) on id
+) on lower_id
 | join kind = leftouter (
     resources
     | where type =~ 'microsoft.network/virtualnetworks'

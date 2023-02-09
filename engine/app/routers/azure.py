@@ -388,8 +388,8 @@ async def vmss(
     Get a list of Azure VM Scale Sets.
     """
 
-    results = await get_vmss(authorization, admin)
-    # results = await arg_query(authorization, admin, argquery.VM_SCALE_SET)
+    # results = await get_vmss(authorization, admin)
+    results = await arg_query(authorization, admin, argquery.VM_SCALE_SET)
 
     return results
 
