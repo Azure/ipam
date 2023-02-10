@@ -183,6 +183,33 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('size', size, 'public_ip', public_ip, 'nic_id', nic_id, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
 """
 
+# VM_SCALE_SET = """
+# ComputeResources
+# | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines"
+# | where subscriptionId !in~ {}
+# | project name, tostring(id), resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId
+# | extend lower_id = tolower(id)
+# | join kind = leftouter (
+#     ComputeResources
+#     | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines/networkinterfaces"
+#     | mv-expand ipConfig = properties.ipConfigurations
+#     | project id = tostring(properties.virtualMachine.id), private_ip = ipConfig.properties.privateIPAddress, subnet_id = ipConfig.properties.subnet.id
+#     | extend lower_id = tolower(id)
+#     | extend lower_subnet_id = tolower(tostring(subnet_id))
+# ) on lower_id
+# | join kind = leftouter (
+#     resources
+#     | where type =~ 'microsoft.network/virtualnetworks'
+#     | mv-expand subnet = properties.subnets
+#     | project subnet_id = subnet.id, subnet_name = subnet.name, vnet_id = id, vnet_name = name
+#     | extend lower_subnet_id = tolower(tostring(subnet_id))
+# ) on lower_subnet_id
+# | extend vmss_name = replace(@'_[^_]+$', '', name)
+# | extend vmss_vm_num = todynamic(replace(@'.*\/virtualMachines/', '', id))
+# | extend vmss_id = replace(@'/virtualMachines.*', '', id)
+# | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('vmss_name', vmss_name, 'vmss_vm_num', vmss_vm_num, 'vmss_id', vmss_id)
+# """
+
 VM_SCALE_SET = """
 ComputeResources
 | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines"
@@ -204,10 +231,10 @@ ComputeResources
     | project subnet_id = subnet.id, subnet_name = subnet.name, vnet_id = id, vnet_name = name
     | extend lower_subnet_id = tolower(tostring(subnet_id))
 ) on lower_subnet_id
-| extend vmss_name = replace(@'_[^_]+$', '', name)
+| extend vmss_name = extract(@'virtualMachineScaleSets\/(.*)\/virtualMachines', 1, id)
 | extend vmss_vm_num = todynamic(replace(@'.*\/virtualMachines/', '', id))
 | extend vmss_id = replace(@'/virtualMachines.*', '', id)
-| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('vmss_name', vmss_name, 'vmss_vm_num', vmss_vm_num, 'vmss_id', vmss_id)
+| project name = strcat(vmss_name, '_', vmss_vm_num), id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('vmss_name', vmss_name, 'vmss_vm_num', vmss_vm_num, 'vmss_id', vmss_id)
 """
 
 FIREWALL_VNET = """

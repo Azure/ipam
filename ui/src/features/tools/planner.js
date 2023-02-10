@@ -62,7 +62,7 @@ const Item = styled(Paper)(({ theme, overlap }) => ({
   padding: theme.spacing(1),
   textAlign: 'center',
   color: theme.palette.text.secondary,
-  fontSize: 'clamp(12px, 1vw, 16px)',
+  fontSize: 'clamp(12px, 1vw, 15px)',
   textOverflow: 'ellipsis',
   overflow: 'hidden',
   backgroundColor: overlap ? (theme.palette.mode === 'dark' ? 'darkred' : 'orangered') : (theme.palette.mode === 'dark' ? 'darkgreen' : 'lawngreen')

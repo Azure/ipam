@@ -64,6 +64,12 @@ class Globals:
         return azure_arm_url
 
     @property
+    def AZURE_ENV(self):
+        azure_env = os.environ.get('AZURE_ENV')
+
+        return azure_env if azure_env else 'AZURE_PUBLIC'
+
+    @property
     def AUTHORITY_HOST(self):
         azure_env = os.environ.get('AZURE_ENV')
 
