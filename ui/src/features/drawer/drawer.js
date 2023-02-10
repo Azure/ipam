@@ -73,12 +73,12 @@ import Configure from "../../img/Configure";
 import Admin from "../../img/Admin";
 import Visualize from "../../img/Visualize";
 import Peering from "../../img/Peering";
-// import Conflict from "../../img/Conflict";
 import Person from "../../img/Person";
 import Rule from "../../img/Rule";
 import Tools from "../../img/Tools";
 import Planner from "../../img/Planner";
 import Help from "../../img/Help";
+import VWan from "../../img/VWan";
 
 import UserSettings from "./userSettings";
 
@@ -182,6 +182,12 @@ export default function NavDrawer() {
             title: "Subnets",
             icon: Subnet,
             link: "discover/subnet",
+            admin: false
+          },
+          {
+            title: "vWans",
+            icon: VWan,
+            link: "discover/endpoint",
             admin: false
           },
           {
