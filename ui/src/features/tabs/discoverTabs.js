@@ -12,6 +12,7 @@ import {
   spaces,
   blocks,
   vnets,
+  vhubs,
   subnets,
   endpoints
 } from './config/discoverConfig';
@@ -50,7 +51,7 @@ function a11yProps(index) {
 }
 
 export default function DiscoverTabs() {
-  const allTabs = ['/discover/space', '/discover/block', '/discover/vnet', '/discover/subnet', '/discover/endpoint'];
+  const allTabs = ['/discover/space', '/discover/block', '/discover/vnet', '/discover/vhub', '/discover/subnet', '/discover/endpoint'];
 
   let location = useLocation();
 
@@ -62,16 +63,18 @@ export default function DiscoverTabs() {
             <Tab label="Spaces" component={Link} to={allTabs[0]} {...a11yProps(0)} />
             <Tab label="Blocks" component={Link} to={allTabs[1]} {...a11yProps(1)} />
             <Tab label="vNets" component={Link} to={allTabs[2]} {...a11yProps(2)} />
-            <Tab label="Subnets" component={Link} to={allTabs[3]} {...a11yProps(3)} />
-            <Tab label="Endpoints" component={Link} to={allTabs[4]} {...a11yProps(4)} />
+            <Tab label="vHubs" component={Link} to={allTabs[3]} {...a11yProps(2)} />
+            <Tab label="Subnets" component={Link} to={allTabs[4]} {...a11yProps(3)} />
+            <Tab label="Endpoints" component={Link} to={allTabs[5]} {...a11yProps(4)} />
             {/* <Tab label="Endpoints" component={Link} to={allTabs[4]} state={{id: 'hello'}} {...a11yProps(4)} /> */}
           </Tabs>
         </Box>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={0}><DiscoverTable map={spaces} /></TabPanel>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={1}><DiscoverTable map={blocks} /></TabPanel>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={2}><DiscoverTable map={vnets} /></TabPanel>
-        <TabPanel value={allTabs.indexOf(location.pathname)} index={3}><DiscoverTable map={subnets} /></TabPanel>
-        <TabPanel value={allTabs.indexOf(location.pathname)} index={4}><DiscoverTable map={endpoints} /></TabPanel>
+        <TabPanel value={allTabs.indexOf(location.pathname)} index={3}><DiscoverTable map={vhubs} /></TabPanel>
+        <TabPanel value={allTabs.indexOf(location.pathname)} index={4}><DiscoverTable map={subnets} /></TabPanel>
+        <TabPanel value={allTabs.indexOf(location.pathname)} index={5}><DiscoverTable map={endpoints} /></TabPanel>
       </React.Fragment>
     </Box>
   );

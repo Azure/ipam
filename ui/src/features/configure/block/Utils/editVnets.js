@@ -1,7 +1,7 @@
 import * as React from "react";
 import { styled } from "@mui/material/styles";
 
-import { isEqual } from 'lodash';
+import { isEqual, sortBy } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
@@ -94,6 +94,7 @@ export default function EditVnets(props) {
         try {
           setRefreshing(true);
           setSelectionModel([]);
+          var missing_data = [];
           const response = await instance.acquireTokenSilent(request);
           var data = await fetchBlockAvailable(response.accessToken, space, block.name);
           data.forEach((item) => {
@@ -101,9 +102,9 @@ export default function EditVnets(props) {
           });
           const missing = block['vnets'].map(vnet => vnet.id).filter(item => !data.map(a => a.id).includes(item));
           missing.forEach((item) => {
-            data.push(mockVNet(item));
+            missing_data.push(mockVNet(item));
           });
-          setVNets(data);
+          setVNets([...sortBy(missing_data, 'name'), ...sortBy(data, 'name')]);
           //eslint-disable-next-line
           setSelectionModel(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}));
         } catch (e) {

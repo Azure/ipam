@@ -63,7 +63,7 @@ const gridStyle = {
 
 const columns = [
   { name: "name", header: "Name", defaultFlex: 1 },
-  { name: "parentSpace", header: "Parent Space", defaultFlex: 1 },
+  { name: "parent_space", header: "Parent Space", defaultFlex: 1 },
   { name: "cidr", header: "CIDR", defaultFlex: 0.75 },
 ];
 
@@ -319,7 +319,7 @@ export default function BlockDataGrid(props) {
           enableColumnAutosize={false}
           showColumnMenuGroupOptions={false}
           columns={columns}
-          dataSource={selectedSpace ? blocks.filter((block) => block.parentSpace === selectedSpace.name) : []}
+          dataSource={selectedSpace ? blocks.filter((block) => block.parent_space === selectedSpace.name) : []}
           onRowClick={(rowData) => onClick(rowData.data)}
           selected={selectionModel}
           emptyText={NoRowsOverlay}

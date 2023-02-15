@@ -124,6 +124,42 @@ resources
 | project name = subnet.name, id = subnet.id, prefix = iff(isnotnull(subnetPrefixes), subnetPrefixes, pack_array(subnetPrefix)), resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), type = todynamic(subnetType)
 """
 
+# VWAN_HUBS = """
+# resources
+# | where type =~ 'microsoft.network/virtualhubs'
+# | project name, resource_group = resourceGroup, subscription_id = subscriptionId
+# """
+
+# VHUB = """
+# resources
+# | where type =~ 'microsoft.network/virtualhubs'
+# | where subscriptionId !in~ {}
+# | project name, id, prefix = properties.addressPrefix, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, vwan_id = tostring(properties.virtualWan.id)
+# | extend vwan_id_lower = tolower(vwan_id)
+# | join kind = leftouter (
+#     resources
+#     | where type =~ 'microsoft.Network/virtualWans'
+#     | project vwan_id = id, vwan_name = name
+#     | extend vwan_id_lower = tolower(vwan_id)
+# ) on vwan_id_lower
+# | project name, id, prefix, resource_group, subscription_id, tenant_id, metadata = pack('vwan_name', vwan_name, 'vwan_id', vwan_id)
+# """
+
+VHUB = """
+resources
+| where type =~ 'microsoft.network/virtualhubs'
+| where subscriptionId !in~ {}
+| project name, id, prefix = properties.addressPrefix, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, vwan_id = tostring(properties.virtualWan.id)
+| extend vwan_id_lower = tolower(vwan_id)
+| join kind = leftouter (
+    resources
+    | where type =~ 'microsoft.Network/virtualWans'
+    | project vwan_id = id, vwan_name = name
+    | extend vwan_id_lower = tolower(vwan_id)
+) on vwan_id_lower
+| project name, id, prefix, vwan_name, vwan_id, resource_group, subscription_id, tenant_id
+"""
+
 PRIVATE_ENDPOINT = """
 resources
 | where type =~ 'microsoft.network/networkinterfaces'

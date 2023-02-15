@@ -10,7 +10,15 @@ from azure.cosmos.aio import CosmosClient
 from azure.cosmos import PartitionKey
 from azure.cosmos.exceptions import CosmosResourceExistsError, CosmosResourceNotFoundError
 
-from app.routers import azure, admin, user, space, tool
+from app.routers import (
+    azure,
+    internal,
+    admin,
+    user,
+    space,
+    tool
+)
+
 from app.logs.logs import ipam_logger as logger
 
 import os
@@ -51,6 +59,12 @@ app.logger = logger
 
 app.include_router(
     azure.router,
+    prefix = "/api",
+    include_in_schema = False
+)
+
+app.include_router(
+    internal.router,
     prefix = "/api",
     include_in_schema = False
 )

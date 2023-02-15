@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ValidationError, EmailStr, root_validator
-from typing import Optional, List, Any
+from typing import Optional, Union, List, Any
 
 from netaddr import IPSet, IPNetwork, IPAddress
 from datetime import datetime
@@ -125,6 +125,12 @@ class VNet(BaseModel):
     id: str
     active: Optional[bool]
 
+class Network(BaseModel):
+    """DOCSTRING"""
+
+    id: str
+    active: Optional[bool]
+
 class VNets(BaseModel):
     """DOCSTRING"""
 
@@ -143,6 +149,16 @@ class SubnetUtil(BaseModel):
     prefix: str
     size: int
     used: int
+
+class NetworkExpand(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    id: str
+    prefixes: List[str]
+    resource_group: str
+    subscription_id: str
+    tenant_id: str
 
 class VNetExpand(BaseModel):
     """DOCSTRING"""
@@ -287,6 +303,63 @@ class SpaceExpandUtil(BaseModel):
     blocks: List[BlockExpandUtil]
     size: int
     used: int
+
+####################
+#   AZURE MODELS   #
+####################
+
+# class VWanHubMetadata(BaseModel):
+#     """DOCSTRING"""
+
+#     vwan_name: str
+#     vwan_id: str
+
+class VNetPeering(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    remote_network: str
+    state: str
+
+class VWanHub(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    id: str
+    prefix: IPv4Network
+    vwan_name: str
+    vwan_id: str
+    parent_space: Union[str,  None]
+    parent_block: Union[str, None]
+    resource_group: str
+    subscription_id: UUID
+    tenant_id: str
+    peerings: List[VNetPeering]
+    size: int
+
+    class Config:
+        json_encoders = {
+            UUID: lambda v: str(v),
+        }
+
+class AzureNetwork(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    id: str
+    type: str
+    prefixes: List[IPv4Network]
+    resource_group: str
+    subscription_id: UUID
+    tenant_id: str
+    peerings: List[VNetPeering]
+    size: int
+    used: Union[int, None]
+
+    class Config:
+        json_encoders = {
+            UUID: lambda v: str(v),
+        }
 
 ####################
 #   ADMIN MODELS   #

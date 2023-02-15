@@ -7,6 +7,7 @@ import {
   selectSpaces,
   selectBlocks,
   selectVNets,
+  selectVHubs,
   selectSubnets,
   selectEndpoints
 } from '../../ipam/ipamSlice';
@@ -74,7 +75,7 @@ export const blocks = {
   columns: [
     { name: "name", header: "Block Name", defaultFlex: 0.85 },
     { name: "utilization", header: "Utilization", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value) },
-    { name: "parentSpace", header: "Space", defaultFlex: 0.85 },
+    { name: "parent_space", header: "Space", defaultFlex: 0.85 },
     { name: "size", header: "Total IP's", defaultFlex: 0.35 },
     { name: "used", header: "Allocated IP's", defaultFlex: 0.45 },
     { name: "cidr", header: "CIDR Block", defaultFlex: 0.75 },
@@ -82,7 +83,7 @@ export const blocks = {
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },
     { name: 'utilization', operator: 'inrange', type: 'number', value: { start: 0, end: 100 } },
-    { name: 'parentSpace', operator: 'contains', type: 'string', value: '' },
+    { name: 'parent_space', operator: 'contains', type: 'string', value: '' },
     { name: 'size', operator: 'gte', type: 'number', value: 0 },
     { name: 'used', operator: 'gte', type: 'number', value: 0 },
     { name: 'cidr', operator: 'contains', type: 'string', value: '' }
@@ -93,7 +94,7 @@ export const blocks = {
     progressUsed: "used",
     fieldMap: [
       { name: "Block Name", value: "name" },
-      { name: "Space", value: "parentSpace" },
+      { name: "Space", value: "parent_space" },
       { name: "CIDR Block", value: "cidr" }
     ],
     showLink: false
@@ -109,7 +110,7 @@ export const vnets = {
   columns: [
     { name: "name", header: "vNet Name", defaultFlex: 0.85 },
     { name: "utilization", header: "Utilization", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value) },
-    { name: "parentBlock", header: "Block", defaultFlex: 0.85, render: ({value}) => value ?? "<Unassigned>" },
+    { name: "parent_block", header: "Block", defaultFlex: 0.85, render: ({value}) => value ?? "<Unassigned>" },
     { name: "size", header: "Total IP's", defaultFlex: 0.35 },
     { name: "used", header: "Allocated IP's", defaultFlex: 0.45 },
     { name: "prefixes", header: "IP Space", defaultFlex: 0.75, render: ({value}) => value.join(", ") }
@@ -117,7 +118,7 @@ export const vnets = {
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },
     { name: 'utilization', operator: 'inrange', type: 'number', value: { start: 0, end: 100 } },
-    { name: 'parentBlock', operator: 'contains', type: 'string', value: '' },
+    { name: 'parent_block', operator: 'contains', type: 'string', value: '' },
     { name: 'size', operator: 'gte', type: 'number', value: 0 },
     { name: 'used', operator: 'gte', type: 'number', value: 0 },
     { name: 'prefixes', operator: 'contains', type: 'array', value: '' }
@@ -128,13 +129,50 @@ export const vnets = {
     progressUsed: "used",
     fieldMap: [
       { name: "vNet Name", value: "name" },
-      { name: "Space", value: "parentSpace" },
-      { name: "Block", value: "parentBlock" },
+      { name: "Space", value: "parent_space" },
+      { name: "Block", value: "parent_block" },
       { name: "Address Space", value: "prefixes" },
       { name: "Resource Group", value: "resource_group" },
       { name: "Subscription ID", value: "subscription_id" },
       { name: "Total IP Space", value: "size" },
       { name: "Allocated IP's", value: "used" }
+    ],
+    showLink: true
+  }
+};
+
+export const vhubs = {
+  config: {
+    title: "Virtual Hub",
+    apiFunc: selectVHubs,
+    idProp: "id"
+  },
+  columns: [
+    { name: "name", header: "vNet Name", defaultFlex: 0.6 },
+    { name: "vwan_name", header: "Parent vWAN", defaultFlex: 0.6 },
+    { name: "parent_block", header: "Block", defaultFlex: 0.75, render: ({value}) => value ?? "<Unassigned>" },
+    { name: "resource_group", header: "Resource Group", defaultFlex: 0.75 },
+    { name: "prefixes", header: "IP Space", defaultFlex: 0.35, render: ({value}) => value.toString() }
+  ],
+  filterSettings: [
+    { name: 'name', operator: 'contains', type: 'string', value: '' },
+    { name: 'vwan_name', operator: 'contains', type: 'string', value: '' },
+    { name: 'parent_block', operator: 'contains', type: 'string', value: '' },
+    { name: 'resource_group', operator: 'contains', type: 'string', value: '' },
+    { name: 'prefixes', operator: 'contains', type: 'array', value: '' }
+  ],
+  detailsMap: {
+    showProgress: false,
+    progressTotal: "",
+    progressUsed: "",
+    fieldMap: [
+      { name: "vHub Name", value: "name" },
+      { name: "vWAN Name", value: "vwan_name" },
+      { name: "Space", value: "parent_space" },
+      { name: "Block", value: "parent_block" },
+      { name: "Address Space", value: "prefixes" },
+      { name: "Resource Group", value: "resource_group" },
+      { name: "Subscription ID", value: "subscription_id" },
     ],
     showLink: true
   }

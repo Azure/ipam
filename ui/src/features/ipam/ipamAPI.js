@@ -239,6 +239,23 @@ export function fetchVNets(token) {
   });
 }
 
+export function fetchVHubs(token) {
+  var url = new URL(`${ENGINE_URL}/api/azure/vhub`);
+
+  return axios
+    .get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+  .then(response => response.data)
+  .catch(error => {
+    console.log("ERROR FETCHING VHUBS FROM API");
+    console.log(error);
+    throw error;
+  });
+}
+
 export function fetchSubnets(token) {
   var url = new URL(`${ENGINE_URL}/api/azure/subnet`);
 
@@ -273,11 +290,30 @@ export function fetchEndpoints(token) {
   });
 }
 
+export function fetchNetworks(token) {
+  var url = new URL(`${ENGINE_URL}/api/azure/network`);
+
+  return axios
+    .get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+  .then(response => response.data)
+  .catch(error => {
+    console.log("ERROR FETCHING NETWORKS FROM API");
+    console.log(error);
+    throw error;
+  });
+}
+
 export function refreshAll(token) {
   const stack = [
     (async () => await fetchSpaces(token, true))(),
     // (async () => await fetchBlocks(token))(),
-    (async () => await fetchVNets(token))(),
+    // (async () => await fetchVNets(token))(),
+    // (async () => await fetchVHubs(token))(),
+    (async () => await fetchNetworks(token))(),
     // (async () => await fetchSubnets(token))(),
     (async () => await fetchEndpoints(token))()
   ];
@@ -286,7 +322,7 @@ export function refreshAll(token) {
 }
 
 export function fetchTreeView(token) {
-  const url = new URL(`${ENGINE_URL}/api/azure/tree`);
+  const url = new URL(`${ENGINE_URL}/api/internal/tree`);
 
   return axios
     .get(url, {

@@ -212,7 +212,7 @@ const Planner = () => {
   React.useEffect(() => {
     showAll
     ? setVNetOptions(newVNets.sort((a, b) => (a.subscription_name > b.subscription_name) ? 1 : -1))
-    : setVNetOptions(newVNets.filter(v => v.parentSpace !== null).sort((a, b) => (a.parentSpace > b.parentSpace) ? 1 : (a.parentSpace === b.parentSpace) ? ((a.parentBlock > b.parentBlock) ? 1 : -1) : -1 ));
+    : setVNetOptions(newVNets.filter(v => v.parent_space !== null).sort((a, b) => (a.parent_space > b.parent_space) ? 1 : (a.parent_space === b.parent_space) ? ((a.parent_block > b.parent_block) ? 1 : -1) : -1 ));
   }, [showAll, newVNets]);
 
   React.useEffect(() => {
@@ -288,7 +288,7 @@ const Planner = () => {
             id="grouped-demo"
             size="small"
             options={vNetOptions}
-            groupBy={(option) => showAll ? option.subscription_name : `${option.parentSpace} ➜ ${option.parentBlock}`}
+            groupBy={(option) => showAll ? option.subscription_name : `${option.parent_space} ➜ ${option.parent_block}`}
             getOptionLabel={(option) => option.name}
             inputValue={vNetInput}
             onInputChange={(event, newInputValue) => setVNetInput(newInputValue)}

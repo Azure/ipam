@@ -96,6 +96,7 @@ import {
   getAdminStatus,
   getMeLoaded,
   selectVNets,
+  selectVHubs,
   selectSubnets,
   selectEndpoints
 } from "../ipam/ipamSlice";
@@ -139,6 +140,7 @@ export default function NavDrawer() {
   const isAdmin = useSelector(getAdminStatus);
   const meLoaded = useSelector(getMeLoaded);
   const vNets = useSelector(selectVNets);
+  const vHubs = useSelector(selectVHubs);
   const subnets = useSelector(selectSubnets);
   const endpoints = useSelector(selectEndpoints);
 
@@ -185,9 +187,9 @@ export default function NavDrawer() {
             admin: false
           },
           {
-            title: "vWans",
+            title: "vHubs",
             icon: VWan,
-            link: "discover/endpoint",
+            link: "discover/vhub",
             admin: false
           },
           {
@@ -412,6 +414,14 @@ export default function NavDrawer() {
       newSearchData = [...newSearchData, ...vNetResults, ...subnetResults];
     }
 
+    if(vHubs) {
+      const vHubExclusions = ['id', 'peerings', 'vwan_id'];
+      const vHubFiltered = objToFilter(vHubs, 'Virtual Hubs', '/discover/vhub', vHubExclusions);
+      const vHubResults = orderBy(vHubFiltered, 'phrase', 'asc');
+
+      newSearchData = [...newSearchData, ...vHubResults];
+    }
+
     if(endpoints) {
       const endpointExclusions = ['id', 'unique_id', 'vnet_id', 'subnet_id', 'subscription_id', 'tenant_id', 'metadata'];
       const endpointFiltered = objToFilter(endpoints, 'Endpoints', '/discover/endpoint', endpointExclusions);
@@ -421,7 +431,7 @@ export default function NavDrawer() {
     }
 
     setSearchData(newSearchData);
-  }, [vNets, subnets, endpoints]);
+  }, [vNets, vHubs, subnets, endpoints]);
 
   const filterOptions = createFilterOptions({
     matchFrom: 'any',
@@ -850,6 +860,7 @@ export default function NavDrawer() {
           <Route path="discover/space" element={<DiscoverTabs />} />
           <Route path="discover/block" element={<DiscoverTabs />} />
           <Route path="discover/vnet" element={<DiscoverTabs />} />
+          <Route path="discover/vhub" element={<DiscoverTabs />} />
           <Route path="discover/subnet" element={<DiscoverTabs />} />
           <Route path="discover/endpoint" element={<DiscoverTabs />} />
           <Route path="analyze/visualize" element={<AnalyzeTabs />} />

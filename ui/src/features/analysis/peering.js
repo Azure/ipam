@@ -1,6 +1,8 @@
 import React from "react";
 import { useSelector } from 'react-redux';
 
+import { concat } from 'lodash';
+
 import ReactECharts from "echarts-for-react";
 
 import { useTheme } from '@mui/material/styles';
@@ -16,7 +18,8 @@ import RestoreIcon from '@mui/icons-material/Restore';
 import { cloneDeep, isEmpty } from "lodash";
 
 import {
-  selectVNets
+  selectVNets,
+  selectVHubs
 } from "../ipam/ipamSlice";
 
 const opt = {
@@ -94,11 +97,29 @@ const opt = {
         };
 
         const vNetPattern = "/Microsoft.Network/virtualNetworks/";
+        const vHubPattern = "/Microsoft.Network/virtualHubs/";
+
         const resourceGroupPattern = "(?<=/resourceGroups/).+?(?=/)";
         const subscriptionPattern = "(?<=/subscriptions/).+?(?=/)";
 
-        const sourceVnetName = source.substr(source.indexOf(vNetPattern) + vNetPattern.length, source.length);
-        const targetVnetName = target.substr(target.indexOf(vNetPattern) + vNetPattern.length, target.length);
+        var sourceVnetName = '';
+        var targetVnetName = '';
+
+        if(source.includes(vNetPattern)) {
+          sourceVnetName = source.substr(source.indexOf(vNetPattern) + vNetPattern.length, source.length);
+        }
+
+        if(source.includes(vHubPattern)) {
+          sourceVnetName = source.substr(source.indexOf(vHubPattern) + vHubPattern.length, source.length);
+        }
+
+        if(target.includes(vNetPattern)) {
+          targetVnetName = target.substr(source.indexOf(vNetPattern) + vNetPattern.length, target.length);
+        }
+
+        if(target.includes(vHubPattern)) {
+          targetVnetName = target.substr(source.indexOf(vHubPattern) + vHubPattern.length, target.length);
+        }
 
         const sourceResourceGroup = source.match(resourceGroupPattern)[0];
         const targetResourceGroup = target.match(resourceGroupPattern)[0];
@@ -240,10 +261,21 @@ const opt = {
         const display = d.data.category !== 'error' && 'none';
 
         const vNetPattern = "/Microsoft.Network/virtualNetworks/";
+        const vHubPattern = "/Microsoft.Network/virtualHubs/";
+
         const resourceGroupPattern = "(?<=/resourceGroups/).+?(?=/)";
         const subscriptionPattern = "(?<=/subscriptions/).+?(?=/)";
 
-        const vNetName = name.substr(name.indexOf(vNetPattern) + vNetPattern.length, name.length);
+        var vNetName = '';
+
+        if(name.includes(vNetPattern)) {
+          vNetName = name.substr(name.indexOf(vNetPattern) + vNetPattern.length, name.length);
+        }
+
+        if(name.includes(vHubPattern)) {
+          vNetName = name.substr(name.indexOf(vHubPattern) + vHubPattern.length, name.length);
+        }
+
         const resourceGroup = name.match(resourceGroupPattern)[0];
         const subscription = name.match(subscriptionPattern)[0];
 
@@ -366,6 +398,8 @@ function parseNets(data) {
   var visibleNets = [];
 
   const nodes = data.map(vnet => {
+    const vHubPattern = "/Microsoft.Network/virtualHubs/";
+
     visibleNets.push(vnet.id);
 
     let node = {
@@ -377,6 +411,11 @@ function parseNets(data) {
         show: true,
       }
     };
+
+    if(vnet.id.includes(vHubPattern)) {
+      node.symbol = 'image:///vhub.png';
+      node.symbolSize += 5;
+    }
 
     return node;
   });
@@ -473,8 +512,18 @@ function parseNets(data) {
         position: "top",
         // formatter: "{b}",
         formatter: function(d) {
-          const pattern = "/Microsoft.Network/virtualNetworks/";
-          const vnetName = d.name.substr(d.name.indexOf(pattern) + pattern.length, d.name.length);
+          const vNetPattern = "/Microsoft.Network/virtualNetworks/";
+          const vHubPattern = "/Microsoft.Network/virtualHubs/";
+
+          var vnetName = '';
+
+          if(d.name.includes(vNetPattern)) {
+            vnetName = d.name.substr(d.name.indexOf(vNetPattern) + vNetPattern.length, d.name.length);
+          }
+
+          if(d.name.includes(vHubPattern)) {
+            vnetName = d.name.substr(d.name.indexOf(vHubPattern) + vHubPattern.length, d.name.length);
+          }
 
           return vnetName;
         }
@@ -530,7 +579,8 @@ const Search = React.forwardRef((props, ref) => {
 
   const theme = useTheme();
 
-  const pattern = "/Microsoft.Network/virtualNetworks/";
+  const vNetPattern = "/Microsoft.Network/virtualNetworks/";
+  const vHubPattern = "/Microsoft.Network/virtualHubs/";
 
   React.useImperativeHandle(ref, () => ({
     setValue(target) {
@@ -550,9 +600,19 @@ const Search = React.forwardRef((props, ref) => {
       setSearchOptions([])
     } else {
       const optionData = options.series[0].data.map((option) => {
+        var targetName = '';
+
+        if(option.name.includes(vNetPattern)) {
+          targetName = option.name.substr(option.name.indexOf(vNetPattern) + vNetPattern.length, option.length)
+        }
+
+        if(option.name.includes(vHubPattern)) {
+          targetName = option.name.substr(option.name.indexOf(vHubPattern) + vHubPattern.length, option.length)
+        }
+
         const newOption = {
           id: option.name,
-          name: option.name.substr(option.name.indexOf(pattern) + pattern.length, option.length)
+          name: targetName
         }
 
         return newOption;
@@ -585,7 +645,7 @@ const Search = React.forwardRef((props, ref) => {
         return(
           <TextField
             {...params}
-            label="vNET Search"
+            label="Network Search"
             style={{
               backgroundColor: theme.palette.mode === "dark" ? "black" : "white"
             }}
@@ -620,10 +680,12 @@ const Peering = () => {
   const searchRef = React.useRef(null);
 
   const vnets = useSelector(selectVNets);
+  const vhubs = useSelector(selectVHubs);
 
   const theme = useTheme();
 
-  const pattern = "/Microsoft.Network/virtualNetworks/";
+  const vNetPattern = "/Microsoft.Network/virtualNetworks/";
+  const vHubPattern = "/Microsoft.Network/virtualHubs/";
 
   const ref = React.useCallback(node => {
     if (node !== null) {
@@ -632,14 +694,14 @@ const Peering = () => {
   }, []);
 
   React.useEffect(() => {
-    if(vnets) {
-      let vnetOptions = parseNets(vnets);
+    if(vnets && vhubs) {
+      let vnetOptions = parseNets(concat(vnets, vhubs));
 
       vnetOptions.darkMode = theme.palette.mode === "dark" ? true : false;
 
       setOptions(vnetOptions);
     }
-  }, [vnets, theme]);
+  }, [vnets, vhubs, theme]);
 
   function filterByVnet(options, target, previousTarget, currentMembers) {
     const members = [];
@@ -735,9 +797,19 @@ const Peering = () => {
 
   function onClick(param, echarts) {
     if (param.data.value > 0) {
+      var targetName = '';
+
+      if(param.data.name.includes(vNetPattern)) {
+        targetName = param.data.name.substr(param.data.name.indexOf(vNetPattern) + vNetPattern.length, param.data.name.length)
+      }
+
+      if(param.data.name.includes(vHubPattern)) {
+        targetName = param.data.name.substr(param.data.name.indexOf(vHubPattern) + vHubPattern.length, param.data.name.length)
+      }
+
       const target = {
         id: param.data.name,
-        name: param.data.name.substr(param.data.name.indexOf(pattern) + pattern.length, param.data.name.length)
+        name: targetName
       }
 
       searchRef.current.setValue(target);

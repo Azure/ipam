@@ -3,6 +3,7 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import {
   fetchSpaces,
   fetchVNets,
+  fetchVHubs,
   fetchSubnets,
   fetchEndpoints,
   refreshAll,
@@ -22,6 +23,7 @@ const initialState = {
   spaces: null,
   blocks: null,
   vNets: null,
+  vHubs: null,
   subnets: null,
   endpoints: null,
   darkMode: false,
@@ -48,6 +50,15 @@ export const fetchVNetsAsync = createAsyncThunk(
   'ipam/fetchVNets',
   async (token) => {
     const response = await fetchVNets(token);
+    // The value we return becomes the `fulfilled` action payload
+    return response;
+  }
+);
+
+export const fetchVHubsAsync = createAsyncThunk(
+  'ipam/fetchVHubs',
+  async (token) => {
+    const response = await fetchVHubs(token);
     // The value we return becomes the `fulfilled` action payload
     return response;
   }
@@ -116,10 +127,10 @@ export const ipamSlice = createSlice({
 
         state.blocks = action.payload.map((space) => {
           space.blocks.forEach((block) => {
-            block.parentSpace = space.name;
+            block.parent_space = space.name;
             block.available = (block.size - block.used);
             block.utilization = Math.round((block.used / block.size) * 100);
-            block.id = `${block.name}@${block.parentSpace}`;
+            block.id = `${block.name}@${block.parent_space}`;
           });
 
           return space.blocks;
@@ -151,10 +162,17 @@ export const ipamSlice = createSlice({
         state.endpoints = action.payload;
       })
       .addCase(refreshAllAsync.fulfilled, (state, action) => {
+        const vNetProvider = "Microsoft.Network/virtualNetworks";
+        const vHubProvider = "Microsoft.Network/virtualHubs";
+
         state.refreshing = false;
 
         const spaces = action.payload[0].value.map((space) => {
           if('size' in space && 'used' in space) {
+            if(space.used === null) {
+              space.used = 0;
+            }
+
             space.available = (space.size - space.used);
             space.utilization = Math.round((space.used / space.size) * 100) || 0;
           }
@@ -166,17 +184,20 @@ export const ipamSlice = createSlice({
 
         state.blocks = action.payload[0].value.map((space) => {
           space.blocks.forEach((block) => {
-            block.parentSpace = space.name;
+            block.parent_space = space.name;
             block.available = (block.size - block.used);
             block.utilization = Math.round((block.used / block.size) * 100);
-            block.id = `${block.name}@${block.parentSpace}`;
+            block.id = `${block.name}@${block.parent_space}`;
           });
 
           return space.blocks;
          }).flat();
 
         if(action.payload[1].status === 'fulfilled') {
-          const vnets = action.payload[1].value.map((vnet) => {
+          const vNetData = action.payload[1].value.filter((x) => x.id.toLowerCase().includes(vNetProvider.toLowerCase()));
+          const vHubData = action.payload[1].value.filter((x) => x.id.toLowerCase().includes(vHubProvider.toLowerCase()));
+
+          const vnets = vNetData.map((vnet) => {
             vnet.available = (vnet.size - vnet.used);
             vnet.utilization = Math.round((vnet.used / vnet.size) * 100);
             // vnet.prefixes = vnet.prefixes.join(", ");
@@ -186,7 +207,7 @@ export const ipamSlice = createSlice({
 
           state.vNets = vnets;
 
-          const subnets = action.payload[1].value.map((vnet) => {
+          const subnets = vNetData.map((vnet) => {
             var subnetArray = [];
           
             vnet.subnets.forEach((subnet) => {
@@ -213,10 +234,26 @@ export const ipamSlice = createSlice({
           }).flat();
 
           state.subnets = subnets;
+
+          // const vhubs = vHubData.map((vhub) => {
+          //   vhub.prefix = vhub.prefixes.toString();
+          //   delete vhub.prefixes;
+
+          //   return vhub;
+          // });
+
+          state.vHubs = vHubData;
         } else {
           state.vNets = [];
           state.subnets = [];
+          state.vHubs = [];
         }
+
+        // if(action.payload[2].status === 'fulfilled') {
+        //   state.vHubs = action.payload[2].value
+        // } else {
+        //   state.vHubs = [];
+        // }
 
         if(action.payload[2].status === 'fulfilled') {
           const endpoints = action.payload[2].value.map((endpoint) => {
@@ -279,6 +316,7 @@ export const getMeLoaded = (state) => state.ipam.meLoaded;
 export const selectSpaces = (state) => state.ipam.spaces;
 export const selectBlocks = (state) => state.ipam.blocks;
 export const selectVNets = (state) => state.ipam.vNets;
+export const selectVHubs = (state) => state.ipam.vHubs;
 export const selectSubnets = (state) => state.ipam.subnets;
 export const selectEndpoints = (state) => state.ipam.endpoints;
 

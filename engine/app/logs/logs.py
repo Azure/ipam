@@ -8,7 +8,7 @@ from pathlib import Path
 from loguru import logger
 from loguru._defaults import LOGURU_FORMAT
 
-sys.tracebacklimit = 2
+# sys.tracebacklimit = 2
 
 class InterceptHandler(logging.Handler):
     loglevel_mapping = {
