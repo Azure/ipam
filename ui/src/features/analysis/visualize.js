@@ -24,10 +24,6 @@ import {
   selectEndpoints
 } from "../ipam/ipamSlice";
 
-// import { spaces } from "./data/spaces";
-// import { vnets } from "./data/vnets";
-// import { endpoints } from "./data/endpoints";
-
 const opt = {
   graphic: {
     elements: [
@@ -348,9 +344,6 @@ const opt = {
 };
 
 function parseTree(spaces, vnets, vhubs, endpoints) {
-  // const vnet_provider = "Microsoft.Network/virtualNetworks";
-  // const vhub_provider = "Microsoft.Network/virtualHubs";
-
   const series = spaces.map((space) => {
     const data = {
       name: space.name,
@@ -696,7 +689,6 @@ const Visualize = () => {
           option={options}
           notMerge={true}
           ref={ref}
-          // style={{ height: "750px", width: "750px" }}
           style={{ height: "100%", width: "100%" }}
         />
       </div>

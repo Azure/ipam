@@ -43,8 +43,8 @@ export const spaces = {
   columns: [
     { name: "name", header: "Space Name", defaultFlex: 0.85 },
     { name: "utilization", header: "Utilization", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value) },
-    { name: "desc", header: "Description", defaultFlex: 0.85 },
-    { name: "size", header: "Total IP's", defaultFlex: 0.35, filterEditor: NumberFilter },
+    { name: "desc", header: "Description", defaultFlex: 1.00 },
+    { name: "size", header: "Total IP's", defaultFlex: 0.45, filterEditor: NumberFilter },
     { name: "used", header: "Allocated IP's", defaultFlex: 0.45, filterEditor: NumberFilter },
   ],
   filterSettings: [
@@ -76,9 +76,9 @@ export const blocks = {
     { name: "name", header: "Block Name", defaultFlex: 0.85 },
     { name: "utilization", header: "Utilization", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value) },
     { name: "parent_space", header: "Space", defaultFlex: 0.85 },
-    { name: "size", header: "Total IP's", defaultFlex: 0.35 },
+    { name: "size", header: "Total IP's", defaultFlex: 0.4 },
     { name: "used", header: "Allocated IP's", defaultFlex: 0.45 },
-    { name: "cidr", header: "CIDR Block", defaultFlex: 0.75 },
+    { name: "cidr", header: "CIDR Block", defaultFlex: 0.50 },
   ],
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },
@@ -111,9 +111,9 @@ export const vnets = {
     { name: "name", header: "vNet Name", defaultFlex: 0.85 },
     { name: "utilization", header: "Utilization", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value) },
     { name: "parent_block", header: "Block", defaultFlex: 0.85, render: ({value}) => value ?? "<Unassigned>" },
-    { name: "size", header: "Total IP's", defaultFlex: 0.35 },
+    { name: "size", header: "Total IP's", defaultFlex: 0.45 },
     { name: "used", header: "Allocated IP's", defaultFlex: 0.45 },
-    { name: "prefixes", header: "IP Space", defaultFlex: 0.75, render: ({value}) => value.join(", ") }
+    { name: "prefixes", header: "Address Space", defaultFlex: 0.75, render: ({value}) => value.join(", ") }
   ],
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },
@@ -152,7 +152,7 @@ export const vhubs = {
     { name: "vwan_name", header: "Parent vWAN", defaultFlex: 0.6 },
     { name: "parent_block", header: "Block", defaultFlex: 0.75, render: ({value}) => value ?? "<Unassigned>" },
     { name: "resource_group", header: "Resource Group", defaultFlex: 0.75 },
-    { name: "prefixes", header: "IP Space", defaultFlex: 0.35, render: ({value}) => value.toString() }
+    { name: "prefixes", header: "Address Space", defaultFlex: 0.35, render: ({value}) => value.toString() }
   ],
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },
@@ -188,9 +188,9 @@ export const subnets = {
     { name: "name", header: "Subnet Name", defaultFlex: 0.85 },
     { name: "utilization", header: "Utilization", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value) },
     { name: "vnet_name", header: "Parent vNet", defaultFlex: 0.85 },
-    { name: "size", header: "Total IP's", defaultFlex: 0.35 },
+    { name: "size", header: "Total IP's", defaultFlex: 0.45 },
     { name: "used", header: "Assigned IP's", defaultFlex: 0.45 },
-    { name: "prefix", header: "IP Space", defaultFlex: 0.75 },
+    { name: "prefix", header: "Address Space", defaultFlex: 0.50 },
   ],
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },
@@ -225,11 +225,11 @@ export const endpoints = {
     idProp: "uniqueId"
   },
   columns: [
-    { name: "name", header: "Endpoint Name", type: 'string', defaultFlex: 0.85 },
-    { name: "vnet_name", header: "Parent vNet", type: 'string', defaultFlex: 0.5 },
-    { name: "subnet_name", header: "Parent Subnet", type: 'string', defaultFlex: 0.85 },
-    { name: "resource_group", header: "Resource Group", type: 'string', defaultFlex: 0.35 },
-    { name: "private_ip", header: "Private IP", type: 'string', defaultFlex: 0.75, valueGetter: (params) => params.value || "N/A" },
+    { name: "name", header: "Endpoint Name", type: 'string', defaultFlex: 0.75 },
+    { name: "vnet_name", header: "Parent vNet", type: 'string', defaultFlex: 0.75 },
+    { name: "subnet_name", header: "Parent Subnet", type: 'string', defaultFlex: 0.75 },
+    { name: "resource_group", header: "Resource Group", type: 'string', defaultFlex: 0.75 },
+    { name: "private_ip", header: "Private IP", type: 'string', defaultFlex: 0.35, render: ({value}) => value || "N/A" },
   ],
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },

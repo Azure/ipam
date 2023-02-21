@@ -210,7 +210,7 @@ const opt = {
                   <span>SOURCE</span>
                 </div>
                 <div class="data">
-                  <span style="font-weight: bold">vNET Name:&nbsp;</span>
+                  <span style="font-weight: bold">Network Name:&nbsp;</span>
                   ${sourceVnetName}
                 </div>
                 <div class="data">
@@ -230,7 +230,7 @@ const opt = {
                   <span>TARGET</span>
                 </div>
                 <div class="data">
-                  <span style="font-weight: bold">vNET Name:&nbsp;</span>
+                  <span style="font-weight: bold">Network Name:&nbsp;</span>
                   ${targetVnetName}
                 </div>
                 <div class="data">
@@ -343,11 +343,11 @@ const opt = {
           <div class="outer">
             <div class="section">
               <div class="title">
-                <span>VNET DETAILS</span>
+                <span>NETWORK DETAILS</span>
                 <img style="margin-left: auto; display: ${display}" src="/warning.png" width="12px" height="12px"/>
               </div>
               <div class="data">
-                <span style="font-weight: bold">vNET Name:&nbsp;</span>
+                <span style="font-weight: bold">Network Name:&nbsp;</span>
                 ${vNetName}
               </div>
               <div class="data">
@@ -377,7 +377,6 @@ const opt = {
 };
 
 function parseNets(data) {
-  // const factor = data.length > 50 ? 3 : data.length > 25 ? 5 : 10;
   const factor = 3;
 
   const stateMap = {
@@ -510,7 +509,6 @@ function parseNets(data) {
       label: {
         show: true,
         position: "top",
-        // formatter: "{b}",
         formatter: function(d) {
           const vNetPattern = "/Microsoft.Network/virtualNetworks/";
           const vHubPattern = "/Microsoft.Network/virtualHubs/";
@@ -851,7 +849,6 @@ const Peering = () => {
           notMerge={true}
           onEvents={onEvents}
           ref={ref}
-          // style={{ height: "750px", width: "750px" }}
           style={{ height: "100%", width: "100%" }}
         />
       </div>

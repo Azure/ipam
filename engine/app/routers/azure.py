@@ -55,6 +55,13 @@ router = APIRouter(
 async def get_subscriptions_sdk(credentials):
     """DOCSTRING"""
 
+    QUOTA_MAP = {
+        "EnterpriseAgreement": "Enterprise Agreement",
+        "MSDNDevTest": "Dev/Test",
+        "MSDN": "PAYGO",
+        "Internal": "Microsoft Internal"
+    }
+
     azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
 
@@ -67,9 +74,20 @@ async def get_subscriptions_sdk(credentials):
     )
 
     async for poll in subscription_client.subscriptions.list():
+        quota_id = poll.subscription_policies.quota_id
+        quota_id_parts = quota_id.split("_")
+
+        if quota_id_parts[0] in QUOTA_MAP:
+            quota_type = QUOTA_MAP[quota_id_parts[0]]
+        else:
+            quota_type = "Unknown"
+
         sub = {
-            "tenant_id": poll.tenant_id,
-            "subscription_id": poll.subscription_id
+            "id": poll.id,
+            "name": poll.display_name,
+            "type": quota_type,
+            "subscription_id": poll.subscription_id,
+            "tenant_id": poll.tenant_id
         }
 
         subscriptions.append(sub)
@@ -271,7 +289,15 @@ async def subscription(
     Get a list of Azure subscriptions.
     """
 
-    subscription_list = await arg_query(authorization, admin, argquery.SUBSCRIPTION)
+    # subscription_list = await arg_query(authorization, admin, argquery.SUBSCRIPTION)
+
+    if admin:
+        creds = await get_client_credentials()
+    else:
+        user_assertion=authorization.split(' ')[1]
+        creds = await get_obo_credentials(user_assertion)
+
+    subscription_list = await get_subscriptions_sdk(creds)
 
     return subscription_list
 
@@ -450,6 +476,7 @@ async def get_network(
     for vwan in networks[1]:
         vwan['type'] = 'vhub'
         vwan['prefixes'] = [vwan['prefix']]
+        vwan['resv'] = None
         del vwan['prefix']
 
         for peering in vwan['peerings']:
@@ -652,8 +679,8 @@ async def multi(
     error_msg = "Error updating reservation status!"
 )
 async def match_resv_to_vnets():
-    vnet_list = await arg_query(None, True, argquery.VNET)
-    stale_resv = list(x['resv'] for x in vnet_list if x['resv'] != None)
+    net_list = await get_network(None, globals.TENANT_ID, True)
+    stale_resv = list(x['resv'] for x in net_list if x['resv'] != None)
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", globals.TENANT_ID)
 
@@ -661,23 +688,23 @@ async def match_resv_to_vnets():
         original_space = copy.deepcopy(space)
 
         for block in space['blocks']:
-            for vnet in block['vnets']:
-                active = next((x for x in vnet_list if x['id'] == vnet['id']), None)
+            for net in block['vnets']:
+                active = next((x for x in net_list if x['id'] == net['id']), None)
 
                 if active:
-                    vnet_prefix_set = IPSet(vnet['prefixes'])
-                    block_network = IPNetwork(block['cidr'])
+                    net_prefix_set = IPSet(active['prefixes'])
+                    block_network = IPSet([block['cidr']])
 
-                    if block_network in vnet_prefix_set:
-                        vnet['active'] = True
+                    if net_prefix_set & block_network:
+                        net['active'] = True
                     else:
-                        vnet['active'] = False
+                        net['active'] = False
                 else:
-                    vnet['active'] = False
+                    net['active'] = False
 
             for index, resv in enumerate(block['resv']):
                 if resv['id'] in stale_resv:
-                    vnet = next((x for x in vnet_list if x['resv'] == resv['id']), None)
+                    net = next((x for x in net_list if x['resv'] == resv['id']), None)
 
                     # print("RESV: {}".format(vnet['resv']))
                     # print("BLOCK {}".format(block['name']))
@@ -687,7 +714,7 @@ async def match_resv_to_vnets():
                     stale_resv.remove(resv['id'])
                     resv['status'] = "wait"
 
-                    cidr_match = resv['cidr'] in vnet['prefixes']
+                    cidr_match = resv['cidr'] in net['prefixes']
 
                     if not cidr_match:
                         # print("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
@@ -697,15 +724,15 @@ async def match_resv_to_vnets():
                     existing_block_cidrs = []
 
                     for v in block['vnets']:
-                        target_vnet = next((x for x in vnet_list if x['id'].lower() == v['id'].lower()), None)
+                        target_net = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
 
-                        if target_vnet:
-                            target_cidr = next((x for x in target_vnet['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
+                        if target_net:
+                            target_cidr = next((x for x in target_net['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
                             existing_block_cidrs.append(target_cidr)
 
-                    vnet_cidr = next((x for x in vnet['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
+                    net_cidr = next((x for x in net['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
 
-                    if vnet_cidr in existing_block_cidrs:
+                    if net_cidr in existing_block_cidrs:
                         # print("A vNET with the assigned CIDR has already been associated with the target IP Block.")
                         # logging.info("A vNET with the assigned CIDR has already been associated with the target IP Block.")
                         resv['status'] = "errCIDRExists"
@@ -715,7 +742,7 @@ async def match_resv_to_vnets():
                         # logging.info("vNET is being added to IP Block...")
                         block['vnets'].append(
                             {
-                                "id": vnet['id'],
+                                "id": net['id'],
                                 "active": True
                             }
                         )

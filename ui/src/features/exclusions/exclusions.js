@@ -105,14 +105,14 @@ const GridBody = styled("div")(({ theme }) => ({
 }));
 
 const columns = [
-  { name: "subscription_id", header: "Subscription ID", lockable: false, defaultFlex: 1 },
   { name: "name", header: "Subscription Name", lockable: false, defaultFlex: 1 },
-  { name: "type", header: "Subscription Type", lockable: false, defaultFlex: 1 },
+  { name: "subscription_id", header: "Subscription ID", lockable: false, defaultFlex: 1 },
+  { name: "type", header: "Subscription Type", lockable: false, defaultFlex: 0.75 },
 ];
 
 const filterValue = [
-  { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
   { name: 'name', operator: 'contains', type: 'string', value: '' },
+  { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
   { name: 'type', operator: 'contains', type: 'string', value: '' }
 ];
 
@@ -296,6 +296,7 @@ export default function ManageExclusions() {
               defaultFilterValue={filterValue}
               onRowClick={(rowData) => onClick(rowData.data)}
               selected={selected || {}}
+              defaultSortInfo={{ name: 'name', dir: 1, type: 'string' }}
               emptyText={NoRowsOverlay}
               style={gridStyle}
               className="ipam-subscription-exclusions"

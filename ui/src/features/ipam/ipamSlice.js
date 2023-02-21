@@ -1,5 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 
+import { concat } from 'lodash';
+
 import {
   fetchSpaces,
   fetchVNets,
@@ -235,25 +237,12 @@ export const ipamSlice = createSlice({
 
           state.subnets = subnets;
 
-          // const vhubs = vHubData.map((vhub) => {
-          //   vhub.prefix = vhub.prefixes.toString();
-          //   delete vhub.prefixes;
-
-          //   return vhub;
-          // });
-
           state.vHubs = vHubData;
         } else {
           state.vNets = [];
           state.subnets = [];
           state.vHubs = [];
         }
-
-        // if(action.payload[2].status === 'fulfilled') {
-        //   state.vHubs = action.payload[2].value
-        // } else {
-        //   state.vHubs = [];
-        // }
 
         if(action.payload[2].status === 'fulfilled') {
           const endpoints = action.payload[2].value.map((endpoint) => {
@@ -304,8 +293,6 @@ export const { setDarkMode } = ipamSlice.actions;
 
 // The functions below are called selectors and allow us to select a value from
 // the state. Selectors can also be defined inline where they're used instead of
-// in the slice file. For example: `useSelector((state: RootState) => state.counter.value)`
-// export const selectCount = (state) => state.counter.value;
 
 export const getRefreshInterval = (state) => state.ipam.refreshInterval;
 export const getAdminStatus = (state) => state.ipam.isAdmin;
@@ -319,5 +306,6 @@ export const selectVNets = (state) => state.ipam.vNets;
 export const selectVHubs = (state) => state.ipam.vHubs;
 export const selectSubnets = (state) => state.ipam.subnets;
 export const selectEndpoints = (state) => state.ipam.endpoints;
+export const selectNetworks = (state) => concat(state.ipam.vNets, state.ipam.vHubs);
 
 export default ipamSlice.reducer;

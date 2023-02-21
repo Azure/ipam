@@ -368,7 +368,6 @@ const Planner = () => {
             </Select>
           </FormControl> 
           <Autocomplete
-            // freeSolo
             forcePopupIcon={false}
             disabled={selectedPrefix === ''}
             id="cidr-mask-max"
@@ -383,14 +382,6 @@ const Planner = () => {
             renderInput={(params) => (
               <TextField
                 {...params}
-                // inputProps={{
-                //   ...params.inputProps,
-                //   onKeyDown: (e) => {
-                //     if (e.key === 'Enter') {
-                //       e.stopPropagation();
-                //     }
-                //   },
-                // }}
                 label="Mask"
                 placeholder="Max"
               />

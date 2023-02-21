@@ -110,18 +110,6 @@ async def get_spaces(
         raise HTTPException(status_code=403, detail="Expand parameter can only be used by admins.")
 
     if expand or utilization:
-        # vnets = await arg_query(authorization, True, argquery.VNET)
-        # vnets = vnet_fixup(vnets)
-
-        # tasks = [
-        #     asyncio.create_task(get_vnet(authorization, True)),
-        #     asyncio.create_task(get_vhub(authorization, True))
-        # ]
-
-        # networks = await asyncio.gather(*tasks)
-
-        # nets = [item for sublist in networks for item in sublist]
-
         nets = await get_network(authorization, True)
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
@@ -263,9 +251,6 @@ async def get_space(
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     if expand or utilization:
-        # vnets = await arg_query(authorization, is_admin, argquery.VNET)
-        # vnets = vnet_fixup(vnets)
-
         nets = await get_network(authorization, is_admin)
 
     if utilization:
@@ -451,9 +436,6 @@ async def get_blocks(
     block_list = target_space['blocks']
 
     if expand or utilization:
-        # vnets = await arg_query(authorization, is_admin, argquery.VNET)
-        # vnets = vnet_fixup(vnets)
-
         nets = await get_network(authorization, is_admin)
 
     for block in block_list:
@@ -601,9 +583,6 @@ async def create_multi_block_reservation(
     if invalid_blocks:
         raise HTTPException(status_code=400, detail="Invalid Block(s) in Block list: {}.".format(list(invalid_blocks)))
 
-    # vnet_list = await arg_query(authorization, True, argquery.VNET)
-    # vnet_list = vnet_fixup(vnet_list)
-
     net_list = await get_network(authorization, True)
 
     available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
@@ -710,9 +689,6 @@ async def get_block(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     if expand or utilization:
-        # vnets = await arg_query(authorization, is_admin, argquery.VNET)
-        # vnets = vnet_fixup(vnets)
-
         nets = await get_network(authorization, is_admin)
 
     if expand:
@@ -846,13 +822,11 @@ async def available_block_nets(
     if not target_block:
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
-    # vnet_list = await arg_query(authorization, True, argquery.VNET)
-    # vnet_list = vnet_fixup(vnet_list)
-
     net_list = await get_network(authorization, True)
+    resv_list = IPSet(x['cidr'] for x in target_block['resv'])
 
     for net in net_list:
-        valid = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), net['prefixes']))
+        valid = list(filter(lambda x: (IPNetwork(x) in IPNetwork(target_block['cidr']) and (IPNetwork(x) not in resv_list)), net['prefixes']))
 
         if valid:
             net['prefixes'] = valid
@@ -916,9 +890,6 @@ async def available_block_nets(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     if expand:
-        # vnet_list = await arg_query(authorization, True, argquery.VNET)
-        # vnet_list = vnet_fixup(vnet_list)
-
         net_list = await get_network(authorization, True)
 
         for block_net in target_block['vnets']:
@@ -970,9 +941,6 @@ async def create_block_net(
 
     if vnet.id in [v['id'] for v in target_block['vnets']]:
         raise HTTPException(status_code=400, detail="Network already exists in block.")
-
-    # vnet_list = await arg_query(authorization, True, argquery.VNET)
-    # vnet_list = vnet_fixup(vnet_list)
 
     net_list = await get_network(authorization, True)
 
@@ -1052,9 +1020,6 @@ async def update_block_vnets(
 
     if not unique_nets:
         raise HTTPException(status_code=400, detail="List contains duplicate networks.")
-
-    # vnet_list = await arg_query(authorization, True, argquery.VNET)
-    # vnet_list = vnet_fixup(vnet_list)
 
     net_list = await get_network(authorization, True)
 
@@ -1242,9 +1207,6 @@ async def create_block_reservation(
 
     if not target_block:
         raise HTTPException(status_code=400, detail="Invalid block name.")
-
-    # vnet_list = await arg_query(authorization, True, argquery.VNET)
-    # vnet_list = vnet_fixup(vnet_list)
 
     net_list = await get_network(authorization, True)
 

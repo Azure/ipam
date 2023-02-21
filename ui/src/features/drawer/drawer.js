@@ -856,7 +856,6 @@ export default function NavDrawer() {
         />
         <Routes>
           <Route path="/" element={<Welcome />} />
-          {/* <Route path="manage/*" element={<DiscoverTabs />} /> */}
           <Route path="discover/space" element={<DiscoverTabs />} />
           <Route path="discover/block" element={<DiscoverTabs />} />
           <Route path="discover/vnet" element={<DiscoverTabs />} />
@@ -867,7 +866,6 @@ export default function NavDrawer() {
           <Route path="analyze/peering" element={<AnalyzeTabs />} />
           <Route path="tools/planner" element={<ToolsTabs />} />
           <Route path="configure" element={<ConfigureIPAM />} />
-          {/* <Route path="admin" element={<Administration />} /> */}
           <Route path="admin/admins" element={<AdminTabs />} />
           <Route path="admin/subscriptions" element={<AdminTabs />} />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -415,6 +415,7 @@ export default function Administration() {
               defaultFilterValue={filterValue}
               onRowClick={(rowData) => onClick(rowData.data)}
               selected={selectionModel}
+              defaultSortInfo={{ name: 'name', dir: 1, type: 'string' }}
               emptyText={NoRowsOverlay}
               style={gridStyle}
             />

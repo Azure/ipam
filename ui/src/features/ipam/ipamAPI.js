@@ -310,11 +310,7 @@ export function fetchNetworks(token) {
 export function refreshAll(token) {
   const stack = [
     (async () => await fetchSpaces(token, true))(),
-    // (async () => await fetchBlocks(token))(),
-    // (async () => await fetchVNets(token))(),
-    // (async () => await fetchVHubs(token))(),
     (async () => await fetchNetworks(token))(),
-    // (async () => await fetchSubnets(token))(),
     (async () => await fetchEndpoints(token))()
   ];
 

@@ -273,7 +273,11 @@ async def set_globals():
 @repeat_every(seconds = 60, wait_first = True) # , wait_first=True
 async def find_reservations() -> None:
     if not os.environ.get("FUNCTIONS_WORKER_RUNTIME"):
-        await azure.match_resv_to_vnets()
+        try:
+            await azure.match_resv_to_vnets()
+        except Exception as e:
+            logger.error('Error running network check loop!')
+            raise e
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
