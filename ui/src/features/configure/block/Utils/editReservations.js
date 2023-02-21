@@ -88,6 +88,7 @@ export default function EditReservations(props) {
     { name: "userId", header: "User ID", defaultFlex: 1 },
     { name: "createdOn", header: "Created Date", defaultFlex: 0.75, render: ({value}) => new Date(value * 1000).toLocaleString() },
     { name: "status", header: "Status", headerAlign: "center", width: 90, resizable: false, hideable: false, sortable: false, showColumnMenuTool: false, render: renderStatus },
+    { name: "tag", header: "Tags", headerAlign: "left", defaultFlex: 1.3, render: renderTags },
     { name: "id", header: "", width: 25, resizable: false, hideable: false, showColumnMenuTool: false, sortable: false, renderHeader: () => "", render: renderId }
   ];
 
@@ -187,6 +188,44 @@ export default function EditReservations(props) {
     );
   }
 
+  function renderTags(params) {
+    const multilineTags = Object.entries(params.value).map(([key, value]) => {
+      return key + ": " + value + "\n";
+    })
+    const multilineTagsLite = Object.keys(params.value).map((item, index) => {
+      if (index == 1 && Object.keys(params.value).length > 2)  {
+        return item + ": " + params.value[item] + "(...)\n";
+      } else if (index < 2  ) {
+        return item + ": " + params.value[item] + "\n";
+      }
+    })
+
+    const flexLeftMultiline = {
+      display: "flex",
+      textAlign: "left",
+      alignItems: "left",
+      justifyContent: "left",
+      whiteSpace: "pre"
+    }
+
+    return (
+      <Tooltip
+        arrow
+        disableFocusListener
+        placement="top"
+        title={
+          <div style={{ textAlign: "center" }}>
+            Tags
+            <br />
+            <span style={{ ...flexLeftMultiline }}>{multilineTags}</span>
+          </div>
+        }
+      >
+        <div style={{ whiteSpace: "pre", fontSize: ".85em" }}>{multilineTagsLite}</div>
+      </Tooltip>
+    );
+  }
+
   const refreshData = React.useCallback(() => {
     const request = {
       scopes: apiRequest.scopes,
@@ -273,7 +312,7 @@ export default function EditReservations(props) {
 
   return (
     <div sx={{ height: "300px", width: "100%" }}>
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+      <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
         <DialogTitle>
           <Box sx={{ display: "flex", flexDirection: "row" }}>
             <Box>

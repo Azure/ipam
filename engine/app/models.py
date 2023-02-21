@@ -104,6 +104,7 @@ class SpaceCIDRReq(BaseModel):
     size: int
     reverse_search: Optional[bool] = False
     smallest_cidr: Optional[bool] = False
+    tags: Optional[dict]
 
 class BlockCIDRReq(BaseModel):
     """DOCSTRING"""
@@ -111,6 +112,7 @@ class BlockCIDRReq(BaseModel):
     size: int
     reverse_search: Optional[bool] = False
     smallest_cidr: Optional[bool] = False
+    tags: Optional[dict]
 
 class DeleteResvReq(List[str]):
     """DOCSTRING"""

@@ -627,8 +627,12 @@ async def create_multi_block_reservation(
         "cidr": str(next_cidr),
         "userId": creator_id,
         "createdOn": time.time(),
-        "status": "wait"
+        "status": "wait",
+        "tag": {}
     }
+    if req.tags:
+        for key, value in req.tags.items():
+            new_cidr["tag"][key] = value
 
     target_block['resv'].append(new_cidr)
 
@@ -1245,8 +1249,12 @@ async def create_block_reservation(
         "cidr": str(next_cidr),
         "userId": creator_id,
         "createdOn": time.time(),
-        "status": "wait"
+        "status": "wait",
+        "tag": {}
     }
+    if req.tags:
+        for key, value in req.tags.items():
+            new_cidr["tag"][key] = value
 
     target_block['resv'].append(new_cidr)
 
