@@ -184,7 +184,10 @@ class Reservation(BaseModel):
 
     @root_validator
     def format_tag(cls, values) -> dict:
-        values["tag"] = { "X-IPAM-RES-ID": values["id"]}
+        if not values["tag"]:
+            values["tag"] = { "X-IPAM-RES-ID": values["id"]}
+        elif "X-IPAM-RES-ID" not in values["tag"].keys():
+            values["tag"]["X-IPAM-RES-ID"] = values["id"]
         
         return values
 

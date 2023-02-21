@@ -87,8 +87,8 @@ export default function EditReservations(props) {
     { name: "cidr", header: "CIDR", defaultFlex: 0.5 },
     { name: "userId", header: "User ID", defaultFlex: 1 },
     { name: "createdOn", header: "Created Date", defaultFlex: 0.75, render: ({value}) => new Date(value * 1000).toLocaleString() },
-    { name: "status", header: "Status", headerAlign: "center", width: 90, resizable: false, hideable: false, sortable: false, showColumnMenuTool: false, render: renderStatus },
     { name: "tag", header: "Tags", headerAlign: "left", defaultFlex: 1.3, render: renderTags },
+    { name: "status", header: "Status", headerAlign: "center", width: 90, resizable: false, hideable: false, sortable: false, showColumnMenuTool: false, render: renderStatus },
     { name: "id", header: "", width: 25, resizable: false, hideable: false, showColumnMenuTool: false, sortable: false, renderHeader: () => "", render: renderId }
   ];
 
