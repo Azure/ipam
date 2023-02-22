@@ -226,8 +226,8 @@ export const endpoints = {
   },
   columns: [
     { name: "name", header: "Endpoint Name", type: 'string', defaultFlex: 0.75 },
-    { name: "vnet_name", header: "Parent vNet", type: 'string', defaultFlex: 0.75 },
-    { name: "subnet_name", header: "Parent Subnet", type: 'string', defaultFlex: 0.75 },
+    { name: "vnet_name", header: "Parent vNet", type: 'string', defaultFlex: 0.75, render: ({value}) => value || "N/A" },
+    { name: "subnet_name", header: "Parent Subnet", type: 'string', defaultFlex: 0.75, render: ({value}) => value || "N/A" },
     { name: "resource_group", header: "Resource Group", type: 'string', defaultFlex: 0.75 },
     { name: "private_ip", header: "Private IP", type: 'string', defaultFlex: 0.35, render: ({value}) => value || "N/A" },
   ],

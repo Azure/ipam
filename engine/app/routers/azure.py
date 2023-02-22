@@ -640,6 +640,22 @@ async def apim(
 
     return results
 
+@router.get(
+    "/lb",
+    summary = "Get All Load Balancers"
+)
+async def lb(
+    authorization: str = Header(None),
+    admin: str = Depends(get_admin)
+):
+    """
+    Get a list of all Azure Load Balancers.
+    """
+
+    results = await arg_query(authorization, admin, argquery.LB)
+
+    return results
+
 async def multi_helper(func, list, *args):
     """DOCSTRING"""
 
@@ -669,6 +685,7 @@ async def multi(
     tasks.append(asyncio.create_task(multi_helper(vnetgw, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(appgw, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(apim, result_list, authorization, admin)))
+    tasks.append(asyncio.create_task(multi_helper(lb, result_list, authorization, admin)))
 
     await asyncio.gather(*tasks)
 

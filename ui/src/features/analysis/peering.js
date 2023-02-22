@@ -1,8 +1,6 @@
 import React from "react";
 import { useSelector } from 'react-redux';
 
-import { concat } from 'lodash';
-
 import ReactECharts from "echarts-for-react";
 
 import { useTheme } from '@mui/material/styles';
@@ -18,8 +16,7 @@ import RestoreIcon from '@mui/icons-material/Restore';
 import { cloneDeep, isEmpty } from "lodash";
 
 import {
-  selectVNets,
-  selectVHubs
+  selectNetworks
 } from "../ipam/ipamSlice";
 
 const opt = {
@@ -677,8 +674,7 @@ const Peering = () => {
 
   const searchRef = React.useRef(null);
 
-  const vnets = useSelector(selectVNets);
-  const vhubs = useSelector(selectVHubs);
+  const networks = useSelector(selectNetworks);
 
   const theme = useTheme();
 
@@ -692,14 +688,14 @@ const Peering = () => {
   }, []);
 
   React.useEffect(() => {
-    if(vnets && vhubs) {
-      let vnetOptions = parseNets(concat(vnets, vhubs));
+    if(networks) {
+      let vnetOptions = parseNets(networks);
 
       vnetOptions.darkMode = theme.palette.mode === "dark" ? true : false;
 
       setOptions(vnetOptions);
     }
-  }, [vnets, vhubs, theme]);
+  }, [networks, theme]);
 
   function filterByVnet(options, target, previousTarget, currentMembers) {
     const members = [];
