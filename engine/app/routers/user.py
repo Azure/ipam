@@ -93,6 +93,7 @@ async def scrub_patch(patch):
     status_code = 200
 )
 async def get_users(
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -133,7 +134,7 @@ async def get_users(
     error_msg = "Error fetching user, please try again."
 )
 async def get_user(
-    authorization: str = Header(None),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -178,15 +179,13 @@ async def get_user(
 )
 async def update_user(
     updates: UserUpdate,
-    authorization: str = Header(None),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Update a User with a JSON patch:
 
     - **[&lt;JSON Patch&gt;]**: Array of JSON Patches
-
-    &nbsp;
 
     Allowed operations:
     - **replace**

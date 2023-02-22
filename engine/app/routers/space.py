@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, Response, HTTPException, Header, status
+from fastapi import APIRouter, Depends, Request, Response, HTTPException, Header, Query, Path, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.encoders import jsonable_encoder
@@ -94,9 +94,9 @@ async def scrub_space_patch(patch):
     status_code = 200
 )
 async def get_spaces(
-    expand: bool = False,
-    utilization: bool = False,
-    authorization: str = Header(None),
+    expand: bool = Query(False, description="Expand network references to full network objects"),
+    utilization: bool = Query(False, description="Append utilization information for each network"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -180,7 +180,7 @@ async def get_spaces(
 )
 async def create_space(
     space: SpaceReq,
-    authorization: str = Header(None),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str =  Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -227,10 +227,10 @@ async def create_space(
     status_code = 200
 )
 async def get_space(
-    space: str,
-    expand: bool = False,
-    utilization: bool = False,
-    authorization: str = Header(None),
+    space: str = Path(..., description="Name of the target Space"),
+    expand: bool = Query(False, description="Expand network references to full network objects"),
+    utilization: bool = Query(False, description="Append utilization information for each network"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -317,8 +317,9 @@ async def get_space(
     error_msg = "Error updating space, please try again."
 )
 async def update_space(
-    space: str,
     updates: SpaceUpdate,
+    space: str = Path(..., description="Name of the target Space"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -326,8 +327,6 @@ async def update_space(
     Update a Space with a JSON patch:
 
     - **[&lt;JSON Patch&gt;]**: Array of JSON Patches
-
-    &nbsp;
 
     Allowed operations:
     - **replace**
@@ -369,8 +368,9 @@ async def update_space(
     error_msg = "Error deleting space, please try again."
 )
 async def delete_space(
-    space: str,
-    force: Optional[bool] = False,
+    space: str = Path(..., description="Name of the target Space"),
+    force: Optional[bool] = Query(False, description="Forcefully delete a Space with existing Blocks"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -410,10 +410,10 @@ async def delete_space(
     status_code = 200
 )
 async def get_blocks(
-    space: str,
-    expand: bool = False,
-    utilization: bool = False,
-    authorization: str = Header(None),
+    space: str = Path(..., description="Name of the target Space"),
+    expand: bool = Query(False, description="Expand network references to full network objects"),
+    utilization: bool = Query(False, description="Append utilization information for each network"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -496,8 +496,9 @@ async def get_blocks(
     error_msg = "Error creating block, please try again."
 )
 async def create_block(
-    space: str,
     block: BlockReq,
+    space: str = Path(..., description="Name of the target Space"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -548,9 +549,9 @@ async def create_block(
     error_msg = "Error creating cidr reservation, please try again."
 )
 async def create_multi_block_reservation(
-    space: str,
     req: SpaceCIDRReq,
-    authorization: str = Header(None),
+    space: str = Path(..., description="Name of the target Space"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -659,11 +660,11 @@ async def create_multi_block_reservation(
     status_code = 200
 )
 async def get_block(
-    space: str,
-    block: str,
-    expand: bool = False,
-    utilization: bool = False,
-    authorization: str = Header(None),
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    expand: bool = Query(False, description="Expand network references to full network objects"),
+    utilization: bool = Query(False, description="Append utilization information for each network"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -747,9 +748,10 @@ async def get_block(
     error_msg = "Error deleting block, please try again."
 )
 async def delete_block(
-    space: str,
-    block: str,
-    force: Optional[bool] = False,
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    force: Optional[bool] = Query(False, description="Forcefully delete a Block with existing networks and/or reservations"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -793,10 +795,10 @@ async def delete_block(
     status_code = 200
 )
 async def available_block_nets(
-    space: str,
-    block: str,
-    expand: bool = False,
-    authorization: str = Header(None),
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    expand: bool = Query(False, description="Expand network references to full network objects"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -860,10 +862,10 @@ async def available_block_nets(
     status_code = 200
 )
 async def available_block_nets(
-    space: str,
-    block: str,
-    expand: bool = False,
-    authorization: str = Header(None),
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    expand: bool = Query(False, description="Expand network references to full network objects"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -911,10 +913,10 @@ async def available_block_nets(
     error_msg = "Error adding network to block, please try again."
 )
 async def create_block_net(
-    space: str,
-    block: str,
     vnet: VNet,
-    authorization: str = Header(None),
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -955,6 +957,8 @@ async def create_block_net(
         raise HTTPException(status_code=400, detail="Network CIDR not within block CIDR.")
 
     block_net_cidrs = []
+    resv_cidrs = IPSet(x['cidr'] for x in target_block['resv'])
+    block_net_cidrs += resv_cidrs
 
     for v in target_block['vnets']:
         target = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
@@ -966,7 +970,7 @@ async def create_block_net(
     cidr_overlap = IPSet(block_net_cidrs) & IPSet([target_cidr])
 
     if cidr_overlap:
-        raise HTTPException(status_code=400, detail="Block already contains network(s) within the CIDR range of target network.")
+        raise HTTPException(status_code=400, detail="Block already contains network(s) and/or reservation(s) within the CIDR range of target network.")
 
     vnet.active = True
     target_block['vnets'].append(jsonable_encoder(vnet))
@@ -987,18 +991,17 @@ async def create_block_net(
     error_msg = "Error updating block networks, please try again."
 )
 async def update_block_vnets(
-    space: str,
-    block: str,
     vnets: VNetsUpdate,
-    authorization: str = Header(None),
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
     Replace the list of networks currently associated to the target Block with the following information:
 
-    - Array **[]** of:
-        - **&lt;str&gt;**: Azure Resource ID
+    - **[&lt;str&gt;]**: Array of Azure Resource ID's
     """
 
     if not is_admin:
@@ -1027,6 +1030,7 @@ async def update_block_vnets(
     outside_block_cidr = []
     net_ipset = IPSet([])
     net_overlap = False
+    resv_ipset = IPSet(x['cidr'] for x in target_block['resv'])
 
     for v in vnets:
         target_net = next((x for x in net_list if x['id'].lower() == v.lower()), None)
@@ -1046,6 +1050,9 @@ async def update_block_vnets(
 
     if net_overlap:
         raise HTTPException(status_code=400, detail="Network list contains overlapping CIDRs.")
+
+    if (net_ipset & resv_ipset):
+        raise HTTPException(status_code=400, detail="Network list contains CIDR(s) that overlap outstanding reservations.")
 
     if len(outside_block_cidr) > 0:
         raise HTTPException(status_code=400, detail="Network CIDR(s) not within Block CIDR: {}".format(outside_block_cidr))
@@ -1080,9 +1087,10 @@ async def update_block_vnets(
     error_msg = "Error removing block network(s), please try again."
 )
 async def delete_block_nets(
-    space: str,
-    block: str,
     req: VNetsUpdate,
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1134,9 +1142,9 @@ async def delete_block_nets(
     status_code = 200
 )
 async def get_block_reservations(
-    space: str,
-    block: str,
-    authorization: str = Header(None),
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1175,10 +1183,10 @@ async def get_block_reservations(
     error_msg = "Error creating cidr reservation, please try again."
 )
 async def create_block_reservation(
-    space: str,
-    block: str,
     req: BlockCIDRReq,
-    authorization: str = Header(None),
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -1271,10 +1279,10 @@ async def create_block_reservation(
     error_msg = "Error removing block reservation(s), please try again."
 )
 async def delete_block_reservations(
-    space: str,
-    block: str,
     req: DeleteResvReq,
-    authorization: str = Header(None),
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):

@@ -34,7 +34,7 @@ router = APIRouter(
 )
 async def next_available_subnet(
     req: SubnetCIDRReq,
-    authorization: str = Header(None)
+    authorization: str = Header(None, description="Azure Bearer token"),
 ):
     """
     Get the next available Subnet CIDR in a Virtual Network with the following information:

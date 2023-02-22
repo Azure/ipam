@@ -8,6 +8,7 @@ import {
   fetchVHubs,
   fetchSubnets,
   fetchEndpoints,
+  fetchNetworks,
   refreshAll,
   getMe
 } from './ipamAPI';
@@ -84,6 +85,15 @@ export const fetchEndpointsAsync = createAsyncThunk(
   }
 );
 
+export const fetchNetworksAsync = createAsyncThunk(
+  'ipam/fetchNetworks',
+  async (token) => {
+    const response = await fetchNetworks(token);
+    // The value we return becomes the `fulfilled` action payload
+    return response;
+  }
+);
+
 export const refreshAllAsync = createAsyncThunk(
   'ipam/refreshAll',
   async (token) => {
@@ -142,7 +152,7 @@ export const ipamSlice = createSlice({
         const vnets = action.payload.map((vnet) => {
           vnet.available = (vnet.size - vnet.used);
           vnet.utilization = Math.round((vnet.used / vnet.size) * 100);
-          vnet.prefixes = vnet.prefixes.join(", ");
+          // vnet.prefixes = vnet.prefixes.join(", ");
 
           return vnet;
         });
@@ -162,6 +172,53 @@ export const ipamSlice = createSlice({
       })
       .addCase(fetchEndpointsAsync.fulfilled, (state, action) => {
         state.endpoints = action.payload;
+      })
+      .addCase(fetchNetworksAsync.fulfilled, (state, action) => {
+        const vNetProvider = "Microsoft.Network/virtualNetworks";
+        const vHubProvider = "Microsoft.Network/virtualHubs";
+
+        const vNetData = action.payload.filter((x) => x.id.toLowerCase().includes(vNetProvider.toLowerCase()));
+        const vHubData = action.payload.filter((x) => x.id.toLowerCase().includes(vHubProvider.toLowerCase()));
+
+        const vnets = vNetData.map((vnet) => {
+          vnet.available = (vnet.size - vnet.used);
+          vnet.utilization = Math.round((vnet.used / vnet.size) * 100);
+          // vnet.prefixes = vnet.prefixes.join(", ");
+
+          return vnet;
+        });
+
+        state.vNets = vnets;
+
+        const subnets = vNetData.map((vnet) => {
+          var subnetArray = [];
+        
+          vnet.subnets.forEach((subnet) => {
+            const subnetDetails = {
+              name: subnet.name,
+              id: `${vnet.id}/subnets/${subnet.name}`,
+              prefix: subnet.prefix,
+              resource_group: vnet.resource_group,
+              subscription_id: vnet.subscription_id,
+              tenant_id: vnet.tenant_id,
+              vnet_name: vnet.name,
+              vnet_id: vnet.id,
+              used: subnet.used,
+              size: subnet.size,
+              available: (subnet.size - subnet.used),
+              utilization: Math.round((subnet.used / subnet.size) * 100),
+              type: subnetMap[subnet.type]
+            };
+
+            subnetArray.push(subnetDetails);
+          });
+
+          return subnetArray;
+        }).flat();
+
+        state.subnets = subnets;
+
+        state.vHubs = vHubData;
       })
       .addCase(refreshAllAsync.fulfilled, (state, action) => {
         const vNetProvider = "Microsoft.Network/virtualNetworks";
