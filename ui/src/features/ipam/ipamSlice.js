@@ -157,7 +157,35 @@ export const ipamSlice = createSlice({
           return vnet;
         });
 
+        const subnets = vnets.map((vnet) => {
+          var subnetArray = [];
+        
+          vnet.subnets.forEach((subnet) => {
+            const subnetDetails = {
+              name: subnet.name,
+              id: `${vnet.id}/subnets/${subnet.name}`,
+              prefix: subnet.prefix,
+              resource_group: vnet.resource_group,
+              subscription_id: vnet.subscription_id,
+              tenant_id: vnet.tenant_id,
+              vnet_name: vnet.name,
+              vnet_id: vnet.id,
+              used: subnet.used,
+              size: subnet.size,
+              available: (subnet.size - subnet.used),
+              utilization: Math.round((subnet.used / subnet.size) * 100),
+              type: subnetMap[subnet.type]
+            };
+
+            subnetArray.push(subnetDetails);
+          });
+
+          return subnetArray;
+        }).flat();
+
         state.vNets = vnets;
+
+        state.subnets = subnets;
       })
       .addCase(fetchSubnetsAsync.fulfilled, (state, action) => {
         const subnets = action.payload.map((subnet) => {

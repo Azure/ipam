@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
 import { isEqual, sortBy } from 'lodash';
@@ -33,6 +34,10 @@ import {
   fetchBlockAvailable,
   replaceBlockNetworks
 } from "../../../ipam/ipamAPI";
+
+import {
+  fetchNetworksAsync
+} from "../../../ipam/ipamSlice";
 
 import { apiRequest } from "../../../../msal/authConfig";
 
@@ -70,6 +75,8 @@ export default function EditVnets(props) {
   const [selectionModel, setSelectionModel] = React.useState([]);
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+
+  const dispatch = useDispatch();
 
   const theme = useTheme();
 
@@ -171,6 +178,7 @@ export default function EditVnets(props) {
         await replaceBlockNetworks(response.accessToken, space, block.name, Object.keys(selectionModel));
         handleClose();
         enqueueSnackbar("Successfully updated IP Block vNets", { variant: "success" });
+        await dispatch(fetchNetworksAsync(response.accessToken));
         refresh();
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
