@@ -57,6 +57,7 @@ export default function AddBlock(props) {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
         await createBlock(response.accessToken, space, body);
+        enqueueSnackbar("Successfully created new Block", { variant: "success" });
         refresh();
         onCancel();
       } catch (e) {

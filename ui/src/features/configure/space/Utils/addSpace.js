@@ -59,6 +59,7 @@ export default function AddSpace(props) {
         await createSpace(response.accessToken, body);
         setSpaceName({ value: "", error: false });
         setDescription({ value: "", error: false });
+        enqueueSnackbar("Successfully created new Space", { variant: "success" });
         refresh();
         handleClose();
       } catch (e) {

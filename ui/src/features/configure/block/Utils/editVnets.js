@@ -41,6 +41,12 @@ const Spotlight = styled("span")(({ theme }) => ({
   color: theme.palette.mode === 'dark' ? 'cornflowerblue' : 'mediumblue'
 }));
 
+const Update = styled("span")(({ theme }) => ({
+  fontWeight: 'bold',
+  color: theme.palette.error.light,
+  textShadow: '-1px 0 white, 0 1px white, 1px 0 white, 0 -1px white'
+}));
+
 const gridStyle = {
   height: '100%',
   border: '1px solid rgba(224, 224, 224, 1)',
@@ -195,7 +201,7 @@ export default function EditVnets(props) {
                 color="primary"
                 size="small"
                 onClick={manualRefresh}
-                disabled={refreshing || refreshingState}
+                disabled={sending || refreshing || refreshingState}
               >
                 <Refresh />
               </IconButton>
@@ -241,7 +247,8 @@ export default function EditVnets(props) {
               enableColumnAutosize={false}
               showColumnMenuGroupOptions={false}
               columns={columns}
-              loading={refreshing || refreshingState}
+              loading={sending || refreshing || refreshingState}
+              loadingText={sending ? <Update>Updating</Update> : "Loading"}
               dataSource={vNets}
               selected={selectionModel}
               onSelectionChange={({selected}) => setSelectionModel(selected)}

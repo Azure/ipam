@@ -81,6 +81,7 @@ export default function EditSpace(props) {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
         await updateSpace(response.accessToken, space.name, body);
+        enqueueSnackbar("Successfully updated Space", { variant: "success" });
         refresh();
         onCancel();
       } catch (e) {

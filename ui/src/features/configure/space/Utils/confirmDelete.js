@@ -56,6 +56,7 @@ export default function ConfirmDelete(props) {
           setSending(true);
           const response = await instance.acquireTokenSilent(request);
           await deleteSpace(response.accessToken, space, force);
+          enqueueSnackbar("Successfully removed Space", { variant: "success" });
           refresh();
           handleCancel();
         } catch (e) {

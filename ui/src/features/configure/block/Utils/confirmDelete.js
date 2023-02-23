@@ -56,6 +56,7 @@ export default function ConfirmDelete(props) {
           setSending(true);
           const response = await instance.acquireTokenSilent(request);
           await deleteBlock(response.accessToken, space, block, force);
+          enqueueSnackbar("Successfully removed Block", { variant: "success" });
           refresh();
           handleCancel();
         } catch (e) {
