@@ -60,7 +60,7 @@ const gridStyle = {
 
 const columns = [
   { name: "name", header: "Name", defaultFlex: 1 },
-  { name: "subscription_id", header: "Subscription", defaultFlex: 1 },
+  { name: "subscription_id", header: "Subscription", defaultFlex: 1, defaultVisible: false },
   { name: "resource_group", header: "Resource Group", defaultFlex: 1 },
   { name: "prefixes", header: "Prefixes", defaultFlex: 0.75, render: ({value}) => value.join(", ") },
 ];
@@ -75,6 +75,8 @@ export default function EditVnets(props) {
   const [selectionModel, setSelectionModel] = React.useState([]);
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+
+  const gridRef = React.createRef();
 
   const dispatch = useDispatch();
 
@@ -197,8 +199,8 @@ export default function EditVnets(props) {
   }
 
   return (
-    <div sx={{ height: "300px", width: "100%" }}>
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+    <div sx={{ height: "400px", width: "100%" }}>
+      <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
         <DialogTitle>
           <Box sx={{ display: "flex", flexDirection: "row" }}>
             <Box>
@@ -223,7 +225,7 @@ export default function EditVnets(props) {
           <Box
             sx={{
               pt: 4,
-              height: "300px",
+              height: "400px",
               '& .ipam-block-vnet-stale': {
                   background: theme.palette.mode === 'dark' ? 'rgb(220, 20, 20) !important' : 'rgb(255, 230, 230) !important',
                 '.InovuaReactDataGrid__row-hover-target': {
@@ -243,6 +245,7 @@ export default function EditVnets(props) {
             }}
           >
             <ReactDataGrid
+              ref={gridRef}
               theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
               idProperty="id"
               showCellBorders="horizontal"
@@ -254,6 +257,10 @@ export default function EditVnets(props) {
               showActiveRowIndicator={false}
               enableColumnAutosize={false}
               showColumnMenuGroupOptions={false}
+              showColumnMenuLockOptions={false}
+              columnContextMenuConstrainTo={gridRef.current?.getBoundingClientRect()}
+              // columnContextMenuPosition={"fixed"}
+              // updateMenuPositionOnColumnsChange={true}
               columns={columns}
               loading={sending || refreshing || refreshingState}
               loadingText={sending ? <Update>Updating</Update> : "Loading"}

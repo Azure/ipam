@@ -19,6 +19,7 @@ import { cloneDeep, isEmpty } from "lodash";
 
 import {
   selectSpaces,
+  selectSubscriptions,
   selectVNets,
   selectVHubs,
   selectEndpoints
@@ -170,6 +171,10 @@ const opt = {
               ${d.value.resourceGroup}
             </div>
             <div class="data">
+              <span style="font-weight: bold">Subscription Name:&nbsp;</span>
+              ${d.value.subscriptionName}
+            </div>
+            <div class="data">
               <span style="font-weight: bold">Subscription ID:&nbsp;</span>
               ${d.value.subscriptionId}
             </div>
@@ -206,6 +211,10 @@ const opt = {
                 ${d.value.resourceGroup}
               </div>
               <div class="data">
+                <span style="font-weight: bold">Subscription Name:&nbsp;</span>
+                ${d.value.subscriptionName}
+              </div>
+              <div class="data">
                 <span style="font-weight: bold">Subscription ID:&nbsp;</span>
                 ${d.value.subscriptionId}
               </div>
@@ -228,6 +237,10 @@ const opt = {
             <div class="data">
               <span style="font-weight: bold">Resource Group:&nbsp;</span>
               ${d.value.resourceGroup}
+            </div>
+            <div class="data">
+              <span style="font-weight: bold">Subscription Name:&nbsp;</span>
+              ${d.value.subscriptionName}
             </div>
             <div class="data">
               <span style="font-weight: bold">Subscription ID:&nbsp;</span>
@@ -264,6 +277,10 @@ const opt = {
             <div class="data">
               <span style="font-weight: bold">Resource Group:&nbsp;</span>
               ${d.value.resourceGroup}
+            </div>
+            <div class="data">
+              <span style="font-weight: bold">Subscription Name:&nbsp;</span>
+              ${d.value.subscriptionName}
             </div>
             <div class="data">
               <span style="font-weight: bold">Subscription ID:&nbsp;</span>
@@ -343,7 +360,7 @@ const opt = {
   series: []
 };
 
-function parseTree(spaces, vnets, vhubs, endpoints) {
+function parseTree(spaces, subscriptions, vnets, vhubs, endpoints) {
   const series = spaces.map((space) => {
     const data = {
       name: space.name,
@@ -368,6 +385,7 @@ function parseTree(spaces, vnets, vhubs, endpoints) {
                 parentVWan: target.vwan_name,
                 resourceGroup: target.resource_group,
                 subscriptionId: target.subscription_id,
+                subscriptionName: subscriptions.find((sub) => sub.subscription_id === target.subscription_id)?.name || 'Unknown',
                 tentantId: target.tenant_id,
                 prefix: target.prefixes.toString(),
                 size: target.size
@@ -389,6 +407,7 @@ function parseTree(spaces, vnets, vhubs, endpoints) {
                 name: target.name,
                 resourceGroup: target.resource_group,
                 subscriptionId: target.subscription_id,
+                subscriptionName: subscriptions.find((sub) => sub.subscription_id === target.subscription_id)?.name || 'Unknown',
                 tentantId: target.tenant_id,
                 prefixes: target.prefixes,
                 size: target.size,
@@ -404,6 +423,7 @@ function parseTree(spaces, vnets, vhubs, endpoints) {
                     name: subnet.name,
                     resourceGroup: target.resource_group,
                     subscriptionId: target.subscription_id,
+                    subscriptionName: subscriptions.find((sub) => sub.subscription_id === target.subscription_id)?.name || 'Unknown',
                     tentantId: target.tenant_id,
                     prefix: subnet.prefix,
                     size: subnet.size,
@@ -419,6 +439,7 @@ function parseTree(spaces, vnets, vhubs, endpoints) {
                         privateIp: endpoint.private_ip,
                         resourceGroup: endpoint.resource_group,
                         subscriptionId: endpoint.subscription_id,
+                        subscriptionName: subscriptions.find((sub) => sub.subscription_id === target.subscription_id)?.name || 'Unknown',
                         tentantId: endpoint.tenant_id
                       }
                     };
@@ -594,6 +615,7 @@ const Visualize = () => {
   const searchRef = React.useRef(null);
 
   const spaces = useSelector(selectSpaces);
+  const subscriptions = useSelector(selectSubscriptions);
   const vnets = useSelector(selectVNets);
   const vhubs = useSelector(selectVHubs);
   const endpoints = useSelector(selectEndpoints);
@@ -607,12 +629,12 @@ const Visualize = () => {
   }, []);
 
   React.useEffect(() => {
-    if(spaces && vnets && vhubs && endpoints) {
+    if(spaces && subscriptions && vnets && vhubs && endpoints) {
       var newOptions = cloneDeep(opt);
 
       delete newOptions.graphic;
       newOptions.darkMode = theme.palette.mode === 'dark' ? true : false;
-      newOptions.series = parseTree(spaces, vnets, vhubs, endpoints);
+      newOptions.series = parseTree(spaces, subscriptions, vnets, vhubs, endpoints);
       newOptions.legend.data = newOptions.series.map((option) => {
         return {
           name: option.name,
@@ -627,7 +649,7 @@ const Visualize = () => {
         })
       );
     }
-  }, [spaces, vnets, vhubs, endpoints, theme]);
+  }, [spaces, subscriptions, vnets, vhubs, endpoints, theme]);
 
   function setDataFocus(target) {
     if(eChartsRef && !isEmpty(options.series)) {

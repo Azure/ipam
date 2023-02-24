@@ -2,11 +2,6 @@ import * as React from 'react';
 import { useSelector } from 'react-redux';
 import { ThemeProvider, createTheme, styled } from '@mui/material/styles';
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-
-import { useSnackbar } from 'notistack';
-
 import { find } from 'lodash';
 
 import {
@@ -33,14 +28,9 @@ import {
 } from '@mui/icons-material';
 
 import {
+  selectSubscriptions,
   selectVNets
 } from "../ipam/ipamSlice";
-
-import {
-  fetchSubscriptions
-} from "../ipam/ipamAPI";
-
-import { apiRequest } from "../../msal/authConfig";
 
 import { availableSubnets } from './utils/iputils';
 
@@ -115,12 +105,7 @@ const Separator = (props) => {
 };
 
 const Planner = () => {
-  const { instance, accounts } = useMsal();
-  const { enqueueSnackbar } = useSnackbar();
-
-  const [subscriptions, setSubscriptions] = React.useState(null);
   const [newVNets, setNewVNets] = React.useState([]);
-
   const [subnetData, setSubnetData] = React.useState(null);
 
   const [vNetInput, setVNetInput] = React.useState('');
@@ -137,43 +122,10 @@ const Planner = () => {
 
   const [showAll, setShowAll] = React.useState(false);
 
-  const subsLoadingRef = React.useRef(false);
-
+  const subscriptions = useSelector(selectSubscriptions);
   const vNets = useSelector(selectVNets);
 
-  const loading = !vNets || subsLoadingRef.current;
-
-  const refreshSubscriptions = React.useCallback(() => {
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
-    (async () => {
-      try {
-        subsLoadingRef.current = true;
-        const response = await instance.acquireTokenSilent(request);
-        const data = await fetchSubscriptions(response.accessToken);
-        setSubscriptions(data);
-      } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar("Error fetching subnets", { variant: "error" });
-        }
-      } finally {
-        subsLoadingRef.current = false;
-      }
-    })();
-  }, [accounts, enqueueSnackbar, instance]);
-
-  React.useEffect(() => {
-    !subsLoadingRef.current && refreshSubscriptions();
-  }, [vNets, refreshSubscriptions]);
+  const loading = !vNets || !subscriptions;
 
   React.useEffect(() => {
     if (vNets && subscriptions) {

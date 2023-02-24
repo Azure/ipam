@@ -16,6 +16,7 @@ import RestoreIcon from '@mui/icons-material/Restore';
 import { cloneDeep, isEmpty } from "lodash";
 
 import {
+  selectSubscriptions,
   selectNetworks
 } from "../ipam/ipamSlice";
 
@@ -84,46 +85,6 @@ const opt = {
     },
     formatter: function (d) {
       if(d.dataType === "edge") {
-        const source = d.data.source;
-        const target = d.data.target;
-        const lineColor = d.data.lineStyle.color;
-
-        const colorMap = {
-          '#00FF00': 'Connected',
-          '#FF0000': 'Disconnected'
-        };
-
-        const vNetPattern = "/Microsoft.Network/virtualNetworks/";
-        const vHubPattern = "/Microsoft.Network/virtualHubs/";
-
-        const resourceGroupPattern = "(?<=/resourceGroups/).+?(?=/)";
-        const subscriptionPattern = "(?<=/subscriptions/).+?(?=/)";
-
-        var sourceVnetName = '';
-        var targetVnetName = '';
-
-        if(source.includes(vNetPattern)) {
-          sourceVnetName = source.substr(source.indexOf(vNetPattern) + vNetPattern.length, source.length);
-        }
-
-        if(source.includes(vHubPattern)) {
-          sourceVnetName = source.substr(source.indexOf(vHubPattern) + vHubPattern.length, source.length);
-        }
-
-        if(target.includes(vNetPattern)) {
-          targetVnetName = target.substr(source.indexOf(vNetPattern) + vNetPattern.length, target.length);
-        }
-
-        if(target.includes(vHubPattern)) {
-          targetVnetName = target.substr(source.indexOf(vHubPattern) + vHubPattern.length, target.length);
-        }
-
-        const sourceResourceGroup = source.match(resourceGroupPattern)[0];
-        const targetResourceGroup = target.match(resourceGroupPattern)[0];
-
-        const sourceSubscription = source.match(subscriptionPattern)[0];
-        const targetSubscription = target.match(subscriptionPattern)[0];
-
         const x = `
           <style>
             .wrapper {
@@ -186,7 +147,7 @@ const opt = {
               left: calc(50% - 6px);
               border-width: 0px 12px 12px;
               border-style: solid;
-              border-color: ${lineColor} transparent;
+              border-color: ${d.data.lineStyle.color} transparent;
             }
 
             .wrapper::after {
@@ -208,15 +169,19 @@ const opt = {
                 </div>
                 <div class="data">
                   <span style="font-weight: bold">Network Name:&nbsp;</span>
-                  ${sourceVnetName}
+                  ${d.data.detail.sourceVnetName}
                 </div>
                 <div class="data">
                   <span style="font-weight: bold">Resource Group:&nbsp;</span>
-                  ${sourceResourceGroup}
+                  ${d.data.detail.sourceResourceGroup}
                 </div>
                 <div class="data">
-                  <span style="font-weight: bold">Subscription:&nbsp;</span>
-                  ${sourceSubscription}
+                <span style="font-weight: bold">Subscription Name:&nbsp;</span>
+                  ${d.data.detail.sourceSubscriptionName}
+                </div>
+                <div class="data">
+                  <span style="font-weight: bold">Subscription ID:&nbsp;</span>
+                  ${d.data.detail.sourceSubscriptionId}
                 </div>
               </div>
               <div class="center">
@@ -228,22 +193,26 @@ const opt = {
                 </div>
                 <div class="data">
                   <span style="font-weight: bold">Network Name:&nbsp;</span>
-                  ${targetVnetName}
+                  ${d.data.detail.targetVnetName}
                 </div>
                 <div class="data">
                   <span style="font-weight: bold">Resource Group:&nbsp;</span>
-                  ${targetResourceGroup}
+                  ${d.data.detail.targetResourceGroup}
                 </div>
                 <div class="data">
-                  <span style="font-weight: bold">Subscription:&nbsp;</span>
-                  ${targetSubscription}
+                <span style="font-weight: bold">Subscription Name:&nbsp;</span>
+                  ${d.data.detail.targetSubscriptionName}
+                </div>
+                <div class="data">
+                  <span style="font-weight: bold">Subscription ID:&nbsp;</span>
+                  ${d.data.detail.targetSubscriptionId}
                 </div>
               </div>
             </div>
             <div class="footer">
-              <div class="dot" style="background-color: ${lineColor}"></div>
+              <div class="dot" style="background-color: ${d.data.lineStyle.color}"></div>
               <span style="font-weight: bold">
-                ${colorMap[lineColor]}
+                ${d.data.detail.state}
               </span>
             </div>
           </div>
@@ -251,30 +220,30 @@ const opt = {
 
         return x;
       } else {
-        const name = d.name;
-        const peers = d.value;
-        const color = d.color;
+        // const name = d.name;
+        // const peers = d.value;
+        // const color = d.color;
 
         const display = d.data.category !== 'error' && 'none';
 
-        const vNetPattern = "/Microsoft.Network/virtualNetworks/";
-        const vHubPattern = "/Microsoft.Network/virtualHubs/";
+        // const vNetPattern = "/Microsoft.Network/virtualNetworks/";
+        // const vHubPattern = "/Microsoft.Network/virtualHubs/";
 
-        const resourceGroupPattern = "(?<=/resourceGroups/).+?(?=/)";
-        const subscriptionPattern = "(?<=/subscriptions/).+?(?=/)";
+        // const resourceGroupPattern = "(?<=/resourceGroups/).+?(?=/)";
+        // const subscriptionPattern = "(?<=/subscriptions/).+?(?=/)";
 
-        var vNetName = '';
+        // var vNetName = '';
 
-        if(name.includes(vNetPattern)) {
-          vNetName = name.substr(name.indexOf(vNetPattern) + vNetPattern.length, name.length);
-        }
+        // if(name.includes(vNetPattern)) {
+        //   vNetName = name.substr(name.indexOf(vNetPattern) + vNetPattern.length, name.length);
+        // }
 
-        if(name.includes(vHubPattern)) {
-          vNetName = name.substr(name.indexOf(vHubPattern) + vHubPattern.length, name.length);
-        }
+        // if(name.includes(vHubPattern)) {
+        //   vNetName = name.substr(name.indexOf(vHubPattern) + vHubPattern.length, name.length);
+        // }
 
-        const resourceGroup = name.match(resourceGroupPattern)[0];
-        const subscription = name.match(subscriptionPattern)[0];
+        // const resourceGroup = name.match(resourceGroupPattern)[0];
+        // const subscription = name.match(subscriptionPattern)[0];
 
         const y = `
           <style>
@@ -323,7 +292,7 @@ const opt = {
               left: calc(50% - 6px);
               border-width: 0px 12px 12px;
               border-style: solid;
-              border-color: ${color} transparent;
+              border-color: ${d.color} transparent;
             }
 
             .outer::after {
@@ -345,20 +314,24 @@ const opt = {
               </div>
               <div class="data">
                 <span style="font-weight: bold">Network Name:&nbsp;</span>
-                ${vNetName}
+                ${d.data.detail.vNetName}
               </div>
               <div class="data">
                 <span style="font-weight: bold">Resource Group:&nbsp;</span>
-                ${resourceGroup}
+                ${d.data.detail.resourceGroup}
               </div>
               <div class="data">
-                <span style="font-weight: bold">Subscription:&nbsp;</span>
-                ${subscription}
+                <span style="font-weight: bold">Subscription Name:&nbsp;</span>
+                ${d.data.detail.subscriptionName}
+              </div>
+              <div class="data">
+                <span style="font-weight: bold">Subscription ID:&nbsp;</span>
+                ${d.data.detail.subscriptionId}
               </div>
               <div class="footer">
-                <div class="dot" style="background-color: ${color}"></div>
+                <div class="dot" style="background-color: ${d.color}"></div>
                 <span style="font-weight: bold">Peerings:&nbsp;</span>
-                ${peers}
+                ${d.value}
                 <span style="margin-left: auto; color: crimson; font-weight: bold; display: ${display}">vNET Missing</span>
               </div>
             </div>
@@ -373,7 +346,7 @@ const opt = {
   series: []
 };
 
-function parseNets(data) {
+function parseNets(data, subscriptions) {
   const factor = 3;
 
   const stateMap = {
@@ -394,13 +367,38 @@ function parseNets(data) {
   var visibleNets = [];
 
   const nodes = data.map(vnet => {
+    const vNetPattern = "/Microsoft.Network/virtualNetworks/";
     const vHubPattern = "/Microsoft.Network/virtualHubs/";
+
+    const resourceGroupPattern = "(?<=/resourceGroups/).+?(?=/)";
+    const subscriptionPattern = "(?<=/subscriptions/).+?(?=/)";
+
+    var vNetName = '';
+
+    if(vnet.id.includes(vNetPattern)) {
+      vNetName = vnet.id.substr(vnet.id.indexOf(vNetPattern) + vNetPattern.length, vnet.id.length);
+    }
+
+    if(vnet.id.includes(vHubPattern)) {
+      vNetName = vnet.id.substr(vnet.id.indexOf(vHubPattern) + vHubPattern.length, vnet.id.length);
+    }
+
+    const resourceGroup = vnet.id.match(resourceGroupPattern)[0];
+    const subscriptionId = vnet.id.match(subscriptionPattern)[0];
+
+    const subscriptionName = subscriptions.find(sub => sub.subscription_id === subscriptionId)?.name || 'Unknown';
 
     visibleNets.push(vnet.id);
 
     let node = {
       name: vnet.id,
       value: vnet.peerings.length, //vnet.id
+      detail: {
+        vNetName: vNetName,
+        resourceGroup: resourceGroup,
+        subscriptionId: subscriptionId,
+        subscriptionName: subscriptionName
+      },
       symbolSize: (vnet.peerings.length * factor) + factor,
       category: vnet.id,
       label: {
@@ -421,9 +419,36 @@ function parseNets(data) {
 
   uniqueMissing.forEach((peer) => {
     if(!visibleNets.includes(peer.remote_network)) {
+      const vNetPattern = "/Microsoft.Network/virtualNetworks/";
+      const vHubPattern = "/Microsoft.Network/virtualHubs/";
+  
+      const resourceGroupPattern = "(?<=/resourceGroups/).+?(?=/)";
+      const subscriptionPattern = "(?<=/subscriptions/).+?(?=/)";
+  
+      var vNetName = '';
+  
+      if(peer.remote_network.includes(vNetPattern)) {
+        vNetName = peer.remote_network.substr(peer.remote_network.indexOf(vNetPattern) + vNetPattern.length, peer.remote_network.length);
+      }
+  
+      if(peer.remote_network.includes(vHubPattern)) {
+        vNetName = peer.remote_network.substr(peer.remote_network.indexOf(vHubPattern) + vHubPattern.length, peer.remote_network.length);
+      }
+  
+      const resourceGroup = peer.remote_network.match(resourceGroupPattern)[0];
+      const subscriptionId = peer.remote_network.match(subscriptionPattern)[0];
+  
+      const subscriptionName = subscriptions.find(sub => sub.subscription_id === subscriptionId)?.name || 'Unknown';
+
       let node = {
         name: peer.remote_network,
         value: 1,
+        detail: {
+          vNetName: vNetName,
+          resourceGroup: resourceGroup,
+          subscriptionId: subscriptionId,
+          subscriptionName: subscriptionName
+        },
         symbol: 'image:///warning.png',
         symbolSize: (1 * factor) + factor,
         category: 'error',
@@ -444,9 +469,54 @@ function parseNets(data) {
     let peerArr = [];
 
     item.peerings.forEach((peer) => {
+      const vNetPattern = "/Microsoft.Network/virtualNetworks/";
+      const vHubPattern = "/Microsoft.Network/virtualHubs/";
+
+      const resourceGroupPattern = "(?<=/resourceGroups/).+?(?=/)";
+      const subscriptionPattern = "(?<=/subscriptions/).+?(?=/)";
+
+      var sourceVnetName = '';
+      var targetVnetName = '';
+
+      if(item.id.includes(vNetPattern)) {
+        sourceVnetName = item.id.substr(item.id.indexOf(vNetPattern) + vNetPattern.length, item.id.length);
+      }
+
+      if(item.id.includes(vHubPattern)) {
+        sourceVnetName = item.id.substr(item.id.indexOf(vHubPattern) + vHubPattern.length, item.id.length);
+      }
+
+      if(peer.remote_network.includes(vNetPattern)) {
+        targetVnetName = peer.remote_network.substr(peer.remote_network.indexOf(vNetPattern) + vNetPattern.length, peer.remote_network.length);
+      }
+
+      if(peer.remote_network.includes(vHubPattern)) {
+        targetVnetName = peer.remote_network.substr(peer.remote_network.indexOf(vHubPattern) + vHubPattern.length, peer.remote_network.length);
+      }
+
+      const sourceResourceGroup = item.id.match(resourceGroupPattern)[0];
+      const targetResourceGroup = peer.remote_network.match(resourceGroupPattern)[0];
+
+      const sourceSubscriptionId = item.id.match(subscriptionPattern)[0];
+      const targetSubscriptionId = peer.remote_network.match(subscriptionPattern)[0];
+
+      const sourceSubscriptionName = subscriptions.find(sub => sub.subscription_id === sourceSubscriptionId)?.name || 'Unknown';
+      const targetSubscriptionName = subscriptions.find(sub => sub.subscription_id === targetSubscriptionId)?.name || 'Unknown';
+
       const data = {
         source: item.id,
         target: peer.remote_network,
+        detail: {
+          sourceVnetName: sourceVnetName,
+          targetVnetName: targetVnetName,
+          sourceResourceGroup: sourceResourceGroup,
+          targetResourceGroup: targetResourceGroup,
+          sourceSubscriptionId: sourceSubscriptionId,
+          targetSubscriptionId: targetSubscriptionId,
+          sourceSubscriptionName: sourceSubscriptionName,
+          targetSubscriptionName: targetSubscriptionName,
+          state: peer.state
+        },
         lineStyle: {
           color: stateMap[peer.state].color,
           type: stateMap[peer.state].lineStyle,
@@ -674,6 +744,7 @@ const Peering = () => {
 
   const searchRef = React.useRef(null);
 
+  const subscriptions = useSelector(selectSubscriptions);
   const networks = useSelector(selectNetworks);
 
   const theme = useTheme();
@@ -688,14 +759,14 @@ const Peering = () => {
   }, []);
 
   React.useEffect(() => {
-    if(networks) {
-      let vnetOptions = parseNets(networks);
+    if(subscriptions && networks) {
+      let vnetOptions = parseNets(networks, subscriptions);
 
       vnetOptions.darkMode = theme.palette.mode === "dark" ? true : false;
 
       setOptions(vnetOptions);
     }
-  }, [networks, theme]);
+  }, [subscriptions, networks, theme]);
 
   function filterByVnet(options, target, previousTarget, currentMembers) {
     const members = [];

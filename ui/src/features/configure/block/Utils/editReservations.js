@@ -313,6 +313,7 @@ export default function EditReservations(props) {
               showActiveRowIndicator={false}
               enableColumnAutosize={false}
               showColumnMenuGroupOptions={false}
+              showColumnMenuLockOptions={false}
               columns={columns}
               loading={loading}
               loadingText={sending ? <Update>Updating</Update> : "Loading"}

@@ -299,6 +299,8 @@ async def subscription(
 
     subscription_list = await get_subscriptions_sdk(creds)
 
+    await creds.close()
+
     return subscription_list
 
 @router.get(

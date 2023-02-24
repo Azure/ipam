@@ -25,6 +25,7 @@ const initialState = {
   isAdmin: false,
   spaces: null,
   blocks: null,
+  subscriptions: null,
   vNets: null,
   vHubs: null,
   subnets: null,
@@ -278,11 +279,17 @@ export const ipamSlice = createSlice({
           });
 
           return space.blocks;
-         }).flat();
+        }).flat();
 
         if(action.payload[1].status === 'fulfilled') {
-          const vNetData = action.payload[1].value.filter((x) => x.id.toLowerCase().includes(vNetProvider.toLowerCase()));
-          const vHubData = action.payload[1].value.filter((x) => x.id.toLowerCase().includes(vHubProvider.toLowerCase()));
+          state.subscriptions = action.payload[1].value;
+        } else {
+          state.subscriptions = [];
+        }
+
+        if(action.payload[2].status === 'fulfilled') {
+          const vNetData = action.payload[2].value.filter((x) => x.id.toLowerCase().includes(vNetProvider.toLowerCase()));
+          const vHubData = action.payload[2].value.filter((x) => x.id.toLowerCase().includes(vHubProvider.toLowerCase()));
 
           const vnets = vNetData.map((vnet) => {
             vnet.available = (vnet.size - vnet.used);
@@ -329,8 +336,8 @@ export const ipamSlice = createSlice({
           state.vHubs = [];
         }
 
-        if(action.payload[2].status === 'fulfilled') {
-          const endpoints = action.payload[2].value.map((endpoint) => {
+        if(action.payload[3].status === 'fulfilled') {
+          const endpoints = action.payload[3].value.map((endpoint) => {
             endpoint.uniqueId = `${endpoint.id}@$${endpoint.private_ip}`
 
             return endpoint;
@@ -385,8 +392,19 @@ export const getRefreshing = (state) => state.ipam.refreshing;
 export const getDarkMode = (state) => state.ipam.darkMode;
 export const getMeLoaded = (state) => state.ipam.meLoaded;
 
+// const subFixup = (data, state) => {
+//   data?.forEach((item) => {
+//     let target = state.subscriptions?.find((x) => x.subscription_id === item.subcription_id);
+
+//     item['subscription_name'] = target ? target.name : 'Unknown';
+//   });
+
+//   return data;
+// };
+
 export const selectSpaces = (state) => state.ipam.spaces;
 export const selectBlocks = (state) => state.ipam.blocks;
+export const selectSubscriptions = (state) => state.ipam.subscriptions;
 export const selectVNets = (state) => state.ipam.vNets;
 export const selectVHubs = (state) => state.ipam.vHubs;
 export const selectSubnets = (state) => state.ipam.subnets;
