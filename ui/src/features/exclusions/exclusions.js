@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useDispatch } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { styled } from '@mui/material/styles';
 
 import { useSnackbar } from 'notistack';
@@ -29,12 +29,12 @@ import {
 import Shrug from "../../img/pam/Shrug";
 
 import {
-  fetchSubscriptions,
   getExclusions,
   replaceExclusions
 } from "../ipam/ipamAPI";
 
 import {
+  selectSubscriptions,
   refreshAllAsync
 } from '../ipam/ipamSlice';
 
@@ -82,6 +82,12 @@ const DataSection = styled("div")(({ theme }) => ({
   marginBottom: theme.spacing(1.5)
 }));
 
+const Update = styled("span")(({ theme }) => ({
+  fontWeight: 'bold',
+  color: theme.palette.error.light,
+  textShadow: '-1px 0 white, 0 1px white, 1px 0 white, 0 -1px white'
+}));
+
 const gridStyle = {
   height: '100%',
   border: "1px solid rgba(224, 224, 224, 1)",
@@ -122,12 +128,13 @@ export default function ManageExclusions() {
 
   const [loading, setLoading] = React.useState(true);
   const [sending, setSending] = React.useState(false);
-  const [subscriptions, setSubscriptions] = React.useState(null);
+  // const [subscriptions, setSubscriptions] = React.useState(null);
   const [selected, setSelected] = React.useState({});
-  const [loadedExclusions, setLoadedExclusions] = React.useState([]);
+  const [loadedExclusions, setLoadedExclusions] = React.useState(null);
 
   const dataLoadedRef = React.useRef(false);
 
+  const subscriptions = useSelector(selectSubscriptions);
   const dispatch = useDispatch();
 
   const theme = useTheme();
@@ -148,35 +155,31 @@ export default function ManageExclusions() {
 
     (async () => {
       try {
-        // setLoading(true);
-        const response = await instance.acquireTokenSilent(request);
-
-        const stack = [
-          (async () => await fetchSubscriptions(response.accessToken))(),
-          (async () => await getExclusions(response.accessToken))()
-        ];
-
-        Promise.all(stack).then((results) => {
+        if(subscriptions) {
+          // setLoading(true);
           var excluded = {};
 
-          results[1].forEach(exclusion => {
-            var targetSub = results[0].find((sub) => sub.subscription_id === exclusion);
+          const response = await instance.acquireTokenSilent(request);
+
+          const exclusions = await getExclusions(response.accessToken);
+            
+          exclusions.forEach(exclusion => {
+            var targetSub = subscriptions.find((sub) => sub.subscription_id === exclusion);
 
             if(targetSub) {
               excluded[targetSub.id] = targetSub;
             }
           });
 
-          setSubscriptions(results[0]);
           setSelected(prevState => {
             return {
               ...prevState,
               ...excluded
             }
           });
+
           setLoadedExclusions(excluded);
-          // setLoading(false);
-        });
+        }
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
           instance.acquireTokenRedirect(request);
@@ -191,14 +194,14 @@ export default function ManageExclusions() {
         // setLoading(false);
       }
     })();
-  }, [accounts, enqueueSnackbar, instance]);
+  }, [accounts, subscriptions, enqueueSnackbar, instance]);
 
   React.useEffect(() => {
-    if(!dataLoadedRef.current) {
+    if(!dataLoadedRef.current && subscriptions) {
       dataLoadedRef.current = true;
       loadData();
     }
-  }, [loadData]);
+  }, [loadData, subscriptions]);
 
   function onSave() {
     const request = {
@@ -291,7 +294,8 @@ export default function ManageExclusions() {
               showColumnMenuGroupOptions={false}
               columns={columns}
               toggleRowSelectOnClick={true}
-              loading={loading}
+              loading={loading || sending || !subscriptions || !loadedExclusions}
+              loadingText={sending ? <Update>Updating</Update> : "Loading"}
               dataSource={subscriptions || []}
               defaultFilterValue={filterValue}
               onRowClick={(rowData) => onClick(rowData.data)}

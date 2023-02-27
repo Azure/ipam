@@ -89,6 +89,12 @@ const GridBody = styled("div")({
   width: "100%"
 });
 
+const Update = styled("span")(({ theme }) => ({
+  fontWeight: 'bold',
+  color: theme.palette.error.light,
+  textShadow: '-1px 0 white, 0 1px white, 1px 0 white, 0 -1px white'
+}));
+
 const gridStyle = {
   height: '100%',
   border: "1px solid rgba(224, 224, 224, 1)",
@@ -410,7 +416,8 @@ export default function Administration() {
               enableColumnAutosize={false}
               showColumnMenuGroupOptions={false}
               columns={columns}
-              loading={loading}
+              loading={loading || sending}
+              loadingText={sending ? <Update>Updating</Update> : "Loading"}
               dataSource={admins || []}
               defaultFilterValue={filterValue}
               onRowClick={(rowData) => onClick(rowData.data)}

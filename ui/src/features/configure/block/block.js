@@ -193,7 +193,7 @@ export default function BlockDataGrid(props) {
         open={editResvOpen}
         handleClose={() => setEditResvOpen(false)}
         space={selectedSpace ? selectedSpace.name : null}
-        block={selectedBlock ? selectedBlock.name : null}
+        block={selectedBlock ? selectedBlock : null}
       />
       <GridHeader
         style={{

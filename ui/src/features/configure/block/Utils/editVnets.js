@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useDispatch } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
 import { isEqual, sortBy } from 'lodash';
@@ -36,6 +36,7 @@ import {
 } from "../../../ipam/ipamAPI";
 
 import {
+  selectSubscriptions,
   fetchNetworksAsync
 } from "../../../ipam/ipamSlice";
 
@@ -60,13 +61,14 @@ const gridStyle = {
 
 const columns = [
   { name: "name", header: "Name", defaultFlex: 1 },
-  { name: "subscription_id", header: "Subscription", defaultFlex: 1, defaultVisible: false },
   { name: "resource_group", header: "Resource Group", defaultFlex: 1 },
+  { name: "subscription_name", header: "Subscription Name", defaultFlex: 1 },
+  { name: "subscription_id", header: "Subscription ID", defaultFlex: 1, defaultVisible: false },
   { name: "prefixes", header: "Prefixes", defaultFlex: 0.75, render: ({value}) => value.join(", ") },
 ];
 
 export default function EditVnets(props) {
-  const { open, handleClose, space, block, refresh, refreshingState } = props;
+  const { open, handleClose, block, refresh, refreshingState } = props;
 
   const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
@@ -76,8 +78,9 @@ export default function EditVnets(props) {
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
-  const gridRef = React.createRef();
+  // const gridRef = React.createRef();
 
+  const subscriptions = useSelector(selectSubscriptions);
   const dispatch = useDispatch();
 
   const theme = useTheme();
@@ -86,15 +89,40 @@ export default function EditVnets(props) {
   const unchanged = block ? isEqual(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}), selectionModel) : false;
 
   React.useEffect(() => {
-    block && refreshData();
-  }, [block]);
+    (block && subscriptions) && refreshData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block, subscriptions]);
 
   React.useEffect(() => {
-    if(space && block) {
+    if(block) {
       // eslint-disable-next-line
       !refreshingState && setSelectionModel(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}));
     }
-  }, [space, block, refreshingState]);
+  }, [block, refreshingState]);
+
+  function mockVNet(id) {
+    const nameRegex = "(?<=/virtualNetworks/).*";
+    const rgRegex = "(?<=/resourceGroups/).*?(?=/)";
+    const subRegex = "(?<=/subscriptions/).*?(?=/)";
+  
+    const name = id.match(nameRegex)[0]
+    const resourceGroup = id.match(rgRegex)[0]
+    const subscription = id.match(subRegex)[0]
+  
+    const mockNet = {
+      name: name,
+      id: id,
+      prefixes: ["ErrNotFound"],
+      subnets: [],
+      resource_group: resourceGroup.toLowerCase(),
+      subscription_name: subscriptions.find(sub => sub.subscription_id === subscription)?.name || 'Unknown',
+      subscription_id: subscription,
+      tenant_id: null,
+      active: false
+    };
+  
+    return mockNet
+  }
 
   function refreshData() {
     const request = {
@@ -105,14 +133,16 @@ export default function EditVnets(props) {
     (async () => {
       setVNets([]);
 
-      if(space && block) {
+      if(block) {
         try {
           setRefreshing(true);
           setSelectionModel([]);
+
           var missing_data = [];
           const response = await instance.acquireTokenSilent(request);
-          var data = await fetchBlockAvailable(response.accessToken, space, block.name);
+          var data = await fetchBlockAvailable(response.accessToken, block.parent_space, block.name);
           data.forEach((item) => {
+            item['subscription_name'] = subscriptions.find(sub => sub.subscription_id === item.subscription_id)?.name || 'Unknown';
             item['active'] = true;
           });
           const missing = block['vnets'].map(vnet => vnet.id).filter(item => !data.map(a => a.id).includes(item));
@@ -139,29 +169,6 @@ export default function EditVnets(props) {
     })();
   }
 
-  function mockVNet(id) {
-    const nameRegex = "(?<=/virtualNetworks/).*";
-    const rgRegex = "(?<=/resourceGroups/).*?(?=/)";
-    const subRegex = "(?<=/subscriptions/).*?(?=/)";
-  
-    const name = id.match(nameRegex)[0]
-    const resourceGroup = id.match(rgRegex)[0]
-    const subscription = id.match(subRegex)[0]
-  
-    const mockNet = {
-      name: name,
-      id: id,
-      prefixes: ["ErrNotFound"],
-      subnets: [],
-      resource_group: resourceGroup.toLowerCase(),
-      subscription_id: subscription,
-      tenant_id: null,
-      active: false
-    };
-  
-    return mockNet
-  }
-
   function manualRefresh() {
     refresh();
     refreshData();
@@ -177,7 +184,7 @@ export default function EditVnets(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        await replaceBlockNetworks(response.accessToken, space, block.name, Object.keys(selectionModel));
+        await replaceBlockNetworks(response.accessToken, block.parent_space, block.name, Object.keys(selectionModel));
         handleClose();
         enqueueSnackbar("Successfully updated IP Block vNets", { variant: "success" });
         await dispatch(fetchNetworksAsync(response.accessToken));
@@ -245,7 +252,7 @@ export default function EditVnets(props) {
             }}
           >
             <ReactDataGrid
-              ref={gridRef}
+              // ref={gridRef}
               theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
               idProperty="id"
               showCellBorders="horizontal"
@@ -258,11 +265,11 @@ export default function EditVnets(props) {
               enableColumnAutosize={false}
               showColumnMenuGroupOptions={false}
               showColumnMenuLockOptions={false}
-              columnContextMenuConstrainTo={gridRef.current?.getBoundingClientRect()}
+              // columnContextMenuConstrainTo={gridRef.current?.getBoundingClientRect()}
               // columnContextMenuPosition={"fixed"}
               // updateMenuPositionOnColumnsChange={true}
               columns={columns}
-              loading={sending || refreshing || refreshingState}
+              loading={sending || !subscriptions || (vNets.length === 0) || refreshing || refreshingState}
               loadingText={sending ? <Update>Updating</Update> : "Loading"}
               dataSource={vNets}
               selected={selectionModel}

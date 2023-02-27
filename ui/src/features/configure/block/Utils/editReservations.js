@@ -71,12 +71,11 @@ const gridStyle = {
 };
 
 export default function EditReservations(props) {
-  const { open, handleClose, space, block } = props;
+  const { open, handleClose, block } = props;
 
   const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
-  const [loading, setLoading] = React.useState(false);
   const [reservations, setReservations] = React.useState([]);
   const [selectionModel, setSelectionModel] = React.useState([]);
   const [copied, setCopied] = React.useState("");
@@ -193,22 +192,22 @@ export default function EditReservations(props) {
     );
   }
 
-  const refreshData = React.useCallback(() => {
+  function refreshData() {
     const request = {
       scopes: apiRequest.scopes,
       account: accounts[0],
-    }
-
-    setReservations([]);
-    setSelectionModel([]);
-    setLoading(true);
+    };
 
     (async () => {
-      if(space && block) {
+      setReservations([]);
+
+      if(block) {
         try {
           setRefreshing(true);
+          setSelectionModel([]);
+
           const response = await instance.acquireTokenSilent(request);
-          const data = await fetchBlockResv(response.accessToken, space, block);
+          const data = await fetchBlockResv(response.accessToken, block.parent_space, block.name);
           setReservations(data);
         } catch (e) {
           if (e instanceof InteractionRequiredAuthError) {
@@ -223,17 +222,14 @@ export default function EditReservations(props) {
         } finally {
           setRefreshing(false);
         }
-      } else {
-        setReservations([])
       }
-
-      setLoading(false);
     })();
-  }, [accounts, block, enqueueSnackbar, instance, space]);
+  }
 
   React.useEffect(() => {
-    refreshData();
-  }, [block, refreshData]);
+    block && refreshData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block]);
 
   React.useEffect(() => {
     if(copied !== "") {
@@ -257,7 +253,7 @@ export default function EditReservations(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        await deleteBlockResvs(response.accessToken, space, block, Object.keys(selectionModel));
+        await deleteBlockResvs(response.accessToken, block.parent_space, block.name, Object.keys(selectionModel));
         handleClose();
         enqueueSnackbar("Successfully removed IP Block reservation(s)", { variant: "success" });
         refreshData();
@@ -299,7 +295,7 @@ export default function EditReservations(props) {
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Select the CIDR reservations for Block <Spotlight>'{block}'</Spotlight> to be deleted
+            Select the CIDR reservations for Block <Spotlight>'{block?.name}'</Spotlight> to be deleted
           </DialogContentText>
           <Box sx={{ pt: 4, height: "300px" }}>
             <ReactDataGrid
@@ -315,7 +311,7 @@ export default function EditReservations(props) {
               showColumnMenuGroupOptions={false}
               showColumnMenuLockOptions={false}
               columns={columns}
-              loading={loading}
+              loading={refreshing || sending}
               loadingText={sending ? <Update>Updating</Update> : "Loading"}
               dataSource={reservations}
               selected={selectionModel}
