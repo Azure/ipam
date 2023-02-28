@@ -102,6 +102,7 @@ class SpaceCIDRReq(BaseModel):
 
     blocks: list
     size: int
+    desc: Optional[str] = None
     reverse_search: Optional[bool] = False
     smallest_cidr: Optional[bool] = False
 
@@ -109,6 +110,7 @@ class BlockCIDRReq(BaseModel):
     """DOCSTRING"""
 
     size: int
+    desc: Optional[str] = None
     reverse_search: Optional[bool] = False
     smallest_cidr: Optional[bool] = False
 
@@ -192,6 +194,7 @@ class Reservation(BaseModel):
     block: Optional[str]
     cidr: str
     userId: str
+    desc: Union[str, None]
     createdOn: float
     status: str
     tag: Optional[dict]

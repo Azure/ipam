@@ -559,6 +559,7 @@ async def create_multi_block_reservation(
 
     - **blocks**: Array of Block names (*Evaluated in the order provided*)
     - **size**: Network mask bits
+    - **desc**: Description (optional)
     - **reverse_search**:
         - **true**: New networks will be created as close to the <u>end</u> of the block as possible
         - **false (default)**: New networks will be created as close to the <u>beginning</u> of the block as possible
@@ -633,6 +634,7 @@ async def create_multi_block_reservation(
         "id": shortuuid.uuid(),
         "cidr": str(next_cidr),
         "userId": creator_id,
+        "desc": req.desc,
         "createdOn": time.time(),
         "status": "wait"
     }
@@ -1163,6 +1165,10 @@ async def get_block_reservations(
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
 
+    for resv in target_block['resv']:
+        resv['space'] = target_space['name']
+        resv['block'] = target_block['name']
+
     if not target_block:
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
@@ -1193,6 +1199,7 @@ async def create_block_reservation(
     Create a CIDR Reservation for the target Block with the following information:
 
     - **size**: Network mask bits
+    - **desc**: Description (optional)
     - **reverse_search**:
         - **true**: New networks will be created as close to the <u>end</u> of the block as possible
         - **false (default)**: New networks will be created as close to the <u>beginning</u> of the block as possible
@@ -1256,6 +1263,7 @@ async def create_block_reservation(
         "id": shortuuid.uuid(),
         "cidr": str(next_cidr),
         "userId": creator_id,
+        "desc": req.desc,
         "createdOn": time.time(),
         "status": "wait"
     }

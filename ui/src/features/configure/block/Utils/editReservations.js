@@ -91,6 +91,7 @@ export default function EditReservations(props) {
   const columns = [
     { name: "cidr", header: "CIDR", defaultFlex: 0.5 },
     { name: "userId", header: "User ID", defaultFlex: 1 },
+    { name: "desc", header: "Description", defaultFlex: 1.5 },
     { name: "createdOn", header: "Created Date", defaultFlex: 0.75, render: ({value}) => new Date(value * 1000).toLocaleString() },
     { name: "status", header: "Status", headerAlign: "center", width: 90, resizable: false, hideable: false, sortable: false, showColumnMenuTool: false, render: renderStatus },
     { name: "id", header: "", width: 25, resizable: false, hideable: false, showColumnMenuTool: false, sortable: false, renderHeader: () => "", render: renderId }
@@ -274,8 +275,8 @@ export default function EditReservations(props) {
   }
 
   return (
-    <div sx={{ height: "300px", width: "100%" }}>
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+    <div sx={{ height: "400px", width: "100%" }}>
+      <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
         <DialogTitle>
           <Box sx={{ display: "flex", flexDirection: "row" }}>
             <Box>
@@ -297,7 +298,7 @@ export default function EditReservations(props) {
           <DialogContentText>
             Select the CIDR reservations for Block <Spotlight>'{block?.name}'</Spotlight> to be deleted
           </DialogContentText>
-          <Box sx={{ pt: 4, height: "300px" }}>
+          <Box sx={{ pt: 4, height: "400px" }}>
             <ReactDataGrid
               theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
               idProperty="id"
