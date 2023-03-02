@@ -417,6 +417,15 @@ class UserUpdate(List[JSONPatch]):
 #   TOOL MODELS   #
 ###################
 
+class VNetCIDRReq(BaseModel):
+    """DOCSTRING"""
+
+    space: str
+    blocks: List[str]
+    size: int
+    reverse_search: Optional[bool] = False
+    smallest_cidr: Optional[bool] = False
+
 class SubnetCIDRReq(BaseModel):
     """DOCSTRING"""
 
@@ -431,4 +440,11 @@ class NewSubnetCIDR(BaseModel):
     vnet_name: str
     resource_group: str
     subscription_id: str
+    cidr: str
+
+class NewVNetCIDR(BaseModel):
+    """DOCSTRING"""
+
+    space: str
+    block: str
     cidr: str

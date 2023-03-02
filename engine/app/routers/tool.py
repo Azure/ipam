@@ -1,19 +1,26 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 
 import regex
+import copy
 from netaddr import IPSet
 
 from app.dependencies import (
-    check_token_expired
+    check_token_expired,
+    get_tenant_id
 )
 
 from app.models import *
 from . import argquery
 
 from app.routers.common.helper import (
+    cosmos_query,
     cosmos_retry,
     arg_query,
     vnet_fixup
+)
+
+from app.routers.azure import (
+    get_network
 )
 
 router = APIRouter(
@@ -26,7 +33,7 @@ router = APIRouter(
     "/nextAvailableSubnet",
     summary = "Get Next Available Subnet in a Virtual Network",
     response_model = NewSubnetCIDR,
-    status_code = 201
+    status_code = 200
 )
 @cosmos_retry(
     max_retry = 5,
@@ -94,6 +101,97 @@ async def next_available_subnet(
         "vnet_name": target['name'],
         "resource_group": target['resource_group'],
         "subscription_id": target['subscription_id'],
+        "cidr": str(next_cidr)
+    }
+
+    return new_cidr
+
+@router.post(
+    "/nextAvailableVNet",
+    summary = "Get Next Available Virtual Network from a List of Blocks",
+    response_model = NewVNetCIDR,
+    status_code = 200
+)
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error fetching next available virtual network, please try again."
+)
+async def next_available_vnet(
+    req: VNetCIDRReq,
+    authorization: str = Header(None, description="Azure Bearer token"),
+    tenant_id: str = Depends(get_tenant_id)
+):
+    """
+    Get the next available Virtual Network CIDR in a list of Blocks with the following information:
+
+    - **space**: Space name
+    - **blocks**: Array of Block names (*Evaluated in the order provided*)
+    - **size**: Network mask bits
+    - **reverse_search**:
+        - **true**: New networks will be created as close to the <u>end</u> of the block as possible
+        - **false (default)**: New networks will be created as close to the <u>beginning</u> of the block as possible
+    - **smallest_cidr**:
+        - **true**: New networks will be created using the smallest possible available block (e.g. it will not break up large CIDR blocks when possible)
+        - **false (default)**: New networks will be created using the first available block, regardless of size
+    """
+
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(req.space), tenant_id)
+
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
+
+    request_blocks = set(req.blocks)
+    space_blocks = set([x['name'] for x in target_space['blocks']])
+    invalid_blocks = (request_blocks - space_blocks)
+
+    if invalid_blocks:
+        raise HTTPException(status_code=400, detail="Invalid Block(s) in Block list: {}.".format(list(invalid_blocks)))
+
+    net_list = await get_network(authorization, True)
+
+    available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
+    next_selector = -1 if req.reverse_search else 0
+
+    available_block = None
+    available_block_name = None
+
+    for block in req.blocks:
+        if not available_block:
+            target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
+
+            block_all_cidrs = []
+
+            for v in target_block['vnets']:
+                target = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
+                prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes'])) if target else []
+                block_all_cidrs += prefixes
+
+            for r in target_block['resv']:
+                block_all_cidrs.append(r['cidr'])
+
+            block_set = IPSet([target_block['cidr']])
+            reserved_set = IPSet(block_all_cidrs)
+            available_set = block_set ^ reserved_set
+
+            if req.smallest_cidr:
+                cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
+                min_mask = max(map(lambda x: x.prefixlen, cidr_list))
+                available_block = next((net for net in list(filter(lambda network: network.prefixlen == min_mask, cidr_list))), None)
+            else:
+                available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
+
+            available_block_name = block if available_block else None
+
+    if not available_block:
+        raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block(s).")
+
+    next_cidr = list(available_block.subnet(req.size))[next_selector]
+
+    new_cidr = {
+        "space": target_space['name'],
+        "block": available_block_name,
         "cidr": str(next_cidr)
     }
 
