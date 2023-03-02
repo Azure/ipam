@@ -73,7 +73,7 @@ export default function EditVnets(props) {
   const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
-  const [vNets, setVNets] = React.useState([]);
+  const [vNets, setVNets] = React.useState(null);
   const [selectionModel, setSelectionModel] = React.useState([]);
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -89,7 +89,10 @@ export default function EditVnets(props) {
   const unchanged = block ? isEqual(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}), selectionModel) : false;
 
   React.useEffect(() => {
-    (block && subscriptions) && refreshData();
+    if(block && subscriptions) {
+      setVNets(null);
+      refreshData();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [block, subscriptions]);
 
@@ -187,8 +190,7 @@ export default function EditVnets(props) {
         await replaceBlockNetworks(response.accessToken, block.parent_space, block.name, Object.keys(selectionModel));
         handleClose();
         enqueueSnackbar("Successfully updated IP Block vNets", { variant: "success" });
-        await dispatch(fetchNetworksAsync(response.accessToken));
-        refresh();
+        dispatch(fetchNetworksAsync(response.accessToken));
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
           instance.acquireTokenRedirect(request);
@@ -197,10 +199,11 @@ export default function EditVnets(props) {
           console.log("------------------");
           console.log(e);
           console.log("------------------");
-          enqueueSnackbar(e.response.data.error, { variant: "error" });
+          enqueueSnackbar(e.error, { variant: "error" });
         }
       } finally {
         setSending(false);
+        refresh();
       }
     })();
   }
@@ -269,9 +272,9 @@ export default function EditVnets(props) {
               // columnContextMenuPosition={"fixed"}
               // updateMenuPositionOnColumnsChange={true}
               columns={columns}
-              loading={sending || !subscriptions || (vNets.length === 0) || refreshing || refreshingState}
+              loading={sending || !subscriptions || !vNets || refreshing || refreshingState}
               loadingText={sending ? <Update>Updating</Update> : "Loading"}
-              dataSource={vNets}
+              dataSource={vNets || []}
               selected={selectionModel}
               onSelectionChange={({selected}) => setSelectionModel(selected)}
               rowClassName={({data}) => `ipam-block-vnet-${!data.active ? 'stale' : 'normal'}`}

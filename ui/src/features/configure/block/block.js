@@ -2,6 +2,8 @@ import * as React from "react";
 import { useSelector } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
+import { isEmpty} from 'lodash';
+
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
 import '@inovua/reactdatagrid-community/theme/default-dark.css'
@@ -102,8 +104,22 @@ export default function BlockDataGrid(props) {
   }, [selectedSpace, onSpaceChange]);
 
   React.useEffect(() => {
-    setSelectedBlock(Object.values(selectionModel)[0])
+    if(!isEmpty(selectionModel)) {
+      setSelectedBlock(Object.values(selectionModel)[0])
+    } else {
+      setSelectedBlock(null);
+    }
   }, [selectionModel, setSelectedBlock]);
+
+  React.useEffect(() => {
+    if(blocks && selectedBlock) {
+      const currentBlock = blocks.find(block => block.name === selectedBlock.name);
+      
+      if(!currentBlock) {
+        setSelectionModel({});
+      }
+    }
+  }, [blocks, selectedBlock, setSelectedBlock, setSelectionModel]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -141,7 +157,7 @@ export default function BlockDataGrid(props) {
       if(!prevState.hasOwnProperty(id)) {
         newSelectionModel[id] = data;
       }
-      
+
       return newSelectionModel;
     });
   }

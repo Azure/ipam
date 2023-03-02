@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useDispatch } from 'react-redux';
 
 import { useSnackbar } from "notistack";
 
@@ -14,14 +15,15 @@ import {
   DialogTitle,
   DialogActions,
   DialogContent,
+  CircularProgress
 } from "@mui/material";
 
-import { createSpace } from "../../../ipam/ipamAPI";
+import { createSpaceAsync } from "../../../ipam/ipamSlice";
 
 import { apiRequest } from "../../../../msal/authConfig";
 
 export default function AddSpace(props) {
-  const { open, handleClose, spaces, refresh } = props;
+  const { open, handleClose, spaces } = props;
 
   const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
@@ -29,6 +31,8 @@ export default function AddSpace(props) {
   const [spaceName, setSpaceName] = React.useState({ value: "", error: false });
   const [description, setDescription] = React.useState({ value: "", error: false });
   const [sending, setSending] = React.useState(false);
+
+  const dispatch = useDispatch();
 
   const invalidForm = spaceName.value
                       && !spaceName.error
@@ -56,11 +60,10 @@ export default function AddSpace(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        await createSpace(response.accessToken, body);
+        await dispatch(createSpaceAsync({ token: response.accessToken, body: body}));
         setSpaceName({ value: "", error: false });
         setDescription({ value: "", error: false });
         enqueueSnackbar("Successfully created new Space", { variant: "success" });
-        refresh();
         handleClose();
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
@@ -108,7 +111,16 @@ export default function AddSpace(props) {
   return (
     <div sx={{ height: "300px", width: "100%" }}>
       <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-        <DialogTitle>Add Space</DialogTitle>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', marginRight: 'auto' }}>
+              Add Space
+            </Box>
+            <Box sx={{ display: 'flex', visibility: sending ? 'visible' : 'hidden' }}>
+              <CircularProgress size={32} />
+            </Box>
+          </Box>
+        </DialogTitle>
         <DialogContent>
           <Box display="flex" flexDirection="column" alignItems="center">
             <Tooltip

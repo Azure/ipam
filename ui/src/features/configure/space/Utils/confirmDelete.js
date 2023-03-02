@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
 import { useSnackbar } from "notistack";
@@ -17,9 +18,12 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
+  CircularProgress
 } from "@mui/material";
 
-import { deleteSpace } from "../../../ipam/ipamAPI";
+// import { deleteSpace } from "../../../ipam/ipamAPI";
+
+import { deleteSpaceAsync } from "../../../ipam/ipamSlice";
 
 import { apiRequest } from '../../../../msal/authConfig';
 
@@ -29,7 +33,7 @@ const Spotlight = styled("span")(({ theme }) => ({
 }));
 
 export default function ConfirmDelete(props) {
-  const { open, handleClose, space, refresh } = props;
+  const { open, handleClose, space } = props;
 
   const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
@@ -37,6 +41,8 @@ export default function ConfirmDelete(props) {
   const [force, setForce] = React.useState(false);
   const [verify, setVerify] = React.useState(false);
   const [sending, setSending] = React.useState(false);
+
+  const dispatch = useDispatch();
 
   const handleForce = (event) => {
     setForce(event.target.checked);
@@ -55,9 +61,10 @@ export default function ConfirmDelete(props) {
         try {
           setSending(true);
           const response = await instance.acquireTokenSilent(request);
-          await deleteSpace(response.accessToken, space, force);
+          // await deleteSpace(response.accessToken, space, force);
+          await dispatch(deleteSpaceAsync({ token: response.accessToken, space: space, force: force}));
           enqueueSnackbar("Successfully removed Space", { variant: "success" });
-          refresh();
+          // refresh();
           handleCancel();
         } catch (e) {
           if (e instanceof InteractionRequiredAuthError) {
@@ -65,9 +72,9 @@ export default function ConfirmDelete(props) {
           } else {
             console.log("ERROR");
             console.log("------------------");
-            console.log(e.response.data.error);
+            console.log(e);
             console.log("------------------");
-            enqueueSnackbar(e.response.data.error, { variant: "error" });
+            enqueueSnackbar(e.error, { variant: "error" });
           }
         } finally {
           setSending(false);
@@ -86,7 +93,14 @@ export default function ConfirmDelete(props) {
     <div>
       <Dialog open={open} onClose={handleCancel}>
         <DialogTitle>
-          Delete Space
+          <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', marginRight: 'auto' }}>
+              Delete Space
+            </Box>
+            <Box sx={{ display: 'flex', visibility: sending ? 'visible' : 'hidden' }}>
+              <CircularProgress size={32} />
+            </Box>
+          </Box>
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -113,6 +127,7 @@ export default function ConfirmDelete(props) {
           <Button
             onClick={checkForce}
             color={verify ? "error" : "primary" }
+            disabled={sending}
           >
             Delete
           </Button>

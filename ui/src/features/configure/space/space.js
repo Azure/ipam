@@ -18,15 +18,17 @@ import {
   MenuItem,
   ListItemIcon,
   Divider,
-  Typography
+  Typography,
+  SvgIcon
 } from "@mui/material";
 
 import {
   Edit as EditIcon,
   DeleteOutline as DeleteOutlineIcon,
-  MoreVert as MoreVertIcon,
-  CloudQueue as CloudQueueIcon,
+  MoreVert as MoreVertIcon
 } from "@mui/icons-material";
+
+import Space from "../../../img/Space";
 
 import AddSpace from "./Utils/addSpace";
 import EditSpace from "./Utils/editSpace";
@@ -88,6 +90,17 @@ export default function SpaceDataGrid(props) {
     setSelectedBlock(null);
     setSelectedSpace(!isEmpty(selectionModel) ? Object.values(selectionModel)[0] : null);
   }, [selectionModel, setSelectedSpace, setSelectedBlock]);
+
+  React.useEffect(() => {
+    if(spaces && selectedSpace) {
+      const currentSpace = spaces.find(space => space.name === selectedSpace.name);
+      
+      if(!currentSpace) {
+        setSelectedBlock(null)
+        setSelectionModel({});
+      }
+    }
+  }, [spaces, selectedSpace, setSelectedBlock, setSelectionModel]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -229,7 +242,10 @@ export default function SpaceDataGrid(props) {
               >
                 <MenuItem onClick={handleAddSpace}>
                   <ListItemIcon>
-                    <CloudQueueIcon fontSize="small" />
+                    {/* <CloudQueueIcon fontSize="small" /> */}
+                    <SvgIcon fontSize="small">
+                      <Space />
+                    </SvgIcon>
                   </ListItemIcon>
                   Add Space
                 </MenuItem>

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useDispatch } from 'react-redux';
 
 import { useSnackbar } from "notistack";
 
@@ -14,14 +15,15 @@ import {
   DialogTitle,
   DialogActions,
   DialogContent,
+  CircularProgress
 } from "@mui/material";
 
-import { updateSpace } from "../../../ipam/ipamAPI";
+import { updateSpaceAsync } from "../../../ipam/ipamSlice";
 
 import { apiRequest } from "../../../../msal/authConfig";
 
 export default function EditSpace(props) {
-  const { open, handleClose, space, spaces, refresh } = props;
+  const { open, handleClose, space, spaces } = props;
 
   const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
@@ -29,6 +31,8 @@ export default function EditSpace(props) {
   const [spaceName, setSpaceName] = React.useState({ value: "", error: false });
   const [description, setDescription] = React.useState({ value: "", error: false });
   const [sending, setSending] = React.useState(false);
+
+  const dispatch = useDispatch();
 
   const invalidForm = spaceName.value
                       && !spaceName.error
@@ -60,8 +64,8 @@ export default function EditSpace(props) {
   }, [space]);
 
   function onCancel() {
-    setSpaceName({ value: "", error: false });
-    setDescription({ value: "", error: false });
+    setSpaceName({ value: space.name, error: false });
+    setDescription({ value: space.desc, error: false });
     handleClose();
   }
 
@@ -80,9 +84,8 @@ export default function EditSpace(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        await updateSpace(response.accessToken, space.name, body);
+        await dispatch(updateSpaceAsync({ token: response.accessToken, space: space.name, body: body}));
         enqueueSnackbar("Successfully updated Space", { variant: "success" });
-        refresh();
         onCancel();
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
@@ -133,7 +136,16 @@ export default function EditSpace(props) {
   return (
     <div sx={{ height: "300px", width: "100%" }}>
       <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-        <DialogTitle>Edit Space</DialogTitle>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', marginRight: 'auto' }}>
+              Edit Space
+            </Box>
+            <Box sx={{ display: 'flex', visibility: sending ? 'visible' : 'hidden' }}>
+              <CircularProgress size={32} />
+            </Box>
+          </Box>
+        </DialogTitle>
         <DialogContent>
           <Box display="flex" flexDirection="column" alignItems="center">
             <Tooltip

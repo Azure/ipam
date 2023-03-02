@@ -375,7 +375,6 @@ function parseTree(spaces, subscriptions, vnets, vhubs, endpoints) {
         let vhub_children = block.vnets.reduce((results, vnet) => {
           const target = vhubs.find((x) => x.id === vnet.id);
 
-          console.log(target);
           if(target) {
             results.push({
               name: target.name,

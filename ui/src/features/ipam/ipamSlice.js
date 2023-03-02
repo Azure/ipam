@@ -1,9 +1,14 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 
-import { concat } from 'lodash';
+import { concat, merge, findLastIndex } from 'lodash';
 
 import {
   fetchSpaces,
+  createSpace,
+  updateSpace,
+  deleteSpace,
+  createBlock,
+  deleteBlock,
   fetchVNets,
   fetchVHubs,
   fetchSubnets,
@@ -47,6 +52,71 @@ export const fetchSpacesAsync = createAsyncThunk(
     const response = await fetchSpaces(token, true);
     // The value we return becomes the `fulfilled` action payload
     return response;
+  }
+);
+
+export const createSpaceAsync = createAsyncThunk(
+  'ipam/createSpace',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await createSpace(args.token, args.body);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
+  }
+);
+
+export const updateSpaceAsync = createAsyncThunk(
+  'ipam/updateSpace',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await updateSpace(args.token, args.space, args.body);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
+  }
+);
+
+export const deleteSpaceAsync = createAsyncThunk(
+  'ipam/deleteSpace',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await deleteSpace(args.token, args.space, args.force);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
+  }
+);
+
+export const createBlockAsync = createAsyncThunk(
+  'ipam/createBlock',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await createBlock(args.token, args.space, args.body);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
+  }
+);
+
+export const deleteBlockAsync = createAsyncThunk(
+  'ipam/deleteBlock',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await deleteBlock(args.token, args.space, args.block, args.force);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
   }
 );
 
@@ -148,6 +218,112 @@ export const ipamSlice = createSlice({
 
           return space.blocks;
          }).flat();
+      })
+      .addCase(createSpaceAsync.fulfilled, (state, action) => {
+        const newSpace = action.payload;
+
+        newSpace.size = 0;
+        newSpace.used = 0;
+        newSpace.available = 0;
+        newSpace.utilization = 0;
+
+        state.spaces.push(newSpace);
+      })
+      .addCase(createSpaceAsync.rejected, (state, action) => {
+        throw action.payload;
+      })
+      .addCase(updateSpaceAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const updatedSpace = action.payload;
+        const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);
+
+        if (spaceIndex > -1) {
+          state.spaces[spaceIndex] = merge(state.spaces[spaceIndex], updatedSpace);
+
+          if(spaceName !== updatedSpace.name) {
+            state.blocks = state.blocks.map((block) => {
+              if(block.parent_space === spaceName) {
+                block.parent_space = updatedSpace.name;
+              }
+
+              return block;
+            });
+
+            state.vNets = state.vNets.map((vnet) => {
+              if(vnet.parent_space === spaceName) {
+                vnet.parent_space = updatedSpace.name;
+              }
+
+              return vnet;
+            });
+
+            state.vHubs = state.vHubs.map((vhub) => {
+              if(vhub.parent_space === spaceName) {
+                vhub.parent_space = updatedSpace.name;
+              }
+
+              return vhub;
+            });
+          }
+        }
+      })
+      .addCase(updateSpaceAsync.rejected, (state, action) => {
+        throw action.payload;
+      })
+      .addCase(deleteSpaceAsync.fulfilled, (state, action) => {
+        console.log(action);
+        const spaceName = action.meta.arg.space;
+
+        state.blocks = state.blocks.reduce((blocks, block) => {
+          if(block.parent_space !== spaceName) {
+            blocks.push(block);
+          }
+
+          return blocks;
+        }, []);
+
+        const spaceIndex = state.spaces.findIndex((space) => space.name === spaceName);
+
+        if(spaceIndex > -1) {
+          state.spaces.splice(spaceIndex, 1);
+        }
+      })
+      .addCase(deleteSpaceAsync.rejected, (state, action) => {
+        throw action.payload;
+      })
+      .addCase(createBlockAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const newBlock = action.payload;
+
+        newBlock.size = 0;
+        newBlock.used = 0;
+        newBlock.parent_space = spaceName;
+        newBlock.available = 0;
+        newBlock.utilization = 0;
+
+        const lastIndex = findLastIndex(state.blocks, x => x.parent_space === spaceName);
+
+        if(lastIndex > -1) {
+          state.blocks.splice((lastIndex + 1), 0, newBlock);
+        } else {
+          state.blocks.push(newBlock);
+        }
+      })
+      .addCase(createBlockAsync.rejected, (state, action) => {
+        throw action.payload;
+      })
+      .addCase(deleteBlockAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const blockName = action.meta.arg.block;
+
+        const targetIndex = state.blocks.findIndex((block) => block.name === blockName && block.parent_space === spaceName);
+
+        if(targetIndex > -1) {
+          state.blocks.splice(targetIndex, 1);
+        }
+      })
+      .addCase(deleteBlockAsync.rejected, (state, action) => {
+        throw action.payload;
       })
       .addCase(fetchVNetsAsync.fulfilled, (state, action) => {
         const vnets = action.payload.map((vnet) => {
