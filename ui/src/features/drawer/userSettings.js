@@ -17,7 +17,8 @@ import {
   DialogTitle,
   Typography,
   ToggleButton,
-  ToggleButtonGroup
+  ToggleButtonGroup,
+  CircularProgress
 } from "@mui/material";
 
 import {
@@ -131,7 +132,14 @@ export default function UserSettings(props) {
     <div>
       <Dialog open={open} onClose={handleClose} fullWidth>
         <DialogTitle>
-          Settings
+          <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', marginRight: 'auto' }}>
+              Settings
+            </Box>
+            <Box sx={{ display: 'flex', visibility: sending ? 'visible' : 'hidden' }}>
+              <CircularProgress size={32} />
+            </Box>
+          </Box>
         </DialogTitle>
         <DialogContent>
           <Box

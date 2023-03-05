@@ -807,6 +807,7 @@ async def available_block_nets(
     """
     Get a list of Azure networks which can be associated to the target Block.
     This list is a combination on Virtual Networks and vWAN Virtual Hubs.
+    Any Networks which overlap outstanding reservations are excluded.
     """
 
     available_vnets = []
@@ -830,7 +831,7 @@ async def available_block_nets(
     resv_list = IPSet(x['cidr'] for x in target_block['resv'])
 
     for net in net_list:
-        valid = list(filter(lambda x: (IPNetwork(x) in IPNetwork(target_block['cidr']) and (IPNetwork(x) not in resv_list)), net['prefixes']))
+        valid = list(filter(lambda x: (IPNetwork(x) in IPNetwork(target_block['cidr']) and not (IPSet([x]) & resv_list)), net['prefixes']))
 
         if valid:
             net['prefixes'] = valid

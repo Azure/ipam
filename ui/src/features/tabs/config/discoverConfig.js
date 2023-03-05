@@ -6,10 +6,14 @@ import {
 import {
   selectSpaces,
   selectBlocks,
-  selectVNets,
-  selectVHubs,
-  selectSubnets,
-  selectEndpoints
+  // selectVNets,
+  selectUpdatedVNets,
+  // selectVHubs,
+  selectUpdatedVHubs,
+  // selectSubnets,
+  selectUpdatedSubnets,
+  // selectEndpoints,
+  selectUpdatedEndpoints
 } from '../../ipam/ipamSlice';
 
 import NumberFilter from '@inovua/reactdatagrid-community/NumberFilter'
@@ -104,13 +108,16 @@ export const blocks = {
 export const vnets = {
   config: {
     title: "Virtual Network",
-    apiFunc: selectVNets,
+    apiFunc: selectUpdatedVNets,
     idProp: "id"
   },
   columns: [
     { name: "name", header: "vNet Name", defaultFlex: 0.85 },
     { name: "utilization", header: "Utilization", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value) },
     { name: "parent_block", header: "Block", defaultFlex: 0.85, render: ({value}) => value ?? "<Unassigned>" },
+    { name: "resource_group", header: "Resource Group", defaultFlex: 0.75, defaultVisible: false },
+    { name: "subscription_name", header: "Subscription Name", defaultFlex: 0.85, defaultVisible: false },
+    { name: "subscription_id", header: "Subscription ID", defaultFlex: 0.85, defaultVisible: false },
     { name: "size", header: "Total IP's", defaultFlex: 0.45 },
     { name: "used", header: "Allocated IP's", defaultFlex: 0.45 },
     { name: "prefixes", header: "Address Space", defaultFlex: 0.75, render: ({value}) => value.join(", ") }
@@ -119,6 +126,9 @@ export const vnets = {
     { name: 'name', operator: 'contains', type: 'string', value: '' },
     { name: 'utilization', operator: 'inrange', type: 'number', value: { start: 0, end: 100 } },
     { name: 'parent_block', operator: 'contains', type: 'string', value: '' },
+    { name: 'resource_group', operator: 'contains', type: 'string', value: '' },
+    { name: 'subscription_name', operator: 'contains', type: 'string', value: '' },
+    { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
     { name: 'size', operator: 'gte', type: 'number', value: 0 },
     { name: 'used', operator: 'gte', type: 'number', value: 0 },
     { name: 'prefixes', operator: 'contains', type: 'array', value: '' }
@@ -133,6 +143,7 @@ export const vnets = {
       { name: "Block", value: "parent_block" },
       { name: "Address Space", value: "prefixes" },
       { name: "Resource Group", value: "resource_group" },
+      { name: "Subscription Name", value: "subscription_name" },
       { name: "Subscription ID", value: "subscription_id" },
       { name: "Total IP Space", value: "size" },
       { name: "Allocated IP's", value: "used" }
@@ -144,13 +155,15 @@ export const vnets = {
 export const vhubs = {
   config: {
     title: "Virtual Hub",
-    apiFunc: selectVHubs,
+    apiFunc: selectUpdatedVHubs,
     idProp: "id"
   },
   columns: [
     { name: "name", header: "vNet Name", defaultFlex: 0.6 },
     { name: "vwan_name", header: "Parent vWAN", defaultFlex: 0.6 },
     { name: "parent_block", header: "Block", defaultFlex: 0.75, render: ({value}) => value ?? "<Unassigned>" },
+    { name: "subscription_name", header: "Subscription Name", defaultFlex: 0.75, defaultVisible: false },
+    { name: "subscription_id", header: "Subscription ID", defaultFlex: 0.75, defaultVisible: false },
     { name: "resource_group", header: "Resource Group", defaultFlex: 0.75 },
     { name: "prefixes", header: "Address Space", defaultFlex: 0.35, render: ({value}) => value.toString() }
   ],
@@ -158,6 +171,8 @@ export const vhubs = {
     { name: 'name', operator: 'contains', type: 'string', value: '' },
     { name: 'vwan_name', operator: 'contains', type: 'string', value: '' },
     { name: 'parent_block', operator: 'contains', type: 'string', value: '' },
+    { name: 'subscription_name', operator: 'contains', type: 'string', value: '' },
+    { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
     { name: 'resource_group', operator: 'contains', type: 'string', value: '' },
     { name: 'prefixes', operator: 'contains', type: 'array', value: '' }
   ],
@@ -172,6 +187,7 @@ export const vhubs = {
       { name: "Block", value: "parent_block" },
       { name: "Address Space", value: "prefixes" },
       { name: "Resource Group", value: "resource_group" },
+      { name: "Subscription Name", value: "subscription_name" },
       { name: "Subscription ID", value: "subscription_id" },
     ],
     showLink: true
@@ -181,13 +197,16 @@ export const vhubs = {
 export const subnets = {
   config: {
     title: "Subnet",
-    apiFunc: selectSubnets,
+    apiFunc: selectUpdatedSubnets,
     idProp: "id"
   },
   columns: [
     { name: "name", header: "Subnet Name", defaultFlex: 0.85 },
     { name: "utilization", header: "Utilization", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value) },
     { name: "vnet_name", header: "Parent vNet", defaultFlex: 0.85 },
+    { name: "resource_group", header: "Resource Group", defaultFlex: 0.75, defaultVisible: false },
+    { name: "subscription_name", header: "Subscription Name", defaultFlex: 0.75, defaultVisible: false },
+    { name: "subscription_id", header: "Subscription ID", defaultFlex: 0.75, defaultVisible: false },
     { name: "size", header: "Total IP's", defaultFlex: 0.45 },
     { name: "used", header: "Assigned IP's", defaultFlex: 0.45 },
     { name: "prefix", header: "Address Space", defaultFlex: 0.50 },
@@ -196,6 +215,9 @@ export const subnets = {
     { name: 'name', operator: 'contains', type: 'string', value: '' },
     { name: 'utilization', operator: 'inrange', type: 'number', value: { start: 0, end: 100 } },
     { name: 'vnet_name', operator: 'contains', type: 'string', value: '' },
+    { name: 'resource_group', operator: 'contains', type: 'string', value: '' },
+    { name: 'subscription_name', operator: 'contains', type: 'string', value: '' },
+    { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
     { name: 'size', operator: 'gte', type: 'number', value: 0 },
     { name: 'used', operator: 'gte', type: 'number', value: 0 },
     { name: 'prefix', operator: 'contains', type: 'string', value: '' }
@@ -210,6 +232,7 @@ export const subnets = {
       { name: "Address Space", value: "prefix" },
       { name: "Subnet Type", value: "type" },
       { name: "Resource Group", value: "resource_group" },
+      { name: "Subscription Name", value: "subscription_name" },
       { name: "Subscription ID", value: "subscription_id" },
       { name: "Total IP Space", value: "size" },
       { name: "Allocated IP's", value: "used" }
@@ -221,7 +244,7 @@ export const subnets = {
 export const endpoints = {
   config: {
     title: "Endpoint",
-    apiFunc: selectEndpoints,
+    apiFunc: selectUpdatedEndpoints,
     idProp: "uniqueId"
   },
   columns: [
@@ -229,6 +252,8 @@ export const endpoints = {
     { name: "vnet_name", header: "Parent vNet", type: 'string', defaultFlex: 0.75, render: ({value}) => value || "N/A" },
     { name: "subnet_name", header: "Parent Subnet", type: 'string', defaultFlex: 0.75, render: ({value}) => value || "N/A" },
     { name: "resource_group", header: "Resource Group", type: 'string', defaultFlex: 0.75 },
+    { name: "subscription_name", header: "Subscription Name", defaultFlex: 0.75, defaultVisible: false },
+    { name: "subscription_id", header: "Subscription ID", defaultFlex: 0.75, defaultVisible: false },
     { name: "private_ip", header: "Private IP", type: 'string', defaultFlex: 0.35, render: ({value}) => value || "N/A" },
   ],
   filterSettings: [
@@ -236,6 +261,8 @@ export const endpoints = {
     { name: 'vnet_name', operator: 'contains', type: 'string', value: '' },
     { name: 'subnet_name', operator: 'contains', type: 'string', value: '' },
     { name: 'resource_group', operator: 'contains', type: 'string', value: '' },
+    { name: 'subscription_name', operator: 'contains', type: 'string', value: '' },
+    { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
     { name: 'private_ip', operator: 'contains', type: 'string', value: '' }
   ],
   detailsMap: {
@@ -249,6 +276,7 @@ export const endpoints = {
       { name: "Private IP", value: "private_ip" },
       { name: "Public IP", value: "metadata.public_ip" },
       { name: "Resource Group", value: "resource_group" },
+      { name: "Subscription Name", value: "subscription_name" },
       { name: "Subscription ID", value: "subscription_id" },
       { name: "Size", value: "metadata.size" },
       { name: "Private Endpoint Type", value: "metadata.group_id" },

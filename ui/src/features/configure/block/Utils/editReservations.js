@@ -276,7 +276,17 @@ export default function EditReservations(props) {
 
   return (
     <div sx={{ height: "400px", width: "100%" }}>
-      <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          style: {
+            overflowY: "unset"
+          },
+        }}
+      >
         <DialogTitle>
           <Box sx={{ display: "flex", flexDirection: "row" }}>
             <Box>
@@ -294,7 +304,9 @@ export default function EditReservations(props) {
             </Box>
           </Box>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent
+          sx={{ overflowY: "unset" }}
+        >
           <DialogContentText>
             Select the CIDR reservations for Block <Spotlight>'{block?.name}'</Spotlight> to be deleted
           </DialogContentText>

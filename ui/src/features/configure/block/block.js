@@ -334,6 +334,7 @@ export default function BlockDataGrid(props) {
           showActiveRowIndicator={false}
           enableColumnAutosize={false}
           showColumnMenuGroupOptions={false}
+          showColumnMenuLockOptions={false}
           columns={columns}
           dataSource={selectedSpace ? blocks.filter((block) => block.parent_space === selectedSpace.name) : []}
           onRowClick={(rowData) => onClick(rowData.data)}

@@ -78,8 +78,6 @@ export default function EditVnets(props) {
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
-  // const gridRef = React.createRef();
-
   const subscriptions = useSelector(selectSubscriptions);
   const dispatch = useDispatch();
 
@@ -209,86 +207,92 @@ export default function EditVnets(props) {
   }
 
   return (
-    <div sx={{ height: "400px", width: "100%" }}>
-      <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
-        <DialogTitle>
-          <Box sx={{ display: "flex", flexDirection: "row" }}>
-            <Box>
-            Virtual Network Association
-            </Box>
-            <Box sx={{ ml: "auto" }}>
-              <IconButton
-                color="primary"
-                size="small"
-                onClick={manualRefresh}
-                disabled={sending || refreshing || refreshingState}
-              >
-                <Refresh />
-              </IconButton>
-            </Box>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="lg"
+      fullWidth
+      PaperProps={{
+        style: {
+          overflowY: "unset"
+        },
+      }}
+    >
+      <DialogTitle>
+        <Box sx={{ display: "flex", flexDirection: "row" }}>
+          <Box>
+          Virtual Network Association
           </Box>
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Select the Virtual Networks below which should be associated with the Block <Spotlight>'{block && block.name}'</Spotlight>
-          </DialogContentText>
-          <Box
-            sx={{
-              pt: 4,
-              height: "400px",
-              '& .ipam-block-vnet-stale': {
-                  background: theme.palette.mode === 'dark' ? 'rgb(220, 20, 20) !important' : 'rgb(255, 230, 230) !important',
-                '.InovuaReactDataGrid__row-hover-target': {
-                  '&:hover': {
-                    background: theme.palette.mode === 'dark' ? 'rgb(220, 100, 100) !important' : 'rgb(255, 220, 220) !important',
-                  }
-                }
-              },
-              '& .ipam-block-vnet-normal': {
-                  background: theme.palette.mode === 'dark' ? 'rgb(49, 57, 67)' : 'white',
-                '.InovuaReactDataGrid__row-hover-target': {
-                  '&:hover': {
-                    background: theme.palette.mode === 'dark' ? 'rgb(74, 84, 115) !important' : 'rgb(208, 213, 237) !important',
-                  }
+          <Box sx={{ ml: "auto" }}>
+            <IconButton
+              color="primary"
+              size="small"
+              onClick={manualRefresh}
+              disabled={sending || refreshing || refreshingState}
+            >
+              <Refresh />
+            </IconButton>
+          </Box>
+        </Box>
+      </DialogTitle>
+      <DialogContent
+        sx={{ overflowY: "unset" }}
+      >
+        <DialogContentText>
+          Select the Virtual Networks below which should be associated with the Block <Spotlight>'{block && block.name}'</Spotlight>
+        </DialogContentText>
+        <Box
+          sx={{
+            pt: 4,
+            height: "400px",
+            '& .ipam-block-vnet-stale': {
+                background: theme.palette.mode === 'dark' ? 'rgb(220, 20, 20) !important' : 'rgb(255, 230, 230) !important',
+              '.InovuaReactDataGrid__row-hover-target': {
+                '&:hover': {
+                  background: theme.palette.mode === 'dark' ? 'rgb(220, 100, 100) !important' : 'rgb(255, 220, 220) !important',
                 }
               }
-            }}
-          >
-            <ReactDataGrid
-              // ref={gridRef}
-              theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
-              idProperty="id"
-              showCellBorders="horizontal"
-              checkboxColumn
-              checkboxOnlyRowSelect
-              showZebraRows={false}
-              multiSelect={true}
-              click
-              showActiveRowIndicator={false}
-              enableColumnAutosize={false}
-              showColumnMenuGroupOptions={false}
-              showColumnMenuLockOptions={false}
-              // columnContextMenuConstrainTo={gridRef.current?.getBoundingClientRect()}
-              // columnContextMenuPosition={"fixed"}
-              // updateMenuPositionOnColumnsChange={true}
-              columns={columns}
-              loading={sending || !subscriptions || !vNets || refreshing || refreshingState}
-              loadingText={sending ? <Update>Updating</Update> : "Loading"}
-              dataSource={vNets || []}
-              selected={selectionModel}
-              onSelectionChange={({selected}) => setSelectionModel(selected)}
-              rowClassName={({data}) => `ipam-block-vnet-${!data.active ? 'stale' : 'normal'}`}
-              style={gridStyle}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={onSubmit} disabled={unchanged || sending || refreshing || refreshingState}>
-            Apply
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </div>
+            },
+            '& .ipam-block-vnet-normal': {
+                background: theme.palette.mode === 'dark' ? 'rgb(49, 57, 67)' : 'white',
+              '.InovuaReactDataGrid__row-hover-target': {
+                '&:hover': {
+                  background: theme.palette.mode === 'dark' ? 'rgb(74, 84, 115) !important' : 'rgb(208, 213, 237) !important',
+                }
+              }
+            }
+          }}
+        >
+          <ReactDataGrid
+            theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
+            idProperty="id"
+            showCellBorders="horizontal"
+            checkboxColumn
+            checkboxOnlyRowSelect
+            showZebraRows={false}
+            multiSelect={true}
+            click
+            showActiveRowIndicator={false}
+            enableColumnAutosize={false}
+            showColumnMenuGroupOptions={false}
+            showColumnMenuLockOptions={false}
+            columns={columns}
+            loading={sending || !subscriptions || !vNets || refreshing || refreshingState}
+            loadingText={sending ? <Update>Updating</Update> : "Loading"}
+            dataSource={vNets || []}
+            selected={selectionModel}
+            onSelectionChange={({selected}) => setSelectionModel(selected)}
+            rowClassName={({data}) => `ipam-block-vnet-${!data.active ? 'stale' : 'normal'}`}
+            style={gridStyle}
+          />
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose}>Cancel</Button>
+        <Button onClick={onSubmit} disabled={unchanged || sending || refreshing || refreshingState}>
+          Apply
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }

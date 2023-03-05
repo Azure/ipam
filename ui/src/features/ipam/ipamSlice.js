@@ -1,6 +1,6 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSelector, createSlice } from '@reduxjs/toolkit';
 
-import { concat, merge, findLastIndex } from 'lodash';
+import { concat, merge, cloneDeep, findLastIndex } from 'lodash';
 
 import {
   fetchSpaces,
@@ -568,16 +568,6 @@ export const getRefreshing = (state) => state.ipam.refreshing;
 export const getDarkMode = (state) => state.ipam.darkMode;
 export const getMeLoaded = (state) => state.ipam.meLoaded;
 
-// const subFixup = (data, state) => {
-//   data?.forEach((item) => {
-//     let target = state.subscriptions?.find((x) => x.subscription_id === item.subcription_id);
-
-//     item['subscription_name'] = target ? target.name : 'Unknown';
-//   });
-
-//   return data;
-// };
-
 export const selectSpaces = (state) => state.ipam.spaces;
 export const selectBlocks = (state) => state.ipam.blocks;
 export const selectSubscriptions = (state) => state.ipam.subscriptions;
@@ -585,6 +575,77 @@ export const selectVNets = (state) => state.ipam.vNets;
 export const selectVHubs = (state) => state.ipam.vHubs;
 export const selectSubnets = (state) => state.ipam.subnets;
 export const selectEndpoints = (state) => state.ipam.endpoints;
-export const selectNetworks = (state) => concat(state.ipam.vNets, state.ipam.vHubs);
+
+export const selectNetworks = createSelector(
+  [selectVNets, selectVHubs],
+  (vnets, vhubs) => {
+    return concat(vnets, vhubs);
+  }
+);
+
+export const selectUpdatedVNets = createSelector(
+  [selectSubscriptions, selectVNets],
+  (subscriptions, vnets) => {
+    return vnets?.map((vnet) => {
+      var newVNet = cloneDeep(vnet);
+
+      newVNet.subscription_name = subscriptions?.find((x) => x.subscription_id === vnet.subscription_id).name || 'Unknown';
+
+      return newVNet;
+    });
+  }
+);
+
+export const selectUpdatedVHubs = createSelector(
+  [selectSubscriptions, selectVHubs],
+  (subscriptions, vhubs) => {
+    return vhubs?.map((vhub) => {
+      var newVHub = cloneDeep(vhub);
+
+      newVHub.subscription_name = subscriptions?.find((x) => x.subscription_id === vhub.subscription_id).name || 'Unknown';
+
+      return newVHub;
+    });
+  }
+);
+
+export const selectUpdatedSubnets = createSelector(
+  [selectSubscriptions, selectSubnets],
+  (subscriptions, subnets) => {
+    return subnets?.map((subnet) => {
+      var newSubnet = cloneDeep(subnet);
+
+      newSubnet.subscription_name = subscriptions?.find((x) => x.subscription_id === subnet.subscription_id).name || 'Unknown';
+
+      return newSubnet;
+    });
+  }
+);
+
+export const selectUpdatedEndpoints = createSelector(
+  [selectSubscriptions, selectEndpoints],
+  (subscriptions, endpoints) => {
+    return endpoints?.map((endpoint) => {
+      var newEndpoint = cloneDeep(endpoint);
+
+      newEndpoint.subscription_name = subscriptions?.find((x) => x.subscription_id === endpoint.subscription_id).name || 'Unknown';
+
+      return newEndpoint;
+    });
+  }
+);
+
+export const selectUpdatedNetworks = createSelector(
+  [selectSubscriptions, selectNetworks],
+  (subscriptions, networks) => {
+    return networks?.map((network) => {
+      var newNetwork = cloneDeep(network);
+
+      newNetwork.subscription_name = subscriptions?.find((x) => x.subscription_id === network.subscription_id).name || 'Unknown';
+
+      return newNetwork;
+    });
+  }
+);
 
 export default ipamSlice.reducer;

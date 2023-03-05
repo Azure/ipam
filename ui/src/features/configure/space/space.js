@@ -283,6 +283,7 @@ export default function SpaceDataGrid(props) {
           showActiveRowIndicator={false}
           enableColumnAutosize={false}
           showColumnMenuGroupOptions={false}
+          showColumnMenuLockOptions={false}
           columns={columns}
           loading={spaces ? false : true}
           dataSource={spaces || []}

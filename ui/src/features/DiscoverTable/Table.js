@@ -81,7 +81,7 @@ export default function DiscoverTable(props) {
   const { config, columns, filterSettings, detailsMap } = props.map;
 
   const [loading, setLoading] = React.useState(true);
-  const [columnData, setColumnData] = React.useState([]);
+  const [columnData, setColumnData] = React.useState(columns);
   const [gridData, setGridData] = React.useState(null);
   const [rowData, setRowData] = React.useState({});
   const [filterData, setFilterData] = React.useState(filterSettings);
@@ -126,21 +126,15 @@ export default function DiscoverTable(props) {
     );
   }
 
-  const addDetailsColumn = React.useCallback(() => {
+  React.useEffect(() => {
     let newColumns = [...columns];
 
-    if (!newColumns.find( x => x['field'] === 'id' )) {
-      newColumns.push(
-        { name: "id", header: "Details", width: 50, resizable: false, hideable: false, sortable: false, showColumnMenuTool: false, renderHeader: () => "", render: ({data}) => renderExpand(data) }
-      );
-    }
+    newColumns.push(
+      { name: "id", header: "Details", width: 50, resizable: false, hideable: false, sortable: false, showColumnMenuTool: false, renderHeader: () => "", render: ({data}) => renderExpand(data) }
+    );
 
     setColumnData(newColumns);
-  }, [columns]);
-
-  React.useEffect(() => {
-    addDetailsColumn();
-  },[addDetailsColumn]);
+  },[columns]);
 
   React.useEffect(() => {
     if(location.state) {
@@ -218,6 +212,7 @@ export default function DiscoverTable(props) {
           showColumnMenuGroupOptions={false}
           showColumnMenuLockOptions={false}
           enableColumnFilterContextMenu={true}
+          updateMenuPositionOnColumnsChange={false}
           filterTypes={filterTypes}
           columns={columnData}
           loading={loading}
