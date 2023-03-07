@@ -33,6 +33,8 @@ import {
   ErrorOutline
 } from "@mui/icons-material";
 
+import LoadingButton from '@mui/lab/LoadingButton';
+
 import {
   fetchBlockResv,
   deleteBlockResvs
@@ -335,9 +337,9 @@ export default function EditReservations(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={onSubmit} disabled={empty || sending}>
+          <LoadingButton onClick={onSubmit} loading={sending} disabled={empty || sending}>
             Delete
-          </Button>
+          </LoadingButton>
         </DialogActions>
       </Dialog>
     </div>

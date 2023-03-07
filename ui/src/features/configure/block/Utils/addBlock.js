@@ -15,8 +15,10 @@ import {
   DialogTitle,
   DialogActions,
   DialogContent,
-  CircularProgress
+  // CircularProgress
 } from "@mui/material";
+
+import LoadingButton from '@mui/lab/LoadingButton';
 
 import { createBlockAsync } from "../../../ipam/ipamSlice";
 
@@ -109,14 +111,15 @@ export default function AddBlock(props) {
     <div sx={{ height: "300px", width: "100%" }}>
       <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
         <DialogTitle>
-          <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
+          Add Block
+          {/* <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', marginRight: 'auto' }}>
               Add Block
             </Box>
             <Box sx={{ display: 'flex', visibility: sending ? 'visible' : 'hidden' }}>
               <CircularProgress size={32} />
             </Box>
-          </Box>
+          </Box> */}
         </DialogTitle>
         <DialogContent>
           <Box display="flex" flexDirection="column" alignItems="center">
@@ -173,9 +176,9 @@ export default function AddBlock(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={onCancel}>Cancel</Button>
-          <Button onClick={onSubmit} disabled={invalidForm || sending}>
+          <LoadingButton onClick={onSubmit} loading={sending} disabled={invalidForm}>
             Apply
-          </Button>
+          </LoadingButton>
         </DialogActions>
       </Dialog>
     </div>

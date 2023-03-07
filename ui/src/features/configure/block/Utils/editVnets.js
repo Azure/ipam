@@ -30,6 +30,8 @@ import {
   Refresh
 } from "@mui/icons-material";
 
+import LoadingButton from '@mui/lab/LoadingButton';
+
 import {
   fetchBlockAvailable,
   replaceBlockNetworks
@@ -289,9 +291,9 @@ export default function EditVnets(props) {
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose}>Cancel</Button>
-        <Button onClick={onSubmit} disabled={unchanged || sending || refreshing || refreshingState}>
+        <LoadingButton onClick={onSubmit} loading={sending} disabled={unchanged || sending || refreshing || refreshingState}>
           Apply
-        </Button>
+        </LoadingButton>
       </DialogActions>
     </Dialog>
   );

@@ -10,7 +10,7 @@
     "@inovua/reactdatagrid-community": "^5.8.0",
     "@inovua/reactdatagrid-enterprise": "^5.8.0",
     "@mui/icons-material": "^5.11.0",
-    "@mui/lab": "^5.0.0-alpha.114",
+    "@mui/lab": "^5.0.0-alpha.122",
     "@mui/material": "^5.11.2",
     "@mui/x-data-grid": "^5.16.0",
     "@reduxjs/toolkit": "^1.9.1",

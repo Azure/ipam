@@ -18,10 +18,10 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
-  CircularProgress
+  // CircularProgress
 } from "@mui/material";
 
-// import { deleteSpace } from "../../../ipam/ipamAPI";
+import LoadingButton from '@mui/lab/LoadingButton';
 
 import { deleteSpaceAsync } from "../../../ipam/ipamSlice";
 
@@ -93,14 +93,15 @@ export default function ConfirmDelete(props) {
     <div>
       <Dialog open={open} onClose={handleCancel}>
         <DialogTitle>
-          <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
+          Delete Space
+          {/* <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', marginRight: 'auto' }}>
               Delete Space
             </Box>
             <Box sx={{ display: 'flex', visibility: sending ? 'visible' : 'hidden' }}>
               <CircularProgress size={32} />
             </Box>
-          </Box>
+          </Box> */}
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -124,13 +125,13 @@ export default function ConfirmDelete(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancel}>Cancel</Button>
-          <Button
+          <LoadingButton
             onClick={checkForce}
             color={verify ? "error" : "primary" }
-            disabled={sending}
+            loading={sending}
           >
             Delete
-          </Button>
+          </LoadingButton>
         </DialogActions>
       </Dialog>
     </div>

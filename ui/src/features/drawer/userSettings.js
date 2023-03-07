@@ -18,13 +18,15 @@ import {
   Typography,
   ToggleButton,
   ToggleButtonGroup,
-  CircularProgress
+  // CircularProgress
 } from "@mui/material";
 
 import {
   WbSunnyOutlined,
   DarkModeOutlined,
 } from "@mui/icons-material";
+
+import LoadingButton from '@mui/lab/LoadingButton';
 
 import {
   getMeAsync,
@@ -132,14 +134,15 @@ export default function UserSettings(props) {
     <div>
       <Dialog open={open} onClose={handleClose} fullWidth>
         <DialogTitle>
-          <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
+          Settings
+          {/* <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', marginRight: 'auto' }}>
               Settings
             </Box>
             <Box sx={{ display: 'flex', visibility: sending ? 'visible' : 'hidden' }}>
               <CircularProgress size={32} />
             </Box>
-          </Box>
+          </Box> */}
         </DialogTitle>
         <DialogContent>
           <Box
@@ -183,9 +186,9 @@ export default function UserSettings(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={onSubmit} disabled={!changed || sending}>
+          <LoadingButton onClick={onSubmit} loading={sending} disabled={!changed}>
             Apply
-          </Button>
+          </LoadingButton>
         </DialogActions>
       </Dialog>
     </div>

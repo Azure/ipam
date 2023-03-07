@@ -117,6 +117,8 @@ export default function BlockDataGrid(props) {
       
       if(!currentBlock) {
         setSelectionModel({});
+      } else {
+        setSelectedBlock(currentBlock);
       }
     }
   }, [blocks, selectedBlock, setSelectedBlock, setSelectionModel]);
