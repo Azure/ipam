@@ -24,7 +24,8 @@ import {
   Typography,
   Menu,
   MenuItem,
-  ListItemIcon
+  ListItemIcon,
+  CircularProgress
 } from "@mui/material";
 
 import {
@@ -32,7 +33,9 @@ import {
   ExpandCircleDownOutlined,
   FileDownloadOutlined,
   FileUploadOutlined,
-  ReplayOutlined
+  ReplayOutlined,
+  TaskAltOutlined,
+  CancelOutlined
 } from "@mui/icons-material";
 
 import Shrug from "../../img/pam/Shrug";
@@ -100,7 +103,7 @@ const gridStyle = {
 
 function HeaderMenu(props) {
   const { setting } = props;
-  const { saveConfig, loadConfig, resetConfig } = React.useContext(TableContext);
+  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.useContext(TableContext);
 
   const [menuOpen, setMenuOpen] = React.useState(false);
 
@@ -136,70 +139,86 @@ function HeaderMenu(props) {
         justifyContent: "center"
       }}
     >
-      <IconButton
-        id="table-state-menu"
-        onClick={onClick}
-      >
-        <ExpandCircleDownOutlined />
-      </IconButton>
-      <Menu
-        id="table-state-menu"
-        anchorEl={menuRef.current}
-        open={menuOpen}
-        onClose={onClick}
-        // onClick={onClick}
-        PaperProps={{
-          elevation: 0,
-          style: {
-            width: 215,
-          },
-          sx: {
-            overflow: 'visible',
-            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-            mt: 1.5,
-            '& .MuiAvatar-root': {
-              width: 32,
-              height: 32,
-              ml: -0.5,
-              mr: 1,
-            },
-            '&:before': {
-              content: '""',
-              display: 'block',
-              position: 'absolute',
-              top: 0,
-              right: 26,
-              width: 10,
-              height: 10,
-              bgcolor: 'background.paper',
-              transform: 'translateY(-50%) rotate(45deg)',
-              zIndex: 0,
-            },
-          },
-        }}
-      >
-        <MenuItem
-          onClick={onLoad}
-          disabled={viewSetting == null}
-        >
-          <ListItemIcon>
-            <FileDownloadOutlined fontSize="small" />
-          </ListItemIcon>
-          Load Saved View
-        </MenuItem>
-        <MenuItem onClick={onSave}>
-          <ListItemIcon>
-            <FileUploadOutlined fontSize="small" />
-          </ListItemIcon>
-          Save Current View
-        </MenuItem>
-        <MenuItem onClick={onReset}>
-          <ListItemIcon>
-            <ReplayOutlined fontSize="small" />
-          </ListItemIcon>
-          Reset Default View
-        </MenuItem>
-      </Menu>
+      {
+        saving ?
+        <React.Fragment>
+          <CircularProgress size={24} />
+        </React.Fragment> :
+        (sendResults !== null) ?
+        <React.Fragment>
+          {
+            sendResults ?
+            <TaskAltOutlined color="success"/> :
+            <CancelOutlined color="error"/>
+          }
+        </React.Fragment> :
+        <React.Fragment>
+          <IconButton
+            id="table-state-menu"
+            onClick={onClick}
+          >
+            <ExpandCircleDownOutlined />
+          </IconButton>
+          <Menu
+            id="table-state-menu"
+            anchorEl={menuRef.current}
+            open={menuOpen}
+            onClose={onClick}
+            // onClick={onClick}
+            PaperProps={{
+              elevation: 0,
+              style: {
+                width: 215,
+              },
+              sx: {
+                overflow: 'visible',
+                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                mt: 1.5,
+                '& .MuiAvatar-root': {
+                  width: 32,
+                  height: 32,
+                  ml: -0.5,
+                  mr: 1,
+                },
+                '&:before': {
+                  content: '""',
+                  display: 'block',
+                  position: 'absolute',
+                  top: 0,
+                  right: 26,
+                  width: 10,
+                  height: 10,
+                  bgcolor: 'background.paper',
+                  transform: 'translateY(-50%) rotate(45deg)',
+                  zIndex: 0,
+                },
+              },
+            }}
+          >
+            <MenuItem
+              onClick={onLoad}
+              disabled={viewSetting == null}
+            >
+              <ListItemIcon>
+                <FileDownloadOutlined fontSize="small" />
+              </ListItemIcon>
+              Load Saved View
+            </MenuItem>
+            <MenuItem onClick={onSave}>
+              <ListItemIcon>
+                <FileUploadOutlined fontSize="small" />
+              </ListItemIcon>
+              Save Current View
+            </MenuItem>
+            <MenuItem onClick={onReset}>
+              <ListItemIcon>
+                <ReplayOutlined fontSize="small" />
+              </ListItemIcon>
+              Reset Default View
+            </MenuItem>
+          </Menu>
+        </React.Fragment>
+      }
     </Box>
   )
 }
@@ -212,6 +231,7 @@ export default function DiscoverTable(props) {
 
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const [sendResults, setSendResults] = React.useState(null);
   const [columnState, setColumnState] = React.useState(columns);
   const [columnOrderState, setColumnOrderState] = React.useState(columns.flatMap(({name}) => name));
   const [columnSortState, setColumnSortState] = React.useState({ name: 'name', dir: 1, type: 'string' });
@@ -224,9 +244,23 @@ export default function DiscoverTable(props) {
   const viewSetting = useSelector(state => selectViewSetting(state, config.setting));
   const dispatch = useDispatch();
 
+  const timer = React.useRef();
+
   const location = useLocation();
 
   const theme = useTheme();
+
+  React.useEffect(() => {
+    if(sendResults !== null) {
+      clearTimeout(timer.current);
+
+      timer.current = setTimeout(
+        function() {
+          setSendResults(null);
+        }, 3000
+      );
+    }
+  }, [timer, sendResults]);
 
   function renderExpand(data) {  
     const onClick = (e) => {
@@ -262,7 +296,6 @@ export default function DiscoverTable(props) {
   }
 
   const onBatchColumnResize = (batchColumnInfo) => {
-    // console.log(batchColumnInfo);
     const colsMap = batchColumnInfo.reduce((acc, colInfo) => {
       const { column, flex } = colInfo
       acc[column.name] = { flex }
@@ -273,26 +306,10 @@ export default function DiscoverTable(props) {
       return Object.assign({}, c, colsMap[c.name]);
     })
 
-    console.log(columns);
-    // saveConfig(columns);
     setColumnState(columns);
   }
 
   const onColumnOrderChange = (columnOrder) => {
-    // const colsMap = columnState.reduce((acc, colInfo) => {
-
-    //   acc[colInfo.name] = colInfo;
-
-    //   return acc;
-    // }, {})
-
-    // const columns = columnOrder.map(c => {
-    //   return colsMap[c];
-    // });
-
-    // console.log(columns);
-    // saveConfig(columns);
-    console.log(columnOrder);
     setColumnOrderState(columnOrder);
   }
 
@@ -305,14 +322,10 @@ export default function DiscoverTable(props) {
       }
     });
 
-    console.log(columns);
-    // saveConfig(columns);
     setColumnState(columns);
   }
 
   const onSortInfoChange = (sortInfo) => {
-    console.log(sortInfo);
-    // saveConfig(sortInfo);
     setColumnSortState(sortInfo);
   }
 
@@ -347,6 +360,7 @@ export default function DiscoverTable(props) {
         setSaving(true);
         const response = await instance.acquireTokenSilent(request);
         await updateMe(response.accessToken, body);
+        setSendResults(true);
         enqueueSnackbar("View settings saved", { variant: "success" });
         dispatch(getMeAsync(response.accessToken));
       } catch (e) {
@@ -357,6 +371,7 @@ export default function DiscoverTable(props) {
           console.log("------------------");
           console.log(e);
           console.log("------------------");
+          setSendResults(false);
           enqueueSnackbar("Error saving view settings", { variant: "error" });
         }
       } finally {
@@ -406,7 +421,6 @@ export default function DiscoverTable(props) {
 
   React.useEffect(() => {
     if(columns && viewSetting) {
-      console.log(columns);
       loadConfig();
     } else {
       let newColumns = [...columns];
@@ -483,7 +497,7 @@ export default function DiscoverTable(props) {
   }
 
   return (
-    <TableContext.Provider value={{ stateData, rowData, menuExpand, saveConfig, loadConfig, resetConfig }}>
+    <TableContext.Provider value={{ stateData, rowData, menuExpand, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
       {renderDetails()}
       <Box sx={{ flexGrow: 1, height: "100%" }}>
         <ReactDataGrid
