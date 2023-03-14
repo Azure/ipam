@@ -46,7 +46,7 @@ async def next_available_subnet(
     """
     Get the next available Subnet CIDR in a Virtual Network with the following information:
 
-    - **vnet_id**: Virtual Network ID
+    - **vnet_id**: Virtual Network Resource ID
     - **size**: Network mask bits
     - **reverse_search**:
         - **true**: New subnets will be located as close to the <u>end</u> of the Virtual Network CIDR as possible

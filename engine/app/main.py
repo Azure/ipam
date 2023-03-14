@@ -222,18 +222,48 @@ async def db_upgrade():
         logger.info('No existing admins to convert...')
         pass
 
-    users_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND NOT IS_DEFINED(c['data']['darkMode']))", globals.TENANT_ID)
+    users_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND (NOT IS_DEFINED(c['data']['darkMode']) OR NOT IS_DEFINED(c['data']['views'])))", globals.TENANT_ID)
 
     if users_query:
         for user in users_query:
             user_data = copy.deepcopy(user)
-            user_data['data']['darkMode'] = False
+
+            if 'darkMode' not in user_data['data']:
+                user_data['data']['darkMode'] = False
+
+            if 'views' not in user_data['data']:
+                user_data['data']['views'] = {}
 
             await cosmos_replace(user, user_data)
 
         logger.info('User object patching complete!')
     else:
         logger.info("No existing user objects to patch...")
+
+    resv_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN resv in block.resv WHERE (c.type = 'space' AND NOT IS_DEFINED(resv.fulfilledOn))", globals.TENANT_ID)
+
+    if resv_query:
+        for space in resv_query:
+            space_data = copy.deepcopy(space)
+
+            for block in space_data['blocks']:
+                for i, resv in enumerate(block['resv']):
+                    if 'fulfilledOn' not in resv:
+                        block['resv'][i] = {
+                            "id": resv['id'],
+                            "cidr": resv['cidr'],
+                            "userId": resv['userId'],
+                            "desc": resv['desc'] if 'desc' in resv else None,
+                            "createdOn": resv['createdOn'],
+                            "fulfilledOn": None,
+                            "status": resv['status']
+                        }
+
+            await cosmos_replace(space, space_data)
+
+        logger.info('Reservation patching complete!')
+    else:
+        logger.info("No existing reservations to patch...")
 
     await cosmos_client.close()
 

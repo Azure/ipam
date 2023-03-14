@@ -636,6 +636,7 @@ async def create_multi_block_reservation(
         "userId": creator_id,
         "desc": req.desc,
         "createdOn": time.time(),
+        "fulfilledOn": None,
         "status": "wait"
     }
 
@@ -1266,6 +1267,7 @@ async def create_block_reservation(
         "userId": creator_id,
         "desc": req.desc,
         "createdOn": time.time(),
+        "fulfilledOn": None,
         "status": "wait"
     }
 

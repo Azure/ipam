@@ -98,9 +98,11 @@ export default function SpaceDataGrid(props) {
       if(!currentSpace) {
         setSelectedBlock(null)
         setSelectionModel({});
+      } else {
+        setSelectedSpace(currentSpace);
       }
     }
-  }, [spaces, selectedSpace, setSelectedBlock, setSelectionModel]);
+  }, [spaces, selectedSpace, setSelectedSpace, setSelectedBlock, setSelectionModel]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);

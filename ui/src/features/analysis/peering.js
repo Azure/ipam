@@ -408,7 +408,7 @@ function parseNets(data, subscriptions) {
 
     if(vnet.id.includes(vHubPattern)) {
       node.symbol = 'image:///vhub.png';
-      node.symbolSize += 5;
+      node.symbolSize += 4;
     }
 
     return node;

@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSelector, createSlice } from '@reduxjs/toolkit';
 
-import { concat, merge, cloneDeep, findLastIndex } from 'lodash';
+import { concat, merge, cloneDeep, isEqual, findLastIndex } from 'lodash';
 
 import {
   fetchSpaces,
@@ -27,6 +27,7 @@ const subnetMap = {
 
 const initialState = {
   refreshInterval: null,
+  viewSettings: null,
   isAdmin: false,
   spaces: null,
   blocks: null,
@@ -545,6 +546,12 @@ export const ipamSlice = createSlice({
           }
         }
 
+        if('views' in action.payload) {
+          if(!isEqual(state.viewSettings, action.payload['views'])) {
+            state.viewSettings = action.payload['views'];
+          }
+        }
+
         state.isAdmin = action.payload['isAdmin'];
         state.meLoaded = true;
       })
@@ -563,6 +570,7 @@ export const { setDarkMode } = ipamSlice.actions;
 // the state. Selectors can also be defined inline where they're used instead of
 
 export const getRefreshInterval = (state) => state.ipam.refreshInterval;
+export const getViewSettings = (state) => state.ipam.viewSettings;
 export const getAdminStatus = (state) => state.ipam.isAdmin;
 export const getRefreshing = (state) => state.ipam.refreshing;
 export const getDarkMode = (state) => state.ipam.darkMode;
@@ -645,6 +653,19 @@ export const selectUpdatedNetworks = createSelector(
 
       return newNetwork;
     });
+  }
+);
+
+const getSettingName = (_, settingName) => settingName;
+
+export const selectViewSetting = createSelector(
+  [getViewSettings, getSettingName],
+  (viewSettings, settingName) => {
+    if(viewSettings !== null) {
+      return (settingName in viewSettings) ? viewSettings[settingName] : null;
+    }
+
+    return null;
   }
 );
 

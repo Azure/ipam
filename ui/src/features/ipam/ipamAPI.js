@@ -319,7 +319,7 @@ export function refreshAll(token) {
 }
 
 export function fetchTreeView(token) {
-  const url = new URL(`${ENGINE_URL}/api/internal/tree`);
+  var url = new URL(`${ENGINE_URL}/api/internal/tree`);
 
   return axios
     .get(url, {
@@ -336,7 +336,7 @@ export function fetchTreeView(token) {
 }
 
 export function getAdmins(token) {
-  const url = new URL(`${ENGINE_URL}/api/admin/admins`);
+  var url = new URL(`${ENGINE_URL}/api/admin/admins`);
 
   return axios
     .get(url, {
@@ -353,7 +353,7 @@ export function getAdmins(token) {
 }
 
 export function replaceAdmins(token, body) {
-  const url = new URL(`${ENGINE_URL}/api/admin/admins`);
+  var url = new URL(`${ENGINE_URL}/api/admin/admins`);
 
   return axios
     .put(url, body, {
@@ -370,7 +370,7 @@ export function replaceAdmins(token, body) {
 }
 
 export function getExclusions(token) {
-  const url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
+  var url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
 
   return axios
     .get(url, {
@@ -387,7 +387,7 @@ export function getExclusions(token) {
 }
 
 export function replaceExclusions(token, body) {
-  const url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
+  var url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
 
   return axios
     .put(url, body, {
@@ -404,7 +404,10 @@ export function replaceExclusions(token, body) {
 }
 
 export function getMe(token) {
-  const url = new URL(`${ENGINE_URL}/api/users/me`);
+  var url = new URL(`${ENGINE_URL}/api/users/me`);
+  var urlParams = url.searchParams;
+
+  urlParams.append('expand', true);
 
   return axios
     .get(url, {
@@ -421,7 +424,7 @@ export function getMe(token) {
 }
 
 export function updateMe(token, body) {
-  const url = new URL(`${ENGINE_URL}/api/users/me`);
+  var url = new URL(`${ENGINE_URL}/api/users/me`);
 
   return axios
     .patch(url, body, {

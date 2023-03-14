@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ValidationError, EmailStr, root_validator
-from typing import Optional, Union, List, Any
+from typing import Optional, Union, List, Dict, Any
 
 from netaddr import IPSet, IPNetwork, IPAddress
 from datetime import datetime
@@ -196,6 +196,7 @@ class Reservation(BaseModel):
     userId: str
     desc: Union[str, None]
     createdOn: float
+    fulfilledOn: Union[float, None]
     status: str
     tag: Optional[dict]
 
@@ -390,6 +391,11 @@ class Exclusions(List[UUID]):
 #   USER MODELS   #
 ###################
 
+class ViewSettings(BaseModel):
+    values: Dict[str, dict]
+    order: List[str]
+    sort: dict
+
 class User(BaseModel):
     """DOCSTRING"""
 
@@ -397,6 +403,20 @@ class User(BaseModel):
     darkMode: bool
     apiRefresh: int
     isAdmin: bool
+
+    class Config:
+        json_encoders = {
+            UUID: lambda v: str(v),
+        }
+
+class UserExpand(BaseModel):
+    """DOCSTRING"""
+
+    id: UUID
+    darkMode: bool
+    apiRefresh: int
+    isAdmin: bool
+    views: Dict[str, ViewSettings]
 
     class Config:
         json_encoders = {
