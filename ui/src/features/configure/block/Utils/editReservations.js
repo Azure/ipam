@@ -91,12 +91,12 @@ export default function EditReservations(props) {
   const timer = React.useRef();
 
   const columns = [
-    { name: "cidr", header: "CIDR", defaultFlex: 0.5 },
-    { name: "userId", header: "User ID", defaultFlex: 1 },
-    { name: "desc", header: "Description", defaultFlex: 1.5 },
-    { name: "createdOn", header: "Created Date", defaultFlex: 0.75, render: ({value}) => new Date(value * 1000).toLocaleString() },
-    { name: "status", header: "Status", headerAlign: "center", width: 90, resizable: false, hideable: false, sortable: false, showColumnMenuTool: false, render: renderStatus },
-    { name: "id", header: "", width: 25, resizable: false, hideable: false, showColumnMenuTool: false, sortable: false, renderHeader: () => "", render: renderId }
+    { name: "cidr", header: "CIDR", type: "string", defaultFlex: 0.5 },
+    { name: "userId", header: "User ID", type: "string", defaultFlex: 1 },
+    { name: "desc", header: "Description", type: "string", defaultFlex: 1.5 },
+    { name: "createdOn", header: "Created Date", type: "date", defaultFlex: 0.75, render: ({value}) => new Date(value * 1000).toLocaleString() },
+    { name: "status", header: "Status", headerAlign: "center", width: 90, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: renderStatus },
+    { name: "id", header: "", width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, renderHeader: () => "", render: renderId }
   ];
 
   function renderStatus({value}) {

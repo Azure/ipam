@@ -79,7 +79,7 @@ const DataSection = styled("div")(({ theme }) => ({
   height: "100%",
   width: "100%",
   borderRadius: "4px",
-  marginBottom: theme.spacing(1.5)
+  // marginBottom: theme.spacing(1.5)
 }));
 
 // Grid Styles
@@ -121,16 +121,16 @@ export default function Administration() {
   const adminLoadedRef = React.useRef(false);
 
   const columns = [
-    { name: "name", header: "Name", lockable: false, defaultFlex: 0.5 },
-    { name: "email", header: "Email", lockable: false, defaultFlex: 1 },
-    { name: "id", header: "Object ID", lockable: false, defaultFlex: 0.75 },
-    { name: "delete", header: "Delete", width: 50, resizable: false, hideable: false, showColumnMenuTool: false, renderHeader: () => "", render: ({data}) => renderDelete(data) }
+    { name: "name", header: "Name", type: "string", defaultFlex: 0.5 },
+    { name: "email", header: "Email", type: "string", defaultFlex: 1 },
+    { name: "id", header: "Object ID", type: "string", defaultFlex: 0.75 },
+    { name: "delete", header: "Delete", width: 50, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, renderHeader: () => "", render: ({data}) => renderDelete(data) }
   ];
 
   const filterValue = [
-    { name: 'name', operator: 'contains', type: 'string', value: '' },
-    { name: 'email', operator: 'contains', type: 'string', value: '' },
-    { name: 'id', operator: 'contains', type: 'string', value: '' }
+    { name: "name", operator: "contains", type: "string", value: "" },
+    { name: "email", operator: "contains", type: "string", value: "" },
+    { name: "id", operator: "contains", type: "string", value: "" }
   ];
 
   const usersLoading = open && !options;
@@ -415,6 +415,8 @@ export default function Administration() {
               showActiveRowIndicator={false}
               enableColumnAutosize={false}
               showColumnMenuGroupOptions={false}
+              showColumnMenuLockOptions={false}
+              enableColumnFilterContextMenu={true}
               columns={columns}
               loading={loading || sending}
               loadingText={sending ? <Update>Updating</Update> : "Loading"}

@@ -62,11 +62,11 @@ const gridStyle = {
 };
 
 const columns = [
-  { name: "name", header: "Name", defaultFlex: 1 },
-  { name: "resource_group", header: "Resource Group", defaultFlex: 1 },
-  { name: "subscription_name", header: "Subscription Name", defaultFlex: 1 },
-  { name: "subscription_id", header: "Subscription ID", defaultFlex: 1, defaultVisible: false },
-  { name: "prefixes", header: "Prefixes", defaultFlex: 0.75, render: ({value}) => value.join(", ") },
+  { name: "name", header: "Name", type: "string", defaultFlex: 1 },
+  { name: "resource_group", header: "Resource Group", type: "string", defaultFlex: 1 },
+  { name: "subscription_name", header: "Subscription Name", type: "string", defaultFlex: 1 },
+  { name: "subscription_id", header: "Subscription ID", type: "string", defaultFlex: 1, defaultVisible: false },
+  { name: "prefixes", header: "Prefixes", type: "array", defaultFlex: 0.75, render: ({value}) => value.join(", ") },
 ];
 
 export default function EditVnets(props) {

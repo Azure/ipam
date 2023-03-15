@@ -29,7 +29,7 @@ function TabPanel(props) {
       {...other}
     >
       {value === index && (
-        <Box sx={{ p: 3, height: 'calc(100vh - 161px)' }}>
+        <Box sx={{ p: 3, height: 'calc(100vh - 113px)' }}>
           {children}
         </Box>
       )}
@@ -56,7 +56,7 @@ export default function DiscoverTabs() {
   let location = useLocation();
 
   return (
-    <Box sx={{ width: '100%', height: 'calc(100vh - 137px)'}}>
+    <Box sx={{ width: '100%', height: 'calc(100vh - 64px)'}}>
       <React.Fragment>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={allTabs.indexOf(location.pathname)}>

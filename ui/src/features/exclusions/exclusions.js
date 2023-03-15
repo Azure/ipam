@@ -79,7 +79,7 @@ const DataSection = styled("div")(({ theme }) => ({
   height: "100%",
   width: "100%",
   borderRadius: "4px",
-  marginBottom: theme.spacing(1.5)
+  // marginBottom: theme.spacing(1.5)
 }));
 
 const Update = styled("span")(({ theme }) => ({
@@ -111,15 +111,15 @@ const GridBody = styled("div")(({ theme }) => ({
 }));
 
 const columns = [
-  { name: "name", header: "Subscription Name", lockable: false, defaultFlex: 1 },
-  { name: "subscription_id", header: "Subscription ID", lockable: false, defaultFlex: 1 },
-  { name: "type", header: "Subscription Type", lockable: false, defaultFlex: 0.75 },
+  { name: "name", header: "Subscription Name", type: "string", defaultFlex: 1 },
+  { name: "subscription_id", header: "Subscription ID", type: "string", defaultFlex: 1 },
+  { name: "type", header: "Subscription Type", type: "string", defaultFlex: 0.75 },
 ];
 
 const filterValue = [
-  { name: 'name', operator: 'contains', type: 'string', value: '' },
-  { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
-  { name: 'type', operator: 'contains', type: 'string', value: '' }
+  { name: "name", operator: "contains", type: "string", value: "" },
+  { name: "subscription_id", operator: "contains", type: "string", value: "" },
+  { name: "type", operator: "contains", type: "string", value: "" }
 ];
 
 export default function ManageExclusions() {
@@ -292,6 +292,8 @@ export default function ManageExclusions() {
               showActiveRowIndicator={false}
               enableColumnAutosize={false}
               showColumnMenuGroupOptions={false}
+              showColumnMenuLockOptions={false}
+              enableColumnFilterContextMenu={true}
               columns={columns}
               toggleRowSelectOnClick={true}
               loading={loading || sending || !subscriptions || !loadedExclusions}

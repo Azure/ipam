@@ -257,7 +257,7 @@ export default function DiscoverTable(props) {
       timer.current = setTimeout(
         function() {
           setSendResults(null);
-        }, 3000
+        }, 2000
       );
     }
   }, [timer, sendResults]);
@@ -333,8 +333,6 @@ export default function DiscoverTable(props) {
     const values = columnState.reduce((acc, colInfo) => {
       const { name, flex, visible } = colInfo;
 
-      var data = {}
-
       acc[name] = { flex, visible };
 
       return acc;
@@ -361,7 +359,7 @@ export default function DiscoverTable(props) {
         const response = await instance.acquireTokenSilent(request);
         await updateMe(response.accessToken, body);
         setSendResults(true);
-        enqueueSnackbar("View settings saved", { variant: "success" });
+        // enqueueSnackbar("View settings saved", { variant: "success" });
         dispatch(getMeAsync(response.accessToken));
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
