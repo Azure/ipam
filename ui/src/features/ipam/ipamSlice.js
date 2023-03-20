@@ -15,7 +15,8 @@ import {
   fetchEndpoints,
   fetchNetworks,
   refreshAll,
-  getMe
+  getMe,
+  updateMe
 } from './ipamAPI';
 
 const subnetMap = {
@@ -181,6 +182,19 @@ export const getMeAsync = createAsyncThunk(
     const response = await getMe(token);
     // The value we return becomes the `fulfilled` action payload
     return response;
+  }
+);
+
+export const updateMeAsync = createAsyncThunk(
+  'ipam/updateMe',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await updateMe(args.token, args.body);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
   }
 );
 
@@ -560,6 +574,25 @@ export const ipamSlice = createSlice({
         console.log("-----------------");
         console.log(action.error);
         console.log("-----------------");
+      })
+      .addCase(updateMeAsync.fulfilled, (state, action) => {
+        action.meta.arg.body.forEach((update) => {
+          const key = '/views/';
+          const index = update.path.indexOf(key);
+
+          if(index !== -1) {
+            const viewName = update.path.substring(index + key.length);
+            const viewValue = update.value;
+
+            var newViewSettings = cloneDeep(state.viewSettings);
+            newViewSettings[viewName] = viewValue;
+
+            state.viewSettings = newViewSettings;
+          }
+        });
+      })
+      .addCase(updateMeAsync.rejected, (state, action) => {
+        throw action.payload;
       });
   },
 });
@@ -662,7 +695,7 @@ export const selectViewSetting = createSelector(
   [getViewSettings, getSettingName],
   (viewSettings, settingName) => {
     if(viewSettings !== null) {
-      return (settingName in viewSettings) ? viewSettings[settingName] : null;
+      return (settingName in viewSettings) ? viewSettings[settingName] : {};
     }
 
     return null;

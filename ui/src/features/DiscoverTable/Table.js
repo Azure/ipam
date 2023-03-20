@@ -41,11 +41,10 @@ import {
 import Shrug from "../../img/pam/Shrug";
 
 import {
-  getMeAsync,
   selectViewSetting
 } from "../ipam/ipamSlice";
 
-import { updateMe } from "../ipam/ipamAPI";
+import { updateMeAsync } from "../ipam/ipamSlice";
 
 import { apiRequest } from "../../msal/authConfig";
 
@@ -197,7 +196,7 @@ function HeaderMenu(props) {
           >
             <MenuItem
               onClick={onLoad}
-              disabled={viewSetting == null}
+              disabled={!viewSetting || Object.entries(viewSetting).length === 0}
             >
               <ListItemIcon>
                 <FileDownloadOutlined fontSize="small" />
@@ -232,7 +231,7 @@ export default function DiscoverTable(props) {
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [sendResults, setSendResults] = React.useState(null);
-  const [columnState, setColumnState] = React.useState(columns);
+  const [columnState, setColumnState] = React.useState(null);
   const [columnOrderState, setColumnOrderState] = React.useState(columns.flatMap(({name}) => name));
   const [columnSortState, setColumnSortState] = React.useState({ name: 'name', dir: 1, type: 'string' });
   const [gridData, setGridData] = React.useState(null);
@@ -357,10 +356,8 @@ export default function DiscoverTable(props) {
       try {
         setSaving(true);
         const response = await instance.acquireTokenSilent(request);
-        await updateMe(response.accessToken, body);
+        await dispatch(updateMeAsync({ token: response.accessToken, body: body}));
         setSendResults(true);
-        // enqueueSnackbar("View settings saved", { variant: "success" });
-        dispatch(getMeAsync(response.accessToken));
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
           instance.acquireTokenRedirect(request);
@@ -378,7 +375,7 @@ export default function DiscoverTable(props) {
     })();
   };
 
-  const loadConfig = () => {
+  const loadConfig = React.useCallback(() => {
     const { values, order, sort } = viewSetting;
 
     let newColumns = [...columns];
@@ -403,7 +400,7 @@ export default function DiscoverTable(props) {
     setColumnState(loadColumns);
     setColumnOrderState(order);
     setColumnSortState(sort);
-  };
+  }, [columns, config.setting, viewSetting]);
 
   const resetConfig = () => {
     let newColumns = [...columns];
@@ -418,19 +415,21 @@ export default function DiscoverTable(props) {
   }
 
   React.useEffect(() => {
-    if(columns && viewSetting) {
-      loadConfig();
-    } else {
-      let newColumns = [...columns];
+    if(!columnState && viewSetting) {
+      if(columns && Object.entries(viewSetting).length !== 0) {
+        loadConfig();
+      } else {
+        let newColumns = [...columns];
 
-      newColumns.push(
-        { name: "id", header: () => <HeaderMenu setting={config.setting}/>, width: 50, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => renderExpand(data) }
-      );
+        newColumns.push(
+          { name: "id", header: () => <HeaderMenu setting={config.setting}/>, width: 50, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => renderExpand(data) }
+        );
 
-      setColumnState(newColumns);
-      setColumnOrderState(newColumns.flatMap(({name}) => name));
+        setColumnState(newColumns);
+        setColumnOrderState(newColumns.flatMap(({name}) => name));
+      }
     }
-  },[config, columns, viewSetting]);
+  },[config, columns, viewSetting, columnState, loadConfig]);
 
   React.useEffect(() => {
     if(location.state) {
@@ -515,7 +514,7 @@ export default function DiscoverTable(props) {
           onColumnVisibleChange={onColumnVisibleChange}
           reservedViewportWidth={0}
           filterTypes={filterTypes}
-          columns={columnState}
+          columns={columnState || []}
           columnOrder={columnOrderState}
           // sortInfo={columnSortState}
           loading={loading}
