@@ -633,10 +633,11 @@ async def create_multi_block_reservation(
     new_cidr = {
         "id": shortuuid.uuid(),
         "cidr": str(next_cidr),
-        "userId": creator_id,
         "desc": req.desc,
         "createdOn": time.time(),
-        "fulfilledOn": None,
+        "createdBy": creator_id,
+        "settledOn": None,
+        "settledBy": None,
         "status": "wait"
     }
 
@@ -1264,10 +1265,11 @@ async def create_block_reservation(
     new_cidr = {
         "id": shortuuid.uuid(),
         "cidr": str(next_cidr),
-        "userId": creator_id,
         "desc": req.desc,
         "createdOn": time.time(),
-        "fulfilledOn": None,
+        "createdBy": creator_id,
+        "settledOn": None,
+        "settledBy": None,
         "status": "wait"
     }
 

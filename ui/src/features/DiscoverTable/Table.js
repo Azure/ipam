@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { useLocation } from "react-router-dom";
 
-import { cloneDeep, pickBy } from 'lodash';
+import { cloneDeep, pickBy, isEmpty } from 'lodash';
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import filter from '@inovua/reactdatagrid-community/filter'
@@ -196,7 +196,7 @@ function HeaderMenu(props) {
           >
             <MenuItem
               onClick={onLoad}
-              disabled={!viewSetting || Object.entries(viewSetting).length === 0}
+              disabled={ !viewSetting || isEmpty(viewSetting) }
             >
               <ListItemIcon>
                 <FileDownloadOutlined fontSize="small" />
@@ -416,7 +416,7 @@ export default function DiscoverTable(props) {
 
   React.useEffect(() => {
     if(!columnState && viewSetting) {
-      if(columns && Object.entries(viewSetting).length !== 0) {
+      if(columns && !isEmpty(viewSetting)) {
         loadConfig();
       } else {
         let newColumns = [...columns];

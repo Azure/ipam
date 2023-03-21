@@ -29,8 +29,11 @@ import {
   ContentCopy,
   Refresh,
   Autorenew,
+  CheckOutlined,
   WarningAmber,
-  ErrorOutline
+  ErrorOutline,
+  BlockOutlined,
+  TimerOffOutlined
 } from "@mui/icons-material";
 
 import LoadingButton from '@mui/lab/LoadingButton';
@@ -49,10 +52,37 @@ import { apiRequest } from "../../../../msal/authConfig";
 // const unixtime = 1647638968.5812438;
 // const jstime = new Date(unixtime * 1000);
 
-const msgMap = {
-  "wait": "Waiting for vNET association...",
-  "warnCIDRMismatch": "Reservation ID assigned to vNET which does not have an address space that matches the reservation.",
-  "errCIDRExists": "A vNET with the assigned CIDR has already been associated with the target IP Block."
+const MESSAGE_MAP = {
+  "wait": {
+    msg: "Waiting for vNET association...",
+    icon: Autorenew,
+    color: "primary"
+  },
+  "fulfilled": {
+    msg: "Reservation fulfilled.",
+    icon: CheckOutlined,
+    color: "success"
+  },
+  "warnCIDRMismatch": {
+    msg: "Reservation ID assigned to vNET which does not have an address space that matches the reservation.",
+    icon: WarningAmber,
+    color: "warning"
+  },
+  "errCIDRExists": {
+    msg: "A vNET with the assigned CIDR has already been associated with the target IP Block.",
+    icon: ErrorOutline,
+    color: "error"
+  },
+  "cancelledByUser": {
+    msg: "Reservation cancelled by user.",
+    icon: BlockOutlined,
+    color: "error"
+  },
+  "canelledTimeout": {
+    msg: "Reservation cancelled due to expiration.",
+    icon: TimerOffOutlined,
+    color: "error"
+  }
 };
 
 const Spotlight = styled("span")(({ theme }) => ({
@@ -92,16 +122,16 @@ export default function EditReservations(props) {
 
   const columns = [
     { name: "cidr", header: "CIDR", type: "string", defaultFlex: 0.5 },
-    { name: "userId", header: "User ID", type: "string", defaultFlex: 1 },
+    { name: "createdBy", header: "Created By", type: "string", defaultFlex: 1 },
     { name: "desc", header: "Description", type: "string", defaultFlex: 1.5 },
-    { name: "createdOn", header: "Created Date", type: "date", defaultFlex: 0.75, render: ({value}) => new Date(value * 1000).toLocaleString() },
+    { name: "createdOn", header: "Creation Date", type: "date", defaultFlex: 0.75, render: ({value}) => new Date(value * 1000).toLocaleString() },
     { name: "status", header: "Status", headerAlign: "center", width: 90, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: renderStatus },
     { name: "id", header: "", width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, renderHeader: () => "", render: renderId }
   ];
 
   function renderStatus({value}) {
-    const MsgIcon = value.includes("wait") ? Autorenew : value.includes("warn") ? WarningAmber : ErrorOutline
-    const MsgColor = value.includes("wait") ? "primary" : value.includes("warn") ? "warning" : "error"
+    const MsgIcon = MESSAGE_MAP[value].icon;
+    const MsgColor = MESSAGE_MAP[value].color;
 
     const onClick = (e) => {
       e.stopPropagation();
@@ -120,7 +150,7 @@ export default function EditReservations(props) {
         placement="top"
         title={
           <div style={{ textAlign: "center" }}>
-            {msgMap[value]}
+            {MESSAGE_MAP[value].msg}
           </div>
         }
       >

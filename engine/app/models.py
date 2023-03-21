@@ -193,10 +193,11 @@ class Reservation(BaseModel):
     space: Optional[str]
     block: Optional[str]
     cidr: str
-    userId: str
     desc: Union[str, None]
     createdOn: float
-    fulfilledOn: Union[float, None]
+    createdBy: str
+    setlledOn: Union[float, None]
+    settledBy: Union[str, None]
     status: str
     tag: Optional[dict]
 

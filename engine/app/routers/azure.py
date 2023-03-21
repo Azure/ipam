@@ -14,6 +14,7 @@ from typing import Optional, List
 
 import re
 import copy
+import time
 import asyncio
 from ipaddress import IPv4Network
 from netaddr import IPSet, IPNetwork
@@ -700,6 +701,7 @@ async def multi(
 async def match_resv_to_vnets():
     net_list = await get_network(None, globals.TENANT_ID, True)
     stale_resv = list(x['resv'] for x in net_list if x['resv'] != None)
+    ignore_status = ['fulfilled', 'cencelledByUser', 'cancelledTimeout']
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", globals.TENANT_ID)
 
@@ -722,54 +724,60 @@ async def match_resv_to_vnets():
                     net['active'] = False
 
             for index, resv in enumerate(block['resv']):
-                if resv['id'] in stale_resv:
-                    net = next((x for x in net_list if x['resv'] == resv['id']), None)
+                if resv['status'] not in ignore_status:
+                    if resv['id'] in stale_resv:
+                        net = next((x for x in net_list if x['resv'] == resv['id']), None)
 
-                    # print("RESV: {}".format(vnet['resv']))
-                    # print("BLOCK {}".format(block['name']))
-                    # print("VNET {}".format(vnet['id']))
-                    # print("INDEX: {}".format(index))
+                        # print("RESV: {}".format(vnet['resv']))
+                        # print("BLOCK {}".format(block['name']))
+                        # print("VNET {}".format(vnet['id']))
+                        # print("INDEX: {}".format(index))
 
-                    stale_resv.remove(resv['id'])
-                    resv['status'] = "wait"
+                        stale_resv.remove(resv['id'])
+                        resv['status'] = "wait"
 
-                    cidr_match = resv['cidr'] in net['prefixes']
+                        cidr_match = resv['cidr'] in net['prefixes']
 
-                    if not cidr_match:
-                        # print("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
-                        # logging.info("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
-                        resv['status'] = "warnCIDRMismatch"
+                        if not cidr_match:
+                            # print("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
+                            # logging.info("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
+                            resv['status'] = "warnCIDRMismatch"
 
-                    existing_block_cidrs = []
+                        existing_block_cidrs = []
 
-                    for v in block['vnets']:
-                        target_net = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
+                        for v in block['vnets']:
+                            target_net = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
 
-                        if target_net:
-                            target_cidr = next((x for x in target_net['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
-                            existing_block_cidrs.append(target_cidr)
+                            if target_net:
+                                target_cidr = next((x for x in target_net['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
+                                existing_block_cidrs.append(target_cidr)
 
-                    net_cidr = next((x for x in net['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
+                        net_cidr = next((x for x in net['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
 
-                    if net_cidr in existing_block_cidrs:
-                        # print("A vNET with the assigned CIDR has already been associated with the target IP Block.")
-                        # logging.info("A vNET with the assigned CIDR has already been associated with the target IP Block.")
-                        resv['status'] = "errCIDRExists"
+                        if net_cidr in existing_block_cidrs:
+                            # print("A vNET with the assigned CIDR has already been associated with the target IP Block.")
+                            # logging.info("A vNET with the assigned CIDR has already been associated with the target IP Block.")
+                            resv['status'] = "errCIDRExists"
 
-                    if resv['status'] == "wait":
-                        # print("vNET is being added to IP Block...")
-                        # logging.info("vNET is being added to IP Block...")
-                        block['vnets'].append(
-                            {
-                                "id": net['id'],
-                                "active": True
-                            }
-                        )
-                        del block['resv'][index]
-                else:
-                    # print("Resetting status to 'wait'.")
-                    # logging.info("Resetting status to 'wait'.")
-                    resv['status'] = "wait"
+                        if resv['status'] == "wait":
+                            # print("vNET is being added to IP Block...")
+                            # logging.info("vNET is being added to IP Block...")
+                            block['vnets'].append(
+                                {
+                                    "id": net['id'],
+                                    "active": True
+                                }
+                            )
+
+                            # del block['resv'][index]
+
+                            resv['status'] = "fulfilled"
+                            resv['settledOn'] = time.time()
+                            resv['settledBy'] = "AzureIPAM"
+                    else:
+                        # print("Resetting status to 'wait'.")
+                        # logging.info("Resetting status to 'wait'.")
+                        resv['status'] = "wait"
 
         await cosmos_replace(original_space, space)
 

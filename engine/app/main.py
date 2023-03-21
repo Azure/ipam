@@ -240,7 +240,7 @@ async def db_upgrade():
     else:
         logger.info("No existing user objects to patch...")
 
-    resv_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN resv in block.resv WHERE (c.type = 'space' AND NOT IS_DEFINED(resv.fulfilledOn))", globals.TENANT_ID)
+    resv_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN resv in block.resv WHERE (c.type = 'space' AND NOT IS_DEFINED(resv.settledOn))", globals.TENANT_ID)
 
     if resv_query:
         for space in resv_query:
@@ -248,14 +248,15 @@ async def db_upgrade():
 
             for block in space_data['blocks']:
                 for i, resv in enumerate(block['resv']):
-                    if 'fulfilledOn' not in resv:
+                    if 'settledOn' not in resv:
                         block['resv'][i] = {
                             "id": resv['id'],
                             "cidr": resv['cidr'],
-                            "userId": resv['userId'],
                             "desc": resv['desc'] if 'desc' in resv else None,
                             "createdOn": resv['createdOn'],
-                            "fulfilledOn": None,
+                            "createdBy": resv['userId'],
+                            "settledOn": None,
+                            "settledBy": None,
                             "status": resv['status']
                         }
 
