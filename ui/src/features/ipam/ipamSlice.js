@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSelector, createSlice } from '@reduxjs/toolkit';
 
-import { concat, merge, cloneDeep, isEqual, findLastIndex } from 'lodash';
+import { concat, merge, cloneDeep, isEqual } from 'lodash';
 
 import {
   fetchSpaces,
@@ -9,6 +9,7 @@ import {
   deleteSpace,
   createBlock,
   deleteBlock,
+  deleteBlockResvs,
   fetchVNets,
   fetchVHubs,
   fetchSubnets,
@@ -27,11 +28,11 @@ const subnetMap = {
 };
 
 const initialState = {
+  userId: null,
   refreshInterval: null,
   viewSettings: null,
   isAdmin: false,
   spaces: null,
-  blocks: null,
   subscriptions: null,
   vNets: null,
   vHubs: null,
@@ -122,6 +123,19 @@ export const deleteBlockAsync = createAsyncThunk(
   }
 );
 
+export const deleteBlockResvsAsync = createAsyncThunk(
+  'ipam/deleteBlockResvs',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await deleteBlockResvs(args.token, args.space, args.block, args.body);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
+  }
+);
+
 export const fetchVNetsAsync = createAsyncThunk(
   'ipam/fetchVNets',
   async (token) => {
@@ -203,6 +217,9 @@ export const ipamSlice = createSlice({
   initialState,
   // The `reducers` field lets us define reducers and generate associated actions
   reducers: {
+    setUserId: (state, action) => {
+      state.userId = action.payload
+    },
     setDarkMode: (state, action) => {
       state.darkMode = action.payload
     }
@@ -212,27 +229,23 @@ export const ipamSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchSpacesAsync.fulfilled, (state, action) => {
-        const spaces = action.payload.map((space) => {
+        state.spaces = action.payload.map((space) => {
           if('size' in space && 'used' in space) {
             space.available = (space.size - space.used);
             space.utilization = Math.round((space.used / space.size) * 100) || 0;
           }
 
-          return space;
-        });
-
-        state.spaces = spaces;
-
-        state.blocks = action.payload.map((space) => {
-          space.blocks.forEach((block) => {
+          space.blocks.map((block) => {
             block.parent_space = space.name;
             block.available = (block.size - block.used);
             block.utilization = Math.round((block.used / block.size) * 100);
             block.id = `${block.name}@${block.parent_space}`;
+
+            return block;
           });
 
-          return space.blocks;
-         }).flat();
+          return space;
+        });
       })
       .addCase(createSpaceAsync.fulfilled, (state, action) => {
         const newSpace = action.payload;
@@ -256,7 +269,7 @@ export const ipamSlice = createSlice({
           state.spaces[spaceIndex] = merge(state.spaces[spaceIndex], updatedSpace);
 
           if(spaceName !== updatedSpace.name) {
-            state.blocks = state.blocks.map((block) => {
+            state.spaces[spaceIndex].blocks = state.spaces[spaceIndex].blocks.map((block) => {
               if(block.parent_space === spaceName) {
                 block.parent_space = updatedSpace.name;
               }
@@ -286,16 +299,7 @@ export const ipamSlice = createSlice({
         throw action.payload;
       })
       .addCase(deleteSpaceAsync.fulfilled, (state, action) => {
-        console.log(action);
         const spaceName = action.meta.arg.space;
-
-        state.blocks = state.blocks.reduce((blocks, block) => {
-          if(block.parent_space !== spaceName) {
-            blocks.push(block);
-          }
-
-          return blocks;
-        }, []);
 
         const spaceIndex = state.spaces.findIndex((space) => space.name === spaceName);
 
@@ -308,6 +312,7 @@ export const ipamSlice = createSlice({
       })
       .addCase(createBlockAsync.fulfilled, (state, action) => {
         const spaceName = action.meta.arg.space;
+        const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);
         const newBlock = action.payload;
 
         newBlock.size = 0;
@@ -316,28 +321,48 @@ export const ipamSlice = createSlice({
         newBlock.available = 0;
         newBlock.utilization = 0;
 
-        const lastIndex = findLastIndex(state.blocks, x => x.parent_space === spaceName);
-
-        if(lastIndex > -1) {
-          state.blocks.splice((lastIndex + 1), 0, newBlock);
-        } else {
-          state.blocks.push(newBlock);
-        }
+        state.spaces[spaceIndex].blocks.push(newBlock);
       })
       .addCase(createBlockAsync.rejected, (state, action) => {
         throw action.payload;
       })
       .addCase(deleteBlockAsync.fulfilled, (state, action) => {
         const spaceName = action.meta.arg.space;
+        const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);
         const blockName = action.meta.arg.block;
 
-        const targetIndex = state.blocks.findIndex((block) => block.name === blockName && block.parent_space === spaceName);
+        const targetIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
 
         if(targetIndex > -1) {
-          state.blocks.splice(targetIndex, 1);
+          state.spaces[spaceIndex].blocks.splice(targetIndex, 1);
         }
       })
       .addCase(deleteBlockAsync.rejected, (state, action) => {
+        throw action.payload;
+      })
+      .addCase(deleteBlockResvsAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);
+        const blockName = action.meta.arg.block;
+        const resvList = action.meta.arg.body;
+
+        const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+
+        if(blockIndex > -1) {
+          const updatedResv = state.spaces[spaceIndex].blocks[blockIndex].resv.map((resv) => {
+            if(resvList.includes(resv.id)) {
+              resv.settledOn = (Date.now() / 1000);
+              resv.settledBy = state.userId;
+              resv.status = "cancelledByUser";
+            }
+
+            return resv;
+          });
+
+          state.spaces[spaceIndex].blocks[blockIndex].resv = updatedResv;
+        }
+      })
+      .addCase(deleteBlockResvsAsync.rejected, (state, action) => {
         throw action.payload;
       })
       .addCase(fetchVNetsAsync.fulfilled, (state, action) => {
@@ -446,7 +471,7 @@ export const ipamSlice = createSlice({
 
         state.refreshing = false;
 
-        const spaces = action.payload[0].value.map((space) => {
+        state.spaces = action.payload[0].value.map((space) => {
           if('size' in space && 'used' in space) {
             if(space.used === null) {
               space.used = 0;
@@ -456,21 +481,17 @@ export const ipamSlice = createSlice({
             space.utilization = Math.round((space.used / space.size) * 100) || 0;
           }
 
-          return space;
-        });
-
-        state.spaces = spaces;
-
-        state.blocks = action.payload[0].value.map((space) => {
-          space.blocks.forEach((block) => {
+          space.blocks.map((block) => {
             block.parent_space = space.name;
             block.available = (block.size - block.used);
             block.utilization = Math.round((block.used / block.size) * 100);
             block.id = `${block.name}@${block.parent_space}`;
+
+            return block;
           });
 
-          return space.blocks;
-        }).flat();
+          return space;
+        });
 
         if(action.payload[1].status === 'fulfilled') {
           state.subscriptions = action.payload[1].value;
@@ -597,7 +618,7 @@ export const ipamSlice = createSlice({
   },
 });
 
-export const { setDarkMode } = ipamSlice.actions;
+export const { setUserId, setDarkMode } = ipamSlice.actions;
 
 // The functions below are called selectors and allow us to select a value from
 // the state. Selectors can also be defined inline where they're used instead of
@@ -610,12 +631,30 @@ export const getDarkMode = (state) => state.ipam.darkMode;
 export const getMeLoaded = (state) => state.ipam.meLoaded;
 
 export const selectSpaces = (state) => state.ipam.spaces;
-export const selectBlocks = (state) => state.ipam.blocks;
+// export const selectBlocks = (state) => state.ipam.blocks;
 export const selectSubscriptions = (state) => state.ipam.subscriptions;
 export const selectVNets = (state) => state.ipam.vNets;
 export const selectVHubs = (state) => state.ipam.vHubs;
 export const selectSubnets = (state) => state.ipam.subnets;
 export const selectEndpoints = (state) => state.ipam.endpoints;
+
+export const selectBlocks = createSelector(
+  [selectSpaces],
+  (spaces) => {
+    return spaces?.reduce((acc, curr) => acc.concat(curr.blocks), []) || null;
+  }
+);
+
+const getSpaceName = (_, spaceName) => spaceName;
+
+export const selectSpaceBlocks = createSelector(
+  [selectSpaces, getSpaceName],
+  (spaces, spaceName) => {
+    const targetSpace = spaces?.find(x => x.name === spaceName);
+
+    return targetSpace?.blocks || null;
+  }
+);
 
 export const selectNetworks = createSelector(
   [selectVNets, selectVHubs],

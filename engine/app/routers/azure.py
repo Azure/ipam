@@ -701,7 +701,7 @@ async def multi(
 async def match_resv_to_vnets():
     net_list = await get_network(None, globals.TENANT_ID, True)
     stale_resv = list(x['resv'] for x in net_list if x['resv'] != None)
-    ignore_status = ['fulfilled', 'cencelledByUser', 'cancelledTimeout']
+    # ignore_status = ['fulfilled', 'cencelledByUser', 'cancelledTimeout']
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", globals.TENANT_ID)
 
@@ -724,7 +724,7 @@ async def match_resv_to_vnets():
                     net['active'] = False
 
             for index, resv in enumerate(block['resv']):
-                if resv['status'] not in ignore_status:
+                if resv['settledOn'] is None:
                     if resv['id'] in stale_resv:
                         net = next((x for x in net_list if x['resv'] == resv['id']), None)
 

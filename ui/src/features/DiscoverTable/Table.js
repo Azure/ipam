@@ -41,10 +41,9 @@ import {
 import Shrug from "../../img/pam/Shrug";
 
 import {
-  selectViewSetting
+  selectViewSetting,
+  updateMeAsync
 } from "../ipam/ipamSlice";
-
-import { updateMeAsync } from "../ipam/ipamSlice";
 
 import { apiRequest } from "../../msal/authConfig";
 
@@ -231,13 +230,14 @@ export default function DiscoverTable(props) {
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [sendResults, setSendResults] = React.useState(null);
-  const [columnState, setColumnState] = React.useState(null);
-  const [columnOrderState, setColumnOrderState] = React.useState(columns.flatMap(({name}) => name));
-  const [columnSortState, setColumnSortState] = React.useState({ name: 'name', dir: 1, type: 'string' });
   const [gridData, setGridData] = React.useState(null);
   const [rowData, setRowData] = React.useState({});
   const [filterData, setFilterData] = React.useState(filterSettings);
   const [menuExpand, setMenuExpand] = React.useState(false);
+
+  const [columnState, setColumnState] = React.useState(null);
+  const [columnOrderState, setColumnOrderState] = React.useState([]);
+  const [columnSortState, setColumnSortState] = React.useState({});
 
   const stateData = useSelector(config.apiFunc);
   const viewSetting = useSelector(state => selectViewSetting(state, config.setting));
@@ -301,11 +301,11 @@ export default function DiscoverTable(props) {
       return acc
     }, {});
 
-    const columns = columnState.map(c => {
+    const newColumns = columnState.map(c => {
       return Object.assign({}, c, colsMap[c.name]);
     })
 
-    setColumnState(columns);
+    setColumnState(newColumns);
   }
 
   const onColumnOrderChange = (columnOrder) => {
@@ -313,7 +313,7 @@ export default function DiscoverTable(props) {
   }
 
   const onColumnVisibleChange = ({ column, visible }) => {
-    const columns = columnState.map(c => {
+    const newColumns = columnState.map(c => {
       if(c.name === column.name) {
         return Object.assign({}, c, { visible });
       } else {
@@ -321,7 +321,7 @@ export default function DiscoverTable(props) {
       }
     });
 
-    setColumnState(columns);
+    setColumnState(newColumns);
   }
 
   const onSortInfoChange = (sortInfo) => {
@@ -402,7 +402,7 @@ export default function DiscoverTable(props) {
     setColumnSortState(sort);
   }, [columns, config.setting, viewSetting]);
 
-  const resetConfig = () => {
+  const resetConfig = React.useCallback(() => {
     let newColumns = [...columns];
 
     newColumns.push(
@@ -412,24 +412,17 @@ export default function DiscoverTable(props) {
     setColumnState(newColumns);
     setColumnOrderState(newColumns.flatMap(({name}) => name));
     setColumnSortState({ name: 'name', dir: 1, type: 'string' });
-  }
+  }, [columns, config.setting]);
 
   React.useEffect(() => {
     if(!columnState && viewSetting) {
       if(columns && !isEmpty(viewSetting)) {
         loadConfig();
       } else {
-        let newColumns = [...columns];
-
-        newColumns.push(
-          { name: "id", header: () => <HeaderMenu setting={config.setting}/>, width: 50, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => renderExpand(data) }
-        );
-
-        setColumnState(newColumns);
-        setColumnOrderState(newColumns.flatMap(({name}) => name));
+        resetConfig();
       }
     }
-  },[config, columns, viewSetting, columnState, loadConfig]);
+  },[config, columns, viewSetting, columnState, loadConfig, resetConfig]);
 
   React.useEffect(() => {
     if(location.state) {

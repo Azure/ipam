@@ -190,13 +190,25 @@ class Reservation(BaseModel):
     """DOCSTRING"""
 
     id: str
+    cidr: str
+    desc: Union[str, None]
+    createdOn: float
+    createdBy: str
+    settledOn: Union[float, None]
+    settledBy: Union[str, None]
+    status: str
+
+class ReservationExpand(BaseModel):
+    """DOCSTRING"""
+
+    id: str
     space: Optional[str]
     block: Optional[str]
     cidr: str
     desc: Union[str, None]
     createdOn: float
     createdBy: str
-    setlledOn: Union[float, None]
+    settledOn: Union[float, None]
     settledBy: Union[str, None]
     status: str
     tag: Optional[dict]

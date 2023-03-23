@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 
 import { useMsal } from "@azure/msal-react";
 import { InteractionRequiredAuthError, InteractionStatus } from "@azure/msal-browser";
@@ -93,6 +93,7 @@ import ConfigureIPAM from "../configure/configure";
 import Refresh from "./refresh";
 
 import {
+  setUserId,
   getAdminStatus,
   getMeLoaded,
   selectVNets,
@@ -143,6 +144,8 @@ export default function NavDrawer() {
   const vHubs = useSelector(selectVHubs);
   const subnets = useSelector(selectSubnets);
   const endpoints = useSelector(selectEndpoints);
+
+  const dispatch = useDispatch();
 
   const isMenuOpen = Boolean(menuAnchorEl);
   const isMobileMenuOpen = Boolean(mobileMenuAnchorEl);
@@ -276,6 +279,7 @@ export default function NavDrawer() {
           const response = await instance.acquireTokenSilent(request);
           const graphResponse = await callMsGraph(response.accessToken);
           const photoResponse = await callMsGraphPhoto(response.accessToken);
+          await dispatch(setUserId(graphResponse.userPrincipalName));
           setGraphPhoto(photoResponse);
           setGraphData(graphResponse);
         } catch (e) {
@@ -291,7 +295,7 @@ export default function NavDrawer() {
         }
       })();
     }
-  }, [instance, accounts, inProgress, graphData]);
+  }, [instance, accounts, inProgress, graphData, dispatch]);
 
   React.useEffect(() => {
     // Handler to call on window resize

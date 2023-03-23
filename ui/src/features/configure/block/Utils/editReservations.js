@@ -1,5 +1,8 @@
 import * as React from "react";
+import { useSelector, useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
+
+import { isEmpty, pickBy } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
@@ -22,6 +25,11 @@ import {
   DialogContentText,
   Tooltip,
   IconButton,
+  CircularProgress,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  Divider
 } from "@mui/material";
 
 import {
@@ -33,17 +41,28 @@ import {
   WarningAmber,
   ErrorOutline,
   BlockOutlined,
-  TimerOffOutlined
+  TimerOffOutlined,
+  ExpandCircleDownOutlined,
+  FileDownloadOutlined,
+  FileUploadOutlined,
+  ReplayOutlined,
+  TaskAltOutlined,
+  CancelOutlined,
+  VisibilityOutlined,
+  VisibilityOffOutlined
 } from "@mui/icons-material";
 
 import LoadingButton from '@mui/lab/LoadingButton';
 
 import {
-  fetchBlockResv,
-  deleteBlockResvs
-} from "../../../ipam/ipamAPI";
+  deleteBlockResvsAsync,
+  selectViewSetting,
+  updateMeAsync
+} from "../../../ipam/ipamSlice";
 
 import { apiRequest } from "../../../../msal/authConfig";
+
+import { ConfigureContext } from "../../configureContext";
 
 // Python
 // import time
@@ -85,6 +104,8 @@ const MESSAGE_MAP = {
   }
 };
 
+const ReservationContext = React.createContext({});
+
 const Spotlight = styled("span")(({ theme }) => ({
   fontWeight: 'bold',
   color: theme.palette.mode === 'dark' ? 'cornflowerblue' : 'mediumblue'
@@ -102,179 +123,441 @@ const gridStyle = {
   fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
 };
 
+function HeaderMenu(props) {
+  const { setting } = props;
+  const { filterActive, setFilterActive, saving, sendResults, saveConfig, loadConfig, resetConfig } = React.useContext(ReservationContext);
+
+  const [menuOpen, setMenuOpen] = React.useState(false);
+
+  const menuRef = React.useRef(null);
+
+  const viewSetting = useSelector(state => selectViewSetting(state, setting));
+
+  const onClick = () => {
+    setMenuOpen(prev => !prev);
+  }
+
+  const onSave = () => {
+    saveConfig();
+    setMenuOpen(false);
+  }
+
+  const onLoad = () => {
+    loadConfig();
+    setMenuOpen(false);
+  }
+
+  const onReset = () => {
+    resetConfig();
+    setMenuOpen(false);
+  }
+
+  return (
+    <Box
+      ref={menuRef}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }}
+    >
+      {
+        saving ?
+        <React.Fragment>
+          <CircularProgress size={24} />
+        </React.Fragment> :
+        (sendResults !== null) ?
+        <React.Fragment>
+          {
+            sendResults ?
+            <TaskAltOutlined color="success"/> :
+            <CancelOutlined color="error"/>
+          }
+        </React.Fragment> :
+        <React.Fragment>
+          <IconButton
+            id="table-state-menu"
+            onClick={onClick}
+          >
+            <ExpandCircleDownOutlined />
+          </IconButton>
+          <Menu
+            id="table-state-menu"
+            anchorEl={menuRef.current}
+            open={menuOpen}
+            onClose={onClick}
+            // onClick={onClick}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'center',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            PaperProps={{
+              elevation: 0,
+              style: {
+                width: 215,
+                transform: 'translateX(35px)',
+              },
+              sx: {
+                overflow: 'visible',
+                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                mt: 1.5,
+                '& .MuiAvatar-root': {
+                  width: 32,
+                  height: 32,
+                  ml: -0.5,
+                  mr: 1,
+                },
+                '&:before': {
+                  content: '""',
+                  display: 'block',
+                  position: 'absolute',
+                  top: 0,
+                  right: 29,
+                  width: 10,
+                  height: 10,
+                  bgcolor: 'background.paper',
+                  transform: 'translateY(-50%) rotate(45deg)',
+                  zIndex: 0,
+                },
+              },
+            }}
+          >
+            <MenuItem onClick={() => setFilterActive(prev => !prev)}>
+              <ListItemIcon>
+                {
+                  filterActive ?
+                  <VisibilityOffOutlined fontSize="small" /> :
+                  <VisibilityOutlined fontSize="small" />
+                }
+              </ListItemIcon>
+              { filterActive ? 'Showing Active' : 'Showing All' }
+            </MenuItem>
+            <Divider />
+            <MenuItem
+              onClick={onLoad}
+              disabled={ !viewSetting || isEmpty(viewSetting) }
+            >
+              <ListItemIcon>
+                <FileDownloadOutlined fontSize="small" />
+              </ListItemIcon>
+              Load Saved View
+            </MenuItem>
+            <MenuItem onClick={onSave}>
+              <ListItemIcon>
+                <FileUploadOutlined fontSize="small" />
+              </ListItemIcon>
+              Save Current View
+            </MenuItem>
+            <MenuItem onClick={onReset}>
+              <ListItemIcon>
+                <ReplayOutlined fontSize="small" />
+              </ListItemIcon>
+              Reset Default View
+            </MenuItem>
+          </Menu>
+        </React.Fragment>
+      }
+    </Box>
+  )
+}
+
+function ReservationStatus(props) {
+  const { value } = props;
+
+  const MsgIcon = MESSAGE_MAP[value].icon;
+  const MsgColor = MESSAGE_MAP[value].color;
+
+  const onClick = (e) => {
+    e.stopPropagation();
+  };
+
+  const flexCenter = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  }
+
+  return (
+    <Tooltip
+      arrow
+      disableFocusListener
+      placement="top"
+      title={
+        <div style={{ textAlign: "center" }}>
+          {MESSAGE_MAP[value].msg}
+        </div>
+      }
+    >
+      <span style={{...flexCenter}}>
+        <IconButton
+          color={MsgColor}
+          size="small"
+          sx={{
+            padding: 0
+          }}
+          onClick={onClick}
+          disableFocusRipple
+          disableTouchRipple
+          disableRipple
+        >
+          <MsgIcon fontSize="inherit" />
+        </IconButton>
+      </span>
+    </Tooltip>
+  );
+}
+
+function ReservationId(props) {
+  const { value } = props;
+  const { copied, setCopied } = React.useContext(ReservationContext);
+
+  const contentCopied = (copied === value);
+
+  const onClick = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(value);
+    setCopied(value)
+  };
+
+  const flexCenter = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  }
+
+  return (
+    <Tooltip
+      arrow
+      disableFocusListener
+      placement="right"
+      title={
+        <div style={{ textAlign: "center" }}>
+          Click to Copy
+          <br />
+          <br />{value}
+        </div>
+      }
+    >
+      <span style={{...flexCenter}}>
+        { !contentCopied
+          ?
+            <IconButton
+              color="primary"
+              size="small"
+              sx={{
+                padding: 0
+              }}
+              onClick={onClick}
+              disableFocusRipple
+              disableTouchRipple
+              disableRipple
+            >
+              <ContentCopy fontSize="inherit" />
+            </IconButton>
+          :
+            <Check fontSize="small" color="success" />
+        }
+      </span>
+    </Tooltip>
+  );
+}
+
 export default function EditReservations(props) {
   const { open, handleClose, block } = props;
+  const { refresh, refreshing } = React.useContext(ConfigureContext);
 
   const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
+  const [filterActive, setFilterActive] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [sendResults, setSendResults] = React.useState(null);
   const [reservations, setReservations] = React.useState([]);
+  const [filterReservations, setFilterReservations] = React.useState([]);
   const [selectionModel, setSelectionModel] = React.useState([]);
   const [copied, setCopied] = React.useState("");
   const [sending, setSending] = React.useState(false);
-  const [refreshing, setRefreshing] = React.useState(false);
+  // const [refreshing, setRefreshing] = React.useState(false);
+
+  const [columnState, setColumnState] = React.useState(null);
+  const [columnOrderState, setColumnOrderState] = React.useState([]);
+  const [columnSortState, setColumnSortState] = React.useState({});
+
+  // const reservations = useSelector(selectReservations);
+  const viewSetting = useSelector(state => selectViewSetting(state, 'reservations'));
+  const dispatch = useDispatch();
+
+  const msgTimer = React.useRef();
+  const saveTimer = React.useRef();
 
   const theme = useTheme();
 
   const empty = selectionModel.length === 0;
 
-  const timer = React.useRef();
+  const columns = React.useMemo(() => [
+    { name: "cidr", header: "CIDR", type: "string", flex: 0.5, visible: true },
+    { name: "createdBy", header: "Created By", type: "string", flex: 1, visible: true },
+    { name: "desc", header: "Description", type: "string", flex: 1.5, visible: true },
+    { name: "createdOn", header: "Creation Date", type: "date", flex: 0.75, render: ({value}) => new Date(value * 1000).toLocaleString(), visible: true },
+    { name: "settledOn", header: "Settled Date", type: "date", flex: 0.75, render: ({value}) => value ? new Date(value * 1000).toLocaleString() : null, visible: false },
+    { name: "settledBy", header: "Settled By", type: "string", flex: 1, visible: false },
+    { name: "status", header: "Status", headerAlign: "center", width: 90, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({value}) => <ReservationStatus value={value} />, visible: true },
+    { name: "id", header: () => <HeaderMenu setting="reservations"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({value}) => <ReservationId value={value} />, visible: true }
+  ], []);
 
-  const columns = [
-    { name: "cidr", header: "CIDR", type: "string", defaultFlex: 0.5 },
-    { name: "createdBy", header: "Created By", type: "string", defaultFlex: 1 },
-    { name: "desc", header: "Description", type: "string", defaultFlex: 1.5 },
-    { name: "createdOn", header: "Creation Date", type: "date", defaultFlex: 0.75, render: ({value}) => new Date(value * 1000).toLocaleString() },
-    { name: "status", header: "Status", headerAlign: "center", width: 90, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: renderStatus },
-    { name: "id", header: "", width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, renderHeader: () => "", render: renderId }
-  ];
+  const onBatchColumnResize = (batchColumnInfo) => {
+    const colsMap = batchColumnInfo.reduce((acc, colInfo) => {
+      const { column, flex } = colInfo
+      acc[column.name] = { flex }
+      return acc
+    }, {});
 
-  function renderStatus({value}) {
-    const MsgIcon = MESSAGE_MAP[value].icon;
-    const MsgColor = MESSAGE_MAP[value].color;
+    const newColumns = columnState.map(c => {
+      return Object.assign({}, c, colsMap[c.name]);
+    })
 
-    const onClick = (e) => {
-      e.stopPropagation();
-    };
-  
-    const flexCenter = {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center"
-    }
-
-    return (
-      <Tooltip
-        arrow
-        disableFocusListener
-        placement="top"
-        title={
-          <div style={{ textAlign: "center" }}>
-            {MESSAGE_MAP[value].msg}
-          </div>
-        }
-      >
-        <span style={{...flexCenter}}>
-          <IconButton
-            color={MsgColor}
-            size="small"
-            sx={{
-              padding: 0
-            }}
-            onClick={onClick}
-            disableFocusRipple
-            disableTouchRipple
-            disableRipple
-          >
-            <MsgIcon fontSize="inherit" />
-          </IconButton>
-        </span>
-      </Tooltip>
-    );
+    setColumnState(newColumns);
   }
 
-  function renderId({value}) {
-    const contentCopied = (copied === value);
-
-    const onClick = (e) => {
-      e.stopPropagation();
-      navigator.clipboard.writeText(value);
-      setCopied(value)
-    };
-  
-    const flexCenter = {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center"
-    }
-
-    return (
-      <Tooltip
-        arrow
-        disableFocusListener
-        placement="right"
-        title={
-          <div style={{ textAlign: "center" }}>
-            Click to Copy
-            <br />
-            <br />{value}
-          </div>
-        }
-      >
-        <span style={{...flexCenter}}>
-          { !contentCopied
-            ?
-              <IconButton
-                color="primary"
-                size="small"
-                sx={{
-                  padding: 0
-                }}
-                onClick={onClick}
-                disableFocusRipple
-                disableTouchRipple
-                disableRipple
-              >
-                <ContentCopy fontSize="inherit" />
-              </IconButton>
-            :
-              <Check fontSize="small" color="success" />
-          }
-        </span>
-      </Tooltip>
-    );
+  const onColumnOrderChange = (columnOrder) => {
+    setColumnOrderState(columnOrder);
   }
 
-  function refreshData() {
+  const onColumnVisibleChange = ({ column, visible }) => {
+    const newColumns = columnState.map(c => {
+      if(c.name === column.name) {
+        return Object.assign({}, c, { visible });
+      } else {
+        return c;
+      }
+    });
+
+    setColumnState(newColumns);
+  }
+
+  const onSortInfoChange = (sortInfo) => {
+    setColumnSortState(sortInfo);
+  }
+
+  const saveConfig = () => {
+    const values = columnState.reduce((acc, colInfo) => {
+      const { name, flex, visible } = colInfo;
+
+      acc[name] = { flex, visible };
+
+      return acc;
+    }, {});
+
+    const saveData = {
+      values: values,
+      order: columnOrderState,
+      sort: columnSortState
+    }
+
+    var body = [
+      { "op": "add", "path": `/views/reservations`, "value": saveData }
+    ];
+
     const request = {
       scopes: apiRequest.scopes,
       account: accounts[0],
     };
 
     (async () => {
-      setReservations([]);
-
-      if(block) {
-        try {
-          setRefreshing(true);
-          setSelectionModel([]);
-
-          const response = await instance.acquireTokenSilent(request);
-          const data = await fetchBlockResv(response.accessToken, block.parent_space, block.name);
-          setReservations(data);
-        } catch (e) {
-          if (e instanceof InteractionRequiredAuthError) {
-            instance.acquireTokenRedirect(request);
-          } else {
-            console.log("ERROR");
-            console.log("------------------");
-            console.log(e);
-            console.log("------------------");
-            enqueueSnackbar("Error fetching available IP Block reservations", { variant: "error" });
-          }
-        } finally {
-          setRefreshing(false);
+      try {
+        setSaving(true);
+        const response = await instance.acquireTokenSilent(request);
+        await dispatch(updateMeAsync({ token: response.accessToken, body: body}));
+        setSendResults(true);
+      } catch (e) {
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          setSendResults(false);
+          enqueueSnackbar("Error saving view settings", { variant: "error" });
         }
+      } finally {
+        setSaving(false);
       }
     })();
-  }
+  };
+
+  const loadConfig = React.useCallback(() => {
+    const { values, order, sort } = viewSetting;
+
+    const colsMap = columns.reduce((acc, colInfo) => {
+
+      acc[colInfo.name] = colInfo;
+
+      return acc;
+    }, {})
+
+    const loadColumns = order.map(item => {
+      const assigned = pickBy(values[item], v => v !== undefined)
+
+      return Object.assign({}, colsMap[item], assigned);
+    });
+
+    setColumnState(loadColumns);
+    setColumnOrderState(order);
+    setColumnSortState(sort);
+  }, [columns, viewSetting]);
+
+  const resetConfig = React.useCallback(() => {
+    setColumnState(columns);
+    setColumnOrderState(columns.flatMap(({name}) => name));
+    setColumnSortState({ name: 'name', dir: 1, type: 'string' });
+  }, [columns]);
 
   React.useEffect(() => {
-    block && refreshData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setReservations(block?.resv || []);
   }, [block]);
 
   React.useEffect(() => {
-    if(copied !== "") {
-      clearTimeout(timer.current);
+    if(!columnState && viewSetting) {
+      if(columns && !isEmpty(viewSetting)) {
+        loadConfig();
+      } else {
+        resetConfig();
+      }
+    }
+  },[columns, viewSetting, columnState, loadConfig, resetConfig]);
 
-      timer.current = setTimeout(
+  React.useEffect(() => {
+    filterActive ? setFilterReservations(reservations.filter(x => x.settledOn === null)) : setFilterReservations(reservations);
+  }, [reservations, filterActive]);
+
+  React.useEffect(() => {
+    if(copied !== "") {
+      clearTimeout(msgTimer.current);
+
+      msgTimer.current = setTimeout(
         function() {
           setCopied("");
         }, 3000
       );
     }
-  }, [timer, copied]);
+  }, [msgTimer, copied]);
+
+  React.useEffect(() => {
+    if(sendResults !== null) {
+      clearTimeout(saveTimer.current);
+
+      saveTimer.current = setTimeout(
+        function() {
+          setSendResults(null);
+        }, 2000
+      );
+    }
+  }, [saveTimer, sendResults]);
 
   function onSubmit() {
     const request = {
@@ -286,10 +569,12 @@ export default function EditReservations(props) {
       try {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
-        await deleteBlockResvs(response.accessToken, block.parent_space, block.name, Object.keys(selectionModel));
+        await dispatch(deleteBlockResvsAsync({token: response.accessToken, space: block.parent_space, block: block.name, body: Object.keys(selectionModel)}));
         handleClose();
+        setSelectionModel([]);
+        setFilterActive(true);
         enqueueSnackbar("Successfully removed IP Block reservation(s)", { variant: "success" });
-        refreshData();
+        // refresh();
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
           instance.acquireTokenRedirect(request);
@@ -307,71 +592,81 @@ export default function EditReservations(props) {
   }
 
   return (
-    <div sx={{ height: "400px", width: "100%" }}>
-      <Dialog
-        open={open}
-        onClose={handleClose}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          style: {
-            overflowY: "unset"
-          },
-        }}
-      >
-        <DialogTitle>
-          <Box sx={{ display: "flex", flexDirection: "row" }}>
-            <Box>
-              Block Reservations
-            </Box>
-            <Box sx={{ ml: "auto" }}>
-              <IconButton
-                color="primary"
-                size="small"
-                onClick={refreshData}
-                disabled={refreshing || sending}
-              >
-                <Refresh />
-              </IconButton>
-            </Box>
-          </Box>
-        </DialogTitle>
-        <DialogContent
-          sx={{ overflowY: "unset" }}
+    <ReservationContext.Provider value={{ copied, setCopied, filterActive, setFilterActive, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+      <div sx={{ height: "400px", width: "100%" }}>
+        <Dialog
+          open={open}
+          onClose={handleClose}
+          maxWidth="lg"
+          fullWidth
+          PaperProps={{
+            style: {
+              overflowY: "unset"
+            },
+          }}
         >
-          <DialogContentText>
-            Select the CIDR reservations for Block <Spotlight>'{block?.name}'</Spotlight> to be deleted
-          </DialogContentText>
-          <Box sx={{ pt: 4, height: "400px" }}>
-            <ReactDataGrid
-              theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
-              idProperty="id"
-              showCellBorders="horizontal"
-              checkboxColumn
-              checkboxOnlyRowSelect
-              showZebraRows={false}
-              multiSelect={true}
-              showActiveRowIndicator={false}
-              enableColumnAutosize={false}
-              showColumnMenuGroupOptions={false}
-              showColumnMenuLockOptions={false}
-              columns={columns}
-              loading={refreshing || sending}
-              loadingText={sending ? <Update>Updating</Update> : "Loading"}
-              dataSource={reservations}
-              selected={selectionModel}
-              onSelectionChange={({selected}) => setSelectionModel(selected)}
-              style={gridStyle}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <LoadingButton onClick={onSubmit} loading={sending} disabled={empty || sending}>
-            Delete
-          </LoadingButton>
-        </DialogActions>
-      </Dialog>
-    </div>
+          <DialogTitle>
+            <Box sx={{ display: "flex", flexDirection: "row" }}>
+              <Box>
+                Block Reservations
+              </Box>
+              <Box sx={{ ml: "auto" }}>
+                <IconButton
+                  color="primary"
+                  size="small"
+                  onClick={refresh}
+                  disabled={refreshing || sending}
+                >
+                  <Refresh />
+                </IconButton>
+              </Box>
+            </Box>
+          </DialogTitle>
+          <DialogContent
+            sx={{ overflowY: "unset" }}
+          >
+            <DialogContentText>
+              Select the CIDR reservations for Block <Spotlight>'{block?.name}'</Spotlight> to be removed
+            </DialogContentText>
+            <Box sx={{ pt: 4, height: "400px" }}>
+              <ReactDataGrid
+                theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
+                idProperty="id"
+                showCellBorders="horizontal"
+                checkboxColumn
+                checkboxOnlyRowSelect
+                showZebraRows={false}
+                multiSelect={true}
+                showActiveRowIndicator={false}
+                enableColumnAutosize={false}
+                showColumnMenuGroupOptions={false}
+                showColumnMenuLockOptions={false}
+                onBatchColumnResize={onBatchColumnResize}
+                onSortInfoChange={onSortInfoChange}
+                onColumnOrderChange={onColumnOrderChange}
+                onColumnVisibleChange={onColumnVisibleChange}
+                reservedViewportWidth={0}
+                columns={columnState || []}
+                columnOrder={columnOrderState}
+                loading={refreshing || sending}
+                loadingText={sending ? <Update>Updating</Update> : "Loading"}
+                dataSource={filterReservations}
+                selected={selectionModel}
+                onSelectionChange={({selected}) => setSelectionModel(selected)}
+                style={gridStyle}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleClose}>
+              Cancel
+            </Button>
+            <LoadingButton onClick={onSubmit} loading={sending} disabled={empty || sending}>
+              Remove
+            </LoadingButton>
+          </DialogActions>
+        </Dialog>
+      </div>
+    </ReservationContext.Provider>
   );
 }

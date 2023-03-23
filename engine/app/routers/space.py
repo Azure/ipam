@@ -158,7 +158,7 @@ async def get_spaces(
 
             if not is_admin:
                 user_name = get_username_from_jwt(user_assertion)
-                block['resv'] = list(filter(lambda x: x['userId'] == user_name, block['resv']))
+                block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, block['resv']))
 
     if not is_admin:
         if utilization:
@@ -296,7 +296,7 @@ async def get_space(
 
         if not is_admin:
             user_name = get_username_from_jwt(user_assertion)
-            block['resv'] = list(filter(lambda x: x['userId'] == user_name, block['resv']))
+            block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, block['resv']))
 
     if not is_admin:
         if utilization:
@@ -475,7 +475,7 @@ async def get_blocks(
 
         if not is_admin:
             user_name = get_username_from_jwt(user_assertion)
-            block['resv'] = list(filter(lambda x: x['userId'] == user_name, block['resv']))
+            block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, block['resv']))
 
     if not is_admin:
         if utilization:
@@ -541,7 +541,7 @@ async def create_block(
 @router.post(
     "/{space}/reservations",
     summary = "Create CIDR Reservation from List of Blocks",
-    response_model = Reservation,
+    response_model = ReservationExpand,
     status_code = 201
 )
 @cosmos_retry(
@@ -732,7 +732,7 @@ async def get_block(
 
     if not is_admin:
         user_name = get_username_from_jwt(user_assertion)
-        target_block['resv'] = list(filter(lambda x: x['userId'] == user_name, target_block['resv']))
+        target_block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, target_block['resv']))
 
     if not is_admin:
         if utilization:
@@ -1143,7 +1143,7 @@ async def delete_block_nets(
 @router.get(
     "/{space}/blocks/{block}/reservations",
     summary = "Get Block Reservations",
-    response_model = List[Reservation],
+    response_model = List[ReservationExpand],
     status_code = 200
 )
 async def get_block_reservations(
@@ -1177,14 +1177,14 @@ async def get_block_reservations(
 
     if not is_admin:
         user_name = get_username_from_jwt(user_assertion)
-        return list(filter(lambda x: x['userId'] == user_name, target_block['resv']))
+        return list(filter(lambda x: x['createdBy'] == user_name, target_block['resv']))
     else:
         return target_block['resv']
 
 @router.post(
     "/{space}/blocks/{block}/reservations",
     summary = "Create CIDR Reservation",
-    response_model = Reservation,
+    response_model = ReservationExpand,
     status_code = 201
 )
 @cosmos_retry(
@@ -1284,7 +1284,7 @@ async def create_block_reservation(
 
 @router.delete(
     "/{space}/blocks/{block}/reservations",
-    summary = "Delete CIDR Reservation",
+    summary = "Delete CIDR Reservations",
     status_code = 200
 )
 @cosmos_retry(
@@ -1331,15 +1331,24 @@ async def delete_block_reservations(
     if not ids_exist:
         raise HTTPException(status_code=400, detail="List contains one or more invalid id's.")
 
+    settled_reservations = list(o['id'] for o in target_block['resv'] if o['settledOn'])
+    contains_settled = all(elem in settled_reservations for elem in req)
+
+    if contains_settled:
+        raise HTTPException(status_code=400, detail="List contains one or more settled reservations.")
+
     if not is_admin:
-        not_owned = list(filter(lambda x: x['id'] in req and x['userId'] != user_name, target_block['resv']))
+        not_owned = list(filter(lambda x: x['id'] in req and x['createdBy'] != user_name, target_block['resv']))
 
         if not_owned:
             raise HTTPException(status_code=403, detail="Users can only delete their own reservations.")
 
     for id in req:
         index = next((i for i, item in enumerate(target_block['resv']) if item['id'] == id), None)
-        del target_block['resv'][index]
+        # del target_block['resv'][index]
+        target_block['resv'][index]['settledOn'] = time.time()
+        target_block['resv'][index]['settledBy'] = user_name
+        target_block['resv'][index]['status'] = "cancelledByUser"
 
     await cosmos_replace(space_query[0], target_space)
 
