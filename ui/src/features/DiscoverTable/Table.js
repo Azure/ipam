@@ -414,6 +414,13 @@ export default function DiscoverTable(props) {
     setColumnSortState({ name: 'name', dir: 1, type: 'string' });
   }, [columns, config.setting]);
 
+  const renderColumnContextMenu = React.useCallback((menuProps) => {
+    const columnIndex = menuProps.items.findIndex((item) => item.itemId === 'columns');
+    const idIndex = menuProps.items[columnIndex].items.findIndex((item) => item.value === 'id');
+
+    menuProps.items[columnIndex].items.splice(idIndex, 1);
+  }, []);
+
   React.useEffect(() => {
     if(!columnState && viewSetting) {
       if(columns && !isEmpty(viewSetting)) {
@@ -501,6 +508,7 @@ export default function DiscoverTable(props) {
           showColumnMenuLockOptions={false}
           enableColumnFilterContextMenu={true}
           updateMenuPositionOnColumnsChange={false}
+          renderColumnContextMenu={renderColumnContextMenu}
           onBatchColumnResize={onBatchColumnResize}
           onSortInfoChange={onSortInfoChange}
           onColumnOrderChange={onColumnOrderChange}

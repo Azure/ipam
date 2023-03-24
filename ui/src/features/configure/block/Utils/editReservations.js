@@ -64,12 +64,20 @@ import { apiRequest } from "../../../../msal/authConfig";
 
 import { ConfigureContext } from "../../configureContext";
 
-// Python
+// Python -> Javascript
 // import time
 // time.time() -> 1647638968.5812438
 
 // const unixtime = 1647638968.5812438;
 // const jstime = new Date(unixtime * 1000);
+
+// Javascript -> Python
+// (Date.now() / 1000); -> 1679618040.762
+
+// from datetime import datetime
+
+// unixtime = 1679618040.762
+// pytime = datetime.fromtimestamp(unixtime)
 
 const MESSAGE_MAP = {
   "wait": {
@@ -135,6 +143,11 @@ function HeaderMenu(props) {
 
   const onClick = () => {
     setMenuOpen(prev => !prev);
+  }
+
+  const onActive = () => {
+    setFilterActive(prev => !prev)
+    setMenuOpen(false);
   }
 
   const onSave = () => {
@@ -226,7 +239,9 @@ function HeaderMenu(props) {
               },
             }}
           >
-            <MenuItem onClick={() => setFilterActive(prev => !prev)}>
+            <MenuItem
+              onClick={onActive}
+            >
               <ListItemIcon>
                 {
                   filterActive ?
@@ -315,12 +330,12 @@ function ReservationId(props) {
   const { value } = props;
   const { copied, setCopied } = React.useContext(ReservationContext);
 
-  const contentCopied = (copied === value);
+  const contentCopied = (copied === value.id);
 
   const onClick = (e) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(value);
-    setCopied(value)
+    navigator.clipboard.writeText(value.id);
+    setCopied(value.id);
   };
 
   const flexCenter = {
@@ -335,26 +350,29 @@ function ReservationId(props) {
       disableFocusListener
       placement="right"
       title={
+        value.settledOn === null ?
         <div style={{ textAlign: "center" }}>
           Click to Copy
           <br />
-          <br />{value}
-        </div>
+          <br />{value.id}
+        </div> :
+        null
       }
     >
       <span style={{...flexCenter}}>
         { !contentCopied
           ?
             <IconButton
+              disableRipple
+              disableFocusRipple
+              disableTouchRipple
               color="primary"
               size="small"
               sx={{
                 padding: 0
               }}
               onClick={onClick}
-              disableFocusRipple
-              disableTouchRipple
-              disableRipple
+              disabled={value.settledOn !== null}
             >
               <ContentCopy fontSize="inherit" />
             </IconButton>
@@ -381,13 +399,11 @@ export default function EditReservations(props) {
   const [selectionModel, setSelectionModel] = React.useState([]);
   const [copied, setCopied] = React.useState("");
   const [sending, setSending] = React.useState(false);
-  // const [refreshing, setRefreshing] = React.useState(false);
 
   const [columnState, setColumnState] = React.useState(null);
   const [columnOrderState, setColumnOrderState] = React.useState([]);
   const [columnSortState, setColumnSortState] = React.useState({});
 
-  // const reservations = useSelector(selectReservations);
   const viewSetting = useSelector(state => selectViewSetting(state, 'reservations'));
   const dispatch = useDispatch();
 
@@ -406,7 +422,7 @@ export default function EditReservations(props) {
     { name: "settledOn", header: "Settled Date", type: "date", flex: 0.75, render: ({value}) => value ? new Date(value * 1000).toLocaleString() : null, visible: false },
     { name: "settledBy", header: "Settled By", type: "string", flex: 1, visible: false },
     { name: "status", header: "Status", headerAlign: "center", width: 90, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({value}) => <ReservationStatus value={value} />, visible: true },
-    { name: "id", header: () => <HeaderMenu setting="reservations"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({value}) => <ReservationId value={value} />, visible: true }
+    { name: "id", header: () => <HeaderMenu setting="reservations"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => <ReservationId value={data} />, visible: true }
   ], []);
 
   const onBatchColumnResize = (batchColumnInfo) => {
@@ -516,6 +532,13 @@ export default function EditReservations(props) {
     setColumnOrderState(columns.flatMap(({name}) => name));
     setColumnSortState({ name: 'name', dir: 1, type: 'string' });
   }, [columns]);
+
+  const renderColumnContextMenu = React.useCallback((menuProps) => {
+    const columnIndex = menuProps.items.findIndex((item) => item.itemId === 'columns');
+    const idIndex = menuProps.items[columnIndex].items.findIndex((item) => item.value === 'id');
+
+    menuProps.items[columnIndex].items.splice(idIndex, 1);
+  }, []);
 
   React.useEffect(() => {
     setReservations(block?.resv || []);
@@ -641,6 +664,8 @@ export default function EditReservations(props) {
                 enableColumnAutosize={false}
                 showColumnMenuGroupOptions={false}
                 showColumnMenuLockOptions={false}
+                updateMenuPositionOnColumnsChange={false}
+                renderColumnContextMenu={renderColumnContextMenu}
                 onBatchColumnResize={onBatchColumnResize}
                 onSortInfoChange={onSortInfoChange}
                 onColumnOrderChange={onColumnOrderChange}

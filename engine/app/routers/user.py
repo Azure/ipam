@@ -88,9 +88,9 @@ async def scrub_patch(patch):
         },
         {
             "ops": ["add", "replace"],
-            "path": "/views/(spaces|blocks|vnets|vhubs|subnets|endpoints|reservations)",
+            "path": "/views/(spaces|blocks|vnets|vhubs|subnets|endpoints|networks|reservations)",
             "valid": ViewSettings,
-            "error": "Valid views are [spaces|blocks|vnets|vhubs|subnets|endpoints|reservations]."
+            "error": "Valid views are [spaces|blocks|vnets|vhubs|subnets|endpoints|networks|reservations]."
         }
     ]
 

@@ -830,7 +830,7 @@ async def available_block_nets(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     net_list = await get_network(authorization, True)
-    resv_list = IPSet(x['cidr'] for x in target_block['resv'])
+    resv_list = IPSet(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
 
     for net in net_list:
         valid = list(filter(lambda x: (IPNetwork(x) in IPNetwork(target_block['cidr']) and not (IPSet([x]) & resv_list)), net['prefixes']))
