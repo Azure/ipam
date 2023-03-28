@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
-import { isEmpty, isEqual, pickBy, sortBy } from 'lodash';
+import { isEmpty, isEqual, pickBy, orderBy, sortBy } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
@@ -215,6 +215,7 @@ export default function EditVnets(props) {
   const [saving, setSaving] = React.useState(false);
   const [sendResults, setSendResults] = React.useState(null);
   const [vNets, setVNets] = React.useState(null);
+  const [gridData, setGridData] = React.useState(null);
   const [selectionModel, setSelectionModel] = React.useState([]);
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -348,7 +349,7 @@ export default function EditVnets(props) {
   const resetConfig = React.useCallback(() => {
     setColumnState(columns);
     setColumnOrderState(columns.flatMap(({name}) => name));
-    setColumnSortState({ name: 'name', dir: 1, type: 'string' });
+    setColumnSortState(null);
   }, [columns]);
 
   const renderColumnContextMenu = React.useCallback((menuProps) => {
@@ -384,6 +385,20 @@ export default function EditVnets(props) {
       }
     }
   },[columns, viewSetting, columnState, loadConfig, resetConfig]);
+
+  React.useEffect(() => {
+    if(columnSortState) {
+      setGridData(
+        orderBy(
+          vNets,
+          [columnSortState.name],
+          [columnSortState.dir === -1 ? 'desc' : 'asc']
+        )
+      );
+    } else {
+      setGridData(vNets);
+    }
+  },[vNets, columnSortState]);
 
   React.useEffect(() => {
     if(sendResults !== null) {
@@ -584,10 +599,11 @@ export default function EditVnets(props) {
               columnOrder={columnOrderState}
               loading={sending || !subscriptions || !vNets || refreshing || refreshingState}
               loadingText={sending ? <Update>Updating</Update> : "Loading"}
-              dataSource={vNets || []}
+              dataSource={gridData || []}
               selected={selectionModel}
               onSelectionChange={({selected}) => setSelectionModel(selected)}
               rowClassName={({data}) => `ipam-block-vnet-${!data.active ? 'stale' : 'normal'}`}
+              sortInfo={columnSortState}
               style={gridStyle}
             />
           </Box>

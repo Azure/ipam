@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { useLocation } from "react-router-dom";
 
-import { cloneDeep, pickBy, isEmpty } from 'lodash';
+import { cloneDeep, pickBy, orderBy, isEmpty } from 'lodash';
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import filter from '@inovua/reactdatagrid-community/filter'
@@ -45,10 +45,11 @@ import {
   updateMeAsync
 } from "../ipam/ipamSlice";
 
+import ItemDetails from "./Utils/Details";
+
 import { apiRequest } from "../../msal/authConfig";
 
 import { TableContext } from "./TableContext";
-import ItemDetails from "./Utils/Details";
 
 const filterTypes = Object.assign({}, ReactDataGrid.defaultProps.filterTypes, {
   array: {
@@ -444,8 +445,24 @@ export default function DiscoverTable(props) {
   },[location, filterSettings]);
 
   React.useEffect(() => {
-    stateData && setGridData(filter(stateData, filterData, filterTypes));
-  },[stateData, filterData]);
+    if(stateData) {
+      if(columnSortState) {
+        setGridData(
+          filter(
+            orderBy(
+              stateData,
+              [columnSortState.name],
+              [columnSortState.dir === -1 ? 'desc' : 'asc']
+            ),
+            filterData,
+            filterTypes
+          )
+        );
+      } else {
+        setGridData(filter(stateData, filterData, filterTypes));
+      }
+    }
+  },[stateData, filterData, columnSortState]);
 
   React.useEffect(() => {
     gridData && setLoading(false);
@@ -523,7 +540,9 @@ export default function DiscoverTable(props) {
           filterValue={filterData}
           onFilterValueChange={(newFilterValue) => setFilterData(newFilterValue)}
           // defaultSortInfo={{ name: 'name', dir: 1, type: 'string' }}
-          defaultSortInfo={columnSortState}
+          // defaultSortInfo={columnSortState}
+          // onSortInfoChange={(newSortInfo) => setColumnSortState(newSortInfo)}
+          sortInfo={columnSortState}
           emptyText={NoRowsOverlay}
           style={gridStyle}
         />

@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
-import { isEmpty, pickBy } from 'lodash';
+import { isEmpty, pickBy, orderBy } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
@@ -395,7 +395,7 @@ export default function EditReservations(props) {
   const [saving, setSaving] = React.useState(false);
   const [sendResults, setSendResults] = React.useState(null);
   const [reservations, setReservations] = React.useState([]);
-  const [filterReservations, setFilterReservations] = React.useState([]);
+  const [gridData, setGridData] = React.useState(null);
   const [selectionModel, setSelectionModel] = React.useState([]);
   const [copied, setCopied] = React.useState("");
   const [sending, setSending] = React.useState(false);
@@ -530,7 +530,7 @@ export default function EditReservations(props) {
   const resetConfig = React.useCallback(() => {
     setColumnState(columns);
     setColumnOrderState(columns.flatMap(({name}) => name));
-    setColumnSortState({ name: 'name', dir: 1, type: 'string' });
+    setColumnSortState({ name: 'createdOn', dir: 1, type: 'date' });
   }, [columns]);
 
   const renderColumnContextMenu = React.useCallback((menuProps) => {
@@ -555,8 +555,20 @@ export default function EditReservations(props) {
   },[columns, viewSetting, columnState, loadConfig, resetConfig]);
 
   React.useEffect(() => {
-    filterActive ? setFilterReservations(reservations.filter(x => x.settledOn === null)) : setFilterReservations(reservations);
-  }, [reservations, filterActive]);
+    const newReservations = filterActive ? reservations.filter(x => x.settledOn === null) : reservations;
+
+    if(columnSortState) {
+      setGridData(
+        orderBy(
+          newReservations,
+          [columnSortState.name],
+          [columnSortState.dir === -1 ? 'desc' : 'asc']
+        )
+      );
+    } else {
+      setGridData(newReservations);
+    }
+  }, [reservations, filterActive, columnSortState]);
 
   React.useEffect(() => {
     if(copied !== "") {
@@ -675,9 +687,10 @@ export default function EditReservations(props) {
                 columnOrder={columnOrderState}
                 loading={refreshing || sending}
                 loadingText={sending ? <Update>Updating</Update> : "Loading"}
-                dataSource={filterReservations}
+                dataSource={gridData || []}
                 selected={selectionModel}
                 onSelectionChange={({selected}) => setSelectionModel(selected)}
+                sortInfo={columnSortState}
                 style={gridStyle}
               />
             </Box>

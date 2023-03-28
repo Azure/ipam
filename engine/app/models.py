@@ -407,7 +407,7 @@ class Exclusions(List[UUID]):
 class ViewSettings(BaseModel):
     values: Dict[str, dict]
     order: List[str]
-    sort: dict
+    sort: Union[dict, None]
 
 class User(BaseModel):
     """DOCSTRING"""

@@ -46,11 +46,11 @@ export const spaces = {
     idProp: "name"
   },
   columns: [
-    { name: "name", header: "Space Name", type: "string", defaultFlex: 0.85, visible: true },
-    { name: "utilization", header: "Utilization", type: "number", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value), visible: true },
-    { name: "desc", header: "Description", type: "string", defaultFlex: 1.00, visible: true },
-    { name: "size", header: "Total IP's", type: "number", defaultFlex: 0.45, filterEditor: NumberFilter, visible: true },
-    { name: "used", header: "Allocated IP's", type: "number", defaultFlex: 0.45, filterEditor: NumberFilter, visible: true },
+    { name: "name", header: "Space Name", type: "string", flex: 0.85, visible: true },
+    { name: "utilization", header: "Utilization", type: "number", flex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value), visible: true },
+    { name: "desc", header: "Description", type: "string", flex: 1.00, visible: true },
+    { name: "size", header: "Total IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
+    { name: "used", header: "Allocated IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
   ],
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },
@@ -79,12 +79,12 @@ export const blocks = {
     idProp: "id"
   },
   columns: [
-    { name: "name", header: "Block Name", type: "string", defaultFlex: 0.85, visible: true },
-    { name: "utilization", header: "Utilization", type: "number", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value), visible: true },
-    { name: "parent_space", header: "Space", type: "string", defaultFlex: 0.85, visible: true },
-    { name: "size", header: "Total IP's", type: "number", defaultFlex: 0.4, visible: true },
-    { name: "used", header: "Allocated IP's", type: "number", defaultFlex: 0.45, visible: true },
-    { name: "cidr", header: "CIDR Block", type: "string", defaultFlex: 0.50, visible: true },
+    { name: "name", header: "Block Name", type: "string", flex: 0.85, visible: true },
+    { name: "utilization", header: "Utilization", type: "number", flex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value), visible: true },
+    { name: "parent_space", header: "Space", type: "string", flex: 0.85, visible: true },
+    { name: "size", header: "Total IP's", type: "number", flex: 0.4, filterEditor: NumberFilter, visible: true },
+    { name: "used", header: "Allocated IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
+    { name: "cidr", header: "CIDR Block", type: "string", flex: 0.50, visible: true },
   ],
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },
@@ -121,8 +121,8 @@ export const vnets = {
     { name: "resource_group", header: "Resource Group", type: "string", flex: 0.75, visible: false },
     { name: "subscription_name", header: "Subscription Name", type: "string", flex: 0.85, visible: false },
     { name: "subscription_id", header: "Subscription ID", type: "string", flex: 0.85, visible: false },
-    { name: "size", header: "Total IP's", type: "number", flex: 0.45, visible: true },
-    { name: "used", header: "Allocated IP's", type: "number", flex: 0.45, visible: true },
+    { name: "size", header: "Total IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
+    { name: "used", header: "Allocated IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
     { name: "prefixes", header: "Address Space", type: "string", flex: 0.75, render: ({value}) => value.join(", "), visible: true }
   ],
   filterSettings: [
@@ -163,13 +163,13 @@ export const vhubs = {
     idProp: "id"
   },
   columns: [
-    { name: "name", header: "vNet Name", type: "string", defaultFlex: 0.6, visible: true },
-    { name: "vwan_name", header: "Parent vWAN", type: "string", defaultFlex: 0.6, visible: true },
-    { name: "parent_block", header: "Block", type: "string", defaultFlex: 0.75, render: ({value}) => value ?? "<Unassigned>", visible: true },
-    { name: "subscription_name", header: "Subscription Name", type: "string", defaultFlex: 0.75, visible: false },
-    { name: "subscription_id", header: "Subscription ID", type: "string", defaultFlex: 0.75, visible: false },
-    { name: "resource_group", header: "Resource Group", type: "string", defaultFlex: 0.75, visible: true },
-    { name: "prefixes", header: "Address Space", type: "string", defaultFlex: 0.35, render: ({value}) => value.toString(), visible: true }
+    { name: "name", header: "vNet Name", type: "string", flex: 0.6, visible: true },
+    { name: "vwan_name", header: "Parent vWAN", type: "string", flex: 0.6, visible: true },
+    { name: "parent_block", header: "Block", type: "string", flex: 0.75, render: ({value}) => value ?? "<Unassigned>", visible: true },
+    { name: "subscription_name", header: "Subscription Name", type: "string", flex: 0.75, visible: false },
+    { name: "subscription_id", header: "Subscription ID", type: "string", flex: 0.75, visible: false },
+    { name: "resource_group", header: "Resource Group", type: "string", flex: 0.75, visible: true },
+    { name: "prefixes", header: "Address Space", type: "string", flex: 0.35, render: ({value}) => value.toString(), visible: true }
   ],
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },
@@ -206,15 +206,15 @@ export const subnets = {
     idProp: "id"
   },
   columns: [
-    { name: "name", header: "Subnet Name", type: "String", defaultFlex: 0.85, visible: true },
-    { name: "utilization", header: "Utilization", type: "number", defaultFlex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value), visible: true },
-    { name: "vnet_name", header: "Parent vNet", type: "string", defaultFlex: 0.85, visible: true },
-    { name: "resource_group", header: "Resource Group", type: "string", defaultFlex: 0.75, visible: false },
-    { name: "subscription_name", header: "Subscription Name", type: "string", defaultFlex: 0.75, visible: false },
-    { name: "subscription_id", header: "Subscription ID", type: "String", defaultFlex: 0.75, visible: false },
-    { name: "size", header: "Total IP's", type: "number", defaultFlex: 0.45, visible: true },
-    { name: "used", header: "Assigned IP's", type: "number", defaultFlex: 0.45, visible: true },
-    { name: "prefix", header: "Address Space", type: "string", defaultFlex: 0.50, visible: true },
+    { name: "name", header: "Subnet Name", type: "String", flex: 0.85, visible: true },
+    { name: "utilization", header: "Utilization", type: "number", flex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value), visible: true },
+    { name: "vnet_name", header: "Parent vNet", type: "string", flex: 0.85, visible: true },
+    { name: "resource_group", header: "Resource Group", type: "string", flex: 0.75, visible: false },
+    { name: "subscription_name", header: "Subscription Name", type: "string", flex: 0.75, visible: false },
+    { name: "subscription_id", header: "Subscription ID", type: "String", flex: 0.75, visible: false },
+    { name: "size", header: "Total IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
+    { name: "used", header: "Assigned IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
+    { name: "prefix", header: "Address Space", type: "string", flex: 0.50, visible: true },
   ],
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },
@@ -254,13 +254,13 @@ export const endpoints = {
     idProp: "uniqueId"
   },
   columns: [
-    { name: "name", header: "Endpoint Name", type: "string", defaultFlex: 0.75, visible: true },
-    { name: "vnet_name", header: "Parent vNet", type: "string", defaultFlex: 0.75, render: ({value}) => value || "N/A", visible: true },
-    { name: "subnet_name", header: "Parent Subnet", type: "string", defaultFlex: 0.75, render: ({value}) => value || "N/A", visible: true },
-    { name: "resource_group", header: "Resource Group", type: "string", defaultFlex: 0.75, visible: true },
-    { name: "subscription_name", header: "Subscription Name", type: "string", defaultFlex: 0.75, visible: false },
-    { name: "subscription_id", header: "Subscription ID", type: "string", defaultFlex: 0.75, visible: false },
-    { name: "private_ip", header: "Private IP", type: "string", defaultFlex: 0.35, render: ({value}) => value || "N/A", visible: true },
+    { name: "name", header: "Endpoint Name", type: "string", flex: 0.75, visible: true },
+    { name: "vnet_name", header: "Parent vNet", type: "string", flex: 0.75, render: ({value}) => value || "N/A", visible: true },
+    { name: "subnet_name", header: "Parent Subnet", type: "string", flex: 0.75, render: ({value}) => value || "N/A", visible: true },
+    { name: "resource_group", header: "Resource Group", type: "string", flex: 0.75, visible: true },
+    { name: "subscription_name", header: "Subscription Name", type: "string", flex: 0.75, visible: false },
+    { name: "subscription_id", header: "Subscription ID", type: "string", flex: 0.75, visible: false },
+    { name: "private_ip", header: "Private IP", type: "string", flex: 0.35, render: ({value}) => value || "N/A", visible: true },
   ],
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },
