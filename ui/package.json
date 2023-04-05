@@ -7,8 +7,7 @@
     "@azure/msal-react": "^1.5.1",
     "@emotion/react": "^11.10.5",
     "@emotion/styled": "^11.10.5",
-    "@inovua/reactdatagrid-community": "^5.8.0",
-    "@inovua/reactdatagrid-enterprise": "^5.8.0",
+    "@inovua/reactdatagrid-community": "^5.8.5",
     "@mui/icons-material": "^5.11.0",
     "@mui/lab": "^5.0.0-alpha.122",
     "@mui/material": "^5.11.2",
@@ -21,6 +20,7 @@
     "echarts": "^5.4.1",
     "echarts-for-react": "^3.0.2",
     "lodash": "^4.17.21",
+    "moment": "^2.29.4",
     "notistack": "^2.0.8",
     "pluralize": "^8.0.0",
     "react": "^18.2.0",
@@ -53,7 +53,7 @@
     ]
   },
   "devDependencies": {
-    "react-inject-env": "^2.1.0",
-    "http-server": "^14.1.1"
+    "http-server": "^14.1.1",
+    "react-inject-env": "^2.1.0"
   }
 }

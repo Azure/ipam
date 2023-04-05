@@ -58,6 +58,39 @@ import { apiRequest } from "../../../../msal/authConfig";
 
 const NetworkContext = React.createContext({});
 
+const filterTypes = Object.assign({}, ReactDataGrid.defaultProps.filterTypes, {
+  array: {
+    name: 'array',
+    emptyValue: null,
+    operators: [
+      {
+        name: 'contains',
+        fn: ({ value, filterValue, data }) => {
+          return filterValue !== (null || '') ? value.join(",").includes(filterValue) : true;
+        }
+      },
+      {
+        name: 'notContains',
+        fn: ({ value, filterValue, data }) => {
+          return filterValue !== (null || '') ? !value.join(",").includes(filterValue) : true;
+        }
+      },
+      {
+        name: 'eq',
+        fn: ({ value, filterValue, data }) => {
+          return filterValue !== (null || '') ? value.includes(filterValue) : true;
+        }
+      },
+      {
+        name: 'neq',
+        fn: ({ value, filterValue, data }) => {
+          return filterValue !== (null || '') ? !value.includes(filterValue) : true;
+        }
+      }
+    ]
+  }
+});
+
 const Spotlight = styled("span")(({ theme }) => ({
   fontWeight: 'bold',
   color: theme.palette.mode === 'dark' ? 'cornflowerblue' : 'mediumblue'
@@ -243,6 +276,14 @@ export default function EditVnets(props) {
     { name: "prefixes", header: "Prefixes", type: "array", flex: 0.75, render: ({value}) => value.join(", "), visible: true },
     { name: "id", header: () => <HeaderMenu setting="networks"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => "", visible: true }
   ], []);
+
+  const filterValue = [
+    { name: "name", operator: "contains", type: "string", value: "" },
+    { name: "resource_group", operator: "contains", type: "string", value: "" },
+    { name: "subscription_name", operator: "contains", type: "string", value: "" },
+    { name: "subscription_id", operator: "contains", type: "string", value: "" },
+    { name: "prefixes", operator: "contains", type: "array", value: "" }
+  ];
 
   const onBatchColumnResize = (batchColumnInfo) => {
     const colsMap = batchColumnInfo.reduce((acc, colInfo) => {
@@ -604,6 +645,8 @@ export default function EditVnets(props) {
               onSelectionChange={({selected}) => setSelectionModel(selected)}
               rowClassName={({data}) => `ipam-block-vnet-${!data.active ? 'stale' : 'normal'}`}
               sortInfo={columnSortState}
+              filterTypes={filterTypes}
+              defaultFilterValue={filterValue}
               style={gridStyle}
             />
           </Box>

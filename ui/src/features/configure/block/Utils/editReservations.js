@@ -9,9 +9,12 @@ import { useSnackbar } from "notistack";
 import { useMsal } from "@azure/msal-react";
 import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
+import moment from 'moment';
+
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
 import '@inovua/reactdatagrid-community/theme/default-dark.css'
+import DateFilter from '@inovua/reactdatagrid-community/DateFilter'
 
 import { useTheme } from '@mui/material/styles';
 
@@ -105,7 +108,7 @@ const MESSAGE_MAP = {
     icon: BlockOutlined,
     color: "error"
   },
-  "canelledTimeout": {
+  "cancelledByTimeout": {
     msg: "Reservation cancelled due to expiration.",
     icon: TimerOffOutlined,
     color: "error"
@@ -113,6 +116,8 @@ const MESSAGE_MAP = {
 };
 
 const ReservationContext = React.createContext({});
+
+// window.moment = moment;
 
 const Spotlight = styled("span")(({ theme }) => ({
   fontWeight: 'bold',
@@ -414,16 +419,100 @@ export default function EditReservations(props) {
 
   const empty = selectionModel.length === 0;
 
+  window.moment = moment;
+
+  const filterTypes = Object.assign({}, ReactDataGrid.defaultProps.filterTypes, {
+    unixdate: {
+      name: 'unixdate',
+      emptyValue: '',
+      operators: [
+        {
+          name: 'after',
+          fn: ({ value, filterValue, column, data }) => {
+            return filterValue !== (null || '') ? moment.unix(value).isAfter(window.moment(filterValue, column.dateFormat)) : true;
+          }
+        },
+        {
+          name: 'afterOrOn',
+          fn: ({ value, filterValue, column, data }) => {
+            return filterValue !== (null || '') ? moment.unix(value).isSameOrAfter(window.moment(filterValue, column.dateFormat)) : true;
+          }
+        },
+        {
+          name: 'before',
+          fn: ({ value, filterValue, column, data }) => {
+            return filterValue !== (null || '') ? moment.unix(value).isBefore(window.moment(filterValue, column.dateFormat)) : true;
+          }
+        },
+        {
+          name: 'beforeOrOn',
+          fn: ({ value, filterValue, column, data }) => {
+            return filterValue !== (null || '') ? moment.unix(value).isSameOrBefore(window.moment(filterValue, column.dateFormat)) : true;
+          }
+        },
+        {
+          name: 'eq',
+          fn: ({ value, filterValue, column, data }) => {
+            return filterValue !== (null || '') ? moment.unix(value).isSame(window.moment(filterValue, column.dateFormat)) : true;
+          }
+        },
+        {
+          name: 'neq',
+          fn: ({ value, filterValue, column, data }) => {
+            return filterValue !== (null || '') ? !moment.unix(value).isSame(window.moment(filterValue, column.dateFormat)) : true;
+          }
+        }
+      ]
+    }
+  });
+
   const columns = React.useMemo(() => [
     { name: "cidr", header: "CIDR", type: "string", flex: 0.5, visible: true },
     { name: "createdBy", header: "Created By", type: "string", flex: 1, visible: true },
     { name: "desc", header: "Description", type: "string", flex: 1.5, visible: true },
-    { name: "createdOn", header: "Creation Date", type: "date", flex: 0.75, render: ({value}) => new Date(value * 1000).toLocaleString(), visible: true },
-    { name: "settledOn", header: "Settled Date", type: "date", flex: 0.75, render: ({value}) => value ? new Date(value * 1000).toLocaleString() : null, visible: false },
+    {
+      name: "createdOn",
+      header: "Creation Date",
+      type: "unixdate",
+      flex: 0.75,
+      dateFormat: 'lll',
+      filterEditor: DateFilter,
+      filterEditorProps: (props, { index }) => {
+        return {
+          dateFormat: 'lll',
+        }
+      },
+      render: ({value}) => moment.unix(value).format('lll'),
+      visible: true
+    },
+    {
+      name: "settledOn",
+      header: "Settled Date",
+      type: "unixdate",
+      flex: 0.75,
+      dateFormat: 'lll',
+      filterEditor: DateFilter,
+      filterEditorProps: (props, { index }) => {
+        return {
+          dateFormat: 'lll',
+        }
+      },
+      render: ({value}) => value ? moment.unix(value).format('lll') : null,
+      visible: false
+    },
     { name: "settledBy", header: "Settled By", type: "string", flex: 1, visible: false },
     { name: "status", header: "Status", headerAlign: "center", width: 90, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({value}) => <ReservationStatus value={value} />, visible: true },
     { name: "id", header: () => <HeaderMenu setting="reservations"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => <ReservationId value={data} />, visible: true }
   ], []);
+
+  const filterValue = [
+    { name: "cidr", operator: "contains", type: "string", value: "" },
+    { name: "createdBy", operator: "contains", type: "string", value: "" },
+    { name: "desc", operator: "contains", type: "string", value: "" },
+    { name: "createdOn", operator: "afterOrOn", type: "unixdate", value: "" },
+    { name: "settledOn", operator: "afterOrOn", type: "unixdate", value: "" },
+    { name: "settledBy", operator: "contains", type: "string", value: "" }
+  ];
 
   const onBatchColumnResize = (batchColumnInfo) => {
     const colsMap = batchColumnInfo.reduce((acc, colInfo) => {
@@ -594,6 +683,11 @@ export default function EditReservations(props) {
     }
   }, [saveTimer, sendResults]);
 
+  function onClose() {
+    handleClose();
+    setFilterActive(true);
+  }
+
   function onSubmit() {
     const request = {
       scopes: apiRequest.scopes,
@@ -605,7 +699,7 @@ export default function EditReservations(props) {
         setSending(true);
         const response = await instance.acquireTokenSilent(request);
         await dispatch(deleteBlockResvsAsync({token: response.accessToken, space: block.parent_space, block: block.name, body: Object.keys(selectionModel)}));
-        handleClose();
+        onClose();
         setSelectionModel([]);
         setFilterActive(true);
         enqueueSnackbar("Successfully removed IP Block reservation(s)", { variant: "success" });
@@ -631,7 +725,7 @@ export default function EditReservations(props) {
       <div sx={{ height: "400px", width: "100%" }}>
         <Dialog
           open={open}
-          onClose={handleClose}
+          onClose={onClose}
           maxWidth="lg"
           fullWidth
           PaperProps={{
@@ -691,15 +785,24 @@ export default function EditReservations(props) {
                 selected={selectionModel}
                 onSelectionChange={({selected}) => setSelectionModel(selected)}
                 sortInfo={columnSortState}
+                filterTypes={filterTypes}
+                defaultFilterValue={filterValue}
                 style={gridStyle}
               />
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleClose}>
+            <Button
+              onClick={onClose}
+              sx={{ position: "unset" }}
+            >
               Cancel
             </Button>
-            <LoadingButton onClick={onSubmit} loading={sending} disabled={empty || sending}>
+            <LoadingButton
+              onClick={onSubmit}
+              loading={sending} disabled={empty || sending}
+              sx={{ position: "unset" }}
+            >
               Remove
             </LoadingButton>
           </DialogActions>
