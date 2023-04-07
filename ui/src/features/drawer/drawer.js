@@ -407,7 +407,7 @@ export default function NavDrawer() {
     var newSearchData = [];
 
     if(vNets) {
-      const vNetExclusions = ['id', 'peerings', 'resv', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_space', 'subscription_id', 'tenant_id', 'metadata'];
+      const vNetExclusions = ['id', 'peerings', 'resv', 'type', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_space', 'subscription_id', 'tenant_id', 'metadata'];
       const vNetFiltered = objToFilter(vNets, 'Virtual Networks', '/discover/vnet', vNetExclusions);
       const vNetResults = orderBy(vNetFiltered, 'phrase', 'asc');
 
@@ -419,7 +419,7 @@ export default function NavDrawer() {
     }
 
     if(vHubs) {
-      const vHubExclusions = ['id', 'peerings', 'vwan_id'];
+      const vHubExclusions = ['id', 'peerings', 'vwan_id', 'resv', 'type', 'size', 'used', 'available', 'utilization', 'parent_space'];
       const vHubFiltered = objToFilter(vHubs, 'Virtual Hubs', '/discover/vhub', vHubExclusions);
       const vHubResults = orderBy(vHubFiltered, 'phrase', 'asc');
 

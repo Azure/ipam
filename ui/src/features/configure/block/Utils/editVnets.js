@@ -652,8 +652,17 @@ export default function EditVnets(props) {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <LoadingButton onClick={onSubmit} loading={sending} disabled={unchanged || sending || refreshing || refreshingState}>
+          <Button
+            onClick={handleClose}
+            sx={{ position: "unset" }}
+          >
+            Cancel
+          </Button>
+          <LoadingButton
+            onClick={onSubmit}
+            loading={sending} disabled={unchanged || sending || refreshing || refreshingState}
+            sx={{ position: "unset" }}
+          >
             Apply
           </LoadingButton>
         </DialogActions>
