@@ -108,7 +108,7 @@ async def create_admin(
     else:
         admin_data = copy.deepcopy(admin_query[0])
 
-        target_admin = next((x for x in admin_data['admins'] if x['id'] == admin['id']), None)
+        target_admin = next((x for x in admin_data['admins'] if uuid.UUID(x['id']) == admin.id), None)
 
         if target_admin:
             raise HTTPException(status_code=400, detail="User is already an admin.")
