@@ -604,7 +604,7 @@ async def create_multi_block_reservation(
                 prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes'])) if target else []
                 block_all_cidrs += prefixes
 
-            for r in target_block['resv']:
+            for r in (r for r in target_block['resv'] if not r['settledOn']):
                 block_all_cidrs.append(r['cidr'])
 
             block_set = IPSet([target_block['cidr']])
@@ -1035,7 +1035,7 @@ async def update_block_vnets(
     outside_block_cidr = []
     net_ipset = IPSet([])
     net_overlap = False
-    resv_ipset = IPSet(x['cidr'] for x in target_block['resv'])
+    resv_ipset = IPSet(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
 
     for v in vnets:
         target_net = next((x for x in net_list if x['id'].lower() == v.lower()), None)
@@ -1235,7 +1235,7 @@ async def create_block_reservation(
         prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes'])) if target else []
         block_all_cidrs += prefixes
 
-    for r in target_block['resv']:
+    for r in (r for r in target_block['resv'] if not r['settledOn']):
         block_all_cidrs.append(r['cidr'])
 
     block_set = IPSet([target_block['cidr']])
