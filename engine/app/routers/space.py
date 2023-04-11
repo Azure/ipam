@@ -1149,6 +1149,7 @@ async def delete_block_nets(
 async def get_block_reservations(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
+    settled: bool = Query(False, description="Include settled reservations."),
     authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
@@ -1168,18 +1169,23 @@ async def get_block_reservations(
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
 
-    for resv in target_block['resv']:
-        resv['space'] = target_space['name']
-        resv['block'] = target_block['name']
-
     if not target_block:
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
+    if settled:
+        reservations = target_block['resv']
+    else:
+        reservations = [r for r in target_block['resv'] if not r['settledOn']]
+
+    for resv in reservations:
+        resv['space'] = target_space['name']
+        resv['block'] = target_block['name']
+
     if not is_admin:
         user_name = get_username_from_jwt(user_assertion)
-        return list(filter(lambda x: x['createdBy'] == user_name, target_block['resv']))
+        return list(filter(lambda x: x['createdBy'] == user_name, reservations))
     else:
-        return target_block['resv']
+        return reservations
 
 @router.post(
     "/{space}/blocks/{block}/reservations",
