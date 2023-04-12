@@ -361,6 +361,10 @@ function parseNets(data, subscriptions) {
     'Updating': {
       color: '#FFA500',
       lineStyle: 'solid'
+    },
+    'Initiated': {
+      color: '#3385FF',
+      lineStyle: 'solid'
     }
   };
 
