@@ -1291,7 +1291,7 @@ async def create_block_reservation(
 @router.delete(
     "/{space}/blocks/{block}/reservations",
     summary = "Delete CIDR Reservations",
-    status_code = 200
+    status_code = 204
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1337,11 +1337,11 @@ async def delete_block_reservations(
     if not ids_exist:
         raise HTTPException(status_code=400, detail="List contains one or more invalid id's.")
 
-    settled_reservations = list(o['id'] for o in target_block['resv'] if o['settledOn'])
-    contains_settled = all(elem in settled_reservations for elem in req)
+    # settled_reservations = list(o['id'] for o in target_block['resv'] if o['settledOn'])
+    # contains_settled = all(elem in settled_reservations for elem in req)
 
-    if contains_settled:
-        raise HTTPException(status_code=400, detail="List contains one or more settled reservations.")
+    # if contains_settled:
+    #     raise HTTPException(status_code=400, detail="List contains one or more settled reservations.")
 
     if not is_admin:
         not_owned = list(filter(lambda x: x['id'] in req and x['createdBy'] != user_name, target_block['resv']))
@@ -1349,7 +1349,9 @@ async def delete_block_reservations(
         if not_owned:
             raise HTTPException(status_code=403, detail="Users can only delete their own reservations.")
 
-    for id in req:
+    filtered_req = [r for r in target_block['resv'] if not r['settledOn'] if r['id'] in req]
+
+    for id in filtered_req:
         index = next((i for i, item in enumerate(target_block['resv']) if item['id'] == id), None)
         # del target_block['resv'][index]
         target_block['resv'][index]['settledOn'] = time.time()
@@ -1358,4 +1360,4 @@ async def delete_block_reservations(
 
     await cosmos_replace(space_query[0], target_space)
 
-    return PlainTextResponse(status_code=status.HTTP_200_OK)
+    return PlainTextResponse(status_code=status.HTTP_204_NO_CONTENT)

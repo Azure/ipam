@@ -11,7 +11,6 @@
     "@mui/icons-material": "^5.11.0",
     "@mui/lab": "^5.0.0-alpha.122",
     "@mui/material": "^5.11.2",
-    "@mui/x-data-grid": "^5.16.0",
     "@reduxjs/toolkit": "^1.9.1",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
