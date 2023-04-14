@@ -1349,7 +1349,7 @@ async def delete_block_reservations(
         if not_owned:
             raise HTTPException(status_code=403, detail="Users can only delete their own reservations.")
 
-    filtered_req = [r for r in target_block['resv'] if not r['settledOn'] if r['id'] in req]
+    filtered_req = [r['id'] for r in target_block['resv'] if not r['settledOn'] if r['id'] in req]
 
     for id in filtered_req:
         index = next((i for i, item in enumerate(target_block['resv']) if item['id'] == id), None)

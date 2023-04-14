@@ -716,6 +716,7 @@ export default function EditReservations(props) {
         }
       } finally {
         setSending(false);
+        refresh();
       }
     })();
   }
