@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ValidationError, EmailStr, root_validator
-from typing import Optional, List, Any
+from typing import Optional, Union, List, Dict, Any
 
 from netaddr import IPSet, IPNetwork, IPAddress
 from datetime import datetime
@@ -102,6 +102,7 @@ class SpaceCIDRReq(BaseModel):
 
     blocks: list
     size: int
+    desc: Optional[str] = None
     reverse_search: Optional[bool] = False
     smallest_cidr: Optional[bool] = False
 
@@ -109,6 +110,7 @@ class BlockCIDRReq(BaseModel):
     """DOCSTRING"""
 
     size: int
+    desc: Optional[str] = None
     reverse_search: Optional[bool] = False
     smallest_cidr: Optional[bool] = False
 
@@ -120,6 +122,12 @@ class DeleteResvReq(List[str]):
 #######################
 
 class VNet(BaseModel):
+    """DOCSTRING"""
+
+    id: str
+    active: Optional[bool]
+
+class Network(BaseModel):
     """DOCSTRING"""
 
     id: str
@@ -143,6 +151,16 @@ class SubnetUtil(BaseModel):
     prefix: str
     size: int
     used: int
+
+class NetworkExpand(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    id: str
+    prefixes: List[str]
+    resource_group: str
+    subscription_id: str
+    tenant_id: str
 
 class VNetExpand(BaseModel):
     """DOCSTRING"""
@@ -172,11 +190,26 @@ class Reservation(BaseModel):
     """DOCSTRING"""
 
     id: str
+    cidr: str
+    desc: Union[str, None]
+    createdOn: float
+    createdBy: str
+    settledOn: Union[float, None]
+    settledBy: Union[str, None]
+    status: str
+
+class ReservationExpand(BaseModel):
+    """DOCSTRING"""
+
+    id: str
     space: Optional[str]
     block: Optional[str]
     cidr: str
-    userId: str
+    desc: Union[str, None]
     createdOn: float
+    createdBy: str
+    settledOn: Union[float, None]
+    settledBy: Union[str, None]
     status: str
     tag: Optional[dict]
 
@@ -289,6 +322,63 @@ class SpaceExpandUtil(BaseModel):
     used: int
 
 ####################
+#   AZURE MODELS   #
+####################
+
+# class VWanHubMetadata(BaseModel):
+#     """DOCSTRING"""
+
+#     vwan_name: str
+#     vwan_id: str
+
+class VNetPeering(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    remote_network: str
+    state: str
+
+class VWanHub(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    id: str
+    prefix: IPv4Network
+    vwan_name: str
+    vwan_id: str
+    parent_space: Union[str,  None]
+    parent_block: Union[str, None]
+    resource_group: str
+    subscription_id: UUID
+    tenant_id: str
+    peerings: List[VNetPeering]
+    size: int
+
+    class Config:
+        json_encoders = {
+            UUID: lambda v: str(v),
+        }
+
+class AzureNetwork(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    id: str
+    type: str
+    prefixes: List[IPv4Network]
+    resource_group: str
+    subscription_id: UUID
+    tenant_id: str
+    peerings: List[VNetPeering]
+    size: int
+    used: Union[int, None]
+
+    class Config:
+        json_encoders = {
+            UUID: lambda v: str(v),
+        }
+
+####################
 #   ADMIN MODELS   #
 ####################
 
@@ -314,6 +404,11 @@ class Exclusions(List[UUID]):
 #   USER MODELS   #
 ###################
 
+class ViewSettings(BaseModel):
+    values: Dict[str, dict]
+    order: List[str]
+    sort: Union[dict, None]
+
 class User(BaseModel):
     """DOCSTRING"""
 
@@ -321,6 +416,20 @@ class User(BaseModel):
     darkMode: bool
     apiRefresh: int
     isAdmin: bool
+
+    class Config:
+        json_encoders = {
+            UUID: lambda v: str(v),
+        }
+
+class UserExpand(BaseModel):
+    """DOCSTRING"""
+
+    id: UUID
+    darkMode: bool
+    apiRefresh: int
+    isAdmin: bool
+    views: Dict[str, ViewSettings]
 
     class Config:
         json_encoders = {
@@ -341,6 +450,15 @@ class UserUpdate(List[JSONPatch]):
 #   TOOL MODELS   #
 ###################
 
+class VNetCIDRReq(BaseModel):
+    """DOCSTRING"""
+
+    space: str
+    blocks: List[str]
+    size: int
+    reverse_search: Optional[bool] = False
+    smallest_cidr: Optional[bool] = False
+
 class SubnetCIDRReq(BaseModel):
     """DOCSTRING"""
 
@@ -355,4 +473,11 @@ class NewSubnetCIDR(BaseModel):
     vnet_name: str
     resource_group: str
     subscription_id: str
+    cidr: str
+
+class NewVNetCIDR(BaseModel):
+    """DOCSTRING"""
+
+    space: str
+    block: str
     cidr: str

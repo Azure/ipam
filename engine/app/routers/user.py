@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, Request, Response, HTTPException, Header, status
+from fastapi import APIRouter, Depends, Request, Response, HTTPException, Header, Query, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.encoders import jsonable_encoder
 
 from pydantic import BaseModel, EmailStr, constr
-from typing import Optional, List, Any
+from typing import Optional, Union, List, Dict, Any
 
 import azure.cosmos.exceptions as exceptions
 
@@ -41,6 +41,18 @@ router = APIRouter(
     dependencies=[Depends(check_token_expired)]
 )
 
+# class ViewValue(BaseModel):
+#     """DOCSTRING"""
+
+#     flex: int
+#     visible: bool
+
+# class ViewPatch(BaseModel):
+#     """DOCSTRING"""
+
+#     values: List[Dict[str, ViewValue]]
+#     order: List[str]
+
 async def new_user(user_id, tenant_id):
     new_user = {
         "id": uuid.uuid4(),
@@ -49,7 +61,8 @@ async def new_user(user_id, tenant_id):
         "data": {
             "id": user_id,
             "darkMode": False,
-            "apiRefresh": 5
+            "apiRefresh": 5,
+            "views": {}
         }
     }
 
@@ -62,25 +75,40 @@ async def scrub_patch(patch):
 
     allowed_ops = [
         {
-            "op": "replace",
+            "ops": ["replace"],
             "path": "/apiRefresh",
             "valid": "(?:(?:^|, )(5|10|15|30))+$",
             "error": "apiRefresh must have a value in [5|10|15|30]."
         },
         {
-            "op": "replace",
+            "ops": ["replace"],
             "path": "/darkMode",
             "valid": "^(?:true|false)$",
             "error": "darkMode must be 'true' or 'false'."
+        },
+        {
+            "ops": ["add", "replace"],
+            "path": "/views/(spaces|blocks|vnets|vhubs|subnets|endpoints|networks|reservations|admins|exclusions)",
+            "valid": ViewSettings,
+            "error": "Valid views are [spaces|blocks|vnets|vhubs|subnets|endpoints|networks|reservations|admins|exclusions]."
         }
     ]
 
     for item in list(patch):
-        target = next((x for x in allowed_ops if (x['op'] == item['op'] and x['path'] == item['path'])), None)
+        target = next((x for x in allowed_ops if ((item['op'] in x['ops']) and re.match(x['path'], item['path']))), None)
 
         if target:
-            if re.match(target['valid'], str(item['value']), re.IGNORECASE):
-                scrubbed_patch.append(item)
+            if isinstance(target['valid'], str):
+                if re.match(target['valid'], str(item['value']), re.IGNORECASE):
+                    scrubbed_patch.append(item)
+                else:
+                    raise HTTPException(status_code=400, detail=target['error'])
+            elif issubclass(target['valid'], BaseModel):
+                try:
+                    test_data = target['valid'](**item['value'])
+                    scrubbed_patch.append(item)
+                except:
+                    raise HTTPException(status_code=400, detail=target['error'])
             else:
                 raise HTTPException(status_code=400, detail=target['error'])
 
@@ -93,6 +121,7 @@ async def scrub_patch(patch):
     status_code = 200
 )
 async def get_users(
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -125,7 +154,10 @@ async def get_users(
 @router.get(
     "/me",
     summary = "Get My User Details",
-    response_model = User,
+    response_model = Union[
+        UserExpand,
+        User
+    ],
     status_code = 200
 )
 @cosmos_retry(
@@ -133,7 +165,8 @@ async def get_users(
     error_msg = "Error fetching user, please try again."
 )
 async def get_user(
-    authorization: str = Header(None),
+    expand: bool = Query(False, description="Show expanded user details"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -164,7 +197,10 @@ async def get_user(
 
     user_data['data']['isAdmin'] = True if is_admin else False
 
-    return user_data['data']
+    if expand:
+        return UserExpand(**user_data['data'])
+    else:
+        return User(**user_data['data'])
 
 @router.patch(
     "/me",
@@ -178,15 +214,13 @@ async def get_user(
 )
 async def update_user(
     updates: UserUpdate,
-    authorization: str = Header(None),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Update a User with a JSON patch:
 
     - **[&lt;JSON Patch&gt;]**: Array of JSON Patches
-
-    &nbsp;
 
     Allowed operations:
     - **replace**
@@ -211,8 +245,11 @@ async def update_user(
     except jsonpatch.InvalidJsonPatch:
         raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
 
-    scrubbed_patch = jsonpatch.JsonPatch(await scrub_patch(patch))
-    user_data['data'] = scrubbed_patch.apply(user_data['data'], in_place = True)
+    try:
+        scrubbed_patch = jsonpatch.JsonPatch(await scrub_patch(patch))
+        user_data['data'] = scrubbed_patch.apply(user_data['data'], in_place = True)
+    except jsonpatch.JsonPatchConflict as e:
+        raise HTTPException(status_code=500, detail=str(e).capitalize())
 
     await cosmos_replace(user_query[0], user_data)
 

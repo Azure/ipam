@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
 import { useSnackbar } from "notistack";
@@ -17,9 +18,12 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
+  // CircularProgress
 } from "@mui/material";
 
-import { deleteBlock } from "../../../ipam/ipamAPI";
+import LoadingButton from '@mui/lab/LoadingButton';
+
+import { deleteBlockAsync } from '../../../ipam/ipamSlice';
 
 import { apiRequest } from '../../../../msal/authConfig';
 
@@ -29,7 +33,7 @@ const Spotlight = styled("span")(({ theme }) => ({
 }));
 
 export default function ConfirmDelete(props) {
-  const { open, handleClose, space, block, refresh } = props;
+  const { open, handleClose, space, block } = props;
 
   const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
@@ -37,6 +41,8 @@ export default function ConfirmDelete(props) {
   const [force, setForce] = React.useState(false);
   const [verify, setVerify] = React.useState(false);
   const [sending, setSending] = React.useState(false);
+
+  const dispatch = useDispatch();
 
   const handleForce = (event) => {
     setForce(event.target.checked);
@@ -55,8 +61,8 @@ export default function ConfirmDelete(props) {
         try {
           setSending(true);
           const response = await instance.acquireTokenSilent(request);
-          await deleteBlock(response.accessToken, space, block, force);
-          refresh();
+          await dispatch(deleteBlockAsync({ token: response.accessToken, space: space, block: block, force: force}));
+          enqueueSnackbar("Successfully removed Block", { variant: "success" });
           handleCancel();
         } catch (e) {
           if (e instanceof InteractionRequiredAuthError) {
@@ -64,9 +70,9 @@ export default function ConfirmDelete(props) {
           } else {
             console.log("ERROR");
             console.log("------------------");
-            console.log(e.response.data.error);
+            console.log(e);
             console.log("------------------");
-            enqueueSnackbar(e.response.data.error, { variant: "error" });
+            enqueueSnackbar(e.error, { variant: "error" });
           }
         } finally {
           setSending(false);
@@ -86,6 +92,14 @@ export default function ConfirmDelete(props) {
       <Dialog open={open} onClose={handleCancel}>
         <DialogTitle>
           Delete Block
+          {/* <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', marginRight: 'auto' }}>
+              Delete Block
+            </Box>
+            <Box sx={{ display: 'flex', visibility: sending ? 'visible' : 'hidden' }}>
+              <CircularProgress size={32} />
+            </Box>
+          </Box> */}
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -109,12 +123,13 @@ export default function ConfirmDelete(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancel}>Cancel</Button>
-          <Button
+          <LoadingButton
             onClick={checkForce}
             color={verify ? "error" : "primary" }
+            loading={sending}
           >
             Delete
-          </Button>
+          </LoadingButton>
         </DialogActions>
       </Dialog>
     </div>

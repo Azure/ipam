@@ -22,11 +22,6 @@ import { TableContext } from "../TableContext";
 
 const detailsTheme = (theme) => createTheme({
   ...theme,
-  // palette: {
-  //   primary: {
-  //     main: "#1a90ff",
-  //   },
-  // },
   overrides: {
     MuiLinearProgress: {
       root: {
@@ -66,7 +61,6 @@ function NumberCircularProgress(props) {
         <CircularProgress style={{ color: "#f5f5f5" }} size={110} variant="determinate" value={100} />
       </Box>
       <CircularProgress
-        // style={{ color: circleColor }}
         color={circleColor}
         size={110}
         variant="determinate"

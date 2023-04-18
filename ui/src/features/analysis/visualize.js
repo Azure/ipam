@@ -1,6 +1,8 @@
 import React from "react";
 import { useSelector } from 'react-redux';
 
+import { concat } from 'lodash';
+
 import ReactECharts from "echarts-for-react";
 
 import { useTheme } from '@mui/material/styles';
@@ -17,13 +19,11 @@ import { cloneDeep, isEmpty } from "lodash";
 
 import {
   selectSpaces,
+  selectSubscriptions,
   selectVNets,
+  selectVHubs,
   selectEndpoints
 } from "../ipam/ipamSlice";
-
-// import { spaces } from "./data/spaces";
-// import { vnets } from "./data/vnets";
-// import { endpoints } from "./data/endpoints";
 
 const opt = {
   graphic: {
@@ -171,6 +171,10 @@ const opt = {
               ${d.value.resourceGroup}
             </div>
             <div class="data">
+              <span style="font-weight: bold">Subscription Name:&nbsp;</span>
+              ${d.value.subscriptionName}
+            </div>
+            <div class="data">
               <span style="font-weight: bold">Subscription ID:&nbsp;</span>
               ${d.value.subscriptionId}
             </div>
@@ -192,6 +196,38 @@ const opt = {
             </div>
           `;
           break;
+          case 'vhub':
+            body = `
+              <div class="data">
+                <span style="font-weight: bold">Name:&nbsp;</span>
+                ${d.name}
+              </div>
+              <div class="data">
+                <span style="font-weight: bold">Parent vWAN:&nbsp;</span>
+                ${d.value.parentVWan}
+              </div>
+              <div class="data">
+                <span style="font-weight: bold">Resource Group:&nbsp;</span>
+                ${d.value.resourceGroup}
+              </div>
+              <div class="data">
+                <span style="font-weight: bold">Subscription Name:&nbsp;</span>
+                ${d.value.subscriptionName}
+              </div>
+              <div class="data">
+                <span style="font-weight: bold">Subscription ID:&nbsp;</span>
+                ${d.value.subscriptionId}
+              </div>
+              <div class="data">
+                <span style="font-weight: bold">Prefix:&nbsp;</span>
+                ${d.value.prefix}
+              </div>
+              <div class="data">
+                <span style="font-weight: bold">Size:&nbsp;</span>
+                ${d.value.size}
+              </div>
+            `;
+            break;
         case 'subnet':
           body = `
             <div class="data">
@@ -201,6 +237,10 @@ const opt = {
             <div class="data">
               <span style="font-weight: bold">Resource Group:&nbsp;</span>
               ${d.value.resourceGroup}
+            </div>
+            <div class="data">
+              <span style="font-weight: bold">Subscription Name:&nbsp;</span>
+              ${d.value.subscriptionName}
             </div>
             <div class="data">
               <span style="font-weight: bold">Subscription ID:&nbsp;</span>
@@ -237,6 +277,10 @@ const opt = {
             <div class="data">
               <span style="font-weight: bold">Resource Group:&nbsp;</span>
               ${d.value.resourceGroup}
+            </div>
+            <div class="data">
+              <span style="font-weight: bold">Subscription Name:&nbsp;</span>
+              ${d.value.subscriptionName}
             </div>
             <div class="data">
               <span style="font-weight: bold">Subscription ID:&nbsp;</span>
@@ -316,7 +360,7 @@ const opt = {
   series: []
 };
 
-function parseTree(spaces, vnets, endpoints) {
+function parseTree(spaces, subscriptions, vnets, vhubs, endpoints) {
   const series = spaces.map((space) => {
     const data = {
       name: space.name,
@@ -328,6 +372,85 @@ function parseTree(spaces, vnets, endpoints) {
         used: space.used
       },
       children: space.blocks.map((block) => {
+        let vhub_children = block.vnets.reduce((results, vnet) => {
+          const target = vhubs.find((x) => x.id === vnet.id);
+
+          if(target) {
+            results.push({
+              name: target.name,
+              value: {
+                type: 'vhub',
+                name: target.name,
+                parentVWan: target.vwan_name,
+                resourceGroup: target.resource_group,
+                subscriptionId: target.subscription_id,
+                subscriptionName: subscriptions.find((sub) => sub.subscription_id === target.subscription_id)?.name || 'Unknown',
+                tentantId: target.tenant_id,
+                prefix: target.prefixes.toString(),
+                size: target.size
+              }
+            });
+          }
+
+          return results;
+        }, []);
+
+        let vnet_children = block.vnets.reduce((results, vnet) => {
+          const target = vnets.find((x) => x.id === vnet.id);
+
+          if(target) {
+            results.push({
+              name: target.name,
+              value: {
+                type: 'vnet',
+                name: target.name,
+                resourceGroup: target.resource_group,
+                subscriptionId: target.subscription_id,
+                subscriptionName: subscriptions.find((sub) => sub.subscription_id === target.subscription_id)?.name || 'Unknown',
+                tentantId: target.tenant_id,
+                prefixes: target.prefixes,
+                size: target.size,
+                used: target.used
+              },
+              children: target.subnets.map((subnet) => {
+                const subnetId = `${vnet.id}/subnets/${subnet.name}`;
+
+                return {
+                  name: subnet.name,
+                  value: {
+                    type: 'subnet',
+                    name: subnet.name,
+                    resourceGroup: target.resource_group,
+                    subscriptionId: target.subscription_id,
+                    subscriptionName: subscriptions.find((sub) => sub.subscription_id === target.subscription_id)?.name || 'Unknown',
+                    tentantId: target.tenant_id,
+                    prefix: subnet.prefix,
+                    size: subnet.size,
+                    used: subnet.used
+                  },
+                  children: endpoints.filter((endpoint) => {
+                    return endpoint.subnet_id.toLowerCase() === subnetId.toLocaleLowerCase();
+                  }).map((endpoint) => {
+                    return {
+                      name: endpoint.name,
+                      value: {
+                        type: 'endpoint',
+                        privateIp: endpoint.private_ip,
+                        resourceGroup: endpoint.resource_group,
+                        subscriptionId: endpoint.subscription_id,
+                        subscriptionName: subscriptions.find((sub) => sub.subscription_id === target.subscription_id)?.name || 'Unknown',
+                        tentantId: endpoint.tenant_id
+                      }
+                    };
+                  }),
+                };
+              }),
+            });
+          }
+
+          return results;
+        }, []);
+
         return {
           name: block.name,
           value: {
@@ -337,58 +460,7 @@ function parseTree(spaces, vnets, endpoints) {
             size: block.size,
             used: block.used
           },
-          children: block.vnets.reduce((results, vnet) => {
-            const target = vnets.find((x) => x.id === vnet.id);
-
-            if(target) {
-              results.push({
-                name: target.name,
-                value: {
-                  type: 'vnet',
-                  name: target.name,
-                  resourceGroup: target.resource_group,
-                  subscriptionId: target.subscription_id,
-                  tentantId: target.tenant_id,
-                  prefixes: target.prefixes,
-                  size: target.size,
-                  used: target.used
-                },
-                children: target.subnets.map((subnet) => {
-                  const subnetId = `${vnet.id}/subnets/${subnet.name}`;
-
-                  return {
-                    name: subnet.name,
-                    value: {
-                      type: 'subnet',
-                      name: subnet.name,
-                      resourceGroup: target.resource_group,
-                      subscriptionId: target.subscription_id,
-                      tentantId: target.tenant_id,
-                      prefix: subnet.prefix,
-                      size: subnet.size,
-                      used: subnet.used
-                    },
-                    children: endpoints.filter((endpoint) => {
-                      return endpoint.subnet_id.toLowerCase() === subnetId.toLocaleLowerCase();
-                    }).map((endpoint) => {
-                      return {
-                        name: endpoint.name,
-                        value: {
-                          type: 'endpoint',
-                          privateIp: endpoint.private_ip,
-                          resourceGroup: endpoint.resource_group,
-                          subscriptionId: endpoint.subscription_id,
-                          tentantId: endpoint.tenant_id
-                        }
-                      };
-                    }),
-                  };
-                }),
-              });
-            }
-
-            return results;
-          }, []),
+          children: concat(vnet_children, vhub_children)
         };
       }),
     };
@@ -542,7 +614,9 @@ const Visualize = () => {
   const searchRef = React.useRef(null);
 
   const spaces = useSelector(selectSpaces);
+  const subscriptions = useSelector(selectSubscriptions);
   const vnets = useSelector(selectVNets);
+  const vhubs = useSelector(selectVHubs);
   const endpoints = useSelector(selectEndpoints);
 
   const theme = useTheme();
@@ -554,12 +628,12 @@ const Visualize = () => {
   }, []);
 
   React.useEffect(() => {
-    if(spaces && vnets && endpoints) {
+    if(spaces && subscriptions && vnets && vhubs && endpoints) {
       var newOptions = cloneDeep(opt);
 
       delete newOptions.graphic;
       newOptions.darkMode = theme.palette.mode === 'dark' ? true : false;
-      newOptions.series = parseTree(spaces, vnets, endpoints);
+      newOptions.series = parseTree(spaces, subscriptions, vnets, vhubs, endpoints);
       newOptions.legend.data = newOptions.series.map((option) => {
         return {
           name: option.name,
@@ -574,7 +648,7 @@ const Visualize = () => {
         })
       );
     }
-  }, [spaces, vnets, endpoints, theme]);
+  }, [spaces, subscriptions, vnets, vhubs, endpoints, theme]);
 
   function setDataFocus(target) {
     if(eChartsRef && !isEmpty(options.series)) {
@@ -636,7 +710,6 @@ const Visualize = () => {
           option={options}
           notMerge={true}
           ref={ref}
-          // style={{ height: "750px", width: "750px" }}
           style={{ height: "100%", width: "100%" }}
         />
       </div>

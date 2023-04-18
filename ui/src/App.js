@@ -26,10 +26,17 @@ import {
 function App() {
   const darkModeSetting = useSelector(getDarkMode);
 
-  const darkTheme = createTheme({
+  const ipamTheme = createTheme({
     palette: {
       mode: darkModeSetting ? 'dark' : 'light',
     },
+    components: {
+      MuiButtonBase: {
+        defaultProps: {
+          disableRipple: true
+        },
+      },
+    }
   });
 
   return (
@@ -43,7 +50,7 @@ function App() {
           TransitionComponent={Slide}
         >
           <Router>
-            <ThemeProvider theme={darkTheme}>
+            <ThemeProvider theme={ipamTheme}>
               <CssBaseline />
               <NavDrawer />
             </ThemeProvider>

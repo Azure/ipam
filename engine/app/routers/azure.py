@@ -10,8 +10,11 @@ from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
 
 import azure.cosmos.exceptions as exceptions
 
+from typing import Optional, List
+
 import re
 import copy
+import time
 import asyncio
 from ipaddress import IPv4Network
 from netaddr import IPSet, IPNetwork
@@ -25,6 +28,7 @@ from app.dependencies import (
     get_tenant_id
 )
 
+from app.models import *
 from . import argquery
 
 from app.routers.common.helper import (
@@ -37,10 +41,6 @@ from app.routers.common.helper import (
     arg_query,
     vnet_fixup,
     subnet_fixup
-)
-
-from app.routers.space import (
-    get_spaces
 )
 
 from app.globals import globals
@@ -56,6 +56,13 @@ router = APIRouter(
 async def get_subscriptions_sdk(credentials):
     """DOCSTRING"""
 
+    QUOTA_MAP = {
+        "EnterpriseAgreement": "Enterprise Agreement",
+        "MSDNDevTest": "Dev/Test",
+        "MSDN": "PAYGO",
+        "Internal": "Microsoft Internal"
+    }
+
     azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
 
@@ -68,9 +75,20 @@ async def get_subscriptions_sdk(credentials):
     )
 
     async for poll in subscription_client.subscriptions.list():
+        quota_id = poll.subscription_policies.quota_id
+        quota_id_parts = quota_id.split("_")
+
+        if quota_id_parts[0] in QUOTA_MAP:
+            quota_type = QUOTA_MAP[quota_id_parts[0]]
+        else:
+            quota_type = "Unknown"
+
         sub = {
-            "tenant_id": poll.tenant_id,
-            "subscription_id": poll.subscription_id
+            "id": poll.id,
+            "name": poll.display_name,
+            "type": quota_type,
+            "subscription_id": poll.subscription_id,
+            "tenant_id": poll.tenant_id
         }
 
         subscriptions.append(sub)
@@ -78,6 +96,47 @@ async def get_subscriptions_sdk(credentials):
     await subscription_client.close()
 
     return subscriptions
+
+async def update_vhub_data(auth, admin, hubs):
+    """DOCSTRING"""
+
+    if admin:
+        creds = await get_client_credentials()
+    else:
+        user_assertion=auth.split(' ')[1]
+        creds = await get_obo_credentials(user_assertion)
+
+    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
+    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+
+    for hub in hubs:
+        network_client = NetworkManagementClient(
+            credential=creds,
+            subscription_id=hub['subscription_id'],
+            base_url=azure_arm_url,
+            credential_scopes=[azure_arm_scope]
+        )
+
+        hub['peerings'] = []
+
+        try:
+            async for poll in network_client.hub_virtual_network_connections.list(hub['resource_group'], hub['name']):
+                connection_data = {
+                    "name": poll.name,
+                    "remote_network": poll.remote_virtual_network.id,
+                    "state": "Connected"
+                }
+
+                hub['peerings'].append(connection_data)
+        except HttpResponseError:
+            logger.error("Error fetching vWAN Hub connections on subscription {}".format(subscription['subscription_id']))
+            pass
+
+        await network_client.close()
+
+    await creds.close()
+
+    return hubs
 
 async def get_vmss(auth, admin):
     """DOCSTRING"""
@@ -231,7 +290,17 @@ async def subscription(
     Get a list of Azure subscriptions.
     """
 
-    subscription_list = await arg_query(authorization, admin, argquery.SUBSCRIPTION)
+    # subscription_list = await arg_query(authorization, admin, argquery.SUBSCRIPTION)
+
+    if admin:
+        creds = await get_client_credentials()
+    else:
+        user_assertion=authorization.split(' ')[1]
+        creds = await get_obo_credentials(user_assertion)
+
+    subscription_list = await get_subscriptions_sdk(creds)
+
+    await creds.close()
 
     return subscription_list
 
@@ -271,12 +340,12 @@ async def get_vnet(
         vnet['used'] = total_used
 
         # Python 3.9+
-        # ip_blocks = [(block | {'parentSpace': space['name']}) for space in space_query for block in space['blocks']]
-        ip_blocks = [{**block , **{'parentSpace': space['name']}} for space in space_query for block in space['blocks']]
+        # ip_blocks = [(block | {'parent_space': space['name']}) for space in space_query for block in space['blocks']]
+        ip_blocks = [{**block , **{'parent_space': space['name']}} for space in space_query for block in space['blocks']]
         ip_block = next((x for x in ip_blocks if vnet['id'] in [v['id'] for v in x['vnets']]), None)
 
-        vnet['parentSpace'] = ip_block['parentSpace'] if ip_block else None
-        vnet['parentBlock'] = ip_block['name'] if ip_block else None
+        vnet['parent_space'] = ip_block['parent_space'] if ip_block else None
+        vnet['parent_block'] = ip_block['name'] if ip_block else None
 
         updated_vnet_list.append(vnet)
   
@@ -345,6 +414,89 @@ async def get_subnet(
     return updated_subnet_list
 
 @router.get(
+    "/vhub",
+    summary = "Get All Virtual Hubs",
+    response_model = List[VWanHub]
+)
+async def get_vhub(
+    authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
+    admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Virtual Hubs.
+    """
+
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
+
+    vwan_hubs = await arg_query(authorization, admin, argquery.VHUB)
+    vwan_hubs_update = await update_vhub_data(authorization, admin, vwan_hubs)
+
+    updated_vhub_list = []
+
+    for hub in vwan_hubs_update:
+        hub['size'] = IPNetwork(hub['prefix']).size
+        hub['used'] = None
+
+        # Python 3.9+
+        # ip_blocks = [(block | {'parent_space': space['name']}) for space in space_query for block in space['blocks']]
+        ip_blocks = [{**block , **{'parent_space': space['name']}} for space in space_query for block in space['blocks']]
+        ip_block = next((x for x in ip_blocks if hub['id'] in [v['id'] for v in x['vnets']]), None)
+
+        hub['parent_space'] = ip_block['parent_space'] if ip_block else None
+        hub['parent_block'] = ip_block['name'] if ip_block else None
+
+        updated_vhub_list.append(hub)
+
+    return updated_vhub_list
+
+@router.get(
+    "/network",
+    summary = "Get All Azure Networks (vNets & vHubs)",
+    # response_model = List[AzureNetwork]
+)
+async def get_network(
+    authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
+    admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Azure Networks (vNets & vHubs).
+    """
+
+    tasks = [
+        asyncio.create_task(get_vnet(authorization, tenant_id, admin)),
+        asyncio.create_task(get_vhub(authorization, tenant_id, admin))
+    ]
+
+    networks = await asyncio.gather(*tasks)
+
+    # networks[0] = vnet_fixup(networks[0])
+
+    for vnet in networks[0]:
+        vnet['type'] = 'vnet'
+
+    for vwan in networks[1]:
+        vwan['type'] = 'vhub'
+        vwan['prefixes'] = [vwan['prefix']]
+        vwan['resv'] = None
+        del vwan['prefix']
+
+        for peering in vwan['peerings']:
+            target_vnet = next((x for x in networks[0] if x['id'] == peering['remote_network']), None)
+
+            if target_vnet:
+                peering_match = ".*(virtualNetworks/HV_{}_).*".format(vwan['name'])
+                target_peering = next((x for x in target_vnet['peerings'] if re.match(peering_match, x['remote_network'])), None)
+
+                if target_peering:
+                    target_peering['remote_network'] = vwan['id']
+
+    results = [item for sublist in networks for item in sublist]
+
+    return results
+
+@router.get(
     "/pe",
     summary = "Get All Private Endpoints"
 )
@@ -388,8 +540,10 @@ async def vmss(
     Get a list of Azure VM Scale Sets.
     """
 
-    results = await get_vmss(authorization, admin)
-    # results = await arg_query(authorization, admin, argquery.VM_SCALE_SET)
+    if globals.AZURE_ENV == "AZURE_PUBLIC":
+        results = await arg_query(authorization, admin, argquery.VM_SCALE_SET)
+    else:
+        results = await get_vmss(authorization, admin)
 
     return results
 
@@ -489,6 +643,22 @@ async def apim(
 
     return results
 
+@router.get(
+    "/lb",
+    summary = "Get All Load Balancers"
+)
+async def lb(
+    authorization: str = Header(None),
+    admin: str = Depends(get_admin)
+):
+    """
+    Get a list of all Azure Load Balancers.
+    """
+
+    results = await arg_query(authorization, admin, argquery.LB)
+
+    return results
+
 async def multi_helper(func, list, *args):
     """DOCSTRING"""
 
@@ -518,133 +688,20 @@ async def multi(
     tasks.append(asyncio.create_task(multi_helper(vnetgw, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(appgw, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(apim, result_list, authorization, admin)))
+    tasks.append(asyncio.create_task(multi_helper(lb, result_list, authorization, admin)))
 
     await asyncio.gather(*tasks)
 
     return [item for sublist in result_list for item in sublist]
-
-@router.get(
-    "/tree",
-    summary = "Get Space Tree View"
-)
-async def tree(
-    authorization: str = Header(None),
-    tenant_id: str = Depends(get_tenant_id),
-    admin: str = Depends(get_admin)
-):
-    """
-    Get a hierarchical tree view of Spaces, Blocks, Virtual Networks, Subnets, and Endpoints.
-    """
-
-    tasks = []
-    space_list=[]
-    vnet_list=[]
-    subnet_list = []
-    endpoint_list = []
-
-    tasks.append(asyncio.create_task(multi_helper(get_spaces, space_list, False, True, authorization, tenant_id, True)))
-    tasks.append(asyncio.create_task(multi_helper(get_vnet, vnet_list, authorization, tenant_id, admin)))
-    tasks.append(asyncio.create_task(multi_helper(get_subnet, subnet_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(pe, endpoint_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vm, endpoint_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vmss, endpoint_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(fwvnet, endpoint_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(bastion, endpoint_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vnetgw, endpoint_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(appgw, endpoint_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(apim, endpoint_list, authorization, admin)))
-
-    await asyncio.gather(*tasks)
-
-    tree = []
-
-    spaces = [item for sublist in space_list for item in sublist]
-
-    for space in spaces:
-        space_item = {
-            "name": space['name'],
-            "value": space['size']
-        }
-
-        if len(space['blocks']) > 0:
-            space_item['children'] = []
-            for block in space['blocks']:
-                block_item = {
-                    "name": block['name'],
-                    "value": block['size'],
-                    "ip": block['cidr']
-                }
-                space_item['value'] -= block_item['value']
-
-                vnets = [item for sublist in vnet_list for item in sublist]
-                block_vnets = list(filter(lambda x: x['id'].lower() in (map(lambda y: y['id'].lower(), block['vnets'])), vnets))
-
-                if len(block_vnets) > 0:
-                    block_item['children'] = []
-                    for vnet in block_vnets:
-                        # vnet_details = next((x for x in vnets if x['id'].lower() == vnet.lower()), None)
-                        target_prefix = next((x for x in vnet['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
-
-                        vnet_item = {
-                            "name": vnet['name'],
-                            "value": IPNetwork(target_prefix).size,
-                            "ip": target_prefix
-                        }
-                        block_item['value'] -= vnet_item['value']
-
-                        subnets = [item for sublist in subnet_list for item in sublist]
-                        vnet_subnets = list(filter(lambda x: x['vnet_id'].lower() == vnet['id'].lower(), subnets))
-
-                        if len(vnet_subnets) > 0:
-                            vnet_item['children'] = []
-                            for subnet in vnet_subnets:
-                                subnet_item = {
-                                    "name": subnet['name'],
-                                    "value": IPNetwork(subnet['prefix']).size,
-                                    "ip": subnet['prefix']
-                                }
-                                vnet_item['value'] -= subnet_item['value']
-
-                                endpoints = [item for sublist in endpoint_list for item in sublist]
-                                subnet_endpoints = list(filter(lambda x: x['subnet_id'].lower() == subnet['id'].lower(), endpoints))
-                                unique_subnet_endpoints = list({x['id']: x for x in subnet_endpoints}.values())
-
-                                if len(subnet_endpoints) > 0:
-                                    subnet_item['children'] = []
-                                    for endpoint in unique_subnet_endpoints:
-                                        endpoint_item = {
-                                            "name": endpoint['name'],
-                                            "value": sum(se['name'] == endpoint['name'] for se in subnet_endpoints),
-                                            "ip": endpoint['private_ip']
-                                        }
-                                        subnet_item['value'] -= endpoint_item['value']
-
-                                        # subnet_item['value'] -= 1
-                                        subnet_item['children'].append(endpoint_item)
-
-                                # vnet_item['value'] -= IPNetwork(subnet['prefix']).size
-                                vnet_item['children'].append(subnet_item)
-
-                        # block_item['value'] -= IPNetwork(target_prefix).size
-                        block_item['children'].append(vnet_item)
-
-                # space_item['value'] -= block['size']
-                space_item["children"].append(block_item)
-
-        tree.append({
-            "name": "root",
-            "children": [space_item]
-        })
-
-    return tree
 
 @cosmos_retry(
     max_retry = 5,
     error_msg = "Error updating reservation status!"
 )
 async def match_resv_to_vnets():
-    vnet_list = await arg_query(None, True, argquery.VNET)
-    stale_resv = list(x['resv'] for x in vnet_list if x['resv'] != None)
+    net_list = await get_network(None, globals.TENANT_ID, True)
+    stale_resv = list(x['resv'] for x in net_list if x['resv'] != None)
+    # ignore_status = ['fulfilled', 'cencelledByUser', 'cancelledTimeout']
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", globals.TENANT_ID)
 
@@ -652,63 +709,75 @@ async def match_resv_to_vnets():
         original_space = copy.deepcopy(space)
 
         for block in space['blocks']:
-            for vnet in block['vnets']:
-                active = next((x for x in vnet_list if x['id'] == vnet['id']), None)
+            for net in block['vnets']:
+                active = next((x for x in net_list if x['id'] == net['id']), None)
 
                 if active:
-                    vnet['active'] = True
+                    net_prefix_set = IPSet(active['prefixes'])
+                    block_network = IPSet([block['cidr']])
+
+                    if net_prefix_set & block_network:
+                        net['active'] = True
+                    else:
+                        net['active'] = False
                 else:
-                    vnet['active'] = False
+                    net['active'] = False
 
             for index, resv in enumerate(block['resv']):
-                if resv['id'] in stale_resv:
-                    vnet = next((x for x in vnet_list if x['resv'] == resv['id']), None)
+                if resv['settledOn'] is None:
+                    if resv['id'] in stale_resv:
+                        net = next((x for x in net_list if x['resv'] == resv['id']), None)
 
-                    # print("RESV: {}".format(vnet['resv']))
-                    # print("BLOCK {}".format(block['name']))
-                    # print("VNET {}".format(vnet['id']))
-                    # print("INDEX: {}".format(index))
+                        # print("RESV: {}".format(vnet['resv']))
+                        # print("BLOCK {}".format(block['name']))
+                        # print("VNET {}".format(vnet['id']))
+                        # print("INDEX: {}".format(index))
 
-                    stale_resv.remove(resv['id'])
-                    resv['status'] = "wait"
+                        stale_resv.remove(resv['id'])
+                        resv['status'] = "wait"
 
-                    cidr_match = resv['cidr'] in vnet['prefixes']
+                        cidr_match = resv['cidr'] in net['prefixes']
 
-                    if not cidr_match:
-                        # print("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
-                        # logging.info("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
-                        resv['status'] = "warnCIDRMismatch"
+                        if not cidr_match:
+                            # print("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
+                            # logging.info("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
+                            resv['status'] = "warnCIDRMismatch"
 
-                    existing_block_cidrs = []
+                        existing_block_cidrs = []
 
-                    for v in block['vnets']:
-                        target_vnet = next((x for x in vnet_list if x['id'].lower() == v['id'].lower()), None)
+                        for v in block['vnets']:
+                            target_net = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
 
-                        if target_vnet:
-                            target_cidr = next((x for x in target_vnet['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
-                            existing_block_cidrs.append(target_cidr)
+                            if target_net:
+                                target_cidr = next((x for x in target_net['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
+                                existing_block_cidrs.append(target_cidr)
 
-                    vnet_cidr = next((x for x in vnet['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
+                        net_cidr = next((x for x in net['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
 
-                    if vnet_cidr in existing_block_cidrs:
-                        # print("A vNET with the assigned CIDR has already been associated with the target IP Block.")
-                        # logging.info("A vNET with the assigned CIDR has already been associated with the target IP Block.")
-                        resv['status'] = "errCIDRExists"
+                        if net_cidr in existing_block_cidrs:
+                            # print("A vNET with the assigned CIDR has already been associated with the target IP Block.")
+                            # logging.info("A vNET with the assigned CIDR has already been associated with the target IP Block.")
+                            resv['status'] = "errCIDRExists"
 
-                    if resv['status'] == "wait":
-                        # print("vNET is being added to IP Block...")
-                        # logging.info("vNET is being added to IP Block...")
-                        block['vnets'].append(
-                            {
-                                "id": vnet['id'],
-                                "active": True
-                            }
-                        )
-                        del block['resv'][index]
-                else:
-                    # print("Resetting status to 'wait'.")
-                    # logging.info("Resetting status to 'wait'.")
-                    resv['status'] = "wait"
+                        if resv['status'] == "wait":
+                            # print("vNET is being added to IP Block...")
+                            # logging.info("vNET is being added to IP Block...")
+                            block['vnets'].append(
+                                {
+                                    "id": net['id'],
+                                    "active": True
+                                }
+                            )
+
+                            # del block['resv'][index]
+
+                            resv['status'] = "fulfilled"
+                            resv['settledOn'] = time.time()
+                            resv['settledBy'] = "AzureIPAM"
+                    else:
+                        # print("Resetting status to 'wait'.")
+                        # logging.info("Resetting status to 'wait'.")
+                        resv['status'] = "wait"
 
         await cosmos_replace(original_space, space)
 

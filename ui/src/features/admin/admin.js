@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useSelector, useDispatch } from 'react-redux';
 import { styled } from '@mui/material/styles';
 
 import { useMsal } from "@azure/msal-react";
@@ -7,7 +8,7 @@ import { callMsGraphUsersFilter } from "../../msal/graph";
 
 import { useSnackbar } from 'notistack';
 
-import { isEqual, throttle } from 'lodash';
+import { isEqual, isEmpty, pickBy, orderBy, throttle } from 'lodash';
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
@@ -23,12 +24,21 @@ import {
   TextField,
   CircularProgress,
   Popper,
-  Typography
+  Typography,
+  Menu,
+  MenuItem,
+  ListItemIcon
 }  from "@mui/material";
 
 import {
   SaveAlt,
-  HighlightOff
+  HighlightOff,
+  ExpandCircleDownOutlined,
+  FileDownloadOutlined,
+  FileUploadOutlined,
+  ReplayOutlined,
+  TaskAltOutlined,
+  CancelOutlined
 } from "@mui/icons-material";
 
 import Shrug from "../../img/pam/Shrug";
@@ -38,7 +48,14 @@ import {
   replaceAdmins
 } from "../ipam/ipamAPI";
 
+import {
+  selectViewSetting,
+  updateMeAsync
+} from "../ipam/ipamSlice";
+
 import { apiRequest } from "../../msal/authConfig";
+
+const AdminContext = React.createContext({});
 
 // Page Styles
 
@@ -79,7 +96,7 @@ const DataSection = styled("div")(({ theme }) => ({
   height: "100%",
   width: "100%",
   borderRadius: "4px",
-  marginBottom: theme.spacing(1.5)
+  // marginBottom: theme.spacing(1.5)
 }));
 
 // Grid Styles
@@ -89,11 +106,170 @@ const GridBody = styled("div")({
   width: "100%"
 });
 
+const Update = styled("span")(({ theme }) => ({
+  fontWeight: 'bold',
+  color: theme.palette.error.light,
+  textShadow: '-1px 0 white, 0 1px white, 1px 0 white, 0 -1px white'
+}));
+
 const gridStyle = {
   height: '100%',
   border: "1px solid rgba(224, 224, 224, 1)",
   fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
 };
+
+function HeaderMenu(props) {
+  const { setting } = props;
+  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.useContext(AdminContext);
+
+  const [menuOpen, setMenuOpen] = React.useState(false);
+
+  const menuRef = React.useRef(null);
+
+  const viewSetting = useSelector(state => selectViewSetting(state, setting));
+
+  const onClick = () => {
+    setMenuOpen(prev => !prev);
+  }
+
+  const onSave = () => {
+    saveConfig();
+    setMenuOpen(false);
+  }
+
+  const onLoad = () => {
+    loadConfig();
+    setMenuOpen(false);
+  }
+
+  const onReset = () => {
+    resetConfig();
+    setMenuOpen(false);
+  }
+
+  return (
+    <Box
+      ref={menuRef}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }}
+    >
+      {
+        saving ?
+        <React.Fragment>
+          <CircularProgress size={24} />
+        </React.Fragment> :
+        (sendResults !== null) ?
+        <React.Fragment>
+          {
+            sendResults ?
+            <TaskAltOutlined color="success"/> :
+            <CancelOutlined color="error"/>
+          }
+        </React.Fragment> :
+        <React.Fragment>
+          <IconButton
+            id="table-state-menu"
+            onClick={onClick}
+          >
+            <ExpandCircleDownOutlined />
+          </IconButton>
+          <Menu
+            id="table-state-menu"
+            anchorEl={menuRef.current}
+            open={menuOpen}
+            onClose={onClick}
+            // onClick={onClick}
+            PaperProps={{
+              elevation: 0,
+              style: {
+                width: 215,
+              },
+              sx: {
+                overflow: 'visible',
+                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                mt: 1.5,
+                '& .MuiAvatar-root': {
+                  width: 32,
+                  height: 32,
+                  ml: -0.5,
+                  mr: 1,
+                },
+                '&:before': {
+                  content: '""',
+                  display: 'block',
+                  position: 'absolute',
+                  top: 0,
+                  right: 26,
+                  width: 10,
+                  height: 10,
+                  bgcolor: 'background.paper',
+                  transform: 'translateY(-50%) rotate(45deg)',
+                  zIndex: 0,
+                },
+              },
+            }}
+          >
+            <MenuItem
+              onClick={onLoad}
+              disabled={ !viewSetting || isEmpty(viewSetting) }
+            >
+              <ListItemIcon>
+                <FileDownloadOutlined fontSize="small" />
+              </ListItemIcon>
+              Load Saved View
+            </MenuItem>
+            <MenuItem onClick={onSave}>
+              <ListItemIcon>
+                <FileUploadOutlined fontSize="small" />
+              </ListItemIcon>
+              Save Current View
+            </MenuItem>
+            <MenuItem onClick={onReset}>
+              <ListItemIcon>
+                <ReplayOutlined fontSize="small" />
+              </ListItemIcon>
+              Reset Default View
+            </MenuItem>
+          </Menu>
+        </React.Fragment>
+      }
+    </Box>
+  )
+}
+
+function RenderDelete(props) {
+  const { value } = props;
+  const { admins, setAdmins, selectionModel } = React.useContext(AdminContext);
+
+  const flexCenter = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  }
+
+  return (
+    <Tooltip title="Delete">
+      <span style={{...flexCenter}}>
+        <IconButton
+          color="error"
+          sx={{
+            padding: 0,
+            display: (isEqual([value.id], Object.keys(selectionModel))) ? "flex" : "none"
+          }}
+          disableFocusRipple
+          disableTouchRipple
+          disableRipple
+          onClick={() => setAdmins(admins.filter(x => x.id !== value.id))}
+        >
+          <HighlightOff />
+        </IconButton>
+      </span>
+    </Tooltip>
+  );
+}
 
 export default function Administration() {
   const { instance, accounts } = useMsal();
@@ -101,8 +277,11 @@ export default function Administration() {
 
   const [admins, setAdmins] = React.useState(null);
   const [loadedAdmins, setLoadedAdmins] = React.useState([]);
+  const [gridData, setGridData] = React.useState(null);
   const [selectionModel, setSelectionModel] = React.useState({});
   const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [sendResults, setSendResults] = React.useState(null);
 
   const [open, setOpen] = React.useState(false);
   const [options, setOptions] = React.useState(null);
@@ -110,21 +289,29 @@ export default function Administration() {
   const [selected, setSelected] = React.useState(null);
   const [sending, setSending] = React.useState(false);
 
-  const theme = useTheme();
+  const [columnState, setColumnState] = React.useState(null);
+  const [columnOrderState, setColumnOrderState] = React.useState([]);
+  const [columnSortState, setColumnSortState] = React.useState({});
 
+  const viewSetting = useSelector(state => selectViewSetting(state, 'admins'));
+  const dispatch = useDispatch();
+
+  const saveTimer = React.useRef();
   const adminLoadedRef = React.useRef(false);
 
-  const columns = [
-    { name: "name", header: "Name", lockable: false, defaultFlex: 0.5 },
-    { name: "email", header: "Email", lockable: false, defaultFlex: 1 },
-    { name: "id", header: "Object ID", lockable: false, defaultFlex: 0.75 },
-    { name: "delete", header: "Delete", width: 50, resizable: false, hideable: false, showColumnMenuTool: false, renderHeader: () => "", render: ({data}) => renderDelete(data) }
-  ];
+  const theme = useTheme();
+
+  const columns = React.useMemo(() => [
+    { name: "name", header: "Name", type: "string", flex: 0.5, visible: true },
+    { name: "email", header: "Email", type: "string", flex: 1, visible: true },
+    { name: "id", header: "Object ID", type: "string", flex: 0.75, visible: true },
+    { name: "delete", header: () => <HeaderMenu setting="admins"/> , width: 50, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => <RenderDelete value={data} />, visible: true }
+  ], []);
 
   const filterValue = [
-    { name: 'name', operator: 'contains', type: 'string', value: '' },
-    { name: 'email', operator: 'contains', type: 'string', value: '' },
-    { name: 'id', operator: 'contains', type: 'string', value: '' }
+    { name: "name", operator: "contains", type: "string", value: "" },
+    { name: "email", operator: "contains", type: "string", value: "" },
+    { name: "id", operator: "contains", type: "string", value: "" }
   ];
 
   const usersLoading = open && !options;
@@ -219,6 +406,18 @@ export default function Administration() {
     admins && setLoading(false);
   }, [admins]);
 
+  React.useEffect(() => {
+    if(sendResults !== null) {
+      clearTimeout(saveTimer.current);
+
+      saveTimer.current = setTimeout(
+        function() {
+          setSendResults(null);
+        }, 2000
+      );
+    }
+  }, [saveTimer, sendResults]);
+
   function onSave() {
     const request = {
       scopes: apiRequest.scopes,
@@ -246,34 +445,6 @@ export default function Administration() {
         setSending(false);
       }
     })();
-  }
-
-  function renderDelete(data) {  
-    const flexCenter = {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center"
-    }
-
-    return (
-      <Tooltip title="Delete">
-        <span style={{...flexCenter}}>
-          <IconButton
-            color="error"
-            sx={{
-              padding: 0,
-              display: (isEqual([data.id], Object.keys(selectionModel))) ? "flex" : "none"
-            }}
-            disableFocusRipple
-            disableTouchRipple
-            disableRipple
-            onClick={() => setAdmins(admins.filter(x => x.id !== data.id))}
-          >
-            <HighlightOff />
-          </IconButton>
-        </span>
-      </Tooltip>
-    );
   }
 
   function handleAdd(user) {
@@ -316,6 +487,145 @@ export default function Administration() {
     });
   }
 
+  const onBatchColumnResize = (batchColumnInfo) => {
+    const colsMap = batchColumnInfo.reduce((acc, colInfo) => {
+      const { column, flex } = colInfo
+      acc[column.name] = { flex }
+      return acc
+    }, {});
+
+    const newColumns = columnState.map(c => {
+      return Object.assign({}, c, colsMap[c.name]);
+    })
+
+    setColumnState(newColumns);
+  }
+
+  const onColumnOrderChange = (columnOrder) => {
+    setColumnOrderState(columnOrder);
+  }
+
+  const onColumnVisibleChange = ({ column, visible }) => {
+    const newColumns = columnState.map(c => {
+      if(c.name === column.name) {
+        return Object.assign({}, c, { visible });
+      } else {
+        return c;
+      }
+    });
+
+    setColumnState(newColumns);
+  }
+
+  const onSortInfoChange = (sortInfo) => {
+    setColumnSortState(sortInfo);
+  }
+
+  const saveConfig = () => {
+    const values = columnState.reduce((acc, colInfo) => {
+      const { name, flex, visible } = colInfo;
+
+      acc[name] = { flex, visible };
+
+      return acc;
+    }, {});
+
+    const saveData = {
+      values: values,
+      order: columnOrderState,
+      sort: columnSortState
+    }
+
+    var body = [
+      { "op": "add", "path": `/views/admins`, "value": saveData }
+    ];
+
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
+
+    (async () => {
+      try {
+        setSaving(true);
+        const response = await instance.acquireTokenSilent(request);
+        await dispatch(updateMeAsync({ token: response.accessToken, body: body}));
+        setSendResults(true);
+      } catch (e) {
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          setSendResults(false);
+          enqueueSnackbar("Error saving view settings", { variant: "error" });
+        }
+      } finally {
+        setSaving(false);
+      }
+    })();
+  };
+
+  const loadConfig = React.useCallback(() => {
+    const { values, order, sort } = viewSetting;
+
+    const colsMap = columns.reduce((acc, colInfo) => {
+
+      acc[colInfo.name] = colInfo;
+
+      return acc;
+    }, {})
+
+    const loadColumns = order.map(item => {
+      const assigned = pickBy(values[item], v => v !== undefined)
+
+      return Object.assign({}, colsMap[item], assigned);
+    });
+
+    setColumnState(loadColumns);
+    setColumnOrderState(order);
+    setColumnSortState(sort);
+  }, [columns, viewSetting]);
+
+  const resetConfig = React.useCallback(() => {
+    setColumnState(columns);
+    setColumnOrderState(columns.flatMap(({name}) => name));
+    setColumnSortState({ name: 'name', dir: 1, type: 'string' });
+  }, [columns]);
+
+  const renderColumnContextMenu = React.useCallback((menuProps) => {
+    const columnIndex = menuProps.items.findIndex((item) => item.itemId === 'columns');
+    const idIndex = menuProps.items[columnIndex].items.findIndex((item) => item.value === 'delete');
+
+    menuProps.items[columnIndex].items.splice(idIndex, 1);
+  }, []);
+
+  React.useEffect(() => {
+    if(!columnState && viewSetting) {
+      if(columns && !isEmpty(viewSetting)) {
+        loadConfig();
+      } else {
+        resetConfig();
+      }
+    }
+  },[columns, viewSetting, columnState, loadConfig, resetConfig]);
+
+  React.useEffect(() => {
+    if(columnSortState) {
+      setGridData(
+        orderBy(
+          admins,
+          [columnSortState.name],
+          [columnSortState.dir === -1 ? 'desc' : 'asc']
+        )
+      );
+    } else {
+      setGridData(admins);
+    }
+  },[admins, columnSortState]);
+
   function NoRowsOverlay() {
     return (
       <React.Fragment>
@@ -328,99 +638,113 @@ export default function Administration() {
   }
 
   return (
-    <Wrapper>
-      <MainBody>
-        <FloatingHeader>
-          <Box sx={{ width: "35%" }}>
-            <Autocomplete
-              PopperComponent={MyPopper}
-              key="12345"
-              id="asynchronous-demo"
-              size="small"
-              autoHighlight
-              blurOnSelect={true}
-              forcePopupIcon={false}
-              sx={{
-                ml: 2,
-                width: 300
-              }}
-              open={open}
-              value={selected}
-              onOpen={() => {
-                setOpen(true);
-              }}
-              onClose={() => {
-                setOpen(false);
-              }}
-              onInputChange={(event, newInput) => {
-                setInput(newInput);
-              }}
-              onChange={(event, newValue) => {
-                newValue ? handleAdd(newValue) : setSelected(null);
-              }}
-              isOptionEqualToValue={(option, value) => option.displayName === value.displayName}
-              getOptionLabel={(option) => `${option.displayName} (${option.userPrincipalName})`}
-              options={options || []}
-              loading={usersLoading}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="User Search"
-                  variant="standard"
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <React.Fragment>
-                        {usersLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
-                      </React.Fragment>
-                    ),
-                  }}
-                />
-              )}
-            />
-          </Box>
-          <HeaderTitle>IPAM Admins</HeaderTitle>
-          <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ width: "35%", ml: 2, mr: 2 }}>
-            <Tooltip title="Save" >
-              <IconButton
-                color="primary"
-                aria-label="upload picture"
-                component="span"
-                style={{
-                  visibility: unchanged ? 'hidden' : 'visible'
+    <AdminContext.Provider value={{ admins, setAdmins, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+      <Wrapper>
+        <MainBody>
+          <FloatingHeader>
+            <Box sx={{ width: "35%" }}>
+              <Autocomplete
+                PopperComponent={MyPopper}
+                key="12345"
+                id="asynchronous-demo"
+                size="small"
+                autoHighlight
+                blurOnSelect={true}
+                forcePopupIcon={false}
+                sx={{
+                  ml: 2,
+                  width: 300
                 }}
-                disabled={sending}
-                onClick={onSave}
-              >
-                <SaveAlt />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </FloatingHeader>
-        <DataSection>
-          <GridBody>
-            <ReactDataGrid
-              theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
-              idProperty="id"
-              showCellBorders="horizontal"
-              showZebraRows={false}
-              multiSelect={true}
-              showActiveRowIndicator={false}
-              enableColumnAutosize={false}
-              showColumnMenuGroupOptions={false}
-              columns={columns}
-              loading={loading}
-              dataSource={admins || []}
-              defaultFilterValue={filterValue}
-              onRowClick={(rowData) => onClick(rowData.data)}
-              selected={selectionModel}
-              emptyText={NoRowsOverlay}
-              style={gridStyle}
-            />
-          </GridBody>
-        </DataSection>
-      </MainBody>
-    </Wrapper>
+                open={open}
+                value={selected}
+                onOpen={() => {
+                  setOpen(true);
+                }}
+                onClose={() => {
+                  setOpen(false);
+                }}
+                onInputChange={(event, newInput) => {
+                  setInput(newInput);
+                }}
+                onChange={(event, newValue) => {
+                  newValue ? handleAdd(newValue) : setSelected(null);
+                }}
+                isOptionEqualToValue={(option, value) => option.displayName === value.displayName}
+                getOptionLabel={(option) => `${option.displayName} (${option.userPrincipalName})`}
+                options={options || []}
+                loading={usersLoading}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="User Search"
+                    variant="standard"
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <React.Fragment>
+                          {usersLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </React.Fragment>
+                      ),
+                    }}
+                  />
+                )}
+              />
+            </Box>
+            <HeaderTitle>IPAM Admins</HeaderTitle>
+            <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ width: "35%", ml: 2, mr: 2 }}>
+              <Tooltip title="Save" >
+                <IconButton
+                  color="primary"
+                  aria-label="upload picture"
+                  component="span"
+                  style={{
+                    visibility: unchanged ? 'hidden' : 'visible'
+                  }}
+                  disabled={sending}
+                  onClick={onSave}
+                >
+                  <SaveAlt />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </FloatingHeader>
+          <DataSection>
+            <GridBody>
+              <ReactDataGrid
+                theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
+                idProperty="id"
+                showCellBorders="horizontal"
+                showZebraRows={false}
+                multiSelect={true}
+                showActiveRowIndicator={false}
+                enableColumnAutosize={false}
+                showColumnMenuGroupOptions={false}
+                showColumnMenuLockOptions={false}
+                enableColumnFilterContextMenu={true}
+                updateMenuPositionOnColumnsChange={false}
+                renderColumnContextMenu={renderColumnContextMenu}
+                onBatchColumnResize={onBatchColumnResize}
+                onSortInfoChange={onSortInfoChange}
+                onColumnOrderChange={onColumnOrderChange}
+                onColumnVisibleChange={onColumnVisibleChange}
+                reservedViewportWidth={0}
+                columns={columnState || []}
+                columnOrder={columnOrderState}
+                loading={loading || sending}
+                loadingText={sending ? <Update>Updating</Update> : "Loading"}
+                dataSource={gridData || []}
+                defaultFilterValue={filterValue}
+                onRowClick={(rowData) => onClick(rowData.data)}
+                selected={selectionModel}
+                sortInfo={columnSortState}
+                emptyText={NoRowsOverlay}
+                style={gridStyle}
+              />
+            </GridBody>
+          </DataSection>
+        </MainBody>
+      </Wrapper>
+    </AdminContext.Provider>
   );
 }

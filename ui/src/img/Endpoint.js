@@ -2,14 +2,8 @@ import React from "react";
 
 function Endpoint() {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-    >
-      <path fill="none" d="M0 0h24v24H0z"></path>
-      <path d="M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h14v-3H4V6zm19 2h-6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 9h-4v-7h4v7z"></path>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">
+      <path d="M3 22v-7h3v-4h5V9H8V2h8v7h-3v2h5v4h3v7h-8v-7h3v-2H8v2h3v7zm7-15h4V4h-4zM5 20h4v-3H5zm10 0h4v-3h-4zM12 7zM9 17zm6 0z"></path>
     </svg>
   );
 }

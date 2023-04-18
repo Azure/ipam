@@ -1,8 +1,8 @@
 import * as React from "react";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useLocation } from "react-router-dom";
 
-import { cloneDeep } from 'lodash';
+import { cloneDeep, pickBy, orderBy, isEmpty } from 'lodash';
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import filter from '@inovua/reactdatagrid-community/filter'
@@ -11,22 +11,45 @@ import '@inovua/reactdatagrid-community/theme/default-dark.css'
 
 import { useTheme } from '@mui/material/styles';
 
+import { useMsal } from "@azure/msal-react";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
+
+import { useSnackbar } from "notistack";
+
 import {
   Box,
   Tooltip,
   IconButton,
   ClickAwayListener,
-  Typography
+  Typography,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  CircularProgress
 } from "@mui/material";
 
 import {
   ChevronRight,
+  ExpandCircleDownOutlined,
+  FileDownloadOutlined,
+  FileUploadOutlined,
+  ReplayOutlined,
+  TaskAltOutlined,
+  CancelOutlined
 } from "@mui/icons-material";
 
 import Shrug from "../../img/pam/Shrug";
 
-import { TableContext } from "./TableContext";
+import {
+  selectViewSetting,
+  updateMeAsync
+} from "../ipam/ipamSlice";
+
 import ItemDetails from "./Utils/Details";
+
+import { apiRequest } from "../../msal/authConfig";
+
+import { TableContext } from "./TableContext";
 
 const filterTypes = Object.assign({}, ReactDataGrid.defaultProps.filterTypes, {
   array: {
@@ -77,21 +100,167 @@ const gridStyle = {
   fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
 };
 
+function HeaderMenu(props) {
+  const { setting } = props;
+  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.useContext(TableContext);
+
+  const [menuOpen, setMenuOpen] = React.useState(false);
+
+  const menuRef = React.useRef(null);
+
+  const viewSetting = useSelector(state => selectViewSetting(state, setting));
+
+  const onClick = () => {
+    setMenuOpen(prev => !prev);
+  }
+
+  const onSave = () => {
+    saveConfig();
+    setMenuOpen(false);
+  }
+
+  const onLoad = () => {
+    loadConfig();
+    setMenuOpen(false);
+  }
+
+  const onReset = () => {
+    resetConfig();
+    setMenuOpen(false);
+  }
+
+  return (
+    <Box
+      ref={menuRef}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }}
+    >
+      {
+        saving ?
+        <React.Fragment>
+          <CircularProgress size={24} />
+        </React.Fragment> :
+        (sendResults !== null) ?
+        <React.Fragment>
+          {
+            sendResults ?
+            <TaskAltOutlined color="success"/> :
+            <CancelOutlined color="error"/>
+          }
+        </React.Fragment> :
+        <React.Fragment>
+          <IconButton
+            id="table-state-menu"
+            onClick={onClick}
+          >
+            <ExpandCircleDownOutlined />
+          </IconButton>
+          <Menu
+            id="table-state-menu"
+            anchorEl={menuRef.current}
+            open={menuOpen}
+            onClose={onClick}
+            // onClick={onClick}
+            PaperProps={{
+              elevation: 0,
+              style: {
+                width: 215,
+              },
+              sx: {
+                overflow: 'visible',
+                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                mt: 1.5,
+                '& .MuiAvatar-root': {
+                  width: 32,
+                  height: 32,
+                  ml: -0.5,
+                  mr: 1,
+                },
+                '&:before': {
+                  content: '""',
+                  display: 'block',
+                  position: 'absolute',
+                  top: 0,
+                  right: 26,
+                  width: 10,
+                  height: 10,
+                  bgcolor: 'background.paper',
+                  transform: 'translateY(-50%) rotate(45deg)',
+                  zIndex: 0,
+                },
+              },
+            }}
+          >
+            <MenuItem
+              onClick={onLoad}
+              disabled={ !viewSetting || isEmpty(viewSetting) }
+            >
+              <ListItemIcon>
+                <FileDownloadOutlined fontSize="small" />
+              </ListItemIcon>
+              Load Saved View
+            </MenuItem>
+            <MenuItem onClick={onSave}>
+              <ListItemIcon>
+                <FileUploadOutlined fontSize="small" />
+              </ListItemIcon>
+              Save Current View
+            </MenuItem>
+            <MenuItem onClick={onReset}>
+              <ListItemIcon>
+                <ReplayOutlined fontSize="small" />
+              </ListItemIcon>
+              Reset Default View
+            </MenuItem>
+          </Menu>
+        </React.Fragment>
+      }
+    </Box>
+  )
+}
+
 export default function DiscoverTable(props) {
   const { config, columns, filterSettings, detailsMap } = props.map;
 
+  const { instance, accounts } = useMsal();
+  const { enqueueSnackbar } = useSnackbar();
+
   const [loading, setLoading] = React.useState(true);
-  const [columnData, setColumnData] = React.useState([]);
+  const [saving, setSaving] = React.useState(false);
+  const [sendResults, setSendResults] = React.useState(null);
   const [gridData, setGridData] = React.useState(null);
   const [rowData, setRowData] = React.useState({});
   const [filterData, setFilterData] = React.useState(filterSettings);
   const [menuExpand, setMenuExpand] = React.useState(false);
 
+  const [columnState, setColumnState] = React.useState(null);
+  const [columnOrderState, setColumnOrderState] = React.useState([]);
+  const [columnSortState, setColumnSortState] = React.useState({});
+
   const stateData = useSelector(config.apiFunc);
+  const viewSetting = useSelector(state => selectViewSetting(state, config.setting));
+  const dispatch = useDispatch();
+
+  const timer = React.useRef();
 
   const location = useLocation();
 
   const theme = useTheme();
+
+  React.useEffect(() => {
+    if(sendResults !== null) {
+      clearTimeout(timer.current);
+
+      timer.current = setTimeout(
+        function() {
+          setSendResults(null);
+        }, 2000
+      );
+    }
+  }, [timer, sendResults]);
 
   function renderExpand(data) {  
     const onClick = (e) => {
@@ -126,21 +295,142 @@ export default function DiscoverTable(props) {
     );
   }
 
-  const addDetailsColumn = React.useCallback(() => {
-    let newColumns = [...columns];
+  const onBatchColumnResize = (batchColumnInfo) => {
+    const colsMap = batchColumnInfo.reduce((acc, colInfo) => {
+      const { column, flex } = colInfo
+      acc[column.name] = { flex }
+      return acc
+    }, {});
 
-    if (!newColumns.find( x => x['field'] === 'id' )) {
-      newColumns.push(
-        { name: "id", header: "Details", width: 50, resizable: false, hideable: false, sortable: false, showColumnMenuTool: false, renderHeader: () => "", render: ({data}) => renderExpand(data) }
-      );
+    const newColumns = columnState.map(c => {
+      return Object.assign({}, c, colsMap[c.name]);
+    })
+
+    setColumnState(newColumns);
+  }
+
+  const onColumnOrderChange = (columnOrder) => {
+    setColumnOrderState(columnOrder);
+  }
+
+  const onColumnVisibleChange = ({ column, visible }) => {
+    const newColumns = columnState.map(c => {
+      if(c.name === column.name) {
+        return Object.assign({}, c, { visible });
+      } else {
+        return c;
+      }
+    });
+
+    setColumnState(newColumns);
+  }
+
+  const onSortInfoChange = (sortInfo) => {
+    setColumnSortState(sortInfo);
+  }
+
+  const saveConfig = () => {
+    const values = columnState.reduce((acc, colInfo) => {
+      const { name, flex, visible } = colInfo;
+
+      acc[name] = { flex, visible };
+
+      return acc;
+    }, {});
+
+    const saveData = {
+      values: values,
+      order: columnOrderState,
+      sort: columnSortState
     }
 
-    setColumnData(newColumns);
-  }, [columns]);
+    var body = [
+      { "op": "add", "path": `/views/${config.setting}`, "value": saveData }
+    ];
+
+    const request = {
+      scopes: apiRequest.scopes,
+      account: accounts[0],
+    };
+
+    (async () => {
+      try {
+        setSaving(true);
+        const response = await instance.acquireTokenSilent(request);
+        await dispatch(updateMeAsync({ token: response.accessToken, body: body}));
+        setSendResults(true);
+      } catch (e) {
+        if (e instanceof InteractionRequiredAuthError) {
+          instance.acquireTokenRedirect(request);
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          setSendResults(false);
+          enqueueSnackbar("Error saving view settings", { variant: "error" });
+        }
+      } finally {
+        setSaving(false);
+      }
+    })();
+  };
+
+  const loadConfig = React.useCallback(() => {
+    const { values, order, sort } = viewSetting;
+
+    let newColumns = [...columns];
+
+    newColumns.push(
+      { name: "id", header: () => <HeaderMenu setting={config.setting}/>, width: 50, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => renderExpand(data) }
+    );
+
+    const colsMap = newColumns.reduce((acc, colInfo) => {
+
+      acc[colInfo.name] = colInfo;
+
+      return acc;
+    }, {})
+
+    const loadColumns = order.map(item => {
+      const assigned = pickBy(values[item], v => v !== undefined)
+
+      return Object.assign({}, colsMap[item], assigned);
+    });
+
+    setColumnState(loadColumns);
+    setColumnOrderState(order);
+    setColumnSortState(sort);
+  }, [columns, config.setting, viewSetting]);
+
+  const resetConfig = React.useCallback(() => {
+    let newColumns = [...columns];
+
+    newColumns.push(
+      { name: "id", header: () => <HeaderMenu setting={config.setting}/>, width: 50, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => renderExpand(data) }
+    );
+
+    setColumnState(newColumns);
+    setColumnOrderState(newColumns.flatMap(({name}) => name));
+    setColumnSortState({ name: 'name', dir: 1, type: 'string' });
+  }, [columns, config.setting]);
+
+  const renderColumnContextMenu = React.useCallback((menuProps) => {
+    const columnIndex = menuProps.items.findIndex((item) => item.itemId === 'columns');
+    const idIndex = menuProps.items[columnIndex].items.findIndex((item) => item.value === 'id');
+
+    menuProps.items[columnIndex].items.splice(idIndex, 1);
+  }, []);
 
   React.useEffect(() => {
-    addDetailsColumn();
-  },[addDetailsColumn]);
+    if(!columnState && viewSetting) {
+      if(columns && !isEmpty(viewSetting)) {
+        loadConfig();
+      } else {
+        resetConfig();
+      }
+    }
+  },[config, columns, viewSetting, columnState, loadConfig, resetConfig]);
 
   React.useEffect(() => {
     if(location.state) {
@@ -155,8 +445,24 @@ export default function DiscoverTable(props) {
   },[location, filterSettings]);
 
   React.useEffect(() => {
-    stateData && setGridData(filter(stateData, filterData, filterTypes));
-  },[stateData, filterData]);
+    if(stateData) {
+      if(columnSortState) {
+        setGridData(
+          filter(
+            orderBy(
+              stateData,
+              [columnSortState.name],
+              [columnSortState.dir === -1 ? 'desc' : 'asc']
+            ),
+            filterData,
+            filterTypes
+          )
+        );
+      } else {
+        setGridData(filter(stateData, filterData, filterTypes));
+      }
+    }
+  },[stateData, filterData, columnSortState]);
 
   React.useEffect(() => {
     gridData && setLoading(false);
@@ -205,7 +511,7 @@ export default function DiscoverTable(props) {
   }
 
   return (
-    <TableContext.Provider value={{ stateData, rowData, menuExpand }}>
+    <TableContext.Provider value={{ stateData, rowData, menuExpand, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
       {renderDetails()}
       <Box sx={{ flexGrow: 1, height: "100%" }}>
         <ReactDataGrid
@@ -218,13 +524,25 @@ export default function DiscoverTable(props) {
           showColumnMenuGroupOptions={false}
           showColumnMenuLockOptions={false}
           enableColumnFilterContextMenu={true}
+          updateMenuPositionOnColumnsChange={false}
+          renderColumnContextMenu={renderColumnContextMenu}
+          onBatchColumnResize={onBatchColumnResize}
+          onSortInfoChange={onSortInfoChange}
+          onColumnOrderChange={onColumnOrderChange}
+          onColumnVisibleChange={onColumnVisibleChange}
+          reservedViewportWidth={0}
           filterTypes={filterTypes}
-          columns={columnData}
+          columns={columnState || []}
+          columnOrder={columnOrderState}
+          // sortInfo={columnSortState}
           loading={loading}
           dataSource={gridData || []}
           filterValue={filterData}
           onFilterValueChange={(newFilterValue) => setFilterData(newFilterValue)}
-          defaultSortInfo={{ name: 'name', dir: 1, type: 'string' }}
+          // defaultSortInfo={{ name: 'name', dir: 1, type: 'string' }}
+          // defaultSortInfo={columnSortState}
+          // onSortInfoChange={(newSortInfo) => setColumnSortState(newSortInfo)}
+          sortInfo={columnSortState}
           emptyText={NoRowsOverlay}
           style={gridStyle}
         />

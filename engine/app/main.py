@@ -10,7 +10,15 @@ from azure.cosmos.aio import CosmosClient
 from azure.cosmos import PartitionKey
 from azure.cosmos.exceptions import CosmosResourceExistsError, CosmosResourceNotFoundError
 
-from app.routers import azure, admin, user, space, tool
+from app.routers import (
+    azure,
+    internal,
+    admin,
+    user,
+    space,
+    tool
+)
+
 from app.logs.logs import ipam_logger as logger
 
 import os
@@ -51,6 +59,12 @@ app.logger = logger
 
 app.include_router(
     azure.router,
+    prefix = "/api",
+    include_in_schema = False
+)
+
+app.include_router(
+    internal.router,
     prefix = "/api",
     include_in_schema = False
 )
@@ -208,18 +222,49 @@ async def db_upgrade():
         logger.info('No existing admins to convert...')
         pass
 
-    users_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND NOT IS_DEFINED(c['data']['darkMode']))", globals.TENANT_ID)
+    users_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND (NOT IS_DEFINED(c['data']['darkMode']) OR NOT IS_DEFINED(c['data']['views'])))", globals.TENANT_ID)
 
     if users_query:
         for user in users_query:
             user_data = copy.deepcopy(user)
-            user_data['data']['darkMode'] = False
+
+            if 'darkMode' not in user_data['data']:
+                user_data['data']['darkMode'] = False
+
+            if 'views' not in user_data['data']:
+                user_data['data']['views'] = {}
 
             await cosmos_replace(user, user_data)
 
         logger.info('User object patching complete!')
     else:
         logger.info("No existing user objects to patch...")
+
+    resv_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN resv in block.resv WHERE (c.type = 'space' AND NOT IS_DEFINED(resv.settledOn))", globals.TENANT_ID)
+
+    if resv_query:
+        for space in resv_query:
+            space_data = copy.deepcopy(space)
+
+            for block in space_data['blocks']:
+                for i, resv in enumerate(block['resv']):
+                    if 'settledOn' not in resv:
+                        block['resv'][i] = {
+                            "id": resv['id'],
+                            "cidr": resv['cidr'],
+                            "desc": resv['desc'] if 'desc' in resv else None,
+                            "createdOn": resv['createdOn'],
+                            "createdBy": resv['userId'],
+                            "settledOn": None,
+                            "settledBy": None,
+                            "status": resv['status']
+                        }
+
+            await cosmos_replace(space, space_data)
+
+        logger.info('Reservation patching complete!')
+    else:
+        logger.info("No existing reservations to patch...")
 
     await cosmos_client.close()
 
@@ -259,7 +304,11 @@ async def set_globals():
 @repeat_every(seconds = 60, wait_first = True) # , wait_first=True
 async def find_reservations() -> None:
     if not os.environ.get("FUNCTIONS_WORKER_RUNTIME"):
-        await azure.match_resv_to_vnets()
+        try:
+            await azure.match_resv_to_vnets()
+        except Exception as e:
+            logger.error('Error running network check loop!')
+            raise e
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):

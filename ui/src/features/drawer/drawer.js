@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 
 import { useMsal } from "@azure/msal-react";
 import { InteractionRequiredAuthError, InteractionStatus } from "@azure/msal-browser";
@@ -73,12 +73,12 @@ import Configure from "../../img/Configure";
 import Admin from "../../img/Admin";
 import Visualize from "../../img/Visualize";
 import Peering from "../../img/Peering";
-// import Conflict from "../../img/Conflict";
 import Person from "../../img/Person";
 import Rule from "../../img/Rule";
 import Tools from "../../img/Tools";
 import Planner from "../../img/Planner";
 import Help from "../../img/Help";
+import VWan from "../../img/VWan";
 
 import UserSettings from "./userSettings";
 
@@ -93,9 +93,11 @@ import ConfigureIPAM from "../configure/configure";
 import Refresh from "./refresh";
 
 import {
+  setUserId,
   getAdminStatus,
   getMeLoaded,
   selectVNets,
+  selectVHubs,
   selectSubnets,
   selectEndpoints
 } from "../ipam/ipamSlice";
@@ -139,8 +141,11 @@ export default function NavDrawer() {
   const isAdmin = useSelector(getAdminStatus);
   const meLoaded = useSelector(getMeLoaded);
   const vNets = useSelector(selectVNets);
+  const vHubs = useSelector(selectVHubs);
   const subnets = useSelector(selectSubnets);
   const endpoints = useSelector(selectEndpoints);
+
+  const dispatch = useDispatch();
 
   const isMenuOpen = Boolean(menuAnchorEl);
   const isMobileMenuOpen = Boolean(mobileMenuAnchorEl);
@@ -182,6 +187,12 @@ export default function NavDrawer() {
             title: "Subnets",
             icon: Subnet,
             link: "discover/subnet",
+            admin: false
+          },
+          {
+            title: "vHubs",
+            icon: VWan,
+            link: "discover/vhub",
             admin: false
           },
           {
@@ -268,6 +279,7 @@ export default function NavDrawer() {
           const response = await instance.acquireTokenSilent(request);
           const graphResponse = await callMsGraph(response.accessToken);
           const photoResponse = await callMsGraphPhoto(response.accessToken);
+          await dispatch(setUserId(graphResponse.userPrincipalName));
           setGraphPhoto(photoResponse);
           setGraphData(graphResponse);
         } catch (e) {
@@ -283,7 +295,7 @@ export default function NavDrawer() {
         }
       })();
     }
-  }, [instance, accounts, inProgress, graphData]);
+  }, [instance, accounts, inProgress, graphData, dispatch]);
 
   React.useEffect(() => {
     // Handler to call on window resize
@@ -395,7 +407,7 @@ export default function NavDrawer() {
     var newSearchData = [];
 
     if(vNets) {
-      const vNetExclusions = ['id', 'peerings', 'resv', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_space', 'subscription_id', 'tenant_id', 'metadata'];
+      const vNetExclusions = ['id', 'peerings', 'resv', 'type', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_space', 'subscription_id', 'tenant_id', 'metadata'];
       const vNetFiltered = objToFilter(vNets, 'Virtual Networks', '/discover/vnet', vNetExclusions);
       const vNetResults = orderBy(vNetFiltered, 'phrase', 'asc');
 
@@ -404,6 +416,14 @@ export default function NavDrawer() {
       const subnetResults = orderBy(subnetFiltered, 'phrase', 'asc');
 
       newSearchData = [...newSearchData, ...vNetResults, ...subnetResults];
+    }
+
+    if(vHubs) {
+      const vHubExclusions = ['id', 'peerings', 'vwan_id', 'resv', 'type', 'size', 'used', 'available', 'utilization', 'parent_space'];
+      const vHubFiltered = objToFilter(vHubs, 'Virtual Hubs', '/discover/vhub', vHubExclusions);
+      const vHubResults = orderBy(vHubFiltered, 'phrase', 'asc');
+
+      newSearchData = [...newSearchData, ...vHubResults];
     }
 
     if(endpoints) {
@@ -415,7 +435,7 @@ export default function NavDrawer() {
     }
 
     setSearchData(newSearchData);
-  }, [vNets, subnets, endpoints]);
+  }, [vNets, vHubs, subnets, endpoints]);
 
   const filterOptions = createFilterOptions({
     matchFrom: 'any',
@@ -840,17 +860,16 @@ export default function NavDrawer() {
         />
         <Routes>
           <Route path="/" element={<Welcome />} />
-          {/* <Route path="manage/*" element={<DiscoverTabs />} /> */}
           <Route path="discover/space" element={<DiscoverTabs />} />
           <Route path="discover/block" element={<DiscoverTabs />} />
           <Route path="discover/vnet" element={<DiscoverTabs />} />
+          <Route path="discover/vhub" element={<DiscoverTabs />} />
           <Route path="discover/subnet" element={<DiscoverTabs />} />
           <Route path="discover/endpoint" element={<DiscoverTabs />} />
           <Route path="analyze/visualize" element={<AnalyzeTabs />} />
           <Route path="analyze/peering" element={<AnalyzeTabs />} />
           <Route path="tools/planner" element={<ToolsTabs />} />
           <Route path="configure" element={<ConfigureIPAM />} />
-          {/* <Route path="admin" element={<Administration />} /> */}
           <Route path="admin/admins" element={<AdminTabs />} />
           <Route path="admin/subscriptions" element={<AdminTabs />} />
           <Route path="*" element={<Navigate to="/" replace />} />

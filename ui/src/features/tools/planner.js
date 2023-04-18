@@ -2,11 +2,6 @@ import * as React from 'react';
 import { useSelector } from 'react-redux';
 import { ThemeProvider, createTheme, styled } from '@mui/material/styles';
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-
-import { useSnackbar } from 'notistack';
-
 import { find } from 'lodash';
 
 import {
@@ -33,14 +28,9 @@ import {
 } from '@mui/icons-material';
 
 import {
+  selectSubscriptions,
   selectVNets
 } from "../ipam/ipamSlice";
-
-import {
-  fetchSubscriptions
-} from "../ipam/ipamAPI";
-
-import { apiRequest } from "../../msal/authConfig";
 
 import { availableSubnets } from './utils/iputils';
 
@@ -62,7 +52,7 @@ const Item = styled(Paper)(({ theme, overlap }) => ({
   padding: theme.spacing(1),
   textAlign: 'center',
   color: theme.palette.text.secondary,
-  fontSize: 'clamp(12px, 1vw, 16px)',
+  fontSize: 'clamp(12px, 1vw, 15px)',
   textOverflow: 'ellipsis',
   overflow: 'hidden',
   backgroundColor: overlap ? (theme.palette.mode === 'dark' ? 'darkred' : 'orangered') : (theme.palette.mode === 'dark' ? 'darkgreen' : 'lawngreen')
@@ -115,12 +105,7 @@ const Separator = (props) => {
 };
 
 const Planner = () => {
-  const { instance, accounts } = useMsal();
-  const { enqueueSnackbar } = useSnackbar();
-
-  const [subscriptions, setSubscriptions] = React.useState(null);
   const [newVNets, setNewVNets] = React.useState([]);
-
   const [subnetData, setSubnetData] = React.useState(null);
 
   const [vNetInput, setVNetInput] = React.useState('');
@@ -137,43 +122,10 @@ const Planner = () => {
 
   const [showAll, setShowAll] = React.useState(false);
 
-  const subsLoadingRef = React.useRef(false);
-
+  const subscriptions = useSelector(selectSubscriptions);
   const vNets = useSelector(selectVNets);
 
-  const loading = !vNets || subsLoadingRef.current;
-
-  const refreshSubscriptions = React.useCallback(() => {
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
-    (async () => {
-      try {
-        subsLoadingRef.current = true;
-        const response = await instance.acquireTokenSilent(request);
-        const data = await fetchSubscriptions(response.accessToken);
-        setSubscriptions(data);
-      } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar("Error fetching subnets", { variant: "error" });
-        }
-      } finally {
-        subsLoadingRef.current = false;
-      }
-    })();
-  }, [accounts, enqueueSnackbar, instance]);
-
-  React.useEffect(() => {
-    !subsLoadingRef.current && refreshSubscriptions();
-  }, [vNets, refreshSubscriptions]);
+  const loading = !vNets || !subscriptions;
 
   React.useEffect(() => {
     if (vNets && subscriptions) {
@@ -212,7 +164,7 @@ const Planner = () => {
   React.useEffect(() => {
     showAll
     ? setVNetOptions(newVNets.sort((a, b) => (a.subscription_name > b.subscription_name) ? 1 : -1))
-    : setVNetOptions(newVNets.filter(v => v.parentSpace !== null).sort((a, b) => (a.parentSpace > b.parentSpace) ? 1 : (a.parentSpace === b.parentSpace) ? ((a.parentBlock > b.parentBlock) ? 1 : -1) : -1 ));
+    : setVNetOptions(newVNets.filter(v => v.parent_space !== null).sort((a, b) => (a.parent_space > b.parent_space) ? 1 : (a.parent_space === b.parent_space) ? ((a.parent_block > b.parent_block) ? 1 : -1) : -1 ));
   }, [showAll, newVNets]);
 
   React.useEffect(() => {
@@ -288,7 +240,7 @@ const Planner = () => {
             id="grouped-demo"
             size="small"
             options={vNetOptions}
-            groupBy={(option) => showAll ? option.subscription_name : `${option.parentSpace} ➜ ${option.parentBlock}`}
+            groupBy={(option) => showAll ? option.subscription_name : `${option.parent_space} ➜ ${option.parent_block}`}
             getOptionLabel={(option) => option.name}
             inputValue={vNetInput}
             onInputChange={(event, newInputValue) => setVNetInput(newInputValue)}
@@ -368,7 +320,6 @@ const Planner = () => {
             </Select>
           </FormControl> 
           <Autocomplete
-            // freeSolo
             forcePopupIcon={false}
             disabled={selectedPrefix === ''}
             id="cidr-mask-max"
@@ -383,14 +334,6 @@ const Planner = () => {
             renderInput={(params) => (
               <TextField
                 {...params}
-                // inputProps={{
-                //   ...params.inputProps,
-                //   onKeyDown: (e) => {
-                //     if (e.key === 'Enter') {
-                //       e.stopPropagation();
-                //     }
-                //   },
-                // }}
                 label="Mask"
                 placeholder="Max"
               />

@@ -239,6 +239,23 @@ export function fetchVNets(token) {
   });
 }
 
+export function fetchVHubs(token) {
+  var url = new URL(`${ENGINE_URL}/api/azure/vhub`);
+
+  return axios
+    .get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+  .then(response => response.data)
+  .catch(error => {
+    console.log("ERROR FETCHING VHUBS FROM API");
+    console.log(error);
+    throw error;
+  });
+}
+
 export function fetchSubnets(token) {
   var url = new URL(`${ENGINE_URL}/api/azure/subnet`);
 
@@ -273,12 +290,28 @@ export function fetchEndpoints(token) {
   });
 }
 
+export function fetchNetworks(token) {
+  var url = new URL(`${ENGINE_URL}/api/azure/network`);
+
+  return axios
+    .get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+  .then(response => response.data)
+  .catch(error => {
+    console.log("ERROR FETCHING NETWORKS FROM API");
+    console.log(error);
+    throw error;
+  });
+}
+
 export function refreshAll(token) {
   const stack = [
     (async () => await fetchSpaces(token, true))(),
-    // (async () => await fetchBlocks(token))(),
-    (async () => await fetchVNets(token))(),
-    // (async () => await fetchSubnets(token))(),
+    (async () => await fetchSubscriptions(token, true))(),
+    (async () => await fetchNetworks(token))(),
     (async () => await fetchEndpoints(token))()
   ];
 
@@ -286,7 +319,7 @@ export function refreshAll(token) {
 }
 
 export function fetchTreeView(token) {
-  const url = new URL(`${ENGINE_URL}/api/azure/tree`);
+  var url = new URL(`${ENGINE_URL}/api/internal/tree`);
 
   return axios
     .get(url, {
@@ -303,7 +336,7 @@ export function fetchTreeView(token) {
 }
 
 export function getAdmins(token) {
-  const url = new URL(`${ENGINE_URL}/api/admin/admins`);
+  var url = new URL(`${ENGINE_URL}/api/admin/admins`);
 
   return axios
     .get(url, {
@@ -320,7 +353,7 @@ export function getAdmins(token) {
 }
 
 export function replaceAdmins(token, body) {
-  const url = new URL(`${ENGINE_URL}/api/admin/admins`);
+  var url = new URL(`${ENGINE_URL}/api/admin/admins`);
 
   return axios
     .put(url, body, {
@@ -337,7 +370,7 @@ export function replaceAdmins(token, body) {
 }
 
 export function getExclusions(token) {
-  const url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
+  var url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
 
   return axios
     .get(url, {
@@ -354,7 +387,7 @@ export function getExclusions(token) {
 }
 
 export function replaceExclusions(token, body) {
-  const url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
+  var url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
 
   return axios
     .put(url, body, {
@@ -371,7 +404,10 @@ export function replaceExclusions(token, body) {
 }
 
 export function getMe(token) {
-  const url = new URL(`${ENGINE_URL}/api/users/me`);
+  var url = new URL(`${ENGINE_URL}/api/users/me`);
+  var urlParams = url.searchParams;
+
+  urlParams.append('expand', true);
 
   return axios
     .get(url, {
@@ -388,7 +424,7 @@ export function getMe(token) {
 }
 
 export function updateMe(token, body) {
-  const url = new URL(`${ENGINE_URL}/api/users/me`);
+  var url = new URL(`${ENGINE_URL}/api/users/me`);
 
   return axios
     .patch(url, body, {

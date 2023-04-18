@@ -38,6 +38,7 @@ resources
 # | where type =~ 'Microsoft.Network/virtualNetworks'
 # | where subscriptionId !in~ {}
 # | project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes = properties.addressSpace.addressPrefixes, resv = tostring(coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id']))
+# | extend id_lower = tolower(id)
 # | join kind = leftouter(
 #     resources
 #     | where type =~ 'Microsoft.Network/virtualNetworks'
@@ -49,14 +50,16 @@ resources
 #     | extend subnetType = coalesce(nameResult, appGwResult)
 #     | extend subnet_details = pack("name", subnet.name, "prefix", tostring(subnet.properties.addressPrefix), "used", coalesce(array_length(subnet.properties.ipConfigurations), 0) + 5, "type", todynamic(subnetType))
 #     | summarize subnet_bag = make_bag(subnet_details) by tostring(subnet.id), id
-# ) on id
+#     | extend id_lower = tolower(id)
+# ) on id_lower
 # | join kind = leftouter(
 #     resources
 #     | where type =~ 'Microsoft.Network/virtualNetworks'
 #     | mv-expand peering = todynamic(properties.virtualNetworkPeerings)
 #     | extend peering_details = pack("name", peering.name, "remote_network", peering.properties.remoteVirtualNetwork.id, "state", peering.properties.peeringState)
 #     | summarize peering_bag = make_bag(peering_details) by tostring(peering.id), id
-# ) on id
+#     | extend id_lower = tolower(id)
+# ) on id_lower
 # | summarize subnets = make_list(subnet_bag) by id, tostring(peering_bag), name, tostring(prefixes), resource_group, subscription_id, tenant_id, resv
 # | summarize peerings = make_list(todynamic(peering_bag)) by id, name, tostring(subnets), tostring(prefixes), resource_group, subscription_id, tenant_id, resv
 # | project name, id, todynamic(prefixes), todynamic(subnets), peerings, resource_group, subscription_id, tenant_id, todynamic(resv)
@@ -67,6 +70,7 @@ resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
 | where subscriptionId !in~ {}
 | project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes = properties.addressSpace.addressPrefixes, resv = tostring(coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id']))
+| extend id_lower = tolower(id)
 | join kind = leftouter(
     resources
     | where type =~ 'Microsoft.Network/virtualNetworks'
@@ -80,14 +84,16 @@ resources
     | extend subnetPrefixes = todynamic(subnet.properties.addressPrefixes)
     | extend subnet_details = pack("name", subnet.name, "prefix", iff(isnotnull(subnetPrefixes), subnetPrefixes, pack_array(subnetPrefix)), "used", coalesce(array_length(subnet.properties.ipConfigurations), 0) + 5, "type", todynamic(subnetType))
     | summarize subnet_bag = make_bag(subnet_details) by tostring(subnet.id), id
-) on id
+    | extend id_lower = tolower(id)
+) on id_lower
 | join kind = leftouter(
     resources
     | where type =~ 'Microsoft.Network/virtualNetworks'
     | mv-expand peering = todynamic(properties.virtualNetworkPeerings)
     | extend peering_details = pack("name", peering.name, "remote_network", peering.properties.remoteVirtualNetwork.id, "state", peering.properties.peeringState)
     | summarize peering_bag = make_bag(peering_details) by tostring(peering.id), id
-) on id
+    | extend id_lower = tolower(id)
+) on id_lower
 | summarize subnets = make_list(subnet_bag) by id, tostring(peering_bag), name, tostring(prefixes), resource_group, subscription_id, tenant_id, resv
 | summarize peerings = make_list(todynamic(peering_bag)) by id, name, tostring(subnets), tostring(prefixes), resource_group, subscription_id, tenant_id, resv
 | project name, id, todynamic(prefixes), todynamic(subnets), peerings, resource_group, subscription_id, tenant_id, todynamic(resv)
@@ -124,28 +130,66 @@ resources
 | project name = subnet.name, id = subnet.id, prefix = iff(isnotnull(subnetPrefixes), subnetPrefixes, pack_array(subnetPrefix)), resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), type = todynamic(subnetType)
 """
 
+# VWAN_HUBS = """
+# resources
+# | where type =~ 'microsoft.network/virtualhubs'
+# | project name, resource_group = resourceGroup, subscription_id = subscriptionId
+# """
+
+# VHUB = """
+# resources
+# | where type =~ 'microsoft.network/virtualhubs'
+# | where subscriptionId !in~ {}
+# | project name, id, prefix = properties.addressPrefix, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, vwan_id = tostring(properties.virtualWan.id)
+# | extend vwan_id_lower = tolower(vwan_id)
+# | join kind = leftouter (
+#     resources
+#     | where type =~ 'microsoft.Network/virtualWans'
+#     | project vwan_id = id, vwan_name = name
+#     | extend vwan_id_lower = tolower(vwan_id)
+# ) on vwan_id_lower
+# | project name, id, prefix, resource_group, subscription_id, tenant_id, metadata = pack('vwan_name', vwan_name, 'vwan_id', vwan_id)
+# """
+
+VHUB = """
+resources
+| where type =~ 'microsoft.network/virtualhubs'
+| where subscriptionId !in~ {}
+| project name, id, prefix = properties.addressPrefix, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, vwan_id = tostring(properties.virtualWan.id)
+| extend vwan_id_lower = tolower(vwan_id)
+| join kind = leftouter (
+    resources
+    | where type =~ 'microsoft.Network/virtualWans'
+    | project vwan_id = tostring(id), vwan_name = name
+    | extend vwan_id_lower = tolower(vwan_id)
+) on vwan_id_lower
+| project name, id, prefix, vwan_name, vwan_id, resource_group, subscription_id, tenant_id
+"""
+
 PRIVATE_ENDPOINT = """
 resources
 | where type =~ 'microsoft.network/networkinterfaces'
 | where subscriptionId !in~ {}
 | where isnotempty(properties.privateEndpoint)
 | mv-expand ipconfig = properties.ipConfigurations
-| project pe_id = tostring(properties.privateEndpoint.id), subnet_id = tolower(tostring(ipconfig.properties.subnet.id)), group_id = ipconfig.properties.privateLinkConnectionProperties.groupId, private_ip = ipconfig.properties.privateIPAddress
+| project pe_id = tostring(properties.privateEndpoint.id), subnet_id = tostring(ipconfig.properties.subnet.id), group_id = ipconfig.properties.privateLinkConnectionProperties.groupId, private_ip = ipconfig.properties.privateIPAddress
+| extend pe_id_lower = tolower(pe_id)
+| extend subnet_id_lower = tolower(subnet_id)
 | join kind = leftouter (
     resources
     | where array_length(properties.privateEndpointConnections) > 0
     | mv-expand peConn = properties.privateEndpointConnections
     | project tenant_id = tenantId, resource_group = resourceGroup, subscription_id = subscriptionId, name = name, id = id, pe_id = tostring(peConn.properties.privateEndpoint.id)
-) on pe_id
-| project-away pe_id1
+    | extend pe_id_lower = tolower(pe_id)
+) on pe_id_lower
 | join kind = leftouter (
     resources
     | where type =~ 'microsoft.network/virtualnetworks'
     | extend subnets = array_length(properties.subnets)
     | mv-expand subnet = properties.subnets
-    | project subnet_id = tolower(tostring(subnet.id)), subnet_name = subnet.name, vnet_id = id, vnet_name = name
-) on subnet_id
-| project-away subnet_id1
+    | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
+    | extend subnet_id_lower = tolower(subnet_id)
+) on subnet_id_lower
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('group_id', group_id, 'pe_id', pe_id)
 """
 
@@ -155,16 +199,16 @@ resources
 | where subscriptionId !in~ {}
 | extend nics = array_length(properties.networkProfile.networkInterfaces)
 | mv-expand nic = properties.networkProfile.networkInterfaces
-| project tenant_id = tenantId, id = id, name = name, size = properties.hardwareProfile.vmSize, resource_group = resourceGroup, subscription_id = subscriptionId, nic_id = nic.id
-| extend nic_id = tostring(nic_id)
+| project tenant_id = tenantId, id = id, name = name, size = properties.hardwareProfile.vmSize, resource_group = resourceGroup, subscription_id = subscriptionId, nic_id = tostring(nic.id)
 | extend nic_id_lower = tolower(nic_id)
 | join kind = leftouter (
     resources
     | where type =~ 'microsoft.network/networkinterfaces'
     | extend ipConfigCount = array_length(properties.ipConfigurations)
     | mv-expand ipConfig = properties.ipConfigurations
-    | project nic_id = id, public_ip_id = ipConfig.properties.publicIPAddress.id, private_ip = ipConfig.properties.privateIPAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, subnet_id = ipConfig.properties.subnet.id
-    | extend nic_id = tostring(nic_id), public_ip_id = tostring(public_ip_id), subnet_id = tolower(tostring(subnet_id))
+    | project nic_id = tostring(id), public_ip_id = tostring(ipConfig.properties.publicIPAddress.id), private_ip = ipConfig.properties.privateIPAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, subnet_id = tostring(ipConfig.properties.subnet.id)
+    | extend subnet_id_lower = tolower(subnet_id)
+    | extend public_ip_id_lower = tolower(public_ip_id)
     | extend nic_id_lower = tolower(nic_id)
 ) on nic_id_lower
 | join kind = leftouter (
@@ -172,40 +216,70 @@ resources
     | where type =~ 'microsoft.network/virtualnetworks'
     | extend subnets = array_length(properties.subnets)
     | mv-expand subnet = properties.subnets
-    | project subnet_id = subnet.id, subnet_name = subnet.name, vnet_id = id, vnet_name = name
-    | extend subnet_id = tolower(tostring(subnet_id))
-) on subnet_id
+    | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
+    | extend subnet_id_lower = tolower(tostring(subnet_id))
+) on subnet_id_lower
 | join kind = leftouter (
     resources
     | where type =~ 'Microsoft.Network/PublicIpAddresses'
-    | project public_ip_id = id, public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
-) on public_ip_id
+    | project public_ip_id = tostring(id), public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
+    | extend public_ip_id_lower = tolower(public_ip_id)
+) on public_ip_id_lower
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('size', size, 'public_ip', public_ip, 'nic_id', nic_id, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
 """
+
+# VM_SCALE_SET = """
+# ComputeResources
+# | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines"
+# | where subscriptionId !in~ {}
+# | project name, tostring(id), resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId
+# | extend lower_id = tolower(id)
+# | join kind = leftouter (
+#     ComputeResources
+#     | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines/networkinterfaces"
+#     | mv-expand ipConfig = properties.ipConfigurations
+#     | project id = tostring(properties.virtualMachine.id), private_ip = ipConfig.properties.privateIPAddress, subnet_id = ipConfig.properties.subnet.id
+#     | extend lower_id = tolower(id)
+#     | extend lower_subnet_id = tolower(tostring(subnet_id))
+# ) on lower_id
+# | join kind = leftouter (
+#     resources
+#     | where type =~ 'microsoft.network/virtualnetworks'
+#     | mv-expand subnet = properties.subnets
+#     | project subnet_id = subnet.id, subnet_name = subnet.name, vnet_id = id, vnet_name = name
+#     | extend lower_subnet_id = tolower(tostring(subnet_id))
+# ) on lower_subnet_id
+# | extend vmss_name = replace(@'_[^_]+$', '', name)
+# | extend vmss_vm_num = todynamic(replace(@'.*\/virtualMachines/', '', id))
+# | extend vmss_id = replace(@'/virtualMachines.*', '', id)
+# | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('vmss_name', vmss_name, 'vmss_vm_num', vmss_vm_num, 'vmss_id', vmss_id)
+# """
 
 VM_SCALE_SET = """
 ComputeResources
 | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines"
 | where subscriptionId !in~ {}
 | project name, tostring(id), resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId
+| extend id_lower = tolower(id)
 | join kind = leftouter (
     ComputeResources
     | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines/networkinterfaces"
     | mv-expand ipConfig = properties.ipConfigurations
-    | project id = tostring(properties.virtualMachine.id), private_ip = ipConfig.properties.privateIPAddress, subnet_id = ipConfig.properties.subnet.id
-    | extend lower_subnet_id = tolower(tostring(subnet_id))
-) on id
+    | project id = tostring(properties.virtualMachine.id), private_ip = ipConfig.properties.privateIPAddress, subnet_id = tostring(ipConfig.properties.subnet.id)
+    | extend id_lower = tolower(id)
+    | extend subnet_id_lower = tolower(tostring(subnet_id))
+) on id_lower
 | join kind = leftouter (
     resources
     | where type =~ 'microsoft.network/virtualnetworks'
     | mv-expand subnet = properties.subnets
-    | project subnet_id = subnet.id, subnet_name = subnet.name, vnet_id = id, vnet_name = name
-    | extend lower_subnet_id = tolower(tostring(subnet_id))
-) on lower_subnet_id
-| extend vmss_name = replace(@'_[^_]+$', '', name)
+    | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
+    | extend subnet_id_lower = tolower(tostring(subnet_id))
+) on subnet_id_lower
+| extend vmss_name = extract(@'virtualMachineScaleSets\/(.*)\/virtualMachines', 1, id)
 | extend vmss_vm_num = todynamic(replace(@'.*\/virtualMachines/', '', id))
 | extend vmss_id = replace(@'/virtualMachines.*', '', id)
-| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('vmss_name', vmss_name, 'vmss_vm_num', vmss_vm_num, 'vmss_id', vmss_id)
+| project name = strcat(vmss_name, '_', vmss_vm_num), id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('vmss_name', vmss_name, 'vmss_vm_num', vmss_vm_num, 'vmss_id', vmss_id)
 """
 
 FIREWALL_VNET = """
@@ -215,24 +289,23 @@ resources
 | where properties.sku.name =~ 'AZFW_VNet'
 | extend ipConfigs = array_length(properties.ipConfigurations)
 | mv-expand ipConfig = properties.ipConfigurations
-| project tenant_id = tenantId, id = id, name = name, size = properties.sku.tier, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip = ipConfig.properties.privateIPAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, subnet_id = ipConfig.properties.subnet.id, public_ip_id = ipConfig.properties.publicIPAddress.id
-| extend subnet_id = tostring(subnet_id), public_ip_id = tostring(public_ip_id)
+| project tenant_id = tenantId, id = id, name = name, size = properties.sku.tier, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip = ipConfig.properties.privateIPAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, subnet_id = tostring(ipConfig.properties.subnet.id), public_ip_id = tostring(ipConfig.properties.publicIPAddress.id)
+| extend subnet_id_lower = tolower(subnet_id)
+| extend public_ip_id_lower = tolower(public_ip_id)
 | join kind = leftouter (
     resources
     | where type =~ 'Microsoft.Network/PublicIpAddresses'
-    | project public_ip_id = id, public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
-    | extend public_ip_id = tostring(public_ip_id)
-) on public_ip_id
-| project-away public_ip_id1
+    | project public_ip_id = tostring(id), public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
+    | extend public_ip_id_lower = tolower(public_ip_id)
+) on public_ip_id_lower
 | join kind = leftouter (
     resources
     | where type =~ 'microsoft.network/virtualnetworks'
     | extend subnets = array_length(properties.subnets)
     | mv-expand subnet = properties.subnets
-    | project subnet_id = subnet.id, subnet_name = subnet.name, vnet_id = id, vnet_name = name
-    | extend subnet_id = tostring(subnet_id)
-) on subnet_id
-| project-away subnet_id1
+    | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
+    | extend subnet_id_lower = tolower(subnet_id)
+) on subnet_id_lower
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('size', size, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
 """
 
@@ -258,24 +331,23 @@ resources
 | where subscriptionId !in~ {}
 | extend ipConfigs = array_length(properties.ipConfigurations)
 | mv-expand ipConfig = properties.ipConfigurations
-| project tenant_id = tenantId, id = id, name = name, size = sku.name, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip = dynamic(null), private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, subnet_id = ipConfig.properties.subnet.id, public_ip_id = ipConfig.properties.publicIPAddress.id
-| extend subnet_id = tostring(subnet_id), public_ip_id = tostring(public_ip_id)
+| project tenant_id = tenantId, id = id, name = name, size = sku.name, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip = dynamic(null), private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, subnet_id = tostring(ipConfig.properties.subnet.id), public_ip_id = tostring(ipConfig.properties.publicIPAddress.id)
+| extend subnet_id_lower = tolower(subnet_id)
+| extend public_ip_id_lower = tolower(public_ip_id)
 | join kind = leftouter (
     resources
     | where type =~ 'Microsoft.Network/PublicIpAddresses'
-    | project public_ip_id = id, public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
-    | extend public_ip_id = tostring(public_ip_id)
-) on public_ip_id
-| project-away public_ip_id1
+    | project public_ip_id = tostring(id), public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
+    | extend public_ip_id_lower = tolower(public_ip_id)
+) on public_ip_id_lower
 | join kind = leftouter (
     resources
     | where type =~ 'microsoft.network/virtualnetworks'
     | extend subnets = array_length(properties.subnets)
     | mv-expand subnet = properties.subnets
-    | project subnet_id = subnet.id, subnet_name = subnet.name, vnet_id = id, vnet_name = name
-    | extend subnet_id = tostring(subnet_id)
-) on subnet_id
-| project-away subnet_id1
+    | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
+    | extend subnet_id_lower = tolower(subnet_id)
+) on subnet_id_lower
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('size', size, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
 """
 
@@ -284,23 +356,23 @@ resources
 | where type =~ 'microsoft.Network/virtualNetworkGateways'
 | where subscriptionId !in~ {}
 | mv-expand ipConfig = properties.ipConfigurations
-| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, private_ip = properties.bgpSettings.bgpPeeringAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, public_ip_id = ipConfig.properties.publicIPAddress.id, subnet_id = ipConfig.properties.subnet.id
-| extend public_ip_id = tolower(tostring(public_ip_id))
-| extend subnet_id = tolower(tostring(subnet_id))
+| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, private_ip = properties.bgpSettings.bgpPeeringAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, public_ip_id = tostring(ipConfig.properties.publicIPAddress.id), subnet_id = tostring(ipConfig.properties.subnet.id)
+| extend public_ip_id_lower = tolower(public_ip_id)
+| extend subnet_id_lower = tolower(subnet_id)
 | join kind = leftouter (
     resources
     | where type =~ 'Microsoft.Network/PublicIpAddresses'
-    | project public_ip_id = id, public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
-    | extend public_ip_id = tolower(tostring(public_ip_id))
-) on public_ip_id
+    | project public_ip_id = tostring(id), public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
+    | extend public_ip_id_lower = tolower(public_ip_id)
+) on public_ip_id_lower
 | join kind = leftouter (
     resources
     | where type =~ 'microsoft.network/virtualnetworks'
     | extend subnets = array_length(properties.subnets)
     | mv-expand subnet = properties.subnets
-    | project subnet_id = subnet.id, subnet_name = subnet.name, vnet_id = id, vnet_name = name
-    | extend subnet_id = tolower(tostring(subnet_id))
-) on subnet_id
+    | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
+    | extend subnet_id_lower = tolower(subnet_id)
+) on subnet_id_lower
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
 """
 
@@ -310,33 +382,32 @@ resources
 | where subscriptionId !in~ {}
 | mv-expand ipConfig = properties.frontendIPConfigurations
 | where isnotempty(ipConfig.properties.privateIPAddress)
-| project name, tenant_id = tenantId, id, size = properties.sku.tier, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip = ipConfig.properties.privateIPAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, subnet_id = ipConfig.properties.subnet.id
-| extend subnet_id = tolower(tostring(subnet_id))
+| project name, tenant_id = tenantId, id, size = properties.sku.tier, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip = ipConfig.properties.privateIPAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, subnet_id = tostring(ipConfig.properties.subnet.id)
+| extend name_lower = tolower(name)
+| extend subnet_id_lower = tolower(subnet_id)
 | join kind = leftouter (
     resources
     | where type =~ 'Microsoft.Network/applicationGateways'
     | mv-expand ipConfig = properties.frontendIPConfigurations
     | where isnotempty(ipConfig.properties.publicIPAddress)
-    | project name, public_ip_id = ipConfig.properties.publicIPAddress.id, public_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod
-    | extend public_ip_id = tostring(public_ip_id)
-) on name
-| project-away name1
+    | project name, public_ip_id = tostring(ipConfig.properties.publicIPAddress.id), public_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod
+    | extend name_lower = tolower(name)
+    | extend public_ip_id_lower = tolower(public_ip_id)
+) on name_lower
 | join kind = leftouter (
     resources
     | where type =~ 'Microsoft.Network/PublicIpAddresses'
-    | project public_ip_id = id, public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
-    | extend public_ip_id = tostring(public_ip_id)
-) on public_ip_id
-| project-away public_ip_id1
+    | project public_ip_id = tostring(id), public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
+    | extend public_ip_id_lower = tolower(public_ip_id)
+) on public_ip_id_lower
 | join kind = leftouter (
     resources
     | where type =~ 'microsoft.network/virtualnetworks'
     | extend subnets = array_length(properties.subnets)
     | mv-expand subnet = properties.subnets
-    | project subnet_id = subnet.id, subnet_name = subnet.name, vnet_id = id, vnet_name = name
-    | extend subnet_id = tolower(tostring(subnet_id))
-) on subnet_id
-| project-away subnet_id1
+    | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
+    | extend subnet_id_lower = tolower(subnet_id)
+) on subnet_id_lower
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('size', size, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
 """
 
@@ -346,16 +417,41 @@ resources
 | where subscriptionId !in~ {}
 | where properties.provisioningState =~ 'Succeeded'
 | mv-expand privateIP = properties.privateIPAddresses, publicIP = properties.publicIPAddresses
-| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip = privateIP, public_ip = publicIP, subnet_id = properties.virtualNetworkConfiguration.subnetResourceId, tenant_id = tenantId, vnet_type = properties.virtualNetworkType
-| extend subnet_id = tolower(tostring(subnet_id))
+| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip = privateIP, public_ip = publicIP, subnet_id = tostring(properties.virtualNetworkConfiguration.subnetResourceId), tenant_id = tenantId, vnet_type = properties.virtualNetworkType
+| extend subnet_id_lower = tolower(subnet_id)
 | join kind = leftouter (
     resources
     | where type =~ 'microsoft.network/virtualnetworks'
     | extend subnets = array_length(properties.subnets)
     | mv-expand subnet = properties.subnets
-    | project subnet_id = subnet.id, subnet_name = subnet.name, vnet_id = id, vnet_name = name
-    | extend subnet_id = tolower(tostring(subnet_id))
-) on subnet_id
-| project-away subnet_id1
+    | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
+    | extend subnet_id_lower = tolower(subnet_id)
+) on subnet_id_lower
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('vnet_type', vnet_type, 'public_ip', public_ip)
+"""
+
+LB = """
+resources
+| where type =~ 'microsoft.Network/LoadBalancers'
+| where subscriptionId !in~ {}
+| mv-expand ipConfig = properties.frontendIPConfigurations
+| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, private_ip = ipConfig.properties.privateIPAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, public_ip_id = tostring(ipConfig.properties.publicIPAddress.id), subnet_id = tostring(ipConfig.properties.subnet.id)
+| extend public_ip_id_lower = tolower(public_ip_id)
+| extend subnet_id_lower = tolower(subnet_id)
+| join kind = leftouter (
+    resources
+    | where type =~ 'Microsoft.Network/PublicIpAddresses'
+    | project public_ip_id = tostring(id), public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
+    | extend public_ip_id_lower = tolower(public_ip_id)
+) on public_ip_id_lower
+| join kind = leftouter (
+    resources
+    | where type =~ 'microsoft.network/virtualnetworks'
+    | extend subnets = array_length(properties.subnets)
+    | mv-expand subnet = properties.subnets
+    | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = todynamic(id), vnet_name = todynamic(name)
+    | extend subnet_id_lower = tolower(subnet_id)
+) on subnet_id_lower
+| extend type = iff(isnotnull(private_ip), 'Private', 'Public')
+| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('type', type, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
 """

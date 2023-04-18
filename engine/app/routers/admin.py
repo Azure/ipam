@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, Response, HTTPException, Header, status
+from fastapi import APIRouter, Depends, Request, Response, HTTPException, Header, Path, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.encoders import jsonable_encoder
@@ -55,6 +55,7 @@ async def new_admin_db(admin_list, exclusion_list, tenant_id):
     status_code = 200
 )
 async def get_admins(
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -85,6 +86,7 @@ async def get_admins(
 )
 async def create_admin(
     admin: Admin,
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -106,7 +108,7 @@ async def create_admin(
     else:
         admin_data = copy.deepcopy(admin_query[0])
 
-        target_admin = next((x for x in admin_data['admins'] if x['id'] == admin.id), None)
+        target_admin = next((x for x in admin_data['admins'] if uuid.UUID(x['id']) == admin.id), None)
 
         if target_admin:
             raise HTTPException(status_code=400, detail="User is already an admin.")
@@ -128,13 +130,14 @@ async def create_admin(
 )
 async def update_admins(
     admin_list: List[Admin],
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
     Replace the list of IPAM Administrators with the following details:
 
-    - Array **[]** of:
+    - Array **[ ]** of:
         - **name**: Full name of the Administrator
         - **email**: Email address for the Administrator
         - **id**: Azure AD ObjectID for the Administrator user
@@ -172,7 +175,8 @@ async def update_admins(
     error_msg = "Error removing admin, please try again."
 )
 async def delete_admin(
-    objectId: UUID,
+    objectId: UUID = Path(..., description="Azure AD ObjectID for the target user"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -208,6 +212,7 @@ async def delete_admin(
     status_code = 200
 )
 async def get_exclusions(
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -238,11 +243,12 @@ async def get_exclusions(
 )
 async def add_exclusions(
     exclusions: List[Subscription],
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
-    Add a list of excluded subscriptions:
+    Add a list of excluded Subscriptions:
 
     - **[&lt;UUID&gt;]**: Array of Subscription ID's
     """
@@ -280,11 +286,12 @@ async def add_exclusions(
 )
 async def update_exclusions(
     exclusions: List[Subscription],
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
-    Replace the list of excluded subscriptions:
+    Replace the list of excluded Subscriptions:
 
     - **[&lt;UUID&gt;]**: Array of Subscription ID's
     """
@@ -321,12 +328,13 @@ async def update_exclusions(
     error_msg = "Error removing exclusion, please try again."
 )
 async def remove_exclusion(
-    subscriptionId: Subscription,
+    subscriptionId: Subscription = Path(..., description="Azure Subscription ID"),
+    authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
-    Remove an excluded subscription id
+    Remove an excluded Subscription ID.
     """
 
     if not is_admin:

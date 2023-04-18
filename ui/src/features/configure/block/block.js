@@ -2,6 +2,8 @@ import * as React from "react";
 import { useSelector } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
+import { isEmpty} from 'lodash';
+
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
 import '@inovua/reactdatagrid-community/theme/default-dark.css'
@@ -63,7 +65,7 @@ const gridStyle = {
 
 const columns = [
   { name: "name", header: "Name", defaultFlex: 1 },
-  { name: "parentSpace", header: "Parent Space", defaultFlex: 1 },
+  { name: "parent_space", header: "Parent Space", defaultFlex: 1 },
   { name: "cidr", header: "CIDR", defaultFlex: 0.75 },
 ];
 
@@ -102,8 +104,24 @@ export default function BlockDataGrid(props) {
   }, [selectedSpace, onSpaceChange]);
 
   React.useEffect(() => {
-    setSelectedBlock(Object.values(selectionModel)[0])
+    if(!isEmpty(selectionModel)) {
+      setSelectedBlock(Object.values(selectionModel)[0])
+    } else {
+      setSelectedBlock(null);
+    }
   }, [selectionModel, setSelectedBlock]);
+
+  React.useEffect(() => {
+    if(blocks && selectedBlock) {
+      const currentBlock = blocks.find(block => block.name === selectedBlock.name);
+      
+      if(!currentBlock) {
+        setSelectionModel({});
+      } else {
+        setSelectedBlock(currentBlock);
+      }
+    }
+  }, [blocks, selectedBlock, setSelectedBlock, setSelectionModel]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -141,7 +159,7 @@ export default function BlockDataGrid(props) {
       if(!prevState.hasOwnProperty(id)) {
         newSelectionModel[id] = data;
       }
-      
+
       return newSelectionModel;
     });
   }
@@ -193,7 +211,7 @@ export default function BlockDataGrid(props) {
         open={editResvOpen}
         handleClose={() => setEditResvOpen(false)}
         space={selectedSpace ? selectedSpace.name : null}
-        block={selectedBlock ? selectedBlock.name : null}
+        block={selectedBlock ? selectedBlock : null}
       />
       <GridHeader
         style={{
@@ -318,8 +336,9 @@ export default function BlockDataGrid(props) {
           showActiveRowIndicator={false}
           enableColumnAutosize={false}
           showColumnMenuGroupOptions={false}
+          showColumnMenuLockOptions={false}
           columns={columns}
-          dataSource={selectedSpace ? blocks.filter((block) => block.parentSpace === selectedSpace.name) : []}
+          dataSource={selectedSpace ? blocks.filter((block) => block.parent_space === selectedSpace.name) : []}
           onRowClick={(rowData) => onClick(rowData.data)}
           selected={selectionModel}
           emptyText={NoRowsOverlay}

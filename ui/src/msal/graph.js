@@ -1,8 +1,5 @@
 import { graphConfig } from "./authConfig";
 
-/**
- * Attaches a given access token to a Microsoft Graph API call. Returns information about the user
- */
 export async function callMsGraph(accessToken) {
   const headers = new Headers();
   const bearer = `Bearer ${accessToken}`;
@@ -59,27 +56,6 @@ export async function callMsGraphUsersFilter(accessToken, nameFilter = "") {
     .then((response) => response.json())
     .catch((error) => console.log(error));
 }
-
-// export async function callMsGraphUsersFilter(accessToken, search) {
-//   const headers = new Headers();
-//   const bearer = `Bearer ${accessToken}`;
-
-//   headers.append("Authorization", bearer);
-//   headers.append("ConsistencyLevel", "eventual");
-
-//   const options = {
-//     method: "GET",
-//     headers: headers,
-//   };
-
-//   let filter = `?$filter=startsWith(userPrincipalName,'${search}') OR startsWith(displayName, '${search}')`
-
-//   let sort = "&$orderby=displayName&$count=true";
-
-//   return fetch((graphConfig.graphUsersEndpoint + filter + sort), options)
-//     .then((response) => response.json())
-//     .catch((error) => console.log(error));
-// }
 
 export async function callMsGraphPhoto(accessToken) {
   const headers = new Headers();

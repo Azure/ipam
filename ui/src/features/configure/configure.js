@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
-import { isEqual } from 'lodash';
+// import { isEqual } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
@@ -113,17 +113,17 @@ export default function ConfigureIPAM() {
     }
   }, [refresh]);
 
-  React.useEffect(() => {
-    if(blocks && selectedBlock) {
-      let targetBlock = blocks.find(x => x.id === selectedBlock.id);
+  // React.useEffect(() => {
+  //   if(blocks && selectedBlock) {
+  //     let targetBlock = blocks.find(x => x.name === selectedBlock.name);
 
-      if(targetBlock) {
-        if(!isEqual(targetBlock, selectedBlock)) {
-          setSelectedBlock(targetBlock)
-        }
-      }
-    }
-  }, [blocks, selectedBlock]);
+  //     if(targetBlock) {
+  //       if(!isEqual(targetBlock, selectedBlock)) {
+  //         setSelectedBlock(targetBlock)
+  //       }
+  //     }
+  //   }
+  // }, [blocks, selectedBlock]);
 
   return (
     <ConfigureContext.Provider value={{ spaces, blocks, refreshing, refresh }}>

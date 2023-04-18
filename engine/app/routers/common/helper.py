@@ -135,6 +135,7 @@ async def get_mgmt_group_name(tenant_id):
 
     return result
 
+# Needs a try/except block for aiohttp.client_exceptions.ServerTimeoutError
 async def cosmos_query(query: str, tenant_id: str):
     """DOCSTRING"""
 
