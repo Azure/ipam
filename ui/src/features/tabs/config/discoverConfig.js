@@ -155,49 +155,6 @@ export const vnets = {
   }
 };
 
-export const vhubs = {
-  config: {
-    title: "Virtual Hub",
-    setting: "vhubs",
-    apiFunc: selectUpdatedVHubs,
-    idProp: "id"
-  },
-  columns: [
-    { name: "name", header: "vNet Name", type: "string", flex: 0.6, visible: true },
-    { name: "vwan_name", header: "Parent vWAN", type: "string", flex: 0.6, visible: true },
-    { name: "parent_block", header: "Block", type: "string", flex: 0.75, render: ({value}) => value ?? "<Unassigned>", visible: true },
-    { name: "subscription_name", header: "Subscription Name", type: "string", flex: 0.75, visible: false },
-    { name: "subscription_id", header: "Subscription ID", type: "string", flex: 0.75, visible: false },
-    { name: "resource_group", header: "Resource Group", type: "string", flex: 0.75, visible: true },
-    { name: "prefixes", header: "Address Space", type: "string", flex: 0.35, render: ({value}) => value.toString(), visible: true }
-  ],
-  filterSettings: [
-    { name: 'name', operator: 'contains', type: 'string', value: '' },
-    { name: 'vwan_name', operator: 'contains', type: 'string', value: '' },
-    { name: 'parent_block', operator: 'contains', type: 'string', value: '' },
-    { name: 'subscription_name', operator: 'contains', type: 'string', value: '' },
-    { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
-    { name: 'resource_group', operator: 'contains', type: 'string', value: '' },
-    { name: 'prefixes', operator: 'contains', type: 'array', value: '' }
-  ],
-  detailsMap: {
-    showProgress: false,
-    progressTotal: "",
-    progressUsed: "",
-    fieldMap: [
-      { name: "vHub Name", value: "name" },
-      { name: "vWAN Name", value: "vwan_name" },
-      { name: "Space", value: "parent_space" },
-      { name: "Block", value: "parent_block" },
-      { name: "Address Space", value: "prefixes" },
-      { name: "Resource Group", value: "resource_group" },
-      { name: "Subscription Name", value: "subscription_name" },
-      { name: "Subscription ID", value: "subscription_id" },
-    ],
-    showLink: true
-  }
-};
-
 export const subnets = {
   config: {
     title: "Subnet",
@@ -241,6 +198,49 @@ export const subnets = {
       { name: "Subscription ID", value: "subscription_id" },
       { name: "Total IP Space", value: "size" },
       { name: "Allocated IP's", value: "used" }
+    ],
+    showLink: true
+  }
+};
+
+export const vhubs = {
+  config: {
+    title: "Virtual Hub",
+    setting: "vhubs",
+    apiFunc: selectUpdatedVHubs,
+    idProp: "id"
+  },
+  columns: [
+    { name: "name", header: "vNet Name", type: "string", flex: 0.6, visible: true },
+    { name: "vwan_name", header: "Parent vWAN", type: "string", flex: 0.6, visible: true },
+    { name: "parent_block", header: "Block", type: "string", flex: 0.75, render: ({value}) => value ?? "<Unassigned>", visible: true },
+    { name: "subscription_name", header: "Subscription Name", type: "string", flex: 0.75, visible: false },
+    { name: "subscription_id", header: "Subscription ID", type: "string", flex: 0.75, visible: false },
+    { name: "resource_group", header: "Resource Group", type: "string", flex: 0.75, visible: true },
+    { name: "prefixes", header: "Address Space", type: "string", flex: 0.35, render: ({value}) => value.toString(), visible: true }
+  ],
+  filterSettings: [
+    { name: 'name', operator: 'contains', type: 'string', value: '' },
+    { name: 'vwan_name', operator: 'contains', type: 'string', value: '' },
+    { name: 'parent_block', operator: 'contains', type: 'string', value: '' },
+    { name: 'subscription_name', operator: 'contains', type: 'string', value: '' },
+    { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
+    { name: 'resource_group', operator: 'contains', type: 'string', value: '' },
+    { name: 'prefixes', operator: 'contains', type: 'array', value: '' }
+  ],
+  detailsMap: {
+    showProgress: false,
+    progressTotal: "",
+    progressUsed: "",
+    fieldMap: [
+      { name: "vHub Name", value: "name" },
+      { name: "vWAN Name", value: "vwan_name" },
+      { name: "Space", value: "parent_space" },
+      { name: "Block", value: "parent_block" },
+      { name: "Address Space", value: "prefixes" },
+      { name: "Resource Group", value: "resource_group" },
+      { name: "Subscription Name", value: "subscription_name" },
+      { name: "Subscription ID", value: "subscription_id" },
     ],
     showLink: true
   }
