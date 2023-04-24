@@ -669,7 +669,7 @@ export const selectUpdatedVNets = createSelector(
     return vnets?.map((vnet) => {
       var newVNet = cloneDeep(vnet);
 
-      newVNet.subscription_name = subscriptions?.find((x) => x.subscription_id === vnet.subscription_id).name || 'Unknown';
+      newVNet.subscription_name = subscriptions?.find((x) => x.subscription_id === vnet.subscription_id)?.name || 'Unknown';
 
       return newVNet;
     });
@@ -682,7 +682,7 @@ export const selectUpdatedVHubs = createSelector(
     return vhubs?.map((vhub) => {
       var newVHub = cloneDeep(vhub);
 
-      newVHub.subscription_name = subscriptions?.find((x) => x.subscription_id === vhub.subscription_id).name || 'Unknown';
+      newVHub.subscription_name = subscriptions?.find((x) => x.subscription_id === vhub.subscription_id)?.name || 'Unknown';
 
       return newVHub;
     });
@@ -695,7 +695,7 @@ export const selectUpdatedSubnets = createSelector(
     return subnets?.map((subnet) => {
       var newSubnet = cloneDeep(subnet);
 
-      newSubnet.subscription_name = subscriptions?.find((x) => x.subscription_id === subnet.subscription_id).name || 'Unknown';
+      newSubnet.subscription_name = subscriptions?.find((x) => x.subscription_id === subnet.subscription_id)?.name || 'Unknown';
 
       return newSubnet;
     });
@@ -708,7 +708,7 @@ export const selectUpdatedEndpoints = createSelector(
     return endpoints?.map((endpoint) => {
       var newEndpoint = cloneDeep(endpoint);
 
-      newEndpoint.subscription_name = subscriptions?.find((x) => x.subscription_id === endpoint.subscription_id).name || 'Unknown';
+      newEndpoint.subscription_name = subscriptions?.find((x) => x.subscription_id === endpoint.subscription_id)?.name || 'Unknown';
 
       return newEndpoint;
     });
@@ -721,7 +721,7 @@ export const selectUpdatedNetworks = createSelector(
     return networks?.map((network) => {
       var newNetwork = cloneDeep(network);
 
-      newNetwork.subscription_name = subscriptions?.find((x) => x.subscription_id === network.subscription_id).name || 'Unknown';
+      newNetwork.subscription_name = subscriptions?.find((x) => x.subscription_id === network.subscription_id)?.name || 'Unknown';
 
       return newNetwork;
     });
