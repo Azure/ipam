@@ -7,7 +7,7 @@ To successfully deploy the solution, the following prerequisites must be met:
 - An Azure Subscription (to deploy the solution into)
 - The following Azure RBAC Roles:
   - [Owner](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#owner) at the above mentioned Subscription scope
-  - One of the following roles at the [Root Management Group](https://learn.microsoft.com/en-us/azure/governance/management-groups/overview#root-management-group-for-each-directory) scope (needed to grant App Registrations and Managed Identity RBAC permissions):
+  - One of the following roles at the targeted Management Group ([Root Management Group](https://learn.microsoft.com/en-us/azure/governance/management-groups/overview#root-management-group-for-each-directory) by default) scope (needed to grant App Registrations and Managed Identity RBAC permissions):
     - [Owner](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#owner)
     - [User Access Administrator](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#user-access-administrator)
     - [Custom Role](https://learn.microsoft.com/en-us/azure/role-based-access-control/custom-roles) with *allow* permissions of `Microsoft.Authorization/roleAssignments/write`
@@ -129,6 +129,7 @@ You have the ability to pass optional flags to the deployment script:
 | `-NamePrefix <prefix>`                          | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>3</sup>** |
 | `-AsFunction`                                   | Deploys the engine container only to an Azure Function                    |
 | `-PrivateACR`                                   | Deploys a private Azure Container Registry and builds the IPAM containers |
+| `-ManagementGroupID <ID>`                       | Changes the scope of the Engine app registration's access. **<sup>4</sup>** |
 
 > **NOTE 1:** The required values will vary based on the deployment type.
 
@@ -136,7 +137,9 @@ You have the ability to pass optional flags to the deployment script:
 
 > **NOTE 3:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
 
-**Customize the Management Group that the App Registrions have access to. Default is Tenant Root Group:**
+> **NOTE 4:** By default the Engine app registration is granted Reader access at the Tenant Root Group. This parameter would allow you to change the scope to another Management Group.
+
+**Customize the Management Group that the App Registrations have access to. Default is Tenant Root Group:**
 
 ```powershell
 ./deploy.ps1 `
@@ -259,11 +262,23 @@ To deploy App Registrations only, run the following from within the `deploy` dir
 
 You have the ability to pass optional flags to the deployment script:
 
-| Parameter               | Description                                                                                         |
-| :---------------------- | :-------------------------------------------------------------------------------------------------- |
-| `-UIAppName <name>`     | Changes the name of the UI app registration                                                         |
-| `-EngineAppName <name>` | Changes the name of the Engine app registration                                                     |
-| `-AsFunction`           | Indicates that this solution will be deployed as an Azure Function, no UI App Registration required |
+| Parameter                 | Description                                                                                         |
+| :------------------------ | :-------------------------------------------------------------------------------------------------- |
+| `-UIAppName <name>`       | Changes the name of the UI app registration                                                         |
+| `-EngineAppName <name>`   | Changes the name of the Engine app registration                                                     |
+| `-AsFunction`             | Indicates that this solution will be deployed as an Azure Function, no UI App Registration required |
+| `-ManagementGroupID <ID>` | Changes the scope of the Engine app registration's access. **<sup>1</sup>**                         |
+
+> **NOTE 1:** By default the Engine app registration is granted Reader access at the Tenant Root Group. This parameter would allow you to change the scope to another Management Group.
+
+**Customize the Management Group that the App Registrations have access to. Default is Tenant Root Group:**
+
+```powershell
+./deploy.ps1 `
+  -AppsOnly `
+  -ManagementGroupID "my-custom-management-group"
+  -Location "westus3" `
+```
 
 **Customize the name of the App Registrations:**
 

@@ -13,16 +13,19 @@
 [CmdletBinding(DefaultParameterSetName = 'Full')]
 param(
   [Parameter(ValueFromPipelineByPropertyName = $true,
-  Mandatory = $true,
-  ParameterSetName = 'Full')]
+    Mandatory = $false,
+    ParameterSetName = 'Full')]
   [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $true,
-    ParameterSetName = 'TemplateOnly')]
+    Mandatory = $false,
+    ParameterSetName = 'AppsOnly')]
   [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $true,
+    Mandatory = $false,
     ParameterSetName = 'Function')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'FuncAppsOnly')]
   [string]
-  $ManagementGroupID = $((Get-AzContext).Tenant.Id),
+  $ManagementGroupID,
 
   [Parameter(ValueFromPipelineByPropertyName = $true,
     Mandatory = $true,
@@ -790,6 +793,15 @@ process {
     }
 
     if ($PSCmdlet.ParameterSetName -in ('Full', 'AppsOnly', 'Function', 'FuncAppsOnly')) {
+      if( -not $ManagementGroupID) {
+        # If the user did not provide a Management Group ID, default to Tenant ID which is the ID for Tenant Root Group
+        # Fetch Tenant ID
+        Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor Green
+        Write-Verbose -Message "Fetching Tenant ID from Azure PowerShell SDK"
+        $ManagementGroupID = (Get-AzContext).Tenant.Id
+      }
+      
+      
       # Fetch Azure Cloud Type
       Write-Host "INFO: Fetching Azure Cloud type from Azure PowerShell SDK" -ForegroundColor Green
       Write-Verbose -Message "Fetching Azure Cloud type from Azure PowerShell SDK"
