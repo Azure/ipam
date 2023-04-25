@@ -136,6 +136,14 @@ You have the ability to pass optional flags to the deployment script:
 
 > **NOTE 3:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
 
+**Customize the Management Group that the App Registrions have access to. Default is Tenant Root Group:**
+
+```powershell
+./deploy.ps1 `
+  -ManagementGroupID "my-custom-management-group"
+  -Location "westus3" `
+```
+
 **Customize the name of the App Registrations:**
 
 ```powershell
