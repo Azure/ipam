@@ -155,6 +155,7 @@ VHUB = """
 resources
 | where type =~ 'microsoft.network/virtualhubs'
 | where subscriptionId !in~ {}
+| where isempty(kind)
 | project name, id, prefix = properties.addressPrefix, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, vwan_id = tostring(properties.virtualWan.id)
 | extend vwan_id_lower = tolower(vwan_id)
 | join kind = leftouter (
