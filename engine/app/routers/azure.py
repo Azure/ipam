@@ -129,7 +129,7 @@ async def update_vhub_data(auth, admin, hubs):
 
                 hub['peerings'].append(connection_data)
         except HttpResponseError:
-            logger.error("Error fetching vWAN Hub connections on subscription {}".format(subscription['subscription_id']))
+            logger.error("Error fetching vWAN Hub connections on subscription {}".format(hub['subscription_id']))
             pass
 
         await network_client.close()
