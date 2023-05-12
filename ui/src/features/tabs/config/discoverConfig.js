@@ -29,9 +29,9 @@ function renderProgress(value) {
             ? "success"
             : value > 70 && value < 90
             ? "warning"
-            : value > 90
+            : value >= 90
             ? "error"
-            : null
+            : "info"
         }
       />
     </Box>
