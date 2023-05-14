@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { useLocation } from "react-router-dom";
 
-import { cloneDeep, pickBy, orderBy, isEmpty } from 'lodash';
+import { cloneDeep, pickBy, orderBy, isEmpty, merge } from 'lodash';
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import filter from '@inovua/reactdatagrid-community/filter'
@@ -51,7 +51,7 @@ import { apiRequest } from "../../msal/authConfig";
 
 import { TableContext } from "./TableContext";
 
-const filterTypes = Object.assign({}, ReactDataGrid.defaultProps.filterTypes, {
+const filterTypes = merge({}, ReactDataGrid.defaultProps.filterTypes, {
   array: {
     name: 'array',
     emptyValue: null,
@@ -78,6 +78,65 @@ const filterTypes = Object.assign({}, ReactDataGrid.defaultProps.filterTypes, {
         name: 'neq',
         fn: ({ value, filterValue, data }) => {
           return filterValue !== (null || '') ? !value.includes(filterValue) : true;
+        }
+      }
+    ]
+  },
+  string: {
+    name: 'string',
+    operators: [
+      {
+        name: 'contains',
+        fn: ({ value, filterValue, data }) => {
+          return !filterValue ? true : (value || '').toLowerCase().indexOf(filterValue.toLowerCase()) !== -1;
+        }
+      },
+      {
+        name: 'notContains',
+        fn: ({ value, filterValue, data }) => {
+          return !filterValue ? true : (value || '').toLowerCase().indexOf(filterValue.toLowerCase()) === -1;
+        }
+      },
+      {
+        name: 'eq',
+        fn: ({ value, filterValue, data }) => {
+          return !filterValue ? true : (value || '').toLowerCase() === filterValue.toLowerCase();
+        }
+      },
+      {
+        name: 'neq',
+        fn: ({ value, filterValue, data }) => {
+          return !filterValue ? true : (value || '').toLowerCase() !== filterValue.toLowerCase();
+        }
+      },
+      {
+        name: 'empty',
+        disableFilterEditor: true,
+        filterOnEmptyValue: true,
+        valueOnOperatorSelect: '',
+        fn: ({ value, filterValue, data }) => {
+          return value === null || value === '';
+        }
+      },
+      {
+        name: 'notEmpty',
+        disableFilterEditor: true,
+        filterOnEmptyValue: true,
+        valueOnOperatorSelect: '',
+        fn: ({ value, filterValue, data }) => {
+          return value !== null && value !== '';
+        }
+      },
+      {
+        name: 'startsWith',
+        fn: ({ value, filterValue, data }) => {
+          return !filterValue ? true : (value || '').toLowerCase().startsWith(filterValue.toLowerCase());
+        }
+      },
+      {
+        name: 'endsWith',
+        fn: ({ value, filterValue, data }) => {
+          return !filterValue ? true : (value || '').toLowerCase().endsWith(filterValue.toLowerCase());
         }
       }
     ]
@@ -468,6 +527,13 @@ export default function DiscoverTable(props) {
     gridData && setLoading(false);
   },[gridData]);
 
+  const onCellDoubleClick = React.useCallback((event, cellProps) => {
+    const { value } = cellProps
+
+    navigator.clipboard.writeText(value);
+    enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
+  }, [enqueueSnackbar]);
+
   function renderDetails() {
     return (
       <ClickAwayListener onClickAway={() => setMenuExpand(false)}>
@@ -542,6 +608,7 @@ export default function DiscoverTable(props) {
           // defaultSortInfo={{ name: 'name', dir: 1, type: 'string' }}
           // defaultSortInfo={columnSortState}
           // onSortInfoChange={(newSortInfo) => setColumnSortState(newSortInfo)}
+          onCellDoubleClick={onCellDoubleClick}
           sortInfo={columnSortState}
           emptyText={NoRowsOverlay}
           style={gridStyle}

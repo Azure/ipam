@@ -254,7 +254,7 @@ export const endpoints = {
     idProp: "uniqueId"
   },
   columns: [
-    { name: "name", header: "Endpoint Name", type: "string", flex: 0.75, visible: true },
+    { name: "name", header: "Endpoint Name", type: "string", flex: 0.75, render: ({value, data}) => data.metadata?.orphaned ? <i style={{ color: 'red'}}>{value}</i> : value, visible: true },
     { name: "vnet_name", header: "Parent vNet", type: "string", flex: 0.75, render: ({value}) => value || "N/A", visible: true },
     { name: "subnet_name", header: "Parent Subnet", type: "string", flex: 0.75, render: ({value}) => value || "N/A", visible: true },
     { name: "resource_group", header: "Resource Group", type: "string", flex: 0.75, visible: true },
@@ -287,7 +287,8 @@ export const endpoints = {
       { name: "Size", value: "metadata.size" },
       { name: "Private Endpoint Type", value: "metadata.group_id" },
       { name: "VMSS Name", value: "metadata.vmss_name" },
-      { name: "VMSS Instance ID", value: "metadata.vmss_vm_num" }
+      { name: "VMSS Instance ID", value: "metadata.vmss_vm_num" },
+      { name: "Orphaned", value: "metadata.orphaned" }
     ],
     showLink: true
   }

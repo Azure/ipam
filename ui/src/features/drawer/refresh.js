@@ -32,7 +32,7 @@ function Refresh() {
   refreshAllRef.current = React.useCallback(() => {
     const request = {
       scopes: apiRequest.scopes,
-      account: accounts[0],
+      account: accounts[0]
     };
 
     (async() => {
@@ -41,7 +41,8 @@ function Refresh() {
         dispatch(refreshAllAsync(response.accessToken))
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
+          const response = instance.acquireTokenRedirect(request);
+          dispatch(refreshAllAsync(response.accessToken))
         } else {
           console.log("ERROR");
           console.log("------------------");
@@ -55,7 +56,7 @@ function Refresh() {
   refreshMeRef.current = React.useCallback(() => {
     const request = {
       scopes: apiRequest.scopes,
-      account: accounts[0],
+      account: accounts[0]
     };
 
     (async() => {
@@ -63,10 +64,15 @@ function Refresh() {
         const response = await instance.acquireTokenSilent(request)
         dispatch(getMeAsync(response.accessToken))
       } catch (e) {
-        console.log("ERROR");
-        console.log("------------------");
-        console.log(e);
-        console.log("------------------");
+        if (e instanceof InteractionRequiredAuthError) {
+          const response = instance.acquireTokenRedirect(request);
+          dispatch(getMeAsync(response.accessToken))
+        } else {
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+        }
       }
     })();
   }, [accounts, dispatch, instance]);

@@ -173,7 +173,7 @@ resources
 | where subscriptionId !in~ {}
 | where isnotempty(properties.privateEndpoint)
 | mv-expand ipconfig = properties.ipConfigurations
-| project pe_id = tostring(properties.privateEndpoint.id), subnet_id = tostring(ipconfig.properties.subnet.id), group_id = ipconfig.properties.privateLinkConnectionProperties.groupId, private_ip = ipconfig.properties.privateIPAddress
+| project pe_name = name, pe_rg = resourceGroup, pe_sid = subscriptionId, pe_tid = tenantId, pe_id = tostring(properties.privateEndpoint.id), subnet_id = tostring(ipconfig.properties.subnet.id), group_id = ipconfig.properties.privateLinkConnectionProperties.groupId, private_ip = ipconfig.properties.privateIPAddress
 | extend pe_id_lower = tolower(pe_id)
 | extend subnet_id_lower = tolower(subnet_id)
 | join kind = leftouter (
@@ -191,7 +191,7 @@ resources
     | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
     | extend subnet_id_lower = tolower(subnet_id)
 ) on subnet_id_lower
-| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('group_id', group_id, 'pe_id', pe_id)
+| project name = iff(notempty(name), name, pe_name), id = iff(notempty(id), id, pe_id), private_ip, resource_group = iff(notempty(resource_group), resource_group, pe_rg), subscription_id = iff(notempty(subscription_id), subscription_id, pe_sid), tenant_id = iff(notempty(tenant_id), tenant_id, pe_tid), vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('group_id', group_id, 'pe_id', pe_id, 'orphaned', iff(isempty(id), true, false))
 """
 
 VIRTUAL_MACHINE = """
