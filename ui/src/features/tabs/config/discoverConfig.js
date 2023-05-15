@@ -1,7 +1,10 @@
 import {
   Box,
   LinearProgress,
+  Tooltip
 } from "@mui/material";
+
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 import {
   selectSpaces,
@@ -34,6 +37,54 @@ function renderProgress(value) {
             : "info"
         }
       />
+    </Box>
+  );
+}
+
+function infoCell(value, message, color) {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        fontStyle: 'italic',
+        color: color
+      }}
+    >
+      {value}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
+          paddingLeft: '3px',
+          height: '30px'
+        }}>
+        <Tooltip
+          arrow
+          title={message}
+          placement="top"
+          PopperProps={{
+            popperOptions: {
+              modifiers: [
+                {
+                  name: 'offset',
+                  options: {
+                    offset: [0, -10]
+                  }
+                }
+              ]
+            }
+          }}
+        >
+          <InfoOutlinedIcon
+            fontSize="small"
+            style={{
+              width: '12px'
+            }}
+          />
+        </Tooltip>
+      </Box>
     </Box>
   );
 }
@@ -254,7 +305,7 @@ export const endpoints = {
     idProp: "uniqueId"
   },
   columns: [
-    { name: "name", header: "Endpoint Name", type: "string", flex: 0.75, render: ({value, data}) => data.metadata?.orphaned ? <i style={{ color: 'red'}}>{value}</i> : value, visible: true },
+    { name: "name", header: "Endpoint Name", type: "string", flex: 0.75, render: ({value, data}) => data.metadata?.orphaned ? infoCell(value, 'Orphaned Endpoint', 'red') : value, visible: true },
     { name: "vnet_name", header: "Parent vNet", type: "string", flex: 0.75, render: ({value}) => value || "N/A", visible: true },
     { name: "subnet_name", header: "Parent Subnet", type: "string", flex: 0.75, render: ({value}) => value || "N/A", visible: true },
     { name: "resource_group", header: "Resource Group", type: "string", flex: 0.75, visible: true },
