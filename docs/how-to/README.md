@@ -64,7 +64,53 @@ Place a checkmark next to the virtual networks you'd like to associate to the ta
 
 ## Reservations
 
-Currently, IP CIDR block reservations are not supported via the UI, but are supported programmatically via the API. Please the **Example API Calls** section for more information on how to create IP address block reservations.
+IP CIDR block reservations are not supported via the UI, but are supported programmatically via the API. When creating a reservation, IPAM will provide you with the next available CIDR block from the target **Block** you are requesting a reservation from that matches the bit mask size in your request. As a result, a GUID is generated for the reservation. Tagging your vNET with that GUID will complete the reservation process and associate the newly created vNET to the target **Block**.
+
+For requesting an IP address CIDR reservation, you'll need to perform a POST to the reservation API endpoint of the target **Block**:
+````
+https://<my-ipam-instance>.azurewebsites.net/api/spaces/<my-target-space>/blocks/<my-target-block>/reservations
+````
+
+You'll need to provide the following when making the call:
+* a bearer token
+* the method
+*  the request URL
+* any headers you'd like to pass
+* the body of the request
+
+The body of your request needs to contains a bit mask size. Based on this, IPAM will provide the next available CIDR block that matches the requested bit mask size.
+
+![Postman CIDR reservation](./images/postman_body.png)
+
+Be sure to provide the appropriate headers under the **Headers** tab.
+
+![Postman CIDR reservation headers](./images/postman_headers.png)
+
+Lastly, don't forget to provide your token information under the **Authorization** tab.
+
+![Postman CIDR reservation authorization](./images/postman_authorization.png)
+
+After POSTing your request, you will recieve a response of type **201 Created** with key information regarding your CIDR block reservation request (make note of the tag that is returned in the response). 
+
+![Postman CIDR reservation response](./images/postman_response.png)
+
+In IPAM, you can see your reservation by navigating to the target **Block**, clicking on the 3 elipses, and selecting **Reservations**. 
+
+![Target Block Reservation](./images/configure_blocks_reservations.png)
+
+In the **Block Reservations** page, you will see your newly created **Reservation**. Hovering over the copy icon will present the GUID which should match the GUID returned from your API request. 
+
+![IP Address Block Reservations](./images/ip_address_block_reservations.png)
+
+Tagging your newly created VNET with a key:value of :
+````
+ipam-res-id: <my reservation guid>
+````
+![Azure VNET Reservation Tag](./images/azure_vnet_reservation_tag.png)
+
+will automatically associate it with the target **Block** the reservation was requested from.
+
+For information on how to make API calls and a more detailed example of creating a reservation, head over to our [API documentation page.](../api/README.md?)
 
 ## vNETs, Subnets, and Endpoints
 
