@@ -112,9 +112,9 @@ will automatically associate it with the target **Block** the reservation was re
 
 For information on how to make API calls and a more detailed example of creating a reservation, head over to our [API documentation page.](../api/README.md?)
 
-## vNETs, Subnets, and Endpoints
+## vNETs, vWAN Hubs, Subnets, and Endpoints
 
-As an IPAM user, you can view IP address utilization information and detailed Azure resource related information for **vNETs**, **Subnets**, and **Endpoints** you have existing Azure RBAC access to.
+As an IPAM user, you can view IP address utilization information and detailed Azure resource related information for **vNETs**, **vWAN Hubs**, **Subnets**, and **Endpoints** you have existing Azure RBAC access to.
 
 ### Virtual Networks
 
@@ -125,6 +125,16 @@ For **vNETs**, you can find the name, view the parent **Block** (if assigned), u
 By clicking to expand the **vNET** details, you can find more granular **vNET** information and are presented the option to view the **vNET** resource directly in the Azure Portal by clicking on **VIEW IN PORTAL**.
 
 ![IPAM vNETs Details](./images/discover_vnets_details.png)
+
+### vWAN Hubs
+
+For **vWAN Hubs**, you can find the name, view the parent **vWAN**, the parent **Block** (if assigned), the resource group it is associated to, and the **vWAN Hub** address space.
+
+![IPAM vWAN Hubs](./images/discover_vwan_hubs.png)
+
+By clicking to expand the **vWAN Hub** details, you can find more granular **vWAN Hub** information and are presented the option to view the **vWAN Hub** resource directly in the Azure Portal by clicking on **VIEW IN PORTAL**.
+
+![IPAM vWAN Hub Details](./images/discover_vwan_hub_details.png)
 
 ### Subnets
 
