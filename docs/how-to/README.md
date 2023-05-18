@@ -14,6 +14,26 @@ IPAM administrators have the ability to perform CRUD operations on  [Spaces](#sp
 
 ![IPAM Admins Config](./images/ipam_administrators_config.png)
 
+### Restricting access to IPAM
+
+By default, IPAM is accessible to all users residing in your Azure AD Tenant. If you would like to restrict who is able to access IPAM, you can do so by [restricting access to the UI App Registration to a subset of users and/or groups in your Azure AD Tenant](https://learn.microsoft.com/en-us/azure/active-directory/develop/howto-restrict-your-app-to-a-set-of-users).  
+
+From the Azure portal, navigate to **Azure Active Directory** -> **App registrations** and  find your UI App Registration. From the overview page of your UI App Registration, select **Managed application in local directory**.
+
+![IPAM UI App Registration](./images/restrict_access_app_registration.png)
+
+From the overiew page of your UI Enterprise Application, under **Manage**, select **Properties**.
+
+![IPAM UI Enterprise Application](./images/restrict_access_enterprise_application.png)
+
+Locate the setting **Assignment required?** and set it to **Yes**. Select **Save** on the top bar.
+
+![IPAM UI Enterprise Application Assignment Required](./images/restrict_access_assignment_required.png)
+
+Under **Manage**, select **Users and groups** then select **Add user/group** and add the users and/or groups you'd like to restrict access to.
+
+![IPAM UI Enterprise Application Users and Groups](./images/restrict_access_users_and_groups.png)
+
 ## Subscription Exclusion/Inclusion
 
 As an IPAM administrator, you have the ability to include/exclude Subscriptions from the IPAM view. To do so, expand the **Admin** section of the menu blade and select **Subscriptions**.
