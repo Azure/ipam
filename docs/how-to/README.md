@@ -16,11 +16,11 @@ IPAM administrators have the ability to perform CRUD operations on  [Spaces](#sp
 
 ## Subscription Exclusion/Inclusion
 
-As an IPAM administrator, you have the ability to include/exclude subscriptions from the IPAM view. To do so, expand the **Admin** section of the menu blade and select **Subscriptions**.
+As an IPAM administrator, you have the ability to include/exclude Subscriptions from the IPAM view. To do so, expand the **Admin** section of the menu blade and select **Subscriptions**.
 
 ![IPAM Admin Subscriptions](./images/ipam_admin_subscriptions.png)
 
-From this screen, you can select Subscriptions which are to be <u>**excluded**</u> from IPAM by clicking on them. Once selected for exclusion, the subscription will be highlighted in **red**. Don't forget to click **save** in the upper-right once complete.
+From this screen, you can select Subscriptions which are to be <ins>**excluded**</ins> from IPAM by clicking on them. Once selected for exclusion, the subscription will be highlighted in **red**. Don't forget to click **save** in the upper-right once complete.
 
 ![IPAM Admin Subscriptions Config](./images/ipam_admin_subscriptions_config.png)
 
