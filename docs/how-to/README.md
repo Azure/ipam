@@ -10,7 +10,7 @@ IPAM has the concept of an **IPAM Administrator**. While using the IPAM tool as 
 
 ![IPAM Admins](./images/ipam_admin_admins.png)
 
-IPAM administrators have the ability to configure create/update [Spaces](#spaces) and [Blocks](#blocks) via the **Configure** section of the menu blade (more on that below). Once at least one IPAM administrator is set, non-admin users will only see resources in IPAM they already have access to from the Azure Portal, and the administrative functions of the IPAM tool will no longer be available to them.
+IPAM administrators have the ability to perform CRUD operations on  [Spaces](#spaces) and [Blocks](#blocks) via the **Configure** section of the menu blade (more on that below). Once at least one IPAM administrator is set, non-admin users will only see resources in IPAM they already have access to from the Azure Portal via their Azure RBAC permissions, and the administrative functions of the IPAM tool will no longer be available to them.
 
 ![IPAM Admins Config](./images/ipam_administrators_config.png)
 
