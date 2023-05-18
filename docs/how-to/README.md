@@ -20,13 +20,13 @@ As an IPAM administrator, you have the ability to include/exclude Subscriptions 
 
 ![IPAM Admin Subscriptions](./images/ipam_admin_subscriptions.png)
 
-From this screen, you can select Subscriptions which are to be <ins>**excluded**</ins> from IPAM by clicking on them. Once selected for exclusion, the subscription will be highlighted in **red**. Don't forget to click **save** in the upper-right once complete.
+From this screen, you can select Subscriptions which are to be <ins>**excluded**</ins> from IPAM by clicking on them. Once selected for exclusion, the Subscription will be highlighted in **red**. Don't forget to click **save** in the upper-right once complete.
 
 ![IPAM Admin Subscriptions Config](./images/ipam_admin_subscriptions_config.png)
 
 ## Spaces
 
-A **Space** represents a logical grouping of *unique* IP address space. **Spaces** can contain both contiguous and non-contiguous IP address CIDR blocks. A **Space** cannot contain any overlapping CIDR blocks. As an IPAM user, you can get to the **Spaces** tab via the **Discover** section of the menu blade. From the **Spaces** tab, you can see utilization metrics for each **Space**.
+A **Space** represents a logical grouping of *unique* IP address CIDR blocks. **Spaces** can contain both contiguous and non-contiguous IP address CIDR blocks. A **Space** cannot contain any overlapping CIDR blocks. As an IPAM user, you can get to the **Spaces** tab via the **Discover** section of the menu blade. From the **Spaces** tab, you can see utilization metrics for each **Space**.
 
 ![IPAM Spaces](./images/discover_spaces.png)
 
@@ -74,11 +74,11 @@ https://<my-ipam-instance>.azurewebsites.net/api/spaces/<my-target-space>/blocks
 ````
 
 You'll need to provide the following when making the call:
-* a bearer token
-* the method
-*  the request URL
-* any headers you'd like to pass
-* the body of the request
+* A bearer token
+* The method
+* The request URL
+* Any headers you'd like to pass
+* The body of the request
 
 The body of your request needs to contains a bit mask size. Based on this, IPAM will provide the next available CIDR block that matches the requested bit mask size.
 
@@ -112,7 +112,7 @@ ipam-res-id: <my reservation guid>
 
 will automatically associate it with the target **Block** the reservation was requested from.
 
-For information on how to make API calls and a more detailed example of creating a reservation, head over to our [API documentation page.](../api/README.md?)
+For more information on how to make API calls and a more detailed example of creating a reservation, head over to our [API documentation page.](../api/README.md?)
 
 ## vNETs, vWAN Hubs, Subnets, and Endpoints
 
