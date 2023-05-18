@@ -530,6 +530,8 @@ export default function DiscoverTable(props) {
   const onCellDoubleClick = React.useCallback((event, cellProps) => {
     const { value } = cellProps
 
+    console.log(cellProps);
+
     navigator.clipboard.writeText(value);
     enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
   }, [enqueueSnackbar]);

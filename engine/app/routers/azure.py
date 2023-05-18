@@ -563,21 +563,21 @@ async def fwvnet(
 
     return results
 
-@router.get(
-    "/fwvhub",
-    summary = "Get all vWAN Hub Firewalls"
-)
-async def fwvhub(
-    authorization: str = Header(None),
-    admin: str = Depends(get_admin)
-):
-    """
-    Get a list of all vWAN Hub integrated Azure Firewalls.
-    """
+# @router.get(
+#     "/fwvhub",
+#     summary = "Get all vWAN Hub Firewalls"
+# )
+# async def fwvhub(
+#     authorization: str = Header(None),
+#     admin: str = Depends(get_admin)
+# ):
+#     """
+#     Get a list of all vWAN Hub integrated Azure Firewalls.
+#     """
 
-    results = await arg_query(authorization, admin, argquery.FIREWALL_VHUB)
+#     results = await arg_query(authorization, admin, argquery.FIREWALL_VHUB)
 
-    return results
+#     return results
 
 @router.get(
     "/bastion",
@@ -659,6 +659,22 @@ async def lb(
 
     return results
 
+@router.get(
+    "/vhub_ep",
+    summary = "Get All Load Balancers"
+)
+async def vhub_ep(
+    authorization: str = Header(None),
+    admin: str = Depends(get_admin)
+):
+    """
+    Get a list of all endpoints within a vWAN vHub
+    """
+
+    results = await arg_query(authorization, admin, argquery.VHUB_ENDPOINT)
+
+    return results
+
 async def multi_helper(func, list, *args):
     """DOCSTRING"""
 
@@ -689,6 +705,7 @@ async def multi(
     tasks.append(asyncio.create_task(multi_helper(appgw, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(apim, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(lb, result_list, authorization, admin)))
+    tasks.append(asyncio.create_task(multi_helper(vhub_ep, result_list, authorization, admin)))
 
     await asyncio.gather(*tasks)
 

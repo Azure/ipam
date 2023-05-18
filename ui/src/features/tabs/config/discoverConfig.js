@@ -328,6 +328,8 @@ export const endpoints = {
     progressUsed: "",
     fieldMap: [
       { name: "Endpoint Name", value: "name" },
+      { name: "Kind", value: "metadata.kind" },
+      { name: "Type", value: "metadata.type" },
       { name: "Parent vNet", value: "vnet_name" },
       { name: "Parent Subnet", value: "subnet_name" },
       { name: "Private IP", value: "private_ip" },

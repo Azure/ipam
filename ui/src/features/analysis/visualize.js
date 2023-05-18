@@ -19,10 +19,9 @@ import { cloneDeep, isEmpty } from "lodash";
 
 import {
   selectSpaces,
-  selectSubscriptions,
-  selectVNets,
-  selectVHubs,
-  selectEndpoints
+  selectUpdatedVNets,
+  selectUpdatedVHubs,
+  selectUpdatedEndpoints
 } from "../ipam/ipamSlice";
 
 const opt = {
@@ -360,7 +359,7 @@ const opt = {
   series: []
 };
 
-function parseTree(spaces, subscriptions, vnets, vhubs, endpoints) {
+function parseTree(spaces, vnets, vhubs, endpoints) {
   const series = spaces.map((space) => {
     const data = {
       name: space.name,
@@ -384,11 +383,27 @@ function parseTree(spaces, subscriptions, vnets, vhubs, endpoints) {
                 parentVWan: target.vwan_name,
                 resourceGroup: target.resource_group,
                 subscriptionId: target.subscription_id,
-                subscriptionName: subscriptions.find((sub) => sub.subscription_id === target.subscription_id)?.name || 'Unknown',
+                subscriptionName: target.subscription_name,
                 tentantId: target.tenant_id,
                 prefix: target.prefixes.toString(),
                 size: target.size
-              }
+              },
+              children: endpoints.filter((endpoint) => {
+                return endpoint.vnet_id !== null &&
+                  endpoint.vnet_id.toLowerCase() === target.id.toLocaleLowerCase();
+              }).map((endpoint) => {
+                return {
+                  name: endpoint.name,
+                  value: {
+                    type: 'endpoint',
+                    privateIp: endpoint.private_ip,
+                    resourceGroup: endpoint.resource_group,
+                    subscriptionId: endpoint.subscription_id,
+                    subscriptionName: target.subscription_name,
+                    tentantId: endpoint.tenant_id
+                  }
+                };
+              }),
             });
           }
 
@@ -406,7 +421,7 @@ function parseTree(spaces, subscriptions, vnets, vhubs, endpoints) {
                 name: target.name,
                 resourceGroup: target.resource_group,
                 subscriptionId: target.subscription_id,
-                subscriptionName: subscriptions.find((sub) => sub.subscription_id === target.subscription_id)?.name || 'Unknown',
+                subscriptionName: target.subscription_name,
                 tentantId: target.tenant_id,
                 prefixes: target.prefixes,
                 size: target.size,
@@ -422,14 +437,15 @@ function parseTree(spaces, subscriptions, vnets, vhubs, endpoints) {
                     name: subnet.name,
                     resourceGroup: target.resource_group,
                     subscriptionId: target.subscription_id,
-                    subscriptionName: subscriptions.find((sub) => sub.subscription_id === target.subscription_id)?.name || 'Unknown',
+                    subscriptionName: target.subscription_name,
                     tentantId: target.tenant_id,
                     prefix: subnet.prefix,
                     size: subnet.size,
                     used: subnet.used
                   },
                   children: endpoints.filter((endpoint) => {
-                    return endpoint.subnet_id.toLowerCase() === subnetId.toLocaleLowerCase();
+                    return endpoint.subnet_id !== null &&
+                      endpoint.subnet_id.toLowerCase() === subnetId.toLocaleLowerCase();
                   }).map((endpoint) => {
                     return {
                       name: endpoint.name,
@@ -438,7 +454,7 @@ function parseTree(spaces, subscriptions, vnets, vhubs, endpoints) {
                         privateIp: endpoint.private_ip,
                         resourceGroup: endpoint.resource_group,
                         subscriptionId: endpoint.subscription_id,
-                        subscriptionName: subscriptions.find((sub) => sub.subscription_id === target.subscription_id)?.name || 'Unknown',
+                        subscriptionName: target.subscription_name,
                         tentantId: endpoint.tenant_id
                       }
                     };
@@ -614,10 +630,9 @@ const Visualize = () => {
   const searchRef = React.useRef(null);
 
   const spaces = useSelector(selectSpaces);
-  const subscriptions = useSelector(selectSubscriptions);
-  const vnets = useSelector(selectVNets);
-  const vhubs = useSelector(selectVHubs);
-  const endpoints = useSelector(selectEndpoints);
+  const vnets = useSelector(selectUpdatedVNets);
+  const vhubs = useSelector(selectUpdatedVHubs);
+  const endpoints = useSelector(selectUpdatedEndpoints);
 
   const theme = useTheme();
 
@@ -628,12 +643,12 @@ const Visualize = () => {
   }, []);
 
   React.useEffect(() => {
-    if(spaces && subscriptions && vnets && vhubs && endpoints) {
+    if(spaces && vnets && vhubs && endpoints) {
       var newOptions = cloneDeep(opt);
 
       delete newOptions.graphic;
       newOptions.darkMode = theme.palette.mode === 'dark' ? true : false;
-      newOptions.series = parseTree(spaces, subscriptions, vnets, vhubs, endpoints);
+      newOptions.series = parseTree(spaces, vnets, vhubs, endpoints);
       newOptions.legend.data = newOptions.series.map((option) => {
         return {
           name: option.name,
@@ -648,7 +663,7 @@ const Visualize = () => {
         })
       );
     }
-  }, [spaces, subscriptions, vnets, vhubs, endpoints, theme]);
+  }, [spaces, vnets, vhubs, endpoints, theme]);
 
   function setDataFocus(target) {
     if(eChartsRef && !isEmpty(options.series)) {

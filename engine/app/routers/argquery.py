@@ -191,7 +191,8 @@ resources
     | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
     | extend subnet_id_lower = tolower(subnet_id)
 ) on subnet_id_lower
-| project name = iff(notempty(name), name, pe_name), id = iff(notempty(id), id, pe_id), private_ip, resource_group = iff(notempty(resource_group), resource_group, pe_rg), subscription_id = iff(notempty(subscription_id), subscription_id, pe_sid), tenant_id = iff(notempty(tenant_id), tenant_id, pe_tid), vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('group_id', group_id, 'pe_id', pe_id, 'orphaned', iff(isempty(id), true, false))
+| extend metadata = pack('kind', 'Private Endpoint', 'group_id', group_id, 'pe_id', pe_id, 'orphaned', iff(isempty(id), true, false))
+| project name = iff(notempty(name), name, pe_name), id = iff(notempty(id), id, pe_id), private_ip, resource_group = iff(notempty(resource_group), resource_group, pe_rg), subscription_id = iff(notempty(subscription_id), subscription_id, pe_sid), tenant_id = iff(notempty(tenant_id), tenant_id, pe_tid), vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
 VIRTUAL_MACHINE = """
@@ -226,7 +227,8 @@ resources
     | project public_ip_id = tostring(id), public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
     | extend public_ip_id_lower = tolower(public_ip_id)
 ) on public_ip_id_lower
-| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('size', size, 'public_ip', public_ip, 'nic_id', nic_id, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+| extend metadata = pack('kind', 'Virtual Machine', 'size', size, 'public_ip', public_ip, 'nic_id', nic_id, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
 # VM_SCALE_SET = """
@@ -280,7 +282,8 @@ ComputeResources
 | extend vmss_name = extract(@'virtualMachineScaleSets\/(.*)\/virtualMachines', 1, id)
 | extend vmss_vm_num = todynamic(replace(@'.*\/virtualMachines/', '', id))
 | extend vmss_id = replace(@'/virtualMachines.*', '', id)
-| project name = strcat(vmss_name, '_', vmss_vm_num), id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('vmss_name', vmss_name, 'vmss_vm_num', vmss_vm_num, 'vmss_id', vmss_id)
+| extend metadata = pack('kind', 'VM Scale Set', 'vmss_name', vmss_name, 'vmss_vm_num', vmss_vm_num, 'vmss_id', vmss_id)
+| project name = strcat(vmss_name, '_', vmss_vm_num), id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
 FIREWALL_VNET = """
@@ -307,24 +310,25 @@ resources
     | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
     | extend subnet_id_lower = tolower(subnet_id)
 ) on subnet_id_lower
-| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('size', size, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+| extend metadata = pack('kind', 'Firewall', 'size', size, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-FIREWALL_VHUB = """
-resources
-| where type =~ 'Microsoft.Network/azureFirewalls'
-| where subscriptionId !in~ {}
-| where properties.sku.name =~ 'AZFW_Hub'
-| project name = name, id = id, size = properties.sku.tier, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip_address = properties.hubIPAddresses.privateIPAddress, virtual_hub_id = properties.virtualHub.id, tenant_id = tenantId
-| join kind = leftouter (
-resources
-    | where type =~ 'Microsoft.Network/azureFirewalls'
-    | where properties.sku.name =~ 'AZFW_Hub'
-    | mv-expand publicIps = properties.hubIPAddresses.publicIPAddresses
-    | summarize public_ip_addresses = make_list(publicIps.address), id = any(id)
-) on id
-| project-away id1
-"""
+# FIREWALL_VHUB = """
+# resources
+# | where type =~ 'Microsoft.Network/azureFirewalls'
+# | where subscriptionId !in~ {}
+# | where properties.sku.name =~ 'AZFW_Hub'
+# | project name = name, id = id, size = properties.sku.tier, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip_address = properties.hubIPAddresses.privateIPAddress, virtual_hub_id = properties.virtualHub.id, tenant_id = tenantId
+# | join kind = leftouter (
+# resources
+#     | where type =~ 'Microsoft.Network/azureFirewalls'
+#     | where properties.sku.name =~ 'AZFW_Hub'
+#     | mv-expand publicIps = properties.hubIPAddresses.publicIPAddresses
+#     | summarize public_ip_addresses = make_list(publicIps.address), id = any(id)
+# ) on id
+# | project-away id1
+# """
 
 BASTION = """
 resources
@@ -349,7 +353,8 @@ resources
     | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
     | extend subnet_id_lower = tolower(subnet_id)
 ) on subnet_id_lower
-| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('size', size, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+| extend metadata = pack('kind', 'Bastion', 'size', size, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
 VNET_GATEWAY = """
@@ -357,9 +362,18 @@ resources
 | where type =~ 'microsoft.Network/virtualNetworkGateways'
 | where subscriptionId !in~ {}
 | mv-expand ipConfig = properties.ipConfigurations
-| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, private_ip = properties.bgpSettings.bgpPeeringAddress, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, public_ip_id = tostring(ipConfig.properties.publicIPAddress.id), subnet_id = tostring(ipConfig.properties.subnet.id)
+| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, private_ip_id = ipConfig.id, private_ip_alloc_method = ipConfig.properties.privateIPAllocationMethod, public_ip_id = tostring(ipConfig.properties.publicIPAddress.id), subnet_id = tostring(ipConfig.properties.subnet.id), type = properties.gatewayType
+| extend private_ip_id_lower = tolower(private_ip_id)
 | extend public_ip_id_lower = tolower(public_ip_id)
 | extend subnet_id_lower = tolower(subnet_id)
+| join kind = leftouter (
+    resources
+    | where type =~ 'microsoft.Network/virtualNetworkGateways'
+    | mv-expand bgpConfig = properties.bgpSettings.bgpPeeringAddresses
+    | extend private_ip_id = bgpConfig.ipconfigurationId
+    | extend private_ip_id_lower = tolower(private_ip_id)
+) on private_ip_id_lower
+| extend private_ip = bgpConfig.defaultBgpIpAddresses[0]
 | join kind = leftouter (
     resources
     | where type =~ 'Microsoft.Network/PublicIpAddresses'
@@ -374,7 +388,9 @@ resources
     | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
     | extend subnet_id_lower = tolower(subnet_id)
 ) on subnet_id_lower
-| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+| extend metadata_vpn = pack('kind', 'Virtual Network Gateway', 'type', type, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+| extend metadata_exr = pack('kind', 'Virtual Network Gateway', 'type', type, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'public_ip_alloc_method', public_ip_alloc_method)
+| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = iff(tolower(type) == 'vpn', metadata_vpn, metadata_exr)
 """
 
 APP_GATEWAY = """
@@ -409,7 +425,8 @@ resources
     | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
     | extend subnet_id_lower = tolower(subnet_id)
 ) on subnet_id_lower
-| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('size', size, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+| extend metadata = pack('kind', 'Application Gateway', 'size', size, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
 APIM = """
@@ -428,7 +445,8 @@ resources
     | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
     | extend subnet_id_lower = tolower(subnet_id)
 ) on subnet_id_lower
-| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('vnet_type', vnet_type, 'public_ip', public_ip)
+| extend metadata = pack('kind', 'API Management', 'vnet_type', vnet_type, 'public_ip', public_ip)
+| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
 LB = """
@@ -454,5 +472,28 @@ resources
     | extend subnet_id_lower = tolower(subnet_id)
 ) on subnet_id_lower
 | extend type = iff(isnotnull(private_ip), 'Private', 'Public')
-| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('type', type, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+| extend metadata = pack('kind', 'Load Balancer', 'type', type, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
+"""
+
+VHUB_ENDPOINT = """
+resources
+| where isnotnull(properties.virtualHub.id)
+| extend type = extract(@'[^/]*Microsoft.Network[^/]*\/[^/]*', 0, id)
+| extend vhub_id = tostring(properties.virtualHub.id)
+| extend vhub_name = extract(@'virtualHubs\/(.*)', 1, vhub_id)
+| extend fw_sku = tostring(properties.sku.name)
+| mv-expand fw_ips = properties.hubIPAddresses.publicIPs.addresses
+| mv-expand vpn_ips = properties.ipConfigurations
+| extend fw_private_ip = tostring(properties.hubIPAddresses.privateIPAddress)
+| extend exr_private_ip = tostring(dynamic(null))
+| extend vpn_private_ip = tostring(vpn_ips.privateIpAddress)
+| extend vpn_public_ip = tostring(vpn_ips.publicIpAddress)
+| summarize fw_public_ips = make_list(fw_ips.address) by id, name, type, resourceGroup, subscriptionId, tenantId, vhub_name, vhub_id, fw_private_ip, fw_sku, exr_private_ip, vpn_private_ip, vpn_public_ip
+| extend fw_metadata = iff(type =~ 'Microsoft.Network/azureFirewalls', pack('kind', 'vHub Firewall', 'sku', fw_sku, 'public_ip', fw_public_ips), dynamic(null))
+| extend exr_metadata = iff(type =~ 'Microsoft.Network/expressRouteGateways', pack('kind', 'vHub ExpressRoute Gateway'), dynamic(null))
+| extend vpn_metadata = iff(type =~ 'Microsoft.Network/vpnGateways', pack('kind','vHub VPN Gateway', 'public_ip', vpn_public_ip), dynamic(null))
+| extend private_ip = coalesce(vpn_private_ip, exr_private_ip, fw_private_ip)
+| extend metadata = coalesce(vpn_metadata, exr_metadata, fw_metadata)
+| project name, id, todynamic(private_ip), resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, vnet_name = vhub_name, vnet_id = vhub_id, subnet_name = dynamic(null), subnet_id = dynamic(null), metadata
 """
