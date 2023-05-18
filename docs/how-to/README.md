@@ -54,7 +54,7 @@ Give the new **Block** a name a valid CIDR range, then click **Create** to creat
 
 ## Virtual Network Association
 
-As an IPAM Administrator, you can associate Azure virtual networks to **Blocks**. In order to associate a Virtual Network to a **Block**, the Virtual Network cannot be associated to another **Block** within the **Space** and there cannot be any unfulfilled **Reservations** in the **Block** that overlap with the Virtual Network's CIDR. 
+As an IPAM Administrator, you can associate Azure Virtual Networks to **Blocks**. In order to associate a Virtual Network to a **Block**, the Virtual Network cannot be associated to another **Block** within the **Space** and there cannot be any unfulfilled **Reservations** in the **Block** that overlap with the Virtual Network's CIDR. 
 
 To associate a Virtual Network to a **Block**, select the **Block** you want to associate the Virtual Network to, then click on the 3 ellipses to bring up a menu of **Block** operations. Select **Virtual Networks**.
 
