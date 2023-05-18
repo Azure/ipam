@@ -96,7 +96,7 @@ After POSTing your request, you will recieve a response of type **201 Created** 
 
 ![Postman CIDR reservation response](./images/postman_response.png)
 
-In IPAM, you can see your reservation by navigating to the target **Block**, clicking on the 3 elipses, and selecting **Reservations**. 
+In IPAM, you can see your reservation by navigating to the target **Block**, clicking on the 3 ellipses, and selecting **Reservations**. 
 
 ![Target Block Reservation](./images/configure_blocks_reservations.png)
 
