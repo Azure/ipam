@@ -53,6 +53,15 @@ router = APIRouter(
     dependencies=[Depends(check_token_expired)]
 )
 
+def str_to_list(input):
+    try:
+        scrubbed = re.sub(r"\s+", "", input, flags = re.UNICODE)
+        split = scrubbed.split(",")
+    except:
+        return []
+
+    return split
+
 async def get_subscriptions_sdk(credentials):
     """DOCSTRING"""
 
@@ -717,7 +726,7 @@ async def multi(
 )
 async def match_resv_to_vnets():
     net_list = await get_network(None, globals.TENANT_ID, True)
-    stale_resv = list(x['resv'] for x in net_list if x['resv'] != None)
+    stale_resv = list(i for j in list(str_to_list(x['resv']) for x in net_list if x['resv'] != None) for i in j)
     # ignore_status = ['fulfilled', 'cencelledByUser', 'cancelledTimeout']
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", globals.TENANT_ID)
@@ -743,12 +752,15 @@ async def match_resv_to_vnets():
             for index, resv in enumerate(block['resv']):
                 if resv['settledOn'] is None:
                     if resv['id'] in stale_resv:
-                        net = next((x for x in net_list if x['resv'] == resv['id']), None)
+                        net = next((x for x in net_list if resv['id'] in str_to_list(x['resv'])), None)
 
-                        # print("RESV: {}".format(vnet['resv']))
-                        # print("BLOCK {}".format(block['name']))
-                        # print("VNET {}".format(vnet['id']))
-                        # print("INDEX: {}".format(index))
+                        # print("RESV: {}".format(resv['id']))
+                        # print("BLOCK: {}".format(block['name']))
+                        # print("VNET IDS:")
+                        # for x in net_list:
+                        #     if x['resv'] == resv['id']:
+                        #         print("Match Found!")
+                        #         print(x['resv'])
 
                         stale_resv.remove(resv['id'])
                         resv['status'] = "wait"
