@@ -28,10 +28,11 @@ import {
 } from '@mui/icons-material';
 
 import {
+  selectBlocks,
   selectUpdatedVNets
 } from "../ipam/ipamSlice";
 
-import { availableSubnets } from './utils/iputils';
+import { availableSubnets, isSubnetOverlap } from './utils/iputils';
 
 const plannerTheme = (theme) => createTheme({
   ...theme,
@@ -104,6 +105,7 @@ const Separator = (props) => {
 };
 
 const Planner = () => {
+  const [vNetData, setVNetData] = React.useState(null);
   const [subnetData, setSubnetData] = React.useState(null);
 
   const [vNetInput, setVNetInput] = React.useState('');
@@ -120,14 +122,58 @@ const Planner = () => {
 
   const [showAll, setShowAll] = React.useState(false);
 
+  const blocks = useSelector(selectBlocks);
   const vNets = useSelector(selectUpdatedVNets);
 
   React.useEffect(() => {
-    if(!find(vNets, selectedVNet)) {
+    if (vNets) {
+      if (showAll) {
+        setVNetData(vNets);
+      } else {
+        const data = vNets.reduce((vAcc, vCurr) => {
+          if (vCurr['parent_block'] !== null) {
+            vCurr['parent_block'].forEach((p) => {
+              const block = blocks.find((block) => block.name === p && block['parent_space'] === vCurr['parent_space']);
+
+              const blockPrefixes = vCurr.prefixes.reduce((bAcc, bCurr) => {
+                if (isSubnetOverlap(bCurr, [block.cidr])) {
+                  bAcc.push(bCurr);
+                }
+
+                return bAcc;
+              }, []);
+
+              const temp = {
+                ...vCurr,
+                parent_block: p,
+                prefixes: blockPrefixes
+              };
+
+              vAcc.push(temp)
+            });
+          } else {
+            const temp = {
+              ...vCurr,
+              parent_block: null
+            }
+
+            vAcc.push(temp)
+          }
+        
+          return vAcc;
+        }, []);
+
+        setVNetData(data);
+      }
+    }
+  }, [blocks, vNets, showAll]);
+
+  React.useEffect(() => {
+    if(!find(vNetData, selectedVNet)) {
       setSelectedVNet(null);
       setVNetInput('');
     }
-  }, [vNets, selectedVNet]);
+  }, [vNetData, selectedVNet]);
 
   React.useEffect(() => {
     setSelectedVNet(null);
@@ -135,14 +181,14 @@ const Planner = () => {
   }, [showAll]);
 
   React.useEffect(() => {
-    if(vNets) {
+    if(vNetData) {
       showAll
-      ? setVNetOptions(vNets.sort((a, b) => (a.subscription_name > b.subscription_name) ? 1 : -1))
-      : setVNetOptions(vNets.filter(v => v.parent_space !== null).sort((a, b) => (a.parent_space > b.parent_space) ? 1 : (a.parent_space === b.parent_space) ? ((a.parent_block > b.parent_block) ? 1 : -1) : -1 ));
+      ? setVNetOptions(vNetData.sort((a, b) => (a.subscription_name > b.subscription_name) ? 1 : -1))
+      : setVNetOptions(vNetData.filter(v => v.parent_space !== null).sort((a, b) => (a.parent_space > b.parent_space) ? 1 : (a.parent_space === b.parent_space) ? ((a.parent_block > b.parent_block) ? 1 : -1) : -1 ));
     } else {
       setVNetOptions([]);
     }
-  }, [showAll, vNets]);
+  }, [showAll, vNetData]);
 
   React.useEffect(() => {
     if (selectedVNet) {
@@ -233,7 +279,7 @@ const Planner = () => {
                     ...params.InputProps,
                     endAdornment: (
                       <React.Fragment>
-                        {!vNets ? <CircularProgress color="inherit" size={20} /> : null}
+                        {!vNetData ? <CircularProgress color="inherit" size={20} /> : null}
                         {params.InputProps.endAdornment}
                       </React.Fragment>
                     ),

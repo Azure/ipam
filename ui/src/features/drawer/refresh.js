@@ -36,12 +36,14 @@ function Refresh() {
     };
 
     (async() => {
+      await instance.handleRedirectPromise();
+
       try {
         const response = await instance.acquireTokenSilent(request)
         dispatch(refreshAllAsync(response.accessToken))
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
-          const response = instance.acquireTokenRedirect(request);
+          const response = await instance.acquireTokenRedirect(request);
           dispatch(refreshAllAsync(response.accessToken))
         } else {
           console.log("ERROR");
@@ -60,12 +62,14 @@ function Refresh() {
     };
 
     (async() => {
+      await instance.handleRedirectPromise();
+
       try {
         const response = await instance.acquireTokenSilent(request)
         dispatch(getMeAsync(response.accessToken))
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {
-          const response = instance.acquireTokenRedirect(request);
+          const response = await instance.acquireTokenRedirect(request);
           dispatch(getMeAsync(response.accessToken))
         } else {
           console.log("ERROR");

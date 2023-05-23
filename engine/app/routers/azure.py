@@ -351,10 +351,11 @@ async def get_vnet(
         # Python 3.9+
         # ip_blocks = [(block | {'parent_space': space['name']}) for space in space_query for block in space['blocks']]
         ip_blocks = [{**block , **{'parent_space': space['name']}} for space in space_query for block in space['blocks']]
-        ip_block = next((x for x in ip_blocks if vnet['id'] in [v['id'] for v in x['vnets']]), None)
+        parent_space = next((x['parent_space'] for x in ip_blocks if vnet['id'] in [v['id'] for v in x['vnets']]), None)
+        parent_blocks = list(x['name'] for x in ip_blocks if vnet['id'] in [v['id'] for v in x['vnets']])
 
-        vnet['parent_space'] = ip_block['parent_space'] if ip_block else None
-        vnet['parent_block'] = ip_block['name'] if ip_block else None
+        vnet['parent_space'] = parent_space
+        vnet['parent_block'] = parent_blocks or None
 
         updated_vnet_list.append(vnet)
   
@@ -450,10 +451,11 @@ async def get_vhub(
         # Python 3.9+
         # ip_blocks = [(block | {'parent_space': space['name']}) for space in space_query for block in space['blocks']]
         ip_blocks = [{**block , **{'parent_space': space['name']}} for space in space_query for block in space['blocks']]
-        ip_block = next((x for x in ip_blocks if hub['id'] in [v['id'] for v in x['vnets']]), None)
+        parent_space = next((x['parent_space'] for x in ip_blocks if hub['id'] in [v['id'] for v in x['vnets']]), None)
+        parent_blocks = list(x['name'] for x in ip_blocks if hub['id'] in [v['id'] for v in x['vnets']])
 
-        hub['parent_space'] = ip_block['parent_space'] if ip_block else None
-        hub['parent_block'] = ip_block['name'] if ip_block else None
+        hub['parent_space'] = parent_space
+        hub['parent_block'] = parent_blocks or None
 
         updated_vhub_list.append(hub)
 

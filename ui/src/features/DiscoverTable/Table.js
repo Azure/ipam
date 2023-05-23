@@ -59,25 +59,25 @@ const filterTypes = merge({}, ReactDataGrid.defaultProps.filterTypes, {
       {
         name: 'contains',
         fn: ({ value, filterValue, data }) => {
-          return filterValue !== (null || '') ? value.join(",").includes(filterValue) : true;
+          return filterValue !== (null || '') ? (value || []).join(",").includes(filterValue) : true;
         }
       },
       {
         name: 'notContains',
         fn: ({ value, filterValue, data }) => {
-          return filterValue !== (null || '') ? !value.join(",").includes(filterValue) : true;
+          return filterValue !== (null || '') ? !(value || []).join(",").includes(filterValue) : true;
         }
       },
       {
         name: 'eq',
         fn: ({ value, filterValue, data }) => {
-          return filterValue !== (null || '') ? value.includes(filterValue) : true;
+          return filterValue !== (null || '') ? (value || []).includes(filterValue) : true;
         }
       },
       {
         name: 'neq',
         fn: ({ value, filterValue, data }) => {
-          return filterValue !== (null || '') ? !value.includes(filterValue) : true;
+          return filterValue !== (null || '') ? !(value || []).includes(filterValue) : true;
         }
       }
     ]

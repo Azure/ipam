@@ -46,6 +46,17 @@ function getIpRangeForSubnet(subnetCIDR) {
 
   endAddress[pos] = parseInt(endAddress[pos], 10) + ((!allowed[(netmask % 8) - 1]) ? 0 : allowed[(netmask % 8) - 1] - 1);
 
+  if(pos === 0 && endAddress[1] < 255) {
+    endAddress[1] = 255;
+    endAddress[2] = 255;
+    endAddress[3] = 255;
+  }
+
+  if(pos === 1 && endAddress[2] < 255) {
+    endAddress[2] = 255;
+    endAddress[3] = 255;
+  }
+
   if(pos === 2 && endAddress[3] < 255) {
     endAddress[3] = 255;
   }
@@ -53,7 +64,7 @@ function getIpRangeForSubnet(subnetCIDR) {
   return {'start': address.join('.'), 'end': endAddress.join('.')};
 }
 
-function isSubnetOverlap(subnetCIDR, existingSubnetCIDR) {
+export function isSubnetOverlap(subnetCIDR, existingSubnetCIDR) {
   var ipRangeforCurrent = getIpRangeForSubnet(subnetCIDR);
 
   var isOverlap = existingSubnetCIDR.map(subnet => {
@@ -78,7 +89,7 @@ function possibleSubnets(obj, index, existingSubnetCIDR) {
   var allowed = allowedOctets();
   var addressBytes = obj.address.split('.', 4).map(num => parseInt(num, 10));
 
-  if((obj.netmask === 24 && index === 24) || (obj.netmask === 16 && index === 16)) {
+  if((obj.netmask === 24 && index === 24) || (obj.netmask === 16 && index === 16) || (obj.netmask === 8 && index === 8)) {
     filteredOctets.push(addressBytes[2]);
   } else if((obj.netmask % 8) <= sliceTo && index <= 24) {
     filteredOctets = allowed.slice(obj.netmask%8, sliceTo);

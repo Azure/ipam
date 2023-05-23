@@ -168,18 +168,18 @@ export const vnets = {
   columns: [
     { name: "name", header: "vNet Name", type: "string", flex: 0.85, visible: true },
     { name: "utilization", header: "Utilization", type: "number", flex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value), visible: true },
-    { name: "parent_block", header: "Block", type: "string", flex: 0.85, render: ({value}) => value ?? "<Unassigned>", visible: true },
+    { name: "parent_block", header: "Block", type: "array", flex: 0.85, render: ({value}) => value?.join(", ") ?? "<Unassigned>", visible: true },
     { name: "resource_group", header: "Resource Group", type: "string", flex: 0.75, visible: false },
     { name: "subscription_name", header: "Subscription Name", type: "string", flex: 0.85, visible: false },
     { name: "subscription_id", header: "Subscription ID", type: "string", flex: 0.85, visible: false },
     { name: "size", header: "Total IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
     { name: "used", header: "Allocated IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
-    { name: "prefixes", header: "Address Space", type: "string", flex: 0.75, render: ({value}) => value.join(", "), visible: true }
+    { name: "prefixes", header: "Address Space", type: "array", flex: 0.75, render: ({value}) => value.join(", "), visible: true }
   ],
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },
     { name: 'utilization', operator: 'inrange', type: 'number', value: { start: 0, end: 100 } },
-    { name: 'parent_block', operator: 'contains', type: 'string', value: '' },
+    { name: 'parent_block', operator: 'contains', type: 'array', value: '' },
     { name: 'resource_group', operator: 'contains', type: 'string', value: '' },
     { name: 'subscription_name', operator: 'contains', type: 'string', value: '' },
     { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
@@ -194,7 +194,7 @@ export const vnets = {
     fieldMap: [
       { name: "vNet Name", value: "name" },
       { name: "Space", value: "parent_space" },
-      { name: "Block", value: "parent_block" },
+      { name: "Block(s)", value: "parent_block" },
       { name: "Address Space", value: "prefixes" },
       { name: "Resource Group", value: "resource_group" },
       { name: "Subscription Name", value: "subscription_name" },
@@ -264,16 +264,16 @@ export const vhubs = {
   columns: [
     { name: "name", header: "vNet Name", type: "string", flex: 0.6, visible: true },
     { name: "vwan_name", header: "Parent vWAN", type: "string", flex: 0.6, visible: true },
-    { name: "parent_block", header: "Block", type: "string", flex: 0.75, render: ({value}) => value ?? "<Unassigned>", visible: true },
+    { name: "parent_block", header: "Block", type: "array", flex: 0.75, render: ({value}) => value?.join(", ") ?? "<Unassigned>", visible: true },
     { name: "subscription_name", header: "Subscription Name", type: "string", flex: 0.75, visible: false },
     { name: "subscription_id", header: "Subscription ID", type: "string", flex: 0.75, visible: false },
     { name: "resource_group", header: "Resource Group", type: "string", flex: 0.75, visible: true },
-    { name: "prefixes", header: "Address Space", type: "string", flex: 0.35, render: ({value}) => value.toString(), visible: true }
+    { name: "prefixes", header: "Address Space", type: "array", flex: 0.35, render: ({value}) => value.toString(), visible: true }
   ],
   filterSettings: [
     { name: 'name', operator: 'contains', type: 'string', value: '' },
     { name: 'vwan_name', operator: 'contains', type: 'string', value: '' },
-    { name: 'parent_block', operator: 'contains', type: 'string', value: '' },
+    { name: 'parent_block', operator: 'contains', type: 'array', value: '' },
     { name: 'subscription_name', operator: 'contains', type: 'string', value: '' },
     { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
     { name: 'resource_group', operator: 'contains', type: 'string', value: '' },
@@ -287,7 +287,7 @@ export const vhubs = {
       { name: "vHub Name", value: "name" },
       { name: "vWAN Name", value: "vwan_name" },
       { name: "Space", value: "parent_space" },
-      { name: "Block", value: "parent_block" },
+      { name: "Block(s)", value: "parent_block" },
       { name: "Address Space", value: "prefixes" },
       { name: "Resource Group", value: "resource_group" },
       { name: "Subscription Name", value: "subscription_name" },
