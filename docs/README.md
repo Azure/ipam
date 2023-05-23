@@ -24,12 +24,14 @@ Here is a more specific breakdown of the components used:
   - 2x App Registrations
     - *Engine* App Registration
       - Granted **reader** permission to the root management group to facilitate IPAM Admin operations (global visibility)
+      - Granted the following API permissions to handle Azure Resource Graph workflow:
+        - Azure Service Management/user_impersonation - Allows the application to access Azure Service Management as you
       - Authentication point for IPAM API operations ([on-behalf-of](https://learn.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow) flow)
     - *UI* App Registration
       - Granted **read** permissions for Microsoft Graph API's
       - Added as a *known client application* for the *Engine* App Registration
       - Granted the following API permissions to handle authentication workflow:
-        - access_as_user - allows the UI to access the Engine API as the signed-in user
+        - IPAM Engine App/access_as_user - allows the UI to access the Engine API as the signed-in user
         - Microsoft Graph/Directory.Read.All - Allows the app to read data in your organization's directory, such as users, groups and apps
         - Microsoft Graph/offline_access - Allows the app to see and update the data you gave it access to, even when you are not currently using the app. This does not give the app any additional permissions
         - Microsoft Graph/openid - Allows you to sign in to the app with your work or school account and allows the app to read your basic profile information
