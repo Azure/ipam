@@ -90,10 +90,38 @@ $response
 
 id        : ABNsJjXXyTRDTRCdJEJThu
 cidr      : 10.1.5.0/24
-userId    : harvey@elnica6yahoo.onmicrosoft.com
+userId    : harvey@mytenant.onmicrosoft.com
 createdOn : 1662514052.26623
 status    : wait
 tag       : @{X-IPAM-RES-ID=ABNsJjXXyTRDTRCdJEJThu}
 ````
 
+Here is an example using the Azure CLI and cURL:
+
+````bash
+engineClientId="<Engine App Registration Client ID>"
+appName="ipamdev"
+space="TestSpace"
+block="TestBlock"
+
+accessToken=$(az account get-access-token --resource api://$engineClientId --query "accessToken" --output tsv)
+
+requestUrl="https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations"
+
+data='{"size": 24}'
+
+curl --header "Content-Type: application/json" \
+  --header "Accept: application/json" \
+  --header "Authorization: Bearer $accessToken" \
+  --data "${data}" \
+  $requestUrl
+````
+T
+he call will return key information regarding your CIDR block reservation. Again, make note of the *tag* information in the response.
+
+````bash
+
+{"id":"Pex8bNxihMs59Ts34xC52Q","space":"TestSpace","block":"TestBlock","cidr":"10.1.1.0/24","desc":null,"createdOn":1685043641.5849886,"createdBy":"harvey@mytenant.onmicrosoft.com","settledOn":null,"settledBy":null,"status":"wait","tag":{"X-IPAM-RES-ID":"Pex8bNxihMs59Ts34xC52Q"}}
+
+````
 Take a look at our **Azure Landing Zone integration** example found under the `deploy` directory in the repository for a real work example of how to automate vNET creation by means of Bicep and leveraging the IPAM API.
