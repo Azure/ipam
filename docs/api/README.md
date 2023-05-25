@@ -116,8 +116,7 @@ curl --header "Content-Type: application/json" \
   --data "${data}" \
   $requestUrl
 ````
-T
-he call will return key information regarding your CIDR block reservation. Again, make note of the *tag* information in the response.
+The call will return key information regarding your CIDR block reservation. Again, make note of the *tag* information in the response.
 
 ````bash
 
