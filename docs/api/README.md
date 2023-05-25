@@ -96,7 +96,7 @@ status    : wait
 tag       : @{X-IPAM-RES-ID=ABNsJjXXyTRDTRCdJEJThu}
 ````
 
-Here is an example using the Azure CLI and cURL:
+Here is the same example performed via Azure CLI and cURL:
 
 ````bash
 engineClientId="<Engine App Registration Client ID>"
