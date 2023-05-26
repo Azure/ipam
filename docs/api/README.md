@@ -123,4 +123,4 @@ The call will return key information regarding your CIDR block reservation. Agai
 {"id":"Pex8bNxihMs59Ts34xC52Q","space":"TestSpace","block":"TestBlock","cidr":"10.1.1.0/24","desc":null,"createdOn":1685043641.5849886,"createdBy":"harvey@mytenant.onmicrosoft.com","settledOn":null,"settledBy":null,"status":"wait","tag":{"X-IPAM-RES-ID":"Pex8bNxihMs59Ts34xC52Q"}}
 
 ````
-Take a look at our **Azure Landing Zone integration** example found under the [examples](https://github.com/Azure/ipam/tree/main/examples/azure-eslz) directory in the repository for a real world example of how to automate vNET creation by means of Bicep and leveraging the IPAM API.
+Take a look at our **Azure Enterprise Landing Zone integration** example found under the [examples](https://github.com/Azure/ipam/tree/main/examples/azure-eslz) directory in the repository for a real world example of how to automate vNET creation by means of Bicep and leveraging the IPAM API.
