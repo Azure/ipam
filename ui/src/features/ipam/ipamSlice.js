@@ -51,10 +51,14 @@ const initialState = {
 
 export const fetchSpacesAsync = createAsyncThunk(
   'ipam/fetchSpaces',
-  async (token) => {
-    const response = await fetchSpaces(token, true);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await fetchSpaces(args.token, true);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
   }
 );
 
@@ -138,64 +142,92 @@ export const deleteBlockResvsAsync = createAsyncThunk(
 
 export const fetchVNetsAsync = createAsyncThunk(
   'ipam/fetchVNets',
-  async (token) => {
-    const response = await fetchVNets(token);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await fetchVNets(args.token);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
   }
 );
 
 export const fetchVHubsAsync = createAsyncThunk(
   'ipam/fetchVHubs',
-  async (token) => {
-    const response = await fetchVHubs(token);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await fetchVHubs(args.token);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
   }
 );
 
 export const fetchSubnetsAsync = createAsyncThunk(
   'ipam/fetchSubnets',
-  async (token) => {
-    const response = await fetchSubnets(token);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await fetchSubnets(args.token);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
   }
 );
 
 export const fetchEndpointsAsync = createAsyncThunk(
   'ipam/fetchEndpoints',
-  async (token) => {
-    const response = await fetchEndpoints(token);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await fetchEndpoints(args.token);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
   }
 );
 
 export const fetchNetworksAsync = createAsyncThunk(
   'ipam/fetchNetworks',
-  async (token) => {
-    const response = await fetchNetworks(token);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await fetchNetworks(args.token);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
   }
 );
 
 export const refreshAllAsync = createAsyncThunk(
   'ipam/refreshAll',
-  async (token) => {
-    const response = await refreshAll(token);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await refreshAll(args.token);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
   }
 );
 
 export const getMeAsync = createAsyncThunk(
   'ipam/getMe',
-  async (token) => {
-    const response = await getMe(token);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await getMe(args.token);
+      // The value we return becomes the `fulfilled` action payload
+      return response;
+    } catch (err) {
+      throw rejectWithValue(err.response.data);
+    }
   }
 );
 
@@ -246,6 +278,11 @@ export const ipamSlice = createSlice({
 
           return space;
         });
+      })
+      .addCase(fetchSpacesAsync.rejected, (state, action) => {
+        state.spaces ??=  [];
+
+        throw action.payload;
       })
       .addCase(createSpaceAsync.fulfilled, (state, action) => {
         const newSpace = action.payload;
@@ -404,6 +441,12 @@ export const ipamSlice = createSlice({
 
         state.subnets = subnets;
       })
+      .addCase(fetchVNetsAsync.rejected, (state, action) => {
+        state.vNets ??= [];
+        state.subnets ??= [];
+
+        throw action.payload;
+      })
       .addCase(fetchSubnetsAsync.fulfilled, (state, action) => {
         const subnets = action.payload.map((subnet) => {
           subnet.available = (subnet.size - subnet.used);
@@ -415,8 +458,18 @@ export const ipamSlice = createSlice({
 
         state.subnets = subnets;
       })
+      .addCase(fetchSubnetsAsync.rejected, (state, action) => {
+        state.subnets ??= [];
+
+        throw action.payload;
+      })
       .addCase(fetchEndpointsAsync.fulfilled, (state, action) => {
         state.endpoints = action.payload;
+      })
+      .addCase(fetchEndpointsAsync.rejected, (state, action) => {
+        state.endpoints ??= [];
+
+        throw action.payload;
       })
       .addCase(fetchNetworksAsync.fulfilled, (state, action) => {
         const vNetProvider = "Microsoft.Network/virtualNetworks";
@@ -465,38 +518,49 @@ export const ipamSlice = createSlice({
 
         state.vHubs = vHubData;
       })
+      .addCase(fetchNetworksAsync.rejected, (state, action) => {
+        state.vNets ??= [];
+        state.subnets ??= [];
+        state.vHubs ??= [];
+
+        throw action.payload;
+      })
       .addCase(refreshAllAsync.fulfilled, (state, action) => {
         const vNetProvider = "Microsoft.Network/virtualNetworks";
         const vHubProvider = "Microsoft.Network/virtualHubs";
 
         state.refreshing = false;
 
-        state.spaces = action.payload[0].value.map((space) => {
-          if('size' in space && 'used' in space) {
-            if(space.used === null) {
-              space.used = 0;
+        if(action.payload[0].status === 'fulfilled') {
+          state.spaces = action.payload[0].value.map((space) => {
+            if('size' in space && 'used' in space) {
+              if(space.used === null) {
+                space.used = 0;
+              }
+
+              space.available = (space.size - space.used);
+              space.utilization = Math.round((space.used / space.size) * 100) || 0;
             }
 
-            space.available = (space.size - space.used);
-            space.utilization = Math.round((space.used / space.size) * 100) || 0;
-          }
+            space.blocks.map((block) => {
+              block.parent_space = space.name;
+              block.available = (block.size - block.used);
+              block.utilization = Math.round((block.used / block.size) * 100);
+              block.id = `${block.name}@${block.parent_space}`;
 
-          space.blocks.map((block) => {
-            block.parent_space = space.name;
-            block.available = (block.size - block.used);
-            block.utilization = Math.round((block.used / block.size) * 100);
-            block.id = `${block.name}@${block.parent_space}`;
+              return block;
+            });
 
-            return block;
+            return space;
           });
-
-          return space;
-        });
+        } else {
+          state.spaces ??= [];
+        }
 
         if(action.payload[1].status === 'fulfilled') {
           state.subscriptions = action.payload[1].value;
         } else {
-          state.subscriptions = [];
+          state.subscriptions ??= [];
         }
 
         if(action.payload[2].status === 'fulfilled') {
@@ -543,9 +607,9 @@ export const ipamSlice = createSlice({
 
           state.vHubs = vHubData;
         } else {
-          state.vNets = [];
-          state.subnets = [];
-          state.vHubs = [];
+          state.vNets ??= [];
+          state.subnets ??= [];
+          state.vHubs ??= [];
         }
 
         if(action.payload[3].status === 'fulfilled') {
@@ -557,7 +621,7 @@ export const ipamSlice = createSlice({
 
           state.endpoints = endpoints;
         } else {
-          state.endpoints = [];
+          state.endpoints ??= [];
         }
       })
       .addCase(refreshAllAsync.pending, (state) => {
@@ -567,7 +631,7 @@ export const ipamSlice = createSlice({
         state.refreshing = false;
         console.log("REFRESH ALL REJECTED");
         console.log("-----------------");
-        console.log(action.error);
+        console.log(action.payload.reason.message);
         console.log("-----------------");
       })
       .addCase(getMeAsync.fulfilled, (state, action) => {
@@ -593,8 +657,10 @@ export const ipamSlice = createSlice({
       .addCase(getMeAsync.rejected, (state, action) => {
         console.log("GET ME REJECTED");
         console.log("-----------------");
-        console.log(action.error);
+        console.log(action.payload.reason.message);
         console.log("-----------------");
+
+        throw action.payload;
       })
       .addCase(updateMeAsync.fulfilled, (state, action) => {
         action.meta.arg.body.forEach((update) => {

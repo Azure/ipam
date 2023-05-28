@@ -23,6 +23,7 @@ from app.routers import (
 from app.logs.logs import ipam_logger as logger
 
 import os
+import re
 import uuid
 import copy
 from pathlib import Path
@@ -271,6 +272,37 @@ async def db_upgrade():
         logger.info('Reservation patching complete!')
     else:
         logger.info("No existing reservations to patch...")
+
+    vhub_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN vnet in block.vnets WHERE (c.type = 'space' AND RegexMatch (vnet.id, '/Microsoft.Network/virtualHubs/', ''))", globals.TENANT_ID)
+
+    if vhub_query:
+        for space in vhub_query:
+            space_data = copy.deepcopy(space)
+
+            new_blocks = []
+
+            for block in space_data['blocks']:
+                vnets = [x for x in block['vnets'] if re.match(".*/Microsoft.Network/virtualNetworks/.*", x['id'])]
+                vhubs = [x for x in block['vnets'] if re.match(".*/Microsoft.Network/virtualHubs/.*", x['id'])]
+
+                new_block = {
+                    "name": block['name'],
+                    "cidr": block['cidr'],
+                    "vnets": vnets,
+                    "vhubs": vhubs,
+                    "external": [],
+                    "resv": block['resv']
+                }
+
+                new_blocks.append(new_block)
+
+            space_data['blocks'] = new_blocks
+
+            # await cosmos_replace(space, space_data)
+
+        logger.info('Virtual Hub patching complete!')
+    else:
+        logger.info("No existing Virtual Hubs to patch...")
 
     await cosmos_client.close()
 

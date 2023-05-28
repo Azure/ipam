@@ -3,9 +3,6 @@ import { useDispatch } from 'react-redux';
 
 import { useSnackbar } from "notistack";
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-
 import {
   Box,
   Button,
@@ -22,12 +19,9 @@ import LoadingButton from '@mui/lab/LoadingButton';
 
 import { createBlockAsync } from "../../../ipam/ipamSlice";
 
-import { apiRequest } from "../../../../msal/authConfig";
-
 export default function AddBlock(props) {
   const { open, handleClose, space, blocks } = props;
 
-  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [blockName, setBlockName] = React.useState({ value: "", error: false });
@@ -52,29 +46,19 @@ export default function AddBlock(props) {
       name: blockName.value,
       cidr: cidr.value
     };
-  
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
 
     (async () => {
       try {
         setSending(true);
-        const response = await instance.acquireTokenSilent(request);
-        await dispatch(createBlockAsync({ token: response.accessToken, space: space, body: body}));
+        await dispatch(createBlockAsync({ token: "", space: space, body: body }));
         enqueueSnackbar("Successfully created new Block", { variant: "success" });
         onCancel();
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar(e.error, { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.response.data.error, { variant: "error" });
       } finally {
         setSending(false);
       }
@@ -176,7 +160,11 @@ export default function AddBlock(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={onCancel}>Cancel</Button>
-          <LoadingButton onClick={onSubmit} loading={sending} disabled={invalidForm}>
+          <LoadingButton
+            onClick={onSubmit}
+            loading={sending}
+            disabled={invalidForm}
+          >
             Apply
           </LoadingButton>
         </DialogActions>

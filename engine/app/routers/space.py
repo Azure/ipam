@@ -151,7 +151,7 @@ async def get_spaces(
                             net['used'] = 0
 
                     if expand:
-                        if'subnets' in net:
+                        if 'subnets' in net:
                             for subnet in net['subnets']:
                                 net['used'] += IPNetwork(subnet['prefix']).size
                                 subnet['size'] = IPNetwork(subnet['prefix']).size

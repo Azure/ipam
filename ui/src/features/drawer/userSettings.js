@@ -5,9 +5,6 @@ import { isEqual } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-
 import {
   Box,
   Button,
@@ -37,12 +34,9 @@ import {
 
 import { updateMe } from "../ipam/ipamAPI";
 
-import { apiRequest } from "../../msal/authConfig";
-
 export default function UserSettings(props) {
   const { open, handleClose } = props;
 
-  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [prevOpen, setPrevOpen] = React.useState(false);
@@ -95,16 +89,10 @@ export default function UserSettings(props) {
       { "op": "replace", "path": "/darkMode", "value": darkModeValue }
     ];
 
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setSending(true);
-        const response = await instance.acquireTokenSilent(request);
-        await updateMe(response.accessToken, body);
+        await updateMe("", body);
         enqueueSnackbar("User settings updated", { variant: "success" });
         setOpenState(
           {
@@ -112,18 +100,14 @@ export default function UserSettings(props) {
             apiRefresh: refreshValue
           }
         );
-        dispatch(getMeAsync(response.accessToken));
+        dispatch(getMeAsync({ token: "" }));
         handleClose();
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar("Error updating user settings", { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar("Error updating user settings", { variant: "error" });
       } finally {
         setSending(false);
       }

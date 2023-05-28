@@ -6,9 +6,6 @@ import { isEmpty, pickBy, orderBy } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-
 import moment from 'moment';
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
@@ -62,8 +59,6 @@ import {
   selectViewSetting,
   updateMeAsync
 } from "../../../ipam/ipamSlice";
-
-import { apiRequest } from "../../../../msal/authConfig";
 
 import { ConfigureContext } from "../../configureContext";
 
@@ -393,7 +388,6 @@ export default function EditReservations(props) {
   const { open, handleClose, block } = props;
   const { refresh, refreshing } = React.useContext(ConfigureContext);
 
-  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [filterActive, setFilterActive] = React.useState(true);
@@ -567,28 +561,18 @@ export default function EditReservations(props) {
       { "op": "add", "path": `/views/reservations`, "value": saveData }
     ];
 
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setSaving(true);
-        const response = await instance.acquireTokenSilent(request);
-        await dispatch(updateMeAsync({ token: response.accessToken, body: body}));
+        await dispatch(updateMeAsync({ token: "", body: body }));
         setSendResults(true);
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          setSendResults(false);
-          enqueueSnackbar("Error saving view settings", { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        setSendResults(false);
+        enqueueSnackbar("Error saving view settings", { variant: "error" });
       } finally {
         setSaving(false);
       }
@@ -689,37 +673,34 @@ export default function EditReservations(props) {
   }
 
   function onSubmit() {
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setSending(true);
-        const response = await instance.acquireTokenSilent(request);
-        await dispatch(deleteBlockResvsAsync({token: response.accessToken, space: block.parent_space, block: block.name, body: Object.keys(selectionModel)}));
+        await dispatch(deleteBlockResvsAsync({ token: "", space: block.parent_space, block: block.name, body: Object.keys(selectionModel) }));
         onClose();
         setSelectionModel([]);
         setFilterActive(true);
         enqueueSnackbar("Successfully removed IP Block reservation(s)", { variant: "success" });
-        // refresh();
+        refresh();
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar(e.error, { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.response.data.error, { variant: "error" });
       } finally {
         setSending(false);
-        refresh();
+        // refresh();
       }
     })();
   }
+
+  const onCellDoubleClick = React.useCallback((event, cellProps) => {
+    const { value } = cellProps
+
+    navigator.clipboard.writeText(value);
+    enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
+  }, [enqueueSnackbar]);
 
   return (
     <ReservationContext.Provider value={{ copied, setCopied, filterActive, setFilterActive, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
@@ -785,6 +766,7 @@ export default function EditReservations(props) {
                 dataSource={gridData || []}
                 selected={selectionModel}
                 onSelectionChange={({selected}) => setSelectionModel(selected)}
+                onCellDoubleClick={onCellDoubleClick}
                 sortInfo={columnSortState}
                 filterTypes={filterTypes}
                 defaultFilterValue={filterValue}
@@ -801,8 +783,9 @@ export default function EditReservations(props) {
             </Button>
             <LoadingButton
               onClick={onSubmit}
-              loading={sending} disabled={empty || sending}
-              sx={{ position: "unset" }}
+              loading={sending}
+              disabled={empty || sending}
+              // sx={{ position: "unset" }}
             >
               Remove
             </LoadingButton>

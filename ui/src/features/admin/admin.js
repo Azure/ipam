@@ -2,8 +2,6 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { styled } from '@mui/material/styles';
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
 import { callMsGraphUsersFilter } from "../../msal/graph";
 
 import { useSnackbar } from 'notistack';
@@ -52,8 +50,6 @@ import {
   selectViewSetting,
   updateMeAsync
 } from "../ipam/ipamSlice";
-
-import { apiRequest } from "../../msal/authConfig";
 
 const AdminContext = React.createContext({});
 
@@ -272,7 +268,6 @@ function RenderDelete(props) {
 }
 
 export default function Administration() {
-  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [admins, setAdmins] = React.useState(null);
@@ -318,61 +313,38 @@ export default function Administration() {
   const unchanged = isEqual(admins, loadedAdmins);
 
   const SearchUsers = React.useCallback((nameFilter) => {
-    const request = {
-      scopes: ["Directory.Read.All"],
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setOptions(null);
-        const response = await instance.acquireTokenSilent(request);
-        const userData = await callMsGraphUsersFilter(response.accessToken, nameFilter);
+        const userData = await callMsGraphUsersFilter({ token: "", nameFilter: nameFilter });
         setOptions(userData.value);
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar(e.response.data.error, { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.response.data.error, { variant: "error" });
       }
     })();
-  }, [accounts, enqueueSnackbar, instance]);
+  }, [enqueueSnackbar]);
 
   const fetchUsers = React.useMemo(() => throttle((input) => SearchUsers(input), 500), [SearchUsers]);
 
   const refreshData = React.useCallback(() => {
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
-        // setLoading(true);
-        const response = await instance.acquireTokenSilent(request);
-        const data = await getAdmins(response.accessToken);
+        const data = await getAdmins("");
         setAdmins(data);
         setLoadedAdmins(data);
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar("Error fetching admins", { variant: "error" });
-        }
-      } finally {
-        // setLoading(false);
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar("Error fetching admins", { variant: "error" });
       }
     })();
-  }, [accounts, enqueueSnackbar, instance]);
+  }, [enqueueSnackbar]);
 
   React.useEffect(() => {
     if(!adminLoadedRef.current) {
@@ -419,28 +391,18 @@ export default function Administration() {
   }, [saveTimer, sendResults]);
 
   function onSave() {
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setSending(true);
-        const response = await instance.acquireTokenSilent(request);
-        await replaceAdmins(response.accessToken, admins);
+        await replaceAdmins("", admins);
         enqueueSnackbar("Successfully updated admins", { variant: "success" });
         refreshData();
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar(e.response.data.error, { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.response.data.error, { variant: "error" });
       } finally {
         setSending(false);
       }
@@ -540,28 +502,18 @@ export default function Administration() {
       { "op": "add", "path": `/views/admins`, "value": saveData }
     ];
 
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setSaving(true);
-        const response = await instance.acquireTokenSilent(request);
-        await dispatch(updateMeAsync({ token: response.accessToken, body: body}));
+        await dispatch(updateMeAsync({ token: "", body: body }));
         setSendResults(true);
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          setSendResults(false);
-          enqueueSnackbar("Error saving view settings", { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        setSendResults(false);
+        enqueueSnackbar("Error saving view settings", { variant: "error" });
       } finally {
         setSaving(false);
       }
@@ -625,6 +577,13 @@ export default function Administration() {
       setGridData(admins);
     }
   },[admins, columnSortState]);
+
+  const onCellDoubleClick = React.useCallback((event, cellProps) => {
+    const { value } = cellProps
+
+    navigator.clipboard.writeText(value);
+    enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
+  }, [enqueueSnackbar]);
 
   function NoRowsOverlay() {
     return (
@@ -736,6 +695,7 @@ export default function Administration() {
                 dataSource={gridData || []}
                 defaultFilterValue={filterValue}
                 onRowClick={(rowData) => onClick(rowData.data)}
+                onCellDoubleClick={onCellDoubleClick}
                 selected={selectionModel}
                 sortInfo={columnSortState}
                 emptyText={NoRowsOverlay}

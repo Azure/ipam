@@ -1,78 +1,122 @@
+import axios from 'axios';
+
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
+
+import { msalInstance } from '../index';
 import { graphConfig } from "./authConfig";
 
-export async function callMsGraph(accessToken) {
-  const headers = new Headers();
-  const bearer = `Bearer ${accessToken}`;
+async function generateToken() {
+  // const activeAccount = msalInstance.getActiveAccount();
+  const accounts = msalInstance.getAllAccounts();
 
-  headers.append("Authorization", bearer);
+  // if (!activeAccount && accounts.length === 0) {
+  // }
 
-  const options = {
-    method: "GET",
-    headers: headers,
+  const request = {
+    scopes: ["User.Read", "Directory.Read.All"],
+    account: accounts[0],
+    forceRefresh: true,
   };
 
-  return fetch(graphConfig.graphMeEndpoint, options)
-    .then((response) => response.json())
-    .catch((error) => console.log(error));
+  await msalInstance.handleRedirectPromise();
+
+  try {
+    const response = await msalInstance.acquireTokenSilent(request);
+
+    return response.accessToken;
+  } catch (e) {
+    if (e instanceof InteractionRequiredAuthError) {
+      const response = await msalInstance.acquireTokenRedirect(request);
+      
+      return response.accessToken;
+    } else {
+      console.log("ERROR FETCHING GRAPH TOKEN");
+      console.log("------------------");
+      console.log(e);
+      console.log("------------------");
+      throw(e);
+    }
+  }
 }
 
-export async function callMsGraphUsers(accessToken) {
-  const headers = new Headers();
-  const bearer = `Bearer ${accessToken}`;
+const graph = axios.create();
 
-  headers.append("Authorization", bearer);
+graph.interceptors.request.use(
+  async config => {
+    const token = await generateToken();
 
-  const options = {
-    method: "GET",
-    headers: headers,
-  };
+    config.headers['Authorization'] = `Bearer ${token}`;
+  
+    return config;
+  },
+  error => {
+    Promise.reject(error)
+});
 
-  return fetch(graphConfig.graphUsersEndpoint, options)
-    .then((response) => response.json())
-    .catch((error) => console.log(error));
+export function callMsGraph(token) {
+  var url = new URL(graphConfig.graphMeEndpoint);
+
+  return graph
+    .get(url)
+    .then(response => response.data)
+    .catch(error => {
+      console.log("ERROR CALLING MSGRAPH");
+      console.log(error);
+      throw error;
+    });
 }
 
-export async function callMsGraphUsersFilter(accessToken, nameFilter = "") {
-  const headers = new Headers();
-  const bearer = `Bearer ${accessToken}`;
+export function callMsGraphUsers(token) {
+  var url = new URL(graphConfig.graphUsersEndpoint);
 
-  var endpoint = graphConfig.graphUsersEndpoint + "?";
+  return graph
+    .get(url)
+    .then(response => response.data)
+    .catch(error => {
+      console.log("ERROR CALLING MSGRAPH USERS");
+      console.log(error);
+      throw error;
+    });
+}
 
-  headers.append("Authorization", bearer);
-  headers.append("ConsistencyLevel", "eventual");
+export function callMsGraphUsersFilter(token, nameFilter = "") {
+  var url = new URL(graphConfig.graphUsersEndpoint);
+  var urlParams = url.searchParams;
 
-  const options = {
-    method: "GET",
-    headers: headers,
-  };
-
-  if (nameFilter !== "") {
-    endpoint += `$filter=startsWith(userPrincipalName,'${nameFilter}') OR startsWith(displayName, '${nameFilter}')&`;
+  if(nameFilter !== "") {
+    urlParams.append('utilization', `startsWith(userPrincipalName,'${nameFilter}') OR startsWith(displayName, '${nameFilter}')`);
   }
 
-  endpoint += "$orderby=displayName&$count=true";
+  urlParams.append('orderby', 'displayName');
+  urlParams.append('count', true);
 
-  return fetch(endpoint, options)
-    .then((response) => response.json())
-    .catch((error) => console.log(error));
+  return graph
+    .get(url, {
+      headers: {
+        ConsistencyLevel: 'eventual'
+      }
+    })
+    .then(response => response.data)
+    .catch(error => {
+      console.log("ERROR CALLING MSGRAPH USERS FILTER");
+      console.log(error);
+      throw error;
+    });
 }
 
-export async function callMsGraphPhoto(accessToken) {
-  const headers = new Headers();
-  const bearer = `Bearer ${accessToken}`;
+export function callMsGraphPhoto(token) {
+  var url = new URL(graphConfig.graphMePhotoEndpoint);
 
-  headers.append("Authorization", bearer);
-  headers.append("Content-Type", "image/jpeg");
-
-  const options = {
-    method: "GET",
-    headers: headers,
-  };
-
-  return fetch(graphConfig.graphMePhotoEndpoint, options)
+  return graph
+    .get(url, {
+      headers: {
+        "Content-Type": "image/jpeg"
+      },
+      responseType: 'blob'
+    })
     .then(response => {
-      if(response.ok) {
-        return response.blob();
+      if(response.status === 200) {
+        return response.data;
       } else {
         throw new Error("Profile image not found");
       }
@@ -82,7 +126,9 @@ export async function callMsGraphPhoto(accessToken) {
 
       return imageObjectURL;
     })
-    .catch((error) => {
-      console.log(error)
+    .catch(error => {
+      console.log("ERROR CALLING MSGRAPH PHOTO");
+      console.log(error);
+      // throw error;
     });
 }

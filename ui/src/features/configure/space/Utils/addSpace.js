@@ -3,9 +3,6 @@ import { useDispatch } from 'react-redux';
 
 import { useSnackbar } from "notistack";
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-
 import {
   Box,
   Button,
@@ -22,12 +19,9 @@ import LoadingButton from '@mui/lab/LoadingButton';
 
 import { createSpaceAsync } from "../../../ipam/ipamSlice";
 
-import { apiRequest } from "../../../../msal/authConfig";
-
 export default function AddSpace(props) {
   const { open, handleClose, spaces } = props;
 
-  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [spaceName, setSpaceName] = React.useState({ value: "", error: false });
@@ -52,31 +46,21 @@ export default function AddSpace(props) {
       name: spaceName.value,
       desc: description.value
     };
-  
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
 
     (async () => {
       try {
         setSending(true);
-        const response = await instance.acquireTokenSilent(request);
-        await dispatch(createSpaceAsync({ token: response.accessToken, body: body}));
+        await dispatch(createSpaceAsync({ token: "", body: body }));
         setSpaceName({ value: "", error: false });
         setDescription({ value: "", error: false });
         enqueueSnackbar("Successfully created new Space", { variant: "success" });
         handleClose();
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar("Error creating space", { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar("Error creating space", { variant: "error" });
       } finally {
         setSending(false);
       }
@@ -181,7 +165,11 @@ export default function AddSpace(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={onCancel}>Cancel</Button>
-          <LoadingButton onClick={onSubmit} loading={sending} disabled={invalidForm}>
+          <LoadingButton
+            onClick={onSubmit}
+            loading={sending}
+            disabled={invalidForm}
+          >
             Create
           </LoadingButton>
         </DialogActions>

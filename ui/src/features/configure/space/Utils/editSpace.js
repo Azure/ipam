@@ -3,9 +3,6 @@ import { useDispatch } from 'react-redux';
 
 import { useSnackbar } from "notistack";
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-
 import {
   Box,
   Button,
@@ -22,12 +19,9 @@ import LoadingButton from '@mui/lab/LoadingButton';
 
 import { updateSpaceAsync } from "../../../ipam/ipamSlice";
 
-import { apiRequest } from "../../../../msal/authConfig";
-
 export default function EditSpace(props) {
   const { open, handleClose, space, spaces } = props;
 
-  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [spaceName, setSpaceName] = React.useState({ value: "", error: false });
@@ -77,28 +71,18 @@ export default function EditSpace(props) {
       { "op": "replace", "path": "/desc", "value": description.value }
     ];
 
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setSending(true);
-        const response = await instance.acquireTokenSilent(request);
-        await dispatch(updateSpaceAsync({ token: response.accessToken, space: space.name, body: body}));
+        await dispatch(updateSpaceAsync({ token: "", space: space.name, body: body }));
         enqueueSnackbar("Successfully updated Space", { variant: "success" });
         onCancel();
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar("Error updating space", { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar("Error updating space", { variant: "error" });
       } finally {
         setSending(false);
       }
@@ -206,7 +190,11 @@ export default function EditSpace(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={onCancel}>Cancel</Button>
-          <LoadingButton onClick={onSubmit} loading={sending} disabled={invalidForm}>
+          <LoadingButton
+            onClick={onSubmit}
+            loading={sending}
+            disabled={invalidForm}
+          >
             Update
           </LoadingButton>
         </DialogActions>

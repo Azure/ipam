@@ -4,9 +4,6 @@ import { styled } from "@mui/material/styles";
 
 import { useSnackbar } from "notistack";
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-
 import {
   Box,
   Button,
@@ -25,8 +22,6 @@ import LoadingButton from '@mui/lab/LoadingButton';
 
 import { deleteSpaceAsync } from "../../../ipam/ipamSlice";
 
-import { apiRequest } from '../../../../msal/authConfig';
-
 const Spotlight = styled("span")(({ theme }) => ({
   fontWeight: 'bold',
   color: theme.palette.mode === 'dark' ? 'cornflowerblue' : 'mediumblue'
@@ -35,7 +30,6 @@ const Spotlight = styled("span")(({ theme }) => ({
 export default function ConfirmDelete(props) {
   const { open, handleClose, space } = props;
 
-  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [force, setForce] = React.useState(false);
@@ -52,30 +46,19 @@ export default function ConfirmDelete(props) {
     if(force & !verify) {
       setVerify(true);
     } else {
-      const request = {
-        scopes: apiRequest.scopes,
-        account: accounts[0],
-      };
-  
       (async () => {
         try {
           setSending(true);
-          const response = await instance.acquireTokenSilent(request);
-          // await deleteSpace(response.accessToken, space, force);
-          await dispatch(deleteSpaceAsync({ token: response.accessToken, space: space, force: force}));
+          await dispatch(deleteSpaceAsync({ token: "", space: space, force: force }));
           enqueueSnackbar("Successfully removed Space", { variant: "success" });
-          // refresh();
           handleCancel();
+          // refresh();
         } catch (e) {
-          if (e instanceof InteractionRequiredAuthError) {
-            instance.acquireTokenRedirect(request);
-          } else {
-            console.log("ERROR");
-            console.log("------------------");
-            console.log(e);
-            console.log("------------------");
-            enqueueSnackbar(e.error, { variant: "error" });
-          }
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar(e.response.data.error, { variant: "error" });
         } finally {
           setSending(false);
         }

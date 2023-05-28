@@ -92,8 +92,11 @@ function possibleSubnets(obj, index, existingSubnetCIDR) {
   if((obj.netmask === 24 && index === 24) || (obj.netmask === 16 && index === 16) || (obj.netmask === 8 && index === 8)) {
     filteredOctets.push(addressBytes[2]);
   } else if((obj.netmask % 8) <= sliceTo && index <= 24) {
-    filteredOctets = allowed.slice(obj.netmask%8, sliceTo);
+    filteredOctets = allowed.slice((obj.netmask % 8), sliceTo);
     filteredOctets.push(addressBytes[2]);
+  } else if((obj.netmask % 8) <= sliceTo && index >= 24 && addressBytes[3] === 0) {
+    filteredOctets = allowed.slice((obj.netmask % 8), sliceTo);
+    filteredOctets.push(addressBytes[3]);
   } else if(index >= 24 && addressBytes[3] === 0) {
     filteredOctets = allowed.slice(0, sliceTo);
     filteredOctets.push(addressBytes[3]);
