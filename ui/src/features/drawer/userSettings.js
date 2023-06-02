@@ -92,7 +92,7 @@ export default function UserSettings(props) {
     (async () => {
       try {
         setSending(true);
-        await updateMe("", body);
+        await updateMe(body);
         enqueueSnackbar("User settings updated", { variant: "success" });
         setOpenState(
           {
@@ -100,7 +100,7 @@ export default function UserSettings(props) {
             apiRefresh: refreshValue
           }
         );
-        dispatch(getMeAsync({ token: "" }));
+        dispatch(getMeAsync());
         handleClose();
       } catch (e) {
         console.log("ERROR");

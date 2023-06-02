@@ -59,7 +59,7 @@ api.interceptors.request.use(
     Promise.reject(error)
 });
 
-export function fetchSpaces(token, utilization = false) {
+export function fetchSpaces(utilization = false) {
   var url = new URL(`${ENGINE_URL}/api/spaces`);
   var urlParams = url.searchParams;
 
@@ -75,7 +75,7 @@ export function fetchSpaces(token, utilization = false) {
     });
 }
 
-export function fetchSpace(token, space) {
+export function fetchSpace(space) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}`);
 
   return api
@@ -88,7 +88,7 @@ export function fetchSpace(token, space) {
     });
 }
 
-export function createSpace(token, body) {
+export function createSpace(body) {
   const url = new URL(`${ENGINE_URL}/api/spaces`);
 
   return api
@@ -101,7 +101,7 @@ export function createSpace(token, body) {
     });
 }
 
-export function updateSpace(token, space, body) {
+export function updateSpace(space, body) {
   const url = new URL(`${ENGINE_URL}/api/spaces/${space}`);
 
   return api
@@ -114,7 +114,7 @@ export function updateSpace(token, space, body) {
     });
 }
 
-export function deleteSpace(token, space, force) {
+export function deleteSpace(space, force) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}`);
   var urlParams = url.searchParams;
 
@@ -130,7 +130,7 @@ export function deleteSpace(token, space, force) {
     });
 }
 
-export function createBlock(token, space, body) {
+export function createBlock(space, body) {
   const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks`);
 
   return api
@@ -143,7 +143,7 @@ export function createBlock(token, space, body) {
     });
 }
 
-export function deleteBlock(token, space, block, force) {
+export function deleteBlock(space, block, force) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}`);
   var urlParams = url.searchParams;
 
@@ -159,7 +159,7 @@ export function deleteBlock(token, space, block, force) {
     });
 }
 
-export function fetchBlockAvailable(token, space, block) {
+export function fetchBlockAvailable(space, block) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/available`);
   var urlParams = url.searchParams;
 
@@ -175,7 +175,7 @@ export function fetchBlockAvailable(token, space, block) {
     });
 }
 
-export function replaceBlockNetworks(token, space, block, body) {
+export function replaceBlockNetworks(space, block, body) {
   const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/networks`);
 
   return api
@@ -188,7 +188,7 @@ export function replaceBlockNetworks(token, space, block, body) {
     });
 }
 
-export function fetchBlockResv(token, space, block) {
+export function fetchBlockResv(space, block) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/reservations`);
 
   return api
@@ -201,7 +201,7 @@ export function fetchBlockResv(token, space, block) {
     });
 }
 
-export function deleteBlockResvs(token, space, block, body) {
+export function deleteBlockResvs(space, block, body) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/reservations`);
 
   return api
@@ -216,7 +216,7 @@ export function deleteBlockResvs(token, space, block, body) {
     });
 }
 
-export function fetchSubscriptions(token) {
+export function fetchSubscriptions() {
   var url = new URL(`${ENGINE_URL}/api/azure/subscription`);
 
   return api
@@ -229,7 +229,7 @@ export function fetchSubscriptions(token) {
     });
 }
 
-export function fetchVNets(token) {
+export function fetchVNets() {
   var url = new URL(`${ENGINE_URL}/api/azure/vnet`);
 
   return api
@@ -242,7 +242,7 @@ export function fetchVNets(token) {
     });
 }
 
-export function fetchVHubs(token) {
+export function fetchVHubs() {
   var url = new URL(`${ENGINE_URL}/api/azure/vhub`);
 
   return api
@@ -255,7 +255,7 @@ export function fetchVHubs(token) {
     });
 }
 
-export function fetchSubnets(token) {
+export function fetchSubnets() {
   var url = new URL(`${ENGINE_URL}/api/azure/subnet`);
 
   return api
@@ -268,7 +268,7 @@ export function fetchSubnets(token) {
     });
 }
 
-export function fetchEndpoints(token) {
+export function fetchEndpoints() {
   var url = new URL(`${ENGINE_URL}/api/azure/multi`);
 
   return api
@@ -281,7 +281,7 @@ export function fetchEndpoints(token) {
     });
 }
 
-export function fetchNetworks(token) {
+export function fetchNetworks() {
   var url = new URL(`${ENGINE_URL}/api/azure/network`);
 
   return api
@@ -294,18 +294,18 @@ export function fetchNetworks(token) {
     });
 }
 
-export function refreshAll(token) {
+export function refreshAll() {
   const stack = [
-    (async () => await fetchSpaces(token, true))(),
-    (async () => await fetchSubscriptions(token, true))(),
-    (async () => await fetchNetworks(token))(),
-    (async () => await fetchEndpoints(token))()
+    (async () => await fetchSpaces(true))(),
+    (async () => await fetchSubscriptions(true))(),
+    (async () => await fetchNetworks())(),
+    (async () => await fetchEndpoints())()
   ];
 
   return Promise.allSettled(stack);
 }
 
-export function fetchTreeView(token) {
+export function fetchTreeView() {
   var url = new URL(`${ENGINE_URL}/api/internal/tree`);
 
   return api
@@ -318,7 +318,7 @@ export function fetchTreeView(token) {
     });
 }
 
-export function getAdmins(token) {
+export function getAdmins() {
   var url = new URL(`${ENGINE_URL}/api/admin/admins`);
 
   return api
@@ -331,7 +331,7 @@ export function getAdmins(token) {
     });
 }
 
-export function replaceAdmins(token, body) {
+export function replaceAdmins(body) {
   var url = new URL(`${ENGINE_URL}/api/admin/admins`);
 
   return api
@@ -344,7 +344,7 @@ export function replaceAdmins(token, body) {
     });
 }
 
-export function getExclusions(token) {
+export function getExclusions() {
   var url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
 
   return api
@@ -357,7 +357,7 @@ export function getExclusions(token) {
     });
 }
 
-export function replaceExclusions(token, body) {
+export function replaceExclusions(body) {
   var url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
 
   return api
@@ -370,7 +370,7 @@ export function replaceExclusions(token, body) {
     });
 }
 
-export function getMe(token) {
+export function getMe() {
   var url = new URL(`${ENGINE_URL}/api/users/me`);
   var urlParams = url.searchParams;
 
@@ -386,7 +386,7 @@ export function getMe(token) {
     });
 }
 
-export function updateMe(token, body) {
+export function updateMe(body) {
   var url = new URL(`${ENGINE_URL}/api/users/me`);
 
   return api

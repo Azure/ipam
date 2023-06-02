@@ -564,7 +564,7 @@ export default function EditReservations(props) {
     (async () => {
       try {
         setSaving(true);
-        await dispatch(updateMeAsync({ token: "", body: body }));
+        await dispatch(updateMeAsync({ body: body }));
         setSendResults(true);
       } catch (e) {
         console.log("ERROR");
@@ -676,7 +676,7 @@ export default function EditReservations(props) {
     (async () => {
       try {
         setSending(true);
-        await dispatch(deleteBlockResvsAsync({ token: "", space: block.parent_space, block: block.name, body: Object.keys(selectionModel) }));
+        await dispatch(deleteBlockResvsAsync({ space: block.parent_space, block: block.name, body: Object.keys(selectionModel) }));
         onClose();
         setSelectionModel([]);
         setFilterActive(true);

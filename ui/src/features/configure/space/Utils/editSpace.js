@@ -74,7 +74,7 @@ export default function EditSpace(props) {
     (async () => {
       try {
         setSending(true);
-        await dispatch(updateSpaceAsync({ token: "", space: space.name, body: body }));
+        await dispatch(updateSpaceAsync({ space: space.name, body: body }));
         enqueueSnackbar("Successfully updated Space", { variant: "success" });
         onCancel();
       } catch (e) {

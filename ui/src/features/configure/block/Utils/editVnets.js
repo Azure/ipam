@@ -335,7 +335,7 @@ export default function EditVnets(props) {
     (async () => {
       try {
         setSaving(true);
-        await dispatch(updateMeAsync({ token: "", body: body }));
+        await dispatch(updateMeAsync({ body: body }));
         setSendResults(true);
       } catch (e) {
         console.log("ERROR");
@@ -470,7 +470,7 @@ export default function EditVnets(props) {
           setRefreshing(true);
           setSelectionModel([]);
           var missing_data = [];
-          var data = await fetchBlockAvailable("", block.parent_space, block.name);
+          var data = await fetchBlockAvailable(block.parent_space, block.name);
           data.forEach((item) => {
             item['subscription_name'] = subscriptions.find(sub => sub.subscription_id === item.subscription_id)?.name || 'Unknown';
             item['active'] = true;
@@ -504,10 +504,10 @@ export default function EditVnets(props) {
     (async () => {
       try {
         setSending(true);
-        await replaceBlockNetworks("", block.parent_space, block.name, Object.keys(selectionModel));
+        await replaceBlockNetworks(block.parent_space, block.name, Object.keys(selectionModel));
         handleClose();
         enqueueSnackbar("Successfully updated IP Block vNets", { variant: "success" });
-        dispatch(fetchNetworksAsync(""));
+        dispatch(fetchNetworksAsync());
         refresh();
       } catch (e) {
         console.log("ERROR");

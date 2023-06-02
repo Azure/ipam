@@ -53,7 +53,7 @@ export const fetchSpacesAsync = createAsyncThunk(
   'ipam/fetchSpaces',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await fetchSpaces(args.token, true);
+      const response = await fetchSpaces(true);
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {
@@ -66,7 +66,7 @@ export const createSpaceAsync = createAsyncThunk(
   'ipam/createSpace',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await createSpace(args.token, args.body);
+      const response = await createSpace(args.body);
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {
@@ -79,7 +79,7 @@ export const updateSpaceAsync = createAsyncThunk(
   'ipam/updateSpace',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await updateSpace(args.token, args.space, args.body);
+      const response = await updateSpace(args.space, args.body);
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {
@@ -92,7 +92,7 @@ export const deleteSpaceAsync = createAsyncThunk(
   'ipam/deleteSpace',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await deleteSpace(args.token, args.space, args.force);
+      const response = await deleteSpace(args.space, args.force);
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {
@@ -105,7 +105,7 @@ export const createBlockAsync = createAsyncThunk(
   'ipam/createBlock',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await createBlock(args.token, args.space, args.body);
+      const response = await createBlock(args.space, args.body);
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {
@@ -118,7 +118,7 @@ export const deleteBlockAsync = createAsyncThunk(
   'ipam/deleteBlock',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await deleteBlock(args.token, args.space, args.block, args.force);
+      const response = await deleteBlock(args.space, args.block, args.force);
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {
@@ -131,7 +131,7 @@ export const deleteBlockResvsAsync = createAsyncThunk(
   'ipam/deleteBlockResvs',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await deleteBlockResvs(args.token, args.space, args.block, args.body);
+      const response = await deleteBlockResvs(args.space, args.block, args.body);
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {
@@ -144,7 +144,7 @@ export const fetchVNetsAsync = createAsyncThunk(
   'ipam/fetchVNets',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await fetchVNets(args.token);
+      const response = await fetchVNets();
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {
@@ -157,7 +157,7 @@ export const fetchVHubsAsync = createAsyncThunk(
   'ipam/fetchVHubs',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await fetchVHubs(args.token);
+      const response = await fetchVHubs();
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {
@@ -170,7 +170,7 @@ export const fetchSubnetsAsync = createAsyncThunk(
   'ipam/fetchSubnets',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await fetchSubnets(args.token);
+      const response = await fetchSubnets();
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {
@@ -183,7 +183,7 @@ export const fetchEndpointsAsync = createAsyncThunk(
   'ipam/fetchEndpoints',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await fetchEndpoints(args.token);
+      const response = await fetchEndpoints();
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {
@@ -196,7 +196,7 @@ export const fetchNetworksAsync = createAsyncThunk(
   'ipam/fetchNetworks',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await fetchNetworks(args.token);
+      const response = await fetchNetworks();
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {
@@ -209,7 +209,7 @@ export const refreshAllAsync = createAsyncThunk(
   'ipam/refreshAll',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await refreshAll(args.token);
+      const response = await refreshAll();
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {
@@ -222,7 +222,7 @@ export const getMeAsync = createAsyncThunk(
   'ipam/getMe',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await getMe(args.token);
+      const response = await getMe();
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {
@@ -235,7 +235,7 @@ export const updateMeAsync = createAsyncThunk(
   'ipam/updateMe',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await updateMe(args.token, args.body);
+      const response = await updateMe(args.body);
       // The value we return becomes the `fulfilled` action payload
       return response;
     } catch (err) {

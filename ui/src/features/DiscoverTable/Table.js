@@ -416,7 +416,7 @@ export default function DiscoverTable(props) {
       try {
         setSaving(true);
         const response = await instance.acquireTokenSilent(request);
-        await dispatch(updateMeAsync({ token: response.accessToken, body: body}));
+        await dispatch(updateMeAsync({ body: body}));
         setSendResults(true);
       } catch (e) {
         if (e instanceof InteractionRequiredAuthError) {

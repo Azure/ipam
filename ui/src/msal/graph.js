@@ -53,7 +53,7 @@ graph.interceptors.request.use(
     Promise.reject(error)
 });
 
-export function callMsGraph(token) {
+export function callMsGraph() {
   var url = new URL(graphConfig.graphMeEndpoint);
 
   return graph
@@ -66,7 +66,7 @@ export function callMsGraph(token) {
     });
 }
 
-export function callMsGraphUsers(token) {
+export function callMsGraphUsers() {
   var url = new URL(graphConfig.graphUsersEndpoint);
 
   return graph
@@ -79,12 +79,12 @@ export function callMsGraphUsers(token) {
     });
 }
 
-export function callMsGraphUsersFilter(token, nameFilter = "") {
+export function callMsGraphUsersFilter(nameFilter = "") {
   var url = new URL(graphConfig.graphUsersEndpoint);
   var urlParams = url.searchParams;
 
   if(nameFilter !== "") {
-    urlParams.append('utilization', `startsWith(userPrincipalName,'${nameFilter}') OR startsWith(displayName, '${nameFilter}')`);
+    urlParams.append('filter', `startsWith(userPrincipalName,'${nameFilter}') OR startsWith(displayName, '${nameFilter}')`);
   }
 
   urlParams.append('orderby', 'displayName');
@@ -104,7 +104,7 @@ export function callMsGraphUsersFilter(token, nameFilter = "") {
     });
 }
 
-export function callMsGraphPhoto(token) {
+export function callMsGraphPhoto() {
   var url = new URL(graphConfig.graphMePhotoEndpoint);
 
   return graph

@@ -50,7 +50,7 @@ export default function AddBlock(props) {
     (async () => {
       try {
         setSending(true);
-        await dispatch(createBlockAsync({ token: "", space: space, body: body }));
+        await dispatch(createBlockAsync({ space: space, body: body }));
         enqueueSnackbar("Successfully created new Block", { variant: "success" });
         onCancel();
       } catch (e) {

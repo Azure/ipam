@@ -49,7 +49,7 @@ export default function ConfirmDelete(props) {
       (async () => {
         try {
           setSending(true);
-          await dispatch(deleteBlockAsync({ token: "", space: space, block: block, force: force }));
+          await dispatch(deleteBlockAsync({ space: space, block: block, force: force }));
           enqueueSnackbar("Successfully removed Block", { variant: "success" });
           handleCancel();
         } catch (e) {

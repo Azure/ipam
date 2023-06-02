@@ -268,8 +268,8 @@ export default function NavDrawer() {
     if (!graphData) {
       (async() => {
         try {
-          const graphResponse = await callMsGraph("");
-          const photoResponse = await callMsGraphPhoto("");
+          const graphResponse = await callMsGraph();
+          const photoResponse = await callMsGraphPhoto();
           await dispatch(setUserId(graphResponse.userPrincipalName));
           setGraphPhoto(photoResponse);
           setGraphData(graphResponse);

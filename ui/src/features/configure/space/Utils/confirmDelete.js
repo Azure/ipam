@@ -49,7 +49,7 @@ export default function ConfirmDelete(props) {
       (async () => {
         try {
           setSending(true);
-          await dispatch(deleteSpaceAsync({ token: "", space: space, force: force }));
+          await dispatch(deleteSpaceAsync({ space: space, force: force }));
           enqueueSnackbar("Successfully removed Space", { variant: "success" });
           handleCancel();
           // refresh();

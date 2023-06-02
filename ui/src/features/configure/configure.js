@@ -78,7 +78,7 @@ export default function ConfigureIPAM() {
     (async() => {
       try {
         setRefreshing(true);
-        await dispatch(fetchSpacesAsync({ token: "" }));
+        await dispatch(fetchSpacesAsync());
         setRefreshing(false);
       } catch (e) {
         console.log("ERROR");

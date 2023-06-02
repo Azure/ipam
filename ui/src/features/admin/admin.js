@@ -316,7 +316,7 @@ export default function Administration() {
     (async () => {
       try {
         setOptions(null);
-        const userData = await callMsGraphUsersFilter({ token: "", nameFilter: nameFilter });
+        const userData = await callMsGraphUsersFilter(nameFilter);
         setOptions(userData.value);
       } catch (e) {
         console.log("ERROR");
@@ -333,7 +333,7 @@ export default function Administration() {
   const refreshData = React.useCallback(() => {
     (async () => {
       try {
-        const data = await getAdmins("");
+        const data = await getAdmins();
         setAdmins(data);
         setLoadedAdmins(data);
       } catch (e) {
@@ -394,7 +394,7 @@ export default function Administration() {
     (async () => {
       try {
         setSending(true);
-        await replaceAdmins("", admins);
+        await replaceAdmins(admins);
         enqueueSnackbar("Successfully updated admins", { variant: "success" });
         refreshData();
       } catch (e) {
@@ -505,7 +505,7 @@ export default function Administration() {
     (async () => {
       try {
         setSaving(true);
-        await dispatch(updateMeAsync({ token: "", body: body }));
+        await dispatch(updateMeAsync({ body: body }));
         setSendResults(true);
       } catch (e) {
         console.log("ERROR");

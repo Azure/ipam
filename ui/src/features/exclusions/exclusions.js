@@ -293,7 +293,7 @@ export default function ManageExclusions() {
           // setLoading(true);
           var excluded = {};
 
-          const exclusions = await getExclusions("");
+          const exclusions = await getExclusions();
             
           exclusions.forEach(exclusion => {
             var targetSub = subscriptions.find((sub) => sub.subscription_id === exclusion);
@@ -349,10 +349,10 @@ export default function ManageExclusions() {
         setSending(true);
         let selectedValues = Object.values(selected);
         let update = selectedValues.map(item => item.subscription_id);
-        await replaceExclusions("", update);
+        await replaceExclusions(update);
         enqueueSnackbar("Successfully updated exclusions", { variant: "success" });
         setLoadedExclusions(selected);
-        dispatch(refreshAllAsync({ token: "" }))
+        dispatch(refreshAllAsync())
       } catch (e) {
         console.log("ERROR");
         console.log("------------------");
@@ -433,7 +433,7 @@ export default function ManageExclusions() {
     (async () => {
       try {
         setSaving(true);
-        await dispatch(updateMeAsync({ token: "", body: body}));
+        await dispatch(updateMeAsync({ body: body}));
         setSendResults(true);
       } catch (e) {
         console.log("ERROR");

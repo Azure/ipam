@@ -50,7 +50,7 @@ export default function AddSpace(props) {
     (async () => {
       try {
         setSending(true);
-        await dispatch(createSpaceAsync({ token: "", body: body }));
+        await dispatch(createSpaceAsync({ body: body }));
         setSpaceName({ value: "", error: false });
         setDescription({ value: "", error: false });
         enqueueSnackbar("Successfully created new Space", { variant: "success" });
