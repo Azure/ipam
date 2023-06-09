@@ -13,6 +13,8 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
 import { SnackbarProvider } from 'notistack';
+import { SnackbarUtilsConfigurator } from './utils/snackbar';
+
 import Slide from '@mui/material/Slide';
 
 import Login from "./features/login/Login";
@@ -49,6 +51,7 @@ function App() {
           }}
           TransitionComponent={Slide}
         >
+          <SnackbarUtilsConfigurator />
           <Router>
             <ThemeProvider theme={ipamTheme}>
               <CssBaseline />

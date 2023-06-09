@@ -11,9 +11,6 @@ import '@inovua/reactdatagrid-community/theme/default-dark.css'
 
 import { useTheme } from '@mui/material/styles';
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-
 import { useSnackbar } from "notistack";
 
 import {
@@ -47,8 +44,6 @@ import {
 
 import ItemDetails from "./Utils/Details";
 
-import { apiRequest } from "../../msal/authConfig";
-
 import { TableContext } from "./TableContext";
 
 const filterTypes = merge({}, ReactDataGrid.defaultProps.filterTypes, {
@@ -78,6 +73,24 @@ const filterTypes = merge({}, ReactDataGrid.defaultProps.filterTypes, {
         name: 'neq',
         fn: ({ value, filterValue, data }) => {
           return filterValue !== (null || '') ? !(value || []).includes(filterValue) : true;
+        }
+      },
+      {
+        name: 'empty',
+        disableFilterEditor: true,
+        filterOnEmptyValue: true,
+        valueOnOperatorSelect: '',
+        fn: ({ value, filterValue, data }) => {
+          return (value || []).length === 0;
+        }
+      },
+      {
+        name: 'notEmpty',
+        disableFilterEditor: true,
+        filterOnEmptyValue: true,
+        valueOnOperatorSelect: '',
+        fn: ({ value, filterValue, data }) => {
+          return (value || []).length !== 0;
         }
       }
     ]
@@ -284,7 +297,6 @@ function HeaderMenu(props) {
 export default function DiscoverTable(props) {
   const { config, columns, filterSettings, detailsMap } = props.map;
 
-  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [loading, setLoading] = React.useState(true);
@@ -407,28 +419,18 @@ export default function DiscoverTable(props) {
       { "op": "add", "path": `/views/${config.setting}`, "value": saveData }
     ];
 
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setSaving(true);
-        const response = await instance.acquireTokenSilent(request);
         await dispatch(updateMeAsync({ body: body}));
         setSendResults(true);
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          setSendResults(false);
-          enqueueSnackbar("Error saving view settings", { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        setSendResults(false);
+        enqueueSnackbar("Error saving view settings", { variant: "error" });
       } finally {
         setSaving(false);
       }

@@ -94,6 +94,9 @@ class JSONPatch(BaseModel):
 class SpaceUpdate(List[JSONPatch]):
     """DOCSTRING"""
 
+class BlockUpdate(List[JSONPatch]):
+    """DOCSTRING"""
+
 class VNetsUpdate(List[str]):
     """DOCSTRING"""
 

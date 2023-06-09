@@ -323,7 +323,7 @@ export default function Administration() {
         console.log("------------------");
         console.log(e);
         console.log("------------------");
-        enqueueSnackbar(e.response.data.error, { variant: "error" });
+        enqueueSnackbar(e.message, { variant: "error" });
       }
     })();
   }, [enqueueSnackbar]);
@@ -402,7 +402,7 @@ export default function Administration() {
         console.log("------------------");
         console.log(e);
         console.log("------------------");
-        enqueueSnackbar(e.response.data.error, { variant: "error" });
+        enqueueSnackbar(e.message, { variant: "error" });
       } finally {
         setSending(false);
       }

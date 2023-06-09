@@ -278,7 +278,7 @@ export default function NavDrawer() {
           console.log("------------------");
           console.log(e);
           console.log("------------------");
-          // enqueueSnackbar(e.response.data.error, { variant: "error" });
+          // enqueueSnackbar(e.message, { variant: "error" });
         }
       })();
     }

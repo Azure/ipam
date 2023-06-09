@@ -514,7 +514,7 @@ export default function EditVnets(props) {
         console.log("------------------");
         console.log(e);
         console.log("------------------");
-        enqueueSnackbar(e.response.data.error, { variant: "error" });
+        enqueueSnackbar(e.message, { variant: "error" });
       } finally {
         setSending(false);
       }

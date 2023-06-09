@@ -21,9 +21,9 @@ function Refresh() {
   refreshAllRef.current = React.useCallback(() => {
     (async() => {
       try {
-        dispatch(refreshAllAsync());
+        await dispatch(refreshAllAsync());
       } catch (e) {
-        console.log("ERROR");
+        console.log("REFRESH ALL ERROR");
         console.log("------------------");
         console.log(e);
         console.log("------------------");
@@ -34,9 +34,10 @@ function Refresh() {
   refreshMeRef.current = React.useCallback(() => {
     (async() => {
       try {
-        dispatch(getMeAsync());
+        console.log("GETTING ME...");
+        await dispatch(getMeAsync());
       } catch (e) {
-        console.log("ERROR");
+        console.log("REFRESM ME ERROR");
         console.log("------------------");
         console.log(e);
         console.log("------------------");

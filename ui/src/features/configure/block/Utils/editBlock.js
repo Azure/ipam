@@ -16,44 +16,66 @@ import {
 
 import LoadingButton from '@mui/lab/LoadingButton';
 
-import { createSpaceAsync } from "../../../ipam/ipamSlice";
+import { updateBlockAsync } from "../../../ipam/ipamSlice";
 
-export default function AddSpace(props) {
-  const { open, handleClose, spaces } = props;
+export default function EditBlock(props) {
+  const { open, handleClose, space, blocks, block } = props;
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const [spaceName, setSpaceName] = React.useState({ value: "", error: false });
-  const [description, setDescription] = React.useState({ value: "", error: false });
+  const [blockName, setBlockName] = React.useState({ value: "", error: false });
+  const [cidr, setCidr] = React.useState({ value: "", error: false });
   const [sending, setSending] = React.useState(false);
 
   const dispatch = useDispatch();
 
-  const invalidForm = spaceName.value
-                      && !spaceName.error
-                      && description.value
-                      && !description.error ? false : true;
+  const invalidForm = blockName.value
+                      && !blockName.error
+                      && cidr.value
+                      && !cidr.error ? false : true;
+
+  React.useEffect(() => {
+    if(block) {
+      setBlockName({
+        value: block.name,
+        error: false
+      });
+
+      setCidr({
+        value: block.cidr,
+        error: false
+      });
+    } else {
+      setBlockName({
+        value: "",
+        error: false
+      });
+
+      setCidr({
+        value: "",
+        error: false
+      });
+    }
+  }, [block]);
 
   function onCancel() {
-    setSpaceName({ value: "", error: false });
-    setDescription({ value: "", error: false });
+    setBlockName({ value: block.name, error: false });
+    setCidr({ value: block.cidr, error: false });
     handleClose();
   }
 
   function onSubmit() {
-    var body = {
-      name: spaceName.value,
-      desc: description.value
-    };
+    var body = [
+      { "op": "replace", "path": "/name", "value": blockName.value },
+      { "op": "replace", "path": "/cidr", "value": cidr.value }
+    ];
 
     (async () => {
       try {
         setSending(true);
-        await dispatch(createSpaceAsync({ body: body }));
-        setSpaceName({ value: "", error: false });
-        setDescription({ value: "", error: false });
-        enqueueSnackbar("Successfully created new Space", { variant: "success" });
-        handleClose();
+        await dispatch(updateBlockAsync({ space: space, block: block.name, body: body }));
+        enqueueSnackbar("Successfully updated Block", { variant: "success" });
+        onCancel();
       } catch (e) {
         console.log("ERROR");
         console.log("------------------");
@@ -67,7 +89,7 @@ export default function AddSpace(props) {
   }
 
   function onNameChange(event) {
-    setSpaceName({
+    setBlockName({
       value: event.target.value,
       error: validateName(event.target.value),
     });
@@ -76,36 +98,35 @@ export default function AddSpace(props) {
   function validateName(name) {
     const regex = new RegExp(
       //eslint-disable-next-line
-      "^([a-zA-Z0-9\._-]){1,32}$"
+      "^([a-zA-Z0-9/\._-]){1,32}$"
     );
 
     const nameValid = name ? !regex.test(name) : false;
-    const spaceExists = spaces.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
+    const blockExists = blocks.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
 
-    return nameValid || spaceExists;
+    return nameValid || blockExists;
   }
 
-  function onDescriptionChange(event) {
-    setDescription({
+  function onCidrChange(event) {
+    setCidr({
       value: event.target.value,
-      error: validateDescription(event.target.value),
+      error: validateCidr(event.target.value),
     });
   }
 
-  function validateDescription(description) {
+  function validateCidr(cidr) {
     const regex = new RegExp(
-      //eslint-disable-next-line
-      "^([a-zA-Z0-9 /\._-]){1,64}$"
+      "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(/(3[0-2]|[1-2][0-9]|[0-9]))$"
     );
 
-    return description ? !regex.test(description) : false;
+    return cidr ? !regex.test(cidr) : false;
   }
 
   return (
     <div sx={{ height: "300px", width: "100%" }}>
       <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
         <DialogTitle>
-          Add Space
+          Edit Block
         </DialogTitle>
         <DialogContent>
           <Box display="flex" flexDirection="column" alignItems="center">
@@ -115,23 +136,23 @@ export default function AddSpace(props) {
               placement="right"
               title={
                 <>
-                  - Space name must be unique
+                  - Block name must be unique
                   <br />- Max of 32 characters
                   <br />- Can contain alphnumerics
-                  <br />- Can underscore, hypen, and period
+                  <br />- Can underscore, hypen, lash, and period
                 </>
               }
             >
               <TextField
                 autoFocus
-                error={spaceName.error}
+                error={blockName.error}
                 margin="dense"
                 id="name"
-                label="Space Name"
+                label="Block Name"
                 type="name"
                 variant="standard"
                 sx={{ width: "80%" }}
-                value={spaceName.value}
+                value={blockName.value}
                 onChange={(event) => {
                   onNameChange(event);
                 }}
@@ -143,22 +164,20 @@ export default function AddSpace(props) {
               placement="right"
               title={
                 <>
-                  - Max of 64 characters
-                  <br />- Can contain alphnumerics
-                  <br />- Can contain spaces
-                  <br />- Can underscore, hypen, slash, and period
+                  - Must be in valid CIDR notation format
+                  <br />- Example: 1.2.3.4/5
                 </>
               }
             >
               <TextField
-                error={description.error}
+                error={cidr.error}
                 margin="dense"
                 id="name"
-                label="Space Description"
-                type="description"
+                label="Block CIDR"
+                type="cidr"
                 variant="standard"
-                value={description.value}
-                onChange={(event) => onDescriptionChange(event)}
+                value={cidr.value}
+                onChange={(event) => onCidrChange(event)}
                 sx={{ width: "80%" }}
               />
             </Tooltip>
@@ -171,7 +190,7 @@ export default function AddSpace(props) {
             loading={sending}
             disabled={invalidForm}
           >
-            Create
+            Update
           </LoadingButton>
         </DialogActions>
       </Dialog>

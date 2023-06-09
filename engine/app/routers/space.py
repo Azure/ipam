@@ -58,14 +58,14 @@ async def scrub_space_patch(patch):
         {
             "op": "replace",
             "path": "/name",
-            "valid": "^([a-zA-Z0-9]){1,16}$",
-            "error": "space name can be a maximum of 16 characters and may contain alphanumerics."
+            "valid": "^([a-zA-Z0-9\._-]){1,32}$",
+            "error": "Space name can be a maximum of 32 characters and may contain alphanumerics, underscores, hypens, and periods."
         },
         {
             "op": "replace",
             "path": "/desc",
-            "valid": "^([a-zA-Z0-9 \._-]){1,32}$",
-            "error": "space description can be a maximum of 32 characters and may contain alphanumerics, spaces, underscores, hypens, and periods."
+            "valid": "^([a-zA-Z0-9 /\._-]){1,64}$",
+            "error": "Space description can be a maximum of 64 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods."
         }
     ]
 
@@ -75,6 +75,85 @@ async def scrub_space_patch(patch):
         if target:
             if re.match(target['valid'], str(item['value'])):
                 scrubbed_patch.append(item)
+            else:
+                raise HTTPException(status_code=400, detail=target['error'])
+
+    return scrubbed_patch
+
+async def valid_block_cidr_update(cidr, space, block_name):
+    space_cidrs = []
+    block_cidrs = []
+
+    target_block = next((x for x in space['blocks'] if x['name'].lower() == block_name.lower()), None)
+
+    if target_block:
+        if(cidr == target_block['cidr']):
+            return True
+
+        block_network = IPNetwork(cidr)
+
+        if(str(block_network.cidr) != cidr):
+            raise HTTPException(status_code=400, detail="Invalid CIDR value, Try '{}' instead.".format(block_network.cidr))
+
+    net_list = await get_network(None, True)
+
+    for block in space['blocks']:
+        if block['name'] != block_name:
+            space_cidrs.append(block['cidr'])
+        else:
+            for vnet in block['vnets']:
+                target_net = next((i for i in net_list if i['id'] == vnet['id']), None)
+                
+                if target_net:
+                    block_cidrs += target_net['prefixes']
+
+            for resv in block['resv']:
+                not resv['settledOn'] and block_cidrs.append(resv['cidr'])
+
+    update_set = IPSet([cidr])
+    space_set = IPSet(space_cidrs)
+    block_set = IPSet(block_cidrs)
+
+    if space_set & update_set:
+        return False
+    
+    if not block_set.issubset(update_set):
+        return False
+    
+    return True
+
+async def scrub_block_patch(patch, space, block_name):
+    scrubbed_patch = []
+
+    allowed_ops = [
+        {
+            "op": "replace",
+            "path": "/name",
+            "valid": "^([a-zA-Z0-9/\._-]){1,32}$",
+            "error": "Block name can be a maximum of 32 characters and may contain alphanumerics, underscores, hypens, slashes, and periods."
+        },
+        {
+            "op": "replace",
+            "path": "/cidr",
+            "valid": valid_block_cidr_update,
+            "error": "Block CIDR must be in valid CIDR notation (x.x.x.x/x) and must contain all existing block networks and reservations."
+        }
+    ]
+
+    for item in list(patch):
+        target = next((x for x in allowed_ops if (x['op'] == item['op'] and x['path'] == item['path'])), None)
+
+        if target:
+            if isinstance(target['valid'], str):
+                if re.match(target['valid'], str(item['value']), re.IGNORECASE):
+                    scrubbed_patch.append(item)
+                else:
+                    raise HTTPException(status_code=400, detail=target['error'])
+            elif callable(target['valid']):
+                if await target['valid'](item['value'], space, block_name):
+                    scrubbed_patch.append(item)
+                else:
+                    raise HTTPException(status_code=400, detail=target['error'])
             else:
                 raise HTTPException(status_code=400, detail=target['error'])
 
@@ -193,6 +272,12 @@ async def create_space(
 
     if not is_admin:
         raise HTTPException(status_code=403, detail="This API is admin restricted.")
+
+    if not re.match("^([a-zA-Z0-9\._-]){1,32}$", space.name, re.IGNORECASE):
+        raise HTTPException(status_code=400, detail="Space name can be a maximum of 32 characters and may contain alphanumerics, underscores, hypens, and periods.")
+
+    if not re.match("^([a-zA-Z0-9 /\._-]){1,64}$", space.name, re.IGNORECASE):
+        raise HTTPException(status_code=400, detail="Space description can be a maximum of 64 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
@@ -519,6 +604,17 @@ async def create_block(
     except:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
+    if not re.match("^([a-zA-Z0-9/\._-]){1,32}$", block.name, re.IGNORECASE):
+        raise HTTPException(status_code=400, detail="Block name can be a maximum of 32 characters and may contain alphanumerics, underscores, hypens, slashes, and periods.")
+
+    try:
+        block_network = IPNetwork(str(block.cidr))
+    except:
+        raise HTTPException(status_code=400, detail="Invalid CIDR, please ensure CIDR is in valid IPv4 CIDR notation (x.x.x.x/x).")
+
+    if str(block_network.cidr) != str(block.cidr):
+        raise HTTPException(status_code=400, detail="Invalid CIDR value, Try '{}' instead.".format(block_network.cidr))
+
     block_cidrs = IPSet([x['cidr'] for x in target_space['blocks']])
 
     overlap = bool(IPSet([str(block.cidr)]) & block_cidrs)
@@ -741,6 +837,65 @@ async def get_block(
             return BlockBasic(**target_block)
     else:
         return target_block
+
+@router.patch(
+    "/{space}/blocks/{block}",
+    summary = "Update Block Details",
+    response_model = Block,
+    status_code = 200
+)
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error updating block, please try again."
+)
+async def update_block(
+    updates: BlockUpdate,
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    authorization: str = Header(None, description="Azure Bearer token"),
+    tenant_id: str = Depends(get_tenant_id),
+    is_admin: str = Depends(get_admin)
+):
+    """
+    Update a Block with a JSON patch:
+
+    - **[&lt;JSON Patch&gt;]**: Array of JSON Patches
+
+    Allowed operations:
+    - **replace**
+
+    Allowed paths:
+    - **/name**
+    - **/cidr**
+    """
+
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="This API is admin restricted.")
+
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+
+    try:
+        target_space = copy.deepcopy(space_query[0])
+        update_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
+
+    update_block = next((x for x in update_space['blocks'] if x['name'].lower() == block.lower()), None)
+
+    if not update_block:
+        raise HTTPException(status_code=400, detail="Invalid block name.")
+
+    try:
+        patch = jsonpatch.JsonPatch(updates)
+    except jsonpatch.InvalidJsonPatch:
+        raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
+
+    scrubbed_patch = jsonpatch.JsonPatch(await scrub_block_patch(patch, target_space, block))
+    scrubbed_patch.apply(update_block, in_place=True)
+
+    await cosmos_replace(target_space, update_space)
+
+    return update_block
 
 @router.delete(
     "/{space}/blocks/{block}",

@@ -9,7 +9,6 @@ import {
 import { msalInstance } from '../../index';
 import { getEngineURL } from '../../global/globals';
 
-// const ENGINE_URL = window.location.origin
 const ENGINE_URL = getEngineURL();
 
 async function generateToken() {
@@ -59,59 +58,44 @@ api.interceptors.request.use(
     Promise.reject(error)
 });
 
+api.interceptors.response.use(
+  response => response.data,
+  error => {
+    console.log("ERROR CALLING IPAM API");
+    console.log(error);
+
+    if(error.response) {
+      return Promise.reject(new Error(error.response.data.error));
+    } else {
+      return Promise.reject(error);
+    }
+});
+
 export function fetchSpaces(utilization = false) {
   var url = new URL(`${ENGINE_URL}/api/spaces`);
   var urlParams = url.searchParams;
 
   utilization && urlParams.append('utilization', true);
 
-  return api
-    .get(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR FETCHING SPACES FROM API");
-      console.log(error);
-      throw error;
-    });
+  return api.get(url);
 }
 
 export function fetchSpace(space) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}`);
 
-  return api
-    .get(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR FETCHING SPACE FROM API");
-      console.log(error);
-      throw error;
-    });
+  return api.get(url);
 }
 
 export function createSpace(body) {
   const url = new URL(`${ENGINE_URL}/api/spaces`);
 
-  return api
-    .post(url, body)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR CREATING SPACE VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.post(url, body);
 }
 
 export function updateSpace(space, body) {
   const url = new URL(`${ENGINE_URL}/api/spaces/${space}`);
 
-  return api
-    .patch(url, body)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR UPDATING SPACE VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.patch(url, body);
 }
 
 export function deleteSpace(space, force) {
@@ -120,27 +104,19 @@ export function deleteSpace(space, force) {
 
   force && urlParams.append('force', true);
 
-  return api
-    .delete(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR DELETING SPACE VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.delete(url);
 }
 
 export function createBlock(space, body) {
   const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks`);
 
-  return api
-    .post(url, body)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR CREATING BLOCK VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.post(url, body);
+}
+
+export function updateBlock(space, block, body) {
+  const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}`);
+
+  return api.patch(url, body);
 }
 
 export function deleteBlock(space, block, force) {
@@ -149,14 +125,7 @@ export function deleteBlock(space, block, force) {
 
   force && urlParams.append('force', true);
 
-  return api
-    .delete(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR DELETING BLOCK VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.delete(url);
 }
 
 export function fetchBlockAvailable(space, block) {
@@ -165,133 +134,61 @@ export function fetchBlockAvailable(space, block) {
 
   urlParams.append('expand', true);
 
-  return api
-    .get(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR FETCHING AVAILABLE BLOCK NETWORKS FROM API");
-      console.log(error);
-      throw error;
-    });
+  return api.get(url);
 }
 
 export function replaceBlockNetworks(space, block, body) {
   const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/networks`);
 
-  return api
-    .put(url, body)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR UPDATING BLOCK NETWORKS VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.put(url, body);
 }
 
 export function fetchBlockResv(space, block) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/reservations`);
 
-  return api
-    .get(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR FETCHING AVAILABLE BLOCK RESERVATIONS VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.get(url);
 }
 
 export function deleteBlockResvs(space, block, body) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/reservations`);
 
-  return api
-    .delete(url, {
-      data: body
-    })
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR DELETING BLOCK RESERVATIONS VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.delete(url, { data: body });
 }
 
 export function fetchSubscriptions() {
   var url = new URL(`${ENGINE_URL}/api/azure/subscription`);
 
-  return api
-    .get(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR FETCHING SUBSCRIPTIONS FROM API");
-      console.log(error);
-      throw error;
-    });
+  return api.get(url);
 }
 
 export function fetchVNets() {
   var url = new URL(`${ENGINE_URL}/api/azure/vnet`);
 
-  return api
-    .get(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR FETCHING VNETS FROM API");
-      console.log(error);
-      throw error;
-    });
+  return api.get(url);
 }
 
 export function fetchVHubs() {
   var url = new URL(`${ENGINE_URL}/api/azure/vhub`);
 
-  return api
-    .get(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR FETCHING VHUBS FROM API");
-      console.log(error);
-      throw error;
-    });
+  return api.get(url);
 }
 
 export function fetchSubnets() {
   var url = new URL(`${ENGINE_URL}/api/azure/subnet`);
 
-  return api
-    .get(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR FETCHING SUBNETS FROM API");
-      console.log(error);
-      throw error;
-    });
+  return api.get(url);
 }
 
 export function fetchEndpoints() {
   var url = new URL(`${ENGINE_URL}/api/azure/multi`);
 
-  return api
-    .get(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR FETCHING ENDPOINTS FROM API");
-      console.log(error);
-      throw error;
-    });
+  return api.get(url);
 }
 
 export function fetchNetworks() {
   var url = new URL(`${ENGINE_URL}/api/azure/network`);
 
-  return api
-    .get(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR FETCHING NETWORKS FROM API");
-      console.log(error);
-      throw error;
-    });
+  return api.get(url);
 }
 
 export function refreshAll() {
@@ -308,66 +205,31 @@ export function refreshAll() {
 export function fetchTreeView() {
   var url = new URL(`${ENGINE_URL}/api/internal/tree`);
 
-  return api
-    .get(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR FETCHING TREE VIEW VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.get(url);
 }
 
 export function getAdmins() {
   var url = new URL(`${ENGINE_URL}/api/admin/admins`);
 
-  return api
-    .get(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR FETCHING ADMINS VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.get(url);
 }
 
 export function replaceAdmins(body) {
   var url = new URL(`${ENGINE_URL}/api/admin/admins`);
 
-  return api
-    .put(url, body)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR UPDATING ADMINS VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.put(url, body);
 }
 
 export function getExclusions() {
   var url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
 
-  return api
-    .get(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR FETCHING EXCLUSIONS VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.get(url);
 }
 
 export function replaceExclusions(body) {
   var url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
 
-  return api
-    .put(url, body)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR UPDATING EXCLUSIONS VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.put(url, body);
 }
 
 export function getMe() {
@@ -376,25 +238,11 @@ export function getMe() {
 
   urlParams.append('expand', true);
 
-  return api
-    .get(url)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR FETCHING ME VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.get(url);
 }
 
 export function updateMe(body) {
   var url = new URL(`${ENGINE_URL}/api/users/me`);
 
-  return api
-    .patch(url, body)
-    .then(response => response.data)
-    .catch(error => {
-      console.log("ERROR UPDATING ME VIA API");
-      console.log(error);
-      throw error;
-    });
+  return api.patch(url, body);
 }

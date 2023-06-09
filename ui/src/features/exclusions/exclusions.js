@@ -358,7 +358,7 @@ export default function ManageExclusions() {
         console.log("------------------");
         console.log(e);
         console.log("------------------");
-        enqueueSnackbar(e.response.data.error, { variant: "error" });
+        enqueueSnackbar(e.message, { variant: "error" });
       } finally {
         setSending(false);
       }

@@ -79,13 +79,14 @@ export default function ConfigureIPAM() {
       try {
         setRefreshing(true);
         await dispatch(fetchSpacesAsync());
-        setRefreshing(false);
       } catch (e) {
         console.log("ERROR");
         console.log("------------------");
         console.log(e);
         console.log("------------------");
-        enqueueSnackbar(e.response.data.error, { variant: "error" });
+        enqueueSnackbar(e.message, { variant: "error" });
+      } finally {
+        setRefreshing(false);
       }
     })();
   }, [dispatch, enqueueSnackbar]);

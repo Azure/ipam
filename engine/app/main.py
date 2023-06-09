@@ -184,7 +184,7 @@ async def db_upgrade():
 
         await container.delete_item("spaces", partition_key = "spaces")
 
-        logger.info('Spaces database conversion complete!')
+        logger.warning('Spaces database conversion complete!')
     except CosmosResourceNotFoundError:
         logger.info('No existing spaces to convert...')
         pass
@@ -204,7 +204,7 @@ async def db_upgrade():
 
         await container.delete_item("users", partition_key = "users")
 
-        logger.info('Users database conversion complete!')
+        logger.warning('Users database conversion complete!')
     except CosmosResourceNotFoundError:
         logger.info('No existing users to convert...')
         pass
@@ -224,7 +224,7 @@ async def db_upgrade():
 
         await container.delete_item("admins", partition_key = "admins")
 
-        logger.info('Admins database conversion complete!')
+        logger.warning('Admins database conversion complete!')
     except CosmosResourceNotFoundError:
         logger.info('No existing admins to convert...')
         pass
@@ -243,7 +243,7 @@ async def db_upgrade():
 
             await cosmos_replace(user, user_data)
 
-        logger.info('User object patching complete!')
+        logger.warning('User object patching complete!')
     else:
         logger.info("No existing user objects to patch...")
 
@@ -269,7 +269,7 @@ async def db_upgrade():
 
             await cosmos_replace(space, space_data)
 
-        logger.info('Reservation patching complete!')
+        logger.warning('Reservation patching complete!')
     else:
         logger.info("No existing reservations to patch...")
 
@@ -300,7 +300,7 @@ async def db_upgrade():
 
             # await cosmos_replace(space, space_data)
 
-        logger.info('Virtual Hub patching complete!')
+        logger.warning('Virtual Hub patching complete!')
     else:
         logger.info("No existing Virtual Hubs to patch...")
 
