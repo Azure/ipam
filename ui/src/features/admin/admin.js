@@ -319,7 +319,7 @@ export default function Administration() {
 
   const SearchUsers = React.useCallback((nameFilter) => {
     const request = {
-      scopes: ["Directory.Read.All"],
+      scopes: process.env.REACT_APP_USER_READBASIC_PERMISSION === "true" ? "User.ReadBasic.All" : "Directory.Read.All",
       account: accounts[0],
     };
 

@@ -21,9 +21,11 @@ export const msalConfig = {
   },
 };
 
+const reqScope = process.env.REACT_APP_USER_READBASIC_PERMISSION === "true" ? "User.ReadBasic.All" : "Directory.Read.All"
+
 export const loginRequest = {
   scopes: [`api://${ENGINE_APP_ID}/access_as_user`],
-  extraScopesToConsent: ["openid", "profile", "offline_access", "User.Read", "Directory.Read.All"]
+  extraScopesToConsent: ["openid", "profile", "offline_access", "User.Read", reqScope]
 };
 
 export const apiRequest = {
