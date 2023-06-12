@@ -780,12 +780,14 @@ async def match_resv_to_vnets():
                             target_net = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
 
                             if target_net:
-                                target_cidr = next((x for x in target_net['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
-                                existing_block_cidrs.append(target_cidr)
+                                if target_net['id'] == net['id']:
+                                    target_cidrs = [x for x in target_net['prefixes'] if (IPNetwork(x) in IPNetwork(block['cidr'])) and x != resv['cidr']]
+                                else:
+                                    target_cidrs = [x for x in target_net['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])]
 
-                        net_cidr = next((x for x in net['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])), None)
+                                existing_block_cidrs += target_cidrs
 
-                        if net_cidr in existing_block_cidrs:
+                        if IPNetwork(resv['cidr']) in IPSet(existing_block_cidrs):
                             # print("A vNET with the assigned CIDR has already been associated with the target IP Block.")
                             # logging.info("A vNET with the assigned CIDR has already been associated with the target IP Block.")
                             resv['status'] = "errCIDRExists"

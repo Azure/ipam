@@ -1,5 +1,5 @@
-from pydantic import BaseModel, ValidationError, EmailStr, root_validator
-from typing import Optional, Union, List, Dict, Any
+from pydantic import BaseModel, ValidationError, EmailStr, root_validator, validator
+from typing import Optional, Union, Literal, List, Dict, Any
 
 from netaddr import IPSet, IPNetwork, IPAddress
 from datetime import datetime
@@ -388,9 +388,19 @@ class AzureNetwork(BaseModel):
 class Admin(BaseModel):
     """DOCSTRING"""
 
+    type: Literal["User", "Principal"]
     name: str
-    email: EmailStr
+    email: Optional[EmailStr]
     id: UUID
+
+    @validator('email', pre=True, always=True)
+    def check_email(cls, v, values, **kwargs):
+        if 'type' in values and values['type'] == "Principal" and v is not None:
+            raise ValueError("email should not be set for 'principal' type")
+        if 'type' in values and values['type'] == "User" and v is None:
+            raise ValueError("email must be set for 'user' type")
+
+        return v
 
     class Config:
         json_encoders = {

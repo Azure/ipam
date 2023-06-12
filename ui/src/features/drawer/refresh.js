@@ -34,7 +34,6 @@ function Refresh() {
   refreshMeRef.current = React.useCallback(() => {
     (async() => {
       try {
-        console.log("GETTING ME...");
         await dispatch(getMeAsync());
       } catch (e) {
         console.log("REFRESM ME ERROR");

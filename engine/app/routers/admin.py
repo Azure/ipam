@@ -93,9 +93,10 @@ async def create_admin(
     """
     Create an new IPAM Administrator with the following details:
 
-    - **name**: Full name of the Administrator
-    - **email**: Email address for the Administrator
-    - **id**: Azure AD ObjectID for the Administrator user
+    - **type**: [ "User" | "Principal" ]
+    - **name**: Full name of the Administrator or DisplayName of the Service Principal
+    - **email**: Email address for the Administrator (not required for 'Principal' type)
+    - **id**: Azure AD ObjectID for the Administrator user Service Principal
     """
 
     if not is_admin:
@@ -138,9 +139,10 @@ async def update_admins(
     Replace the list of IPAM Administrators with the following details:
 
     - Array **[ ]** of:
-        - **name**: Full name of the Administrator
-        - **email**: Email address for the Administrator
-        - **id**: Azure AD ObjectID for the Administrator user
+        - **type**: [ "User" | "Principal" ]
+        - **name**: Full name of the Administrator or DisplayName of the Service Principal
+        - **email**: Email address for the Administrator (not required for 'Principal' type)
+        - **id**: Azure AD ObjectID for the Administrator user Service Principal
     """
 
     if not is_admin:

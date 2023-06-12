@@ -229,10 +229,10 @@ async def db_upgrade():
         logger.info('No existing admins to convert...')
         pass
 
-    users_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND (NOT IS_DEFINED(c['data']['darkMode']) OR NOT IS_DEFINED(c['data']['views'])))", globals.TENANT_ID)
+    user_fixup_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND (NOT IS_DEFINED(c['data']['darkMode']) OR NOT IS_DEFINED(c['data']['views'])))", globals.TENANT_ID)
 
-    if users_query:
-        for user in users_query:
+    if user_fixup_query:
+        for user in user_fixup_query:
             user_data = copy.deepcopy(user)
 
             if 'darkMode' not in user_data['data']:
@@ -247,10 +247,30 @@ async def db_upgrade():
     else:
         logger.info("No existing user objects to patch...")
 
-    resv_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN resv in block.resv WHERE (c.type = 'space' AND NOT IS_DEFINED(resv.settledOn))", globals.TENANT_ID)
+    admin_fixup_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN admin IN c.admins WHERE (c.type = 'admin' AND NOT IS_DEFINED(admin.type))", globals.TENANT_ID)
 
-    if resv_query:
-        for space in resv_query:
+    if admin_fixup_query:
+        admin_data = copy.deepcopy(admin_fixup_query[0])
+
+        for i, admin in enumerate(admin_data['admins']):
+            if 'type' not in admin:
+                admin_data['admins'][i] = {
+                    "type": "User",
+                    "name": admin['id'],
+                    "email": admin['email'],
+                    "id": admin['id']
+                }
+
+        await cosmos_replace(admin_fixup_query[0], admin_data)
+
+        logger.warning('Admin object patching complete!')
+    else:
+        logger.info("No existing admin objects to patch...")
+
+    resv_fixup_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN resv in block.resv WHERE (c.type = 'space' AND NOT IS_DEFINED(resv.settledOn))", globals.TENANT_ID)
+
+    if resv_fixup_query:
+        for space in resv_fixup_query:
             space_data = copy.deepcopy(space)
 
             for block in space_data['blocks']:
@@ -273,10 +293,10 @@ async def db_upgrade():
     else:
         logger.info("No existing reservations to patch...")
 
-    vhub_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN vnet in block.vnets WHERE (c.type = 'space' AND RegexMatch (vnet.id, '/Microsoft.Network/virtualHubs/', ''))", globals.TENANT_ID)
+    vhub_fixup_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN vnet in block.vnets WHERE (c.type = 'space' AND RegexMatch (vnet.id, '/Microsoft.Network/virtualHubs/', ''))", globals.TENANT_ID)
 
-    if vhub_query:
-        for space in vhub_query:
+    if vhub_fixup_query:
+        for space in vhub_fixup_query:
             space_data = copy.deepcopy(space)
 
             new_blocks = []

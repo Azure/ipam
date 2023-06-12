@@ -104,6 +104,31 @@ export function callMsGraphUsersFilter(nameFilter = "") {
     });
 }
 
+export function callMsGraphPrincipalsFilter(nameFilter = "") {
+  var url = new URL(graphConfig.graphPrincipalsEndpoint);
+  var urlParams = url.searchParams;
+
+  if(nameFilter !== "") {
+    urlParams.append('filter', `startsWith(displayName,'${nameFilter}')`);
+  }
+
+  urlParams.append('orderby', 'displayName');
+  urlParams.append('count', true);
+
+  return graph
+    .get(url, {
+      headers: {
+        ConsistencyLevel: 'eventual'
+      }
+    })
+    .then(response => response.data)
+    .catch(error => {
+      console.log("ERROR CALLING MSGRAPH PRINCIPALS FILTER");
+      console.log(error);
+      throw error;
+    });
+}
+
 export function callMsGraphPhoto() {
   var url = new URL(graphConfig.graphMePhotoEndpoint);
 
