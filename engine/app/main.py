@@ -256,7 +256,7 @@ async def db_upgrade():
             if 'type' not in admin:
                 admin_data['admins'][i] = {
                     "type": "User",
-                    "name": admin['id'],
+                    "name": admin['name'],
                     "email": admin['email'],
                     "id": admin['id']
                 }
