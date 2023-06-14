@@ -478,6 +478,7 @@ resources
 
 VHUB_ENDPOINT = """
 resources
+| where subscriptionId !in~ {}
 | where isnotnull(properties.virtualHub.id)
 | extend type = extract(@'[^/]*Microsoft.Network[^/]*\/[^/]*', 0, id)
 | extend vhub_id = tostring(properties.virtualHub.id)
