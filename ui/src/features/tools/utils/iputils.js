@@ -101,7 +101,7 @@ function possibleSubnets(obj, index, existingSubnetCIDR) {
     filteredOctets = allowed.slice(0, sliceTo);
     filteredOctets.push(addressBytes[3]);
   } else {
-    let newArr = addressBytes[pos].toString(2).replace(/0+$/, '1').split('');
+    let newArr = addressBytes[pos].toString(2).replace(/0+$/, '1').padEnd(8, '1').split('');
 
     filteredOctets = allowed.slice(0, sliceTo).filter((d, ind) => newArr[ind] === '1');
   }

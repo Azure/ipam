@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useSelector } from 'react-redux';
 import { ThemeProvider, createTheme, styled } from '@mui/material/styles';
 
-import { find } from 'lodash';
+import { find,isEqual, orderBy } from 'lodash';
 
 import {
   Box,
@@ -183,8 +183,8 @@ const Planner = () => {
   React.useEffect(() => {
     if(vNetData) {
       showAll
-      ? setVNetOptions(vNetData.sort((a, b) => (a.subscription_name > b.subscription_name) ? 1 : -1))
-      : setVNetOptions(vNetData.filter(v => v.parent_space !== null).sort((a, b) => (a.parent_space > b.parent_space) ? 1 : (a.parent_space === b.parent_space) ? ((a.parent_block > b.parent_block) ? 1 : -1) : -1 ));
+      ? setVNetOptions(orderBy(vNetData, ['subscription_name', 'name'], ['asc', 'asc']))
+      : setVNetOptions(orderBy(vNetData.filter(v => v.parent_space !== null), ['parent_space', 'parent_block', 'name'], ['asc', 'asc', 'asc']));
     } else {
       setVNetOptions([]);
     }
@@ -269,6 +269,7 @@ const Planner = () => {
               onInputChange={(event, newInputValue) => setVNetInput(newInputValue)}
               value={selectedVNet}
               onChange={(event, newValue) => setSelectedVNet(newValue)}
+              isOptionEqualToValue={(option, value) => isEqual(option, value)}
               sx={{ width: 300 }}
               renderInput={(params) => (
                 <TextField
