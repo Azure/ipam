@@ -293,36 +293,36 @@ async def db_upgrade():
     else:
         logger.info("No existing reservations to patch...")
 
-    vhub_fixup_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN vnet in block.vnets WHERE (c.type = 'space' AND RegexMatch (vnet.id, '/Microsoft.Network/virtualHubs/', ''))", globals.TENANT_ID)
+    # vhub_fixup_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN vnet in block.vnets WHERE (c.type = 'space' AND RegexMatch (vnet.id, '/Microsoft.Network/virtualHubs/', ''))", globals.TENANT_ID)
 
-    if vhub_fixup_query:
-        for space in vhub_fixup_query:
-            space_data = copy.deepcopy(space)
+    # if vhub_fixup_query:
+    #     for space in vhub_fixup_query:
+    #         space_data = copy.deepcopy(space)
 
-            new_blocks = []
+    #         new_blocks = []
 
-            for block in space_data['blocks']:
-                vnets = [x for x in block['vnets'] if re.match(".*/Microsoft.Network/virtualNetworks/.*", x['id'])]
-                vhubs = [x for x in block['vnets'] if re.match(".*/Microsoft.Network/virtualHubs/.*", x['id'])]
+    #         for block in space_data['blocks']:
+    #             vnets = [x for x in block['vnets'] if re.match(".*/Microsoft.Network/virtualNetworks/.*", x['id'])]
+    #             vhubs = [x for x in block['vnets'] if re.match(".*/Microsoft.Network/virtualHubs/.*", x['id'])]
 
-                new_block = {
-                    "name": block['name'],
-                    "cidr": block['cidr'],
-                    "vnets": vnets,
-                    "vhubs": vhubs,
-                    "external": [],
-                    "resv": block['resv']
-                }
+    #             new_block = {
+    #                 "name": block['name'],
+    #                 "cidr": block['cidr'],
+    #                 "vnets": vnets,
+    #                 "vhubs": vhubs,
+    #                 "external": [],
+    #                 "resv": block['resv']
+    #             }
 
-                new_blocks.append(new_block)
+    #             new_blocks.append(new_block)
 
-            space_data['blocks'] = new_blocks
+    #         space_data['blocks'] = new_blocks
 
-            # await cosmos_replace(space, space_data)
+    #         await cosmos_replace(space, space_data)
 
-        logger.warning('Virtual Hub patching complete!')
-    else:
-        logger.info("No existing Virtual Hubs to patch...")
+    #     logger.warning('Virtual Hub patching complete!')
+    # else:
+    #     logger.info("No existing Virtual Hubs to patch...")
 
     await cosmos_client.close()
 

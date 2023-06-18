@@ -3,10 +3,10 @@ function allowedOctets() {
 }
 
 function ip2Integer(ip) {
-  return ip.split('.').reduce(function(ipInt, octet) { return (ipInt << 8) + parseInt(octet, 10) }, 0) >>> 0;
+  return ip.split('.').reduce((ipInt, octet) => (ipInt << 8) + parseInt(octet, 10), 0) >>> 0;
 }
 
-function probabalCombinations(arr, Addressbytes, position) {
+function probabalCombinations(arr, addressBytes, position) {
   var res = [];
 
   for (var i = 0; i < Math.pow(2, arr.length); i++) {
@@ -22,14 +22,14 @@ function probabalCombinations(arr, Addressbytes, position) {
     }
 
     try {
-      var sum = set.reduce((a, b) => { return a + b; });
+      var sum = set.reduce((a, b) => a + b);
       res.push(sum);
     } catch(e) {
       continue;
     }
   }
 
-  res = res.filter(n => { return n >= Addressbytes[position] });
+  res = res.filter(n => n >= addressBytes[position]);
 
   arr.indexOf(0) !== -1 ?? res.push(0);
   res = [...new Set(res)];
@@ -61,7 +61,10 @@ function getIpRangeForSubnet(subnetCIDR) {
     endAddress[3] = 255;
   }
 
-  return {'start': address.join('.'), 'end': endAddress.join('.')};
+  return {
+    start: address.join('.'),
+    end: endAddress.join('.')
+  };
 }
 
 export function isSubnetOverlap(subnetCIDR, existingSubnetCIDR) {
@@ -70,7 +73,7 @@ export function isSubnetOverlap(subnetCIDR, existingSubnetCIDR) {
   var isOverlap = existingSubnetCIDR.map(subnet => {
     var ipRange = getIpRangeForSubnet(subnet);
 
-    if((ip2Integer(ipRangeforCurrent.start) >= ip2Integer(ipRange.start) && ip2Integer(ipRangeforCurrent.start) <= ip2Integer(ipRange.end)) || (ip2Integer(ipRangeforCurrent.end) >= ip2Integer(ipRange.start) && ip2Integer(ipRangeforCurrent.end) <= ip2Integer(ipRange.end)) ||  (ip2Integer(ipRange.start) >= ip2Integer(ipRangeforCurrent.start) && ip2Integer(ipRange.start) <= ip2Integer(ipRangeforCurrent.end)) || (ip2Integer(ipRange.end) >= ip2Integer(ipRangeforCurrent.start) && ip2Integer(ipRange.end) <= ip2Integer(ipRangeforCurrent.end)) ) {
+    if((ip2Integer(ipRangeforCurrent.start) >= ip2Integer(ipRange.start) && ip2Integer(ipRangeforCurrent.start) <= ip2Integer(ipRange.end)) || (ip2Integer(ipRangeforCurrent.end) >= ip2Integer(ipRange.start) && ip2Integer(ipRangeforCurrent.end) <= ip2Integer(ipRange.end)) ||  (ip2Integer(ipRange.start) >= ip2Integer(ipRangeforCurrent.start) && ip2Integer(ipRange.start) <= ip2Integer(ipRangeforCurrent.end)) || (ip2Integer(ipRange.end) >= ip2Integer(ipRangeforCurrent.start) && ip2Integer(ipRange.end) <= ip2Integer(ipRangeforCurrent.end))) {
       return true;
     }
 
@@ -89,8 +92,8 @@ function possibleSubnets(obj, index, existingSubnetCIDR) {
   var allowed = allowedOctets();
   var addressBytes = obj.address.split('.', 4).map(num => parseInt(num, 10));
 
-  if((obj.netmask === 24 && index === 24) || (obj.netmask === 16 && index === 16) || (obj.netmask === 8 && index === 8)) {
-    filteredOctets.push(addressBytes[2]);
+  if((obj.netmask % 8 === 0) && (index % 8 === 0)) {
+    filteredOctets.push(addressBytes[pos]);
   } else if((obj.netmask % 8) <= sliceTo && index <= 24) {
     filteredOctets = allowed.slice((obj.netmask % 8), sliceTo);
     filteredOctets.push(addressBytes[2]);
@@ -110,11 +113,11 @@ function possibleSubnets(obj, index, existingSubnetCIDR) {
 
   allowedCombinations.forEach(function(octet) {
     let range = (index >= 25 & obj.netmask < 24) ? {
-      'from': addressBytes[2],
-      'to': addressBytes[2] + ((allowed[(obj.netmask % 8) - 1] === undefined) ? 256 : allowed[(obj.netmask % 8) - 1]) - 1
+      from: addressBytes[2],
+      to: addressBytes[2] + ((allowed[(obj.netmask % 8) - 1] === undefined) ? 256 : allowed[(obj.netmask % 8) - 1]) - 1
     } : {
-      'from': addressBytes[2],
-      'to': addressBytes[2]
+      from: addressBytes[2],
+      to: addressBytes[2]
     }
 
     for (let i = range.from; i <= range.to; i++) {
@@ -124,10 +127,10 @@ function possibleSubnets(obj, index, existingSubnetCIDR) {
       subnetBytes[pos] = octet;
 
       var subnetObject = {
-        'network': subnetBytes.join('.'),
-        'mask': index,
-        'cidr': subnetBytes.join('.') + '/' + index,
-        'ipRange': getIpRangeForSubnet(subnetBytes.join('.') + '/' + index)
+        network: subnetBytes.join('.'),
+        mask: index,
+        cidr: subnetBytes.join('.') + '/' + index,
+        ipRange: getIpRangeForSubnet(subnetBytes.join('.') + '/' + index)
       };
 
       var doesOverlap = isSubnetOverlap(subnetObject.cidr, existingSubnetCIDR);
@@ -143,7 +146,10 @@ function possibleSubnets(obj, index, existingSubnetCIDR) {
     }
   });
 
-  return {'subnets': subnets, 'subnetsExcluded': subnetsExcluded};
+  return {
+    subnets: subnets,
+    subnetsExcluded: subnetsExcluded
+  };
 }
 
 export function availableSubnets(obj, existingSubnetCIDR) {
@@ -161,7 +167,7 @@ export function availableSubnets(obj, existingSubnetCIDR) {
     subnetsObj.subnetsExcluded = [...subnetsObj.subnetsExcluded, ...res.subnetsExcluded];
   }
 
-  subnetsObj.subnets = subnetsObj.subnets.sort((a,b) => {
+  subnetsObj.subnets = subnetsObj.subnets.sort((a, b) => {
     let netA = ip2Integer(a.network);
     let netB = ip2Integer(b.network);
 
