@@ -2,10 +2,6 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { styled } from '@mui/material/styles';
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-import { callMsGraphUsersFilter } from "../../msal/graph";
-
 import { useSnackbar } from 'notistack';
 
 import { isEqual, isEmpty, pickBy, orderBy, throttle } from 'lodash';
@@ -27,10 +23,16 @@ import {
   Typography,
   Menu,
   MenuItem,
-  ListItemIcon
+  ListItemIcon,
+  Button
+  // Switch
 }  from "@mui/material";
 
 import {
+  Person,
+  Apps,
+  QuestionMark,
+  PersonSearch,
   SaveAlt,
   HighlightOff,
   ExpandCircleDownOutlined,
@@ -53,7 +55,10 @@ import {
   updateMeAsync
 } from "../ipam/ipamSlice";
 
-import { apiRequest } from "../../msal/authConfig";
+import {
+  callMsGraphUsersFilter,
+  callMsGraphPrincipalsFilter
+} from "../../msal/graph";
 
 const AdminContext = React.createContext({});
 
@@ -85,7 +90,7 @@ const FloatingHeader = styled("div")(({ theme }) => ({
 
 const HeaderTitle = styled("div")(({ theme }) => ({
   ...theme.typography.h6,
-  width: "80%",
+  width: "30%",
   textAlign: "center",
   alignSelf: "center",
 }));
@@ -117,6 +122,53 @@ const gridStyle = {
   border: "1px solid rgba(224, 224, 224, 1)",
   fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
 };
+
+// const UserAppSwitch = styled(Switch)(({ theme }) => ({
+//   width: 62,
+//   height: 34,
+//   padding: 7,
+//   '& .MuiSwitch-switchBase': {
+//     margin: 1,
+//     padding: 0,
+//     transform: 'translateX(6px)',
+//     '&.Mui-checked': {
+//       color: '#fff',
+//       transform: 'translateX(22px)',
+//       '& .MuiSwitch-thumb:before': {
+//         backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 20 20"><path fill="${encodeURIComponent(
+//           '#fff',
+//         )}" d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>')`,
+//       },
+//       '& + .MuiSwitch-track': {
+//         opacity: 0.5,
+//         backgroundColor: theme.palette.mode === 'dark' ? 'rgb(144, 202, 249)' : 'rgb(25, 118, 210)',
+//       },
+//     },
+//   },
+//   '& .MuiSwitch-thumb': {
+//     backgroundColor: theme.palette.mode === 'dark' ? 'rgb(144, 202, 249)' : 'rgb(25, 118, 210)',
+//     width: 32,
+//     height: 32,
+//     '&:before': {
+//       content: "''",
+//       position: 'absolute',
+//       width: '100%',
+//       height: '100%',
+//       left: -2,
+//       top: -2,
+//       backgroundRepeat: 'no-repeat',
+//       backgroundPosition: 'center',
+//       backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 20 20"><path fill="${encodeURIComponent(
+//         '#fff',
+//       )}" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>')`,
+//     },
+//   },
+//   '& .MuiSwitch-track': {
+//     opacity: 0.5,
+//     backgroundColor: theme.palette.mode === 'dark' ? 'rgb(144, 202, 249)' : 'rgb(25, 118, 210)',
+//     borderRadius: 20 / 2,
+//   },
+// }));
 
 function HeaderMenu(props) {
   const { setting } = props;
@@ -271,8 +323,36 @@ function RenderDelete(props) {
   );
 }
 
+function RenderType(props) {
+  const { value } = props;
+
+  const flexCenter = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  }
+
+  const typeMap = {
+    "User": {
+      title: "User",
+      icon: <Person />
+    },
+    "Principal" : {
+      title: "Principal",
+      icon: <Apps />
+    }
+  };
+
+  return (
+    <Tooltip title={ typeMap[value]?.title || "Unknown" }>
+      <span style={{...flexCenter}}>
+        { typeMap[value]?.icon || <QuestionMark />}
+      </span>
+    </Tooltip>
+  );
+}
+
 export default function Administration() {
-  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [admins, setAdmins] = React.useState(null);
@@ -293,6 +373,8 @@ export default function Administration() {
   const [columnOrderState, setColumnOrderState] = React.useState([]);
   const [columnSortState, setColumnSortState] = React.useState({});
 
+  const [appSearch, setAppSearch] = React.useState(false);
+
   const viewSetting = useSelector(state => selectViewSetting(state, 'admins'));
   const dispatch = useDispatch();
 
@@ -302,8 +384,9 @@ export default function Administration() {
   const theme = useTheme();
 
   const columns = React.useMemo(() => [
+    { name: "type", header: () => <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}><PersonSearch /></span> , width: 40, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({value}) => <RenderType value={value} />, visible: true },
     { name: "name", header: "Name", type: "string", flex: 0.5, visible: true },
-    { name: "email", header: "Email", type: "string", flex: 1, visible: true },
+    { name: "email", header: "Email", type: "string", flex: 1, visible: true, render: ({value}) => value ? value : "N/A" },
     { name: "id", header: "Object ID", type: "string", flex: 0.75, visible: true },
     { name: "delete", header: () => <HeaderMenu setting="admins"/> , width: 50, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => <RenderDelete value={data} />, visible: true }
   ], []);
@@ -318,61 +401,38 @@ export default function Administration() {
   const unchanged = isEqual(admins, loadedAdmins);
 
   const SearchUsers = React.useCallback((nameFilter) => {
-    const request = {
-      scopes: ["Directory.Read.All"],
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setOptions(null);
-        const response = await instance.acquireTokenSilent(request);
-        const userData = await callMsGraphUsersFilter(response.accessToken, nameFilter);
+        const userData = appSearch ? await callMsGraphPrincipalsFilter(nameFilter) : await callMsGraphUsersFilter(nameFilter);
         setOptions(userData.value);
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar(e.response.data.error, { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.message, { variant: "error" });
       }
     })();
-  }, [accounts, enqueueSnackbar, instance]);
+  }, [appSearch, enqueueSnackbar]);
 
   const fetchUsers = React.useMemo(() => throttle((input) => SearchUsers(input), 500), [SearchUsers]);
 
   const refreshData = React.useCallback(() => {
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
-        // setLoading(true);
-        const response = await instance.acquireTokenSilent(request);
-        const data = await getAdmins(response.accessToken);
+        const data = await getAdmins();
         setAdmins(data);
         setLoadedAdmins(data);
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar("Error fetching admins", { variant: "error" });
-        }
-      } finally {
-        // setLoading(false);
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar("Error fetching admins", { variant: "error" });
       }
     })();
-  }, [accounts, enqueueSnackbar, instance]);
+  }, [enqueueSnackbar]);
 
   React.useEffect(() => {
     if(!adminLoadedRef.current) {
@@ -419,28 +479,18 @@ export default function Administration() {
   }, [saveTimer, sendResults]);
 
   function onSave() {
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setSending(true);
-        const response = await instance.acquireTokenSilent(request);
-        await replaceAdmins(response.accessToken, admins);
+        await replaceAdmins(admins);
         enqueueSnackbar("Successfully updated admins", { variant: "success" });
         refreshData();
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar(e.response.data.error, { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.message, { variant: "error" });
       } finally {
         setSending(false);
       }
@@ -449,9 +499,10 @@ export default function Administration() {
 
   function handleAdd(user) {
     let newAdmin = {
+      type: appSearch ? "Principal" : "User",
       name: user.displayName,
       id: user.id,
-      email: user.userPrincipalName,
+      email: appSearch ? null : user.userPrincipalName,
     };
 
     if(!admins.find(obj => { return obj.id === user.id })) {
@@ -463,6 +514,10 @@ export default function Administration() {
     
     setSelected(null);
   }
+
+  const toggleAppSearch = () => {
+    setAppSearch((current) => !current);
+  };
 
   const popperStyle = {
     popper: {
@@ -540,28 +595,18 @@ export default function Administration() {
       { "op": "add", "path": `/views/admins`, "value": saveData }
     ];
 
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setSaving(true);
-        const response = await instance.acquireTokenSilent(request);
-        await dispatch(updateMeAsync({ token: response.accessToken, body: body}));
+        await dispatch(updateMeAsync({ body: body }));
         setSendResults(true);
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          setSendResults(false);
-          enqueueSnackbar("Error saving view settings", { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        setSendResults(false);
+        enqueueSnackbar("Error saving view settings", { variant: "error" });
       } finally {
         setSaving(false);
       }
@@ -626,6 +671,13 @@ export default function Administration() {
     }
   },[admins, columnSortState]);
 
+  const onCellDoubleClick = React.useCallback((event, cellProps) => {
+    const { value } = cellProps
+
+    navigator.clipboard.writeText(value);
+    enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
+  }, [enqueueSnackbar]);
+
   function NoRowsOverlay() {
     return (
       <React.Fragment>
@@ -642,7 +694,40 @@ export default function Administration() {
       <Wrapper>
         <MainBody>
           <FloatingHeader>
-            <Box sx={{ width: "35%" }}>
+            <Box sx={{ display: "flex", alignItems: "center", width: "35%", p: 0.5 }}>
+              <Tooltip
+                title={ appSearch ? "Service Principals" : "Users" }
+                arrow
+                PopperProps={{
+                  sx: {
+                      "& .MuiTooltip-tooltip": {
+                        left: appSearch ? "32px" : "8px"
+                      },
+                      "& .MuiTooltip-arrow": {
+                        left: appSearch ? "-32px !important" : "-8px !important"
+                      }
+                  }
+                }}
+              >
+                {/* <IconButton onClick={toggleAppSearch} color="primary">
+                  { appSearch ? <Apps /> : <Person /> }
+                </IconButton> */}
+                <Button 
+                  variant="outlined"
+                  size="large"
+                  startIcon={ appSearch ? <Apps /> : <Person /> }
+                  onClick={toggleAppSearch}
+                  sx={{
+                    borderRight: "unset",
+                    borderRadius: "4px 0px 0px 4px",
+                    borderColor: "rgba(0, 0, 0, 0.23)",
+                    padding: "8px",
+                    left: "1px",
+                    minWidth: "unset",
+                    "& .MuiButton-startIcon": { margin: "unset" }
+                  }}
+                />
+              </Tooltip>
               <Autocomplete
                 PopperComponent={MyPopper}
                 key="12345"
@@ -652,7 +737,7 @@ export default function Administration() {
                 blurOnSelect={true}
                 forcePopupIcon={false}
                 sx={{
-                  ml: 2,
+                  // ml: 2,
                   width: 300
                 }}
                 open={open}
@@ -670,14 +755,14 @@ export default function Administration() {
                   newValue ? handleAdd(newValue) : setSelected(null);
                 }}
                 isOptionEqualToValue={(option, value) => option.displayName === value.displayName}
-                getOptionLabel={(option) => `${option.displayName} (${option.userPrincipalName})`}
+                getOptionLabel={(option) => appSearch ? `${option.displayName} (${option.appId})` : `${option.displayName} (${option.userPrincipalName})`}
                 options={options || []}
                 loading={usersLoading}
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="User Search"
-                    variant="standard"
+                    label={ appSearch ? "Principal Search" : "User Search" }
+                    // variant="standard"
                     InputProps={{
                       ...params.InputProps,
                       endAdornment: (
@@ -686,6 +771,9 @@ export default function Administration() {
                           {params.InputProps.endAdornment}
                         </React.Fragment>
                       ),
+                      style: {
+                        borderRadius: "0px 4px 4px 0px"
+                      }
                     }}
                   />
                 )}
@@ -736,6 +824,7 @@ export default function Administration() {
                 dataSource={gridData || []}
                 defaultFilterValue={filterValue}
                 onRowClick={(rowData) => onClick(rowData.data)}
+                onCellDoubleClick={onCellDoubleClick}
                 selected={selectionModel}
                 sortInfo={columnSortState}
                 emptyText={NoRowsOverlay}

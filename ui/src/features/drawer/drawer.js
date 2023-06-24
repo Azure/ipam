@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 
 import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError, InteractionStatus } from "@azure/msal-browser";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
 import { useSnackbar } from "notistack";
 
@@ -86,7 +86,6 @@ import Welcome from "../welcome/Welcome";
 import DiscoverTabs from "../tabs/discoverTabs";
 import AnalyzeTabs from "../tabs/analyzeTabs";
 import ToolsTabs from "../tabs/toolsTabs";
-
 import AdminTabs from "../tabs/adminTabs";
 import ConfigureIPAM from "../configure/configure";
 
@@ -122,7 +121,7 @@ const Search = styled("div")(({ theme }) => ({
 }));
 
 export default function NavDrawer() {
-  const { instance, inProgress, accounts } = useMsal();
+  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
@@ -266,36 +265,24 @@ export default function NavDrawer() {
   ];
 
   React.useEffect(() => {
-    const request = {
-      // ...loginRequest,
-      scopes: ["User.Read"],
-      account: accounts[0],
-      forceRefresh: true,
-    };
-
-    if (!graphData && inProgress === InteractionStatus.None) {
+    if (!graphData) {
       (async() => {
         try {
-          const response = await instance.acquireTokenSilent(request);
-          const graphResponse = await callMsGraph(response.accessToken);
-          const photoResponse = await callMsGraphPhoto(response.accessToken);
+          const graphResponse = await callMsGraph();
+          const photoResponse = await callMsGraphPhoto();
           await dispatch(setUserId(graphResponse.userPrincipalName));
           setGraphPhoto(photoResponse);
           setGraphData(graphResponse);
         } catch (e) {
-          if (e instanceof InteractionRequiredAuthError) {
-            instance.acquireTokenRedirect(request);
-          } else {
-            console.log("ERROR");
-            console.log("------------------");
-            console.log(e);
-            console.log("------------------");
-            // enqueueSnackbar(e.response.data.error, { variant: "error" });
-          }
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          // enqueueSnackbar(e.message, { variant: "error" });
         }
       })();
     }
-  }, [instance, accounts, inProgress, graphData, dispatch]);
+  }, [graphData, dispatch]);
 
   React.useEffect(() => {
     // Handler to call on window resize
@@ -547,7 +534,7 @@ export default function NavDrawer() {
     })();
   }
 
-  function handleLogout(instance) {
+  function handleLogout() {
     instance.logoutRedirect().catch((e) => {
       console.error(e);
     });
@@ -647,7 +634,7 @@ export default function NavDrawer() {
         Token
       </MenuItem>
       <Divider />
-      <MenuItem key='logout' onClick={() => handleLogout(instance)}>
+      <MenuItem key='logout' onClick={() => handleLogout()}>
         <ListItemIcon>
           <LogoutIcon fontSize="small" />
         </ListItemIcon>
@@ -715,7 +702,7 @@ export default function NavDrawer() {
         Token
       </MenuItem>
       <Divider />
-      <MenuItem key='mobile-logout' onClick={() => handleLogout(instance)}>
+      <MenuItem key='mobile-logout' onClick={() => handleLogout()}>
         <ListItemIcon>
           <LogoutIcon fontSize="small" />
         </ListItemIcon>

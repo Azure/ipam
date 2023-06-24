@@ -6,9 +6,6 @@ import { styled } from "@mui/material/styles";
 
 import { useSnackbar } from "notistack";
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-
 import SpaceDataGrid from "./space/space";
 import BlockDataGrid from "./block/block";
 
@@ -19,8 +16,6 @@ import {
   selectBlocks,
   fetchSpacesAsync
 } from "../ipam/ipamSlice";
-
-import { apiRequest } from "../../msal/authConfig";
 
 const Wrapper = styled("div")(({ theme }) => ({
   height: "calc(100vh - 112px)",
@@ -66,7 +61,6 @@ const BottomSection = styled("div")(({ theme }) => ({
 }));
 
 export default function ConfigureIPAM() {
-  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [refreshing, setRefreshing] = React.useState(false);
@@ -81,30 +75,21 @@ export default function ConfigureIPAM() {
   const dispatch = useDispatch();
 
   const refresh = React.useCallback(() => {
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async() => {
       try {
-        const response = await instance.acquireTokenSilent(request);
         setRefreshing(true);
-        await dispatch(fetchSpacesAsync(response.accessToken));
-        setRefreshing(false);
+        await dispatch(fetchSpacesAsync());
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar(e.response.data.error, { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.message, { variant: "error" });
+      } finally {
+        setRefreshing(false);
       }
     })();
-  }, [accounts, dispatch, enqueueSnackbar, instance]);
+  }, [dispatch, enqueueSnackbar]);
 
   React.useEffect(() => {
     if(!configLoadedRef.current) {

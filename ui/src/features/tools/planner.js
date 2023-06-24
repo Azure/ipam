@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useSelector } from 'react-redux';
 import { ThemeProvider, createTheme, styled } from '@mui/material/styles';
 
-import { find } from 'lodash';
+import { find,isEqual, orderBy } from 'lodash';
 
 import {
   Box,
@@ -28,11 +28,11 @@ import {
 } from '@mui/icons-material';
 
 import {
-  selectSubscriptions,
-  selectVNets
+  selectBlocks,
+  selectUpdatedVNets
 } from "../ipam/ipamSlice";
 
-import { availableSubnets } from './utils/iputils';
+import { availableSubnets, isSubnetOverlap } from './utils/iputils';
 
 const plannerTheme = (theme) => createTheme({
   ...theme,
@@ -105,7 +105,7 @@ const Separator = (props) => {
 };
 
 const Planner = () => {
-  const [newVNets, setNewVNets] = React.useState([]);
+  const [vNetData, setVNetData] = React.useState(null);
   const [subnetData, setSubnetData] = React.useState(null);
 
   const [vNetInput, setVNetInput] = React.useState('');
@@ -122,39 +122,58 @@ const Planner = () => {
 
   const [showAll, setShowAll] = React.useState(false);
 
-  const subscriptions = useSelector(selectSubscriptions);
-  const vNets = useSelector(selectVNets);
-
-  const loading = !vNets || !subscriptions;
+  const blocks = useSelector(selectBlocks);
+  const vNets = useSelector(selectUpdatedVNets);
 
   React.useEffect(() => {
-    if (vNets && subscriptions) {
-      const subMap = subscriptions.reduce((prev, curr) => {
-        return {
-          ...prev,
-          [curr.subscription_id]: curr.name,
-        };
-      }, {});
+    if (vNets) {
+      if (showAll) {
+        setVNetData(vNets);
+      } else {
+        const data = vNets.reduce((vAcc, vCurr) => {
+          if (vCurr['parent_block'] !== null) {
+            vCurr['parent_block'].forEach((p) => {
+              const block = blocks.find((block) => block.name === p && block['parent_space'] === vCurr['parent_space']);
 
-      const newNets = vNets.map((vnet) => {
-        var subName = subMap[vnet.subscription_id] || vnet.subscription_id;
+              const blockPrefixes = vCurr.prefixes.reduce((bAcc, bCurr) => {
+                if (isSubnetOverlap(bCurr, [block.cidr])) {
+                  bAcc.push(bCurr);
+                }
 
-        return {
-          ...vnet,
-          subscription_name: subName,
-        };
-      });
+                return bAcc;
+              }, []);
 
-      setNewVNets(newNets);
+              const temp = {
+                ...vCurr,
+                parent_block: p,
+                prefixes: blockPrefixes
+              };
+
+              vAcc.push(temp)
+            });
+          } else {
+            const temp = {
+              ...vCurr,
+              parent_block: null
+            }
+
+            vAcc.push(temp)
+          }
+        
+          return vAcc;
+        }, []);
+
+        setVNetData(data);
+      }
     }
-  }, [vNets, subscriptions]);
+  }, [blocks, vNets, showAll]);
 
   React.useEffect(() => {
-    if(!find(newVNets, selectedVNet)) {
+    if(!find(vNetData, selectedVNet)) {
       setSelectedVNet(null);
       setVNetInput('');
     }
-  }, [newVNets, selectedVNet]);
+  }, [vNetData, selectedVNet]);
 
   React.useEffect(() => {
     setSelectedVNet(null);
@@ -162,10 +181,14 @@ const Planner = () => {
   }, [showAll]);
 
   React.useEffect(() => {
-    showAll
-    ? setVNetOptions(newVNets.sort((a, b) => (a.subscription_name > b.subscription_name) ? 1 : -1))
-    : setVNetOptions(newVNets.filter(v => v.parent_space !== null).sort((a, b) => (a.parent_space > b.parent_space) ? 1 : (a.parent_space === b.parent_space) ? ((a.parent_block > b.parent_block) ? 1 : -1) : -1 ));
-  }, [showAll, newVNets]);
+    if(vNetData) {
+      showAll
+      ? setVNetOptions(orderBy(vNetData, ['subscription_name', 'name'], ['asc', 'asc']))
+      : setVNetOptions(orderBy(vNetData.filter(v => v.parent_space !== null), ['parent_space', 'parent_block', 'name'], ['asc', 'asc', 'asc']));
+    } else {
+      setVNetOptions([]);
+    }
+  }, [showAll, vNetData]);
 
   React.useEffect(() => {
     if (selectedVNet) {
@@ -230,164 +253,165 @@ const Planner = () => {
   };
 
   return (
-    <ThemeProvider theme={(theme) => plannerTheme(theme)}>
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
-      <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
-        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
-          <Autocomplete
-            // freeSolo
-            forcePopupIcon={false}
-            id="grouped-demo"
-            size="small"
-            options={vNetOptions}
-            groupBy={(option) => showAll ? option.subscription_name : `${option.parent_space} ➜ ${option.parent_block}`}
-            getOptionLabel={(option) => option.name}
-            inputValue={vNetInput}
-            onInputChange={(event, newInputValue) => setVNetInput(newInputValue)}
-            value={selectedVNet}
-            onChange={(event, newValue) => setSelectedVNet(newValue)}
-            sx={{ width: 300 }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Virtual Network"
-                placeholder={showAll ? "By Subscription" : "By Space ➜ Block"}
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <React.Fragment>
-                      {loading ? <CircularProgress color="inherit" size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </React.Fragment>
-                  ),
-                }}
-              />
-            )}
-            renderGroup={(params) => (
-              <li key={params.group}>
-                <Box sx={{ top: '-8px', padding: '4px 10px', whiteSpace: 'nowrap' }}>{params.group}</Box>
-                <ul style={{ padding: 0 }}>{params.children}</ul>
-              </li>
-            )}
-            renderOption={(props, option) => {
-              return (
-                <li {...props} key={option.id}>
-                  {option.name}
+    <ThemeProvider theme={plannerTheme}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
+        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
+            <Autocomplete
+              // freeSolo
+              forcePopupIcon={false}
+              id="grouped-demo"
+              size="small"
+              options={vNetOptions}
+              groupBy={(option) => showAll ? option.subscription_name : `${option.parent_space} ➜ ${option.parent_block}`}
+              getOptionLabel={(option) => option.name}
+              inputValue={vNetInput}
+              onInputChange={(event, newInputValue) => setVNetInput(newInputValue)}
+              value={selectedVNet}
+              onChange={(event, newValue) => setSelectedVNet(newValue)}
+              isOptionEqualToValue={(option, value) => isEqual(option, value)}
+              sx={{ width: 300 }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Virtual Network"
+                  placeholder={showAll ? "By Subscription" : "By Space ➜ Block"}
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <React.Fragment>
+                        {!vNetData ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.InputProps.endAdornment}
+                      </React.Fragment>
+                    ),
+                  }}
+                />
+              )}
+              renderGroup={(params) => (
+                <li key={params.group}>
+                  <Box sx={{ top: '-8px', padding: '4px 10px', whiteSpace: 'nowrap' }}>{params.group}</Box>
+                  <ul style={{ padding: 0 }}>{params.children}</ul>
                 </li>
-              );
-            }}
-            componentsProps={{
-              paper: {
-                sx: {
-                  width: 'fit-content'
-                }
-              }
-            }}
-          />
-          <FormControl size="small">
-            <InputLabel
-              disabled={selectedVNet === null}
-              id="prefix-select-label"
-            >
-              Address Space
-            </InputLabel>
-            <Select
-              disabled={selectedVNet === null}
-              labelId="prefix-select-label"
-              id="vnet-select"
-              value={selectedPrefix}
-              label="Address Space"
-              onChange={(event) => setSelectedPrefix(event.target.value)}
-              sx={{ width: '22ch' }}
-              MenuProps={{
-                PaperProps: {
-                  style: {
-                    maxHeight: 36 * 10,
-                  }
-                },
+              )}
+              renderOption={(props, option) => {
+                return (
+                  <li {...props} key={option.id}>
+                    {option.name}
+                  </li>
+                );
               }}
-            >
-              {prefixOptions ?
-                prefixOptions.map((opt) => (
-                  <MenuItem
-                    key={opt}
-                    value={opt}
-                  >
-                    {opt}
-                  </MenuItem>
-                )) : null
-              }
-            </Select>
-          </FormControl> 
-          <Autocomplete
-            forcePopupIcon={false}
-            disabled={selectedPrefix === ''}
-            id="cidr-mask-max"
-            size="small"
-            options={maskOptions}
-            getOptionLabel={(option) => option.name}
-            inputValue={maskInput}
-            onInputChange={(event, newInputValue) => setMaskInput(newInputValue)}
-            value={selectedMask}
-            onChange={(event, newValue) => setSelectedMask(newValue)}
-            sx={{ width: '5ch' }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Mask"
-                placeholder="Max"
-              />
-            )}
-          />
-        </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', marginLeft: 'auto' }}>
-          <ToggleButtonGroup
-            size="small"
-            color="primary"
-            value={showAll}
-            exclusive
-            onChange={handleShowAll}
-          >
-            <ToggleButton value={false} aria-label="list">
-              <Tooltip title="Filter Networks">
-                <FilterListIcon />
-              </Tooltip>
-            </ToggleButton>
-            <ToggleButton value={true} aria-label="module">
-              <Tooltip title="All Networks">
-                <FilterListOffIcon />
-              </Tooltip>
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
-      </Box>
-      <Box sx={{ flexGrow: 1, pb: 3, pr: 3, pl: 3, overflowY: 'auto', overflowX: 'hidden' }}>
-        {
-          subnetData &&
-          [...new Set(subnetData.subnets.map((x) => x.mask))].map((mask) => {
-          return (
-            <React.Fragment key={`fragment-${mask}`}>
-              <Separator key={`sep-${mask}`} name={mask} total={subnetData.subnets.filter((x) => x.mask === mask).length} used={subnetData.subnets.filter((x) => x.mask === mask && x.overlap).length} />
-              <Grid key={`grid-container-${mask}`} container spacing={2}>
-                {
-                  subnetData?.subnets.filter((x) => x.mask === mask).map((item) => {
-                    return (
-                      <Grid key={`grid-item-${item.network}-${mask}`} xs={5} sm={3} md={2} xxl={1}>
-                        <Item
-                          overlap={item.overlap}
-                        >
-                          {item.network}/{mask}
-                        </Item>
-                      </Grid>
-                    );
-                  })
+              componentsProps={{
+                paper: {
+                  sx: {
+                    width: 'fit-content'
+                  }
                 }
-              </Grid>
-            </React.Fragment>
-          );
-        })}
+              }}
+            />
+            <FormControl size="small">
+              <InputLabel
+                disabled={selectedVNet === null}
+                id="prefix-select-label"
+              >
+                Address Space
+              </InputLabel>
+              <Select
+                disabled={selectedVNet === null}
+                labelId="prefix-select-label"
+                id="vnet-select"
+                value={selectedPrefix}
+                label="Address Space"
+                onChange={(event) => setSelectedPrefix(event.target.value)}
+                sx={{ width: '22ch' }}
+                MenuProps={{
+                  PaperProps: {
+                    style: {
+                      maxHeight: 36 * 10,
+                    }
+                  },
+                }}
+              >
+                {prefixOptions ?
+                  prefixOptions.map((opt) => (
+                    <MenuItem
+                      key={opt}
+                      value={opt}
+                    >
+                      {opt}
+                    </MenuItem>
+                  )) : null
+                }
+              </Select>
+            </FormControl> 
+            <Autocomplete
+              forcePopupIcon={false}
+              disabled={selectedPrefix === ''}
+              id="cidr-mask-max"
+              size="small"
+              options={maskOptions}
+              getOptionLabel={(option) => option.name}
+              inputValue={maskInput}
+              onInputChange={(event, newInputValue) => setMaskInput(newInputValue)}
+              value={selectedMask}
+              onChange={(event, newValue) => setSelectedMask(newValue)}
+              sx={{ width: '5ch' }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Mask"
+                  placeholder="Max"
+                />
+              )}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', marginLeft: 'auto' }}>
+            <ToggleButtonGroup
+              size="small"
+              color="primary"
+              value={showAll}
+              exclusive
+              onChange={handleShowAll}
+            >
+              <ToggleButton value={false} aria-label="list">
+                <Tooltip title="Filter Networks">
+                  <FilterListIcon />
+                </Tooltip>
+              </ToggleButton>
+              <ToggleButton value={true} aria-label="module">
+                <Tooltip title="All Networks">
+                  <FilterListOffIcon />
+                </Tooltip>
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+        </Box>
+        <Box sx={{ flexGrow: 1, pb: 3, pr: 3, pl: 3, overflowY: 'auto', overflowX: 'hidden' }}>
+          {
+            subnetData &&
+            [...new Set(subnetData.subnets.map((x) => x.mask))].map((mask) => {
+            return (
+              <React.Fragment key={`fragment-${mask}`}>
+                <Separator key={`sep-${mask}`} name={mask} total={subnetData.subnets.filter((x) => x.mask === mask).length} used={subnetData.subnets.filter((x) => x.mask === mask && x.overlap).length} />
+                <Grid key={`grid-container-${mask}`} container spacing={2}>
+                  {
+                    subnetData?.subnets.filter((x) => x.mask === mask).map((item) => {
+                      return (
+                        <Grid key={`grid-item-${item.network}-${mask}`} xs={5} sm={3} md={2} xxl={1}>
+                          <Item
+                            overlap={+item.overlap}
+                          >
+                            {item.network}/{mask}
+                          </Item>
+                        </Grid>
+                      );
+                    })
+                  }
+                </Grid>
+              </React.Fragment>
+            );
+          })}
+        </Box>
       </Box>
-    </Box>
     </ThemeProvider>
   );
 }

@@ -52,6 +52,8 @@ Connect-AzAccount
 Connect-AzAccount -UseDeviceAuthentication
 ```
 
+> **NOTE:** If you're connecting to an Azure Cloud besides Azure Public (such as Gov, China, etc.), you may need to specify the `-Environment` flag as described [here](https://learn.microsoft.com/en-us/powershell/azure/authenticate-azureps#sign-in-to-another-cloud) when using `Connect-AzAccount`
+
 ### Set the Active Subscription for Azure PowerShell
 
 ```powershell

@@ -2,12 +2,15 @@ import { createAsyncThunk, createSelector, createSlice } from '@reduxjs/toolkit'
 
 import { concat, merge, cloneDeep, isEqual } from 'lodash';
 
+// import SnackbarUtils from '../../utils/snackbar';
+
 import {
   fetchSpaces,
   createSpace,
   updateSpace,
   deleteSpace,
   createBlock,
+  updateBlock,
   deleteBlock,
   deleteBlockResvs,
   fetchVNets,
@@ -49,12 +52,32 @@ const initialState = {
 // code can then be executed and other actions can be dispatched. Thunks are
 // typically used to make async requests.
 
+// function parseError(error) {
+//   console.log("ERROR DETAILS");
+//   console.log("------------------");
+//   console.log(error);
+//   console.log("------------------");
+
+//   if (error.response) {
+//     // The request was made and the server responded with a status code
+//     // that falls out of the range of 2xx
+//     return error.response.data.error;
+//   } else {
+//     // Something happened in setting up the request that triggered an Error
+//     return error.message;
+//   }
+// }
+
 export const fetchSpacesAsync = createAsyncThunk(
   'ipam/fetchSpaces',
-  async (token) => {
-    const response = await fetchSpaces(token, true);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await fetchSpaces(true);
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
   }
 );
 
@@ -62,11 +85,11 @@ export const createSpaceAsync = createAsyncThunk(
   'ipam/createSpace',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await createSpace(args.token, args.body);
-      // The value we return becomes the `fulfilled` action payload
+      const response = await createSpace(args.body);
+
       return response;
     } catch (err) {
-      throw rejectWithValue(err.response.data);
+      return rejectWithValue(err);
     }
   }
 );
@@ -75,11 +98,11 @@ export const updateSpaceAsync = createAsyncThunk(
   'ipam/updateSpace',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await updateSpace(args.token, args.space, args.body);
-      // The value we return becomes the `fulfilled` action payload
+      const response = await updateSpace(args.space, args.body);
+
       return response;
     } catch (err) {
-      throw rejectWithValue(err.response.data);
+      return rejectWithValue(err);
     }
   }
 );
@@ -88,11 +111,11 @@ export const deleteSpaceAsync = createAsyncThunk(
   'ipam/deleteSpace',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await deleteSpace(args.token, args.space, args.force);
-      // The value we return becomes the `fulfilled` action payload
+      const response = await deleteSpace(args.space, args.force);
+
       return response;
     } catch (err) {
-      throw rejectWithValue(err.response.data);
+      return rejectWithValue(err);
     }
   }
 );
@@ -101,11 +124,24 @@ export const createBlockAsync = createAsyncThunk(
   'ipam/createBlock',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await createBlock(args.token, args.space, args.body);
-      // The value we return becomes the `fulfilled` action payload
+      const response = await createBlock(args.space, args.body);
+
       return response;
     } catch (err) {
-      throw rejectWithValue(err.response.data);
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const updateBlockAsync = createAsyncThunk(
+  'ipam/updateBlock',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await updateBlock(args.space, args.block, args.body);
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
     }
   }
 );
@@ -114,11 +150,11 @@ export const deleteBlockAsync = createAsyncThunk(
   'ipam/deleteBlock',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await deleteBlock(args.token, args.space, args.block, args.force);
-      // The value we return becomes the `fulfilled` action payload
+      const response = await deleteBlock(args.space, args.block, args.force);
+
       return response;
     } catch (err) {
-      throw rejectWithValue(err.response.data);
+      return rejectWithValue(err);
     }
   }
 );
@@ -127,75 +163,103 @@ export const deleteBlockResvsAsync = createAsyncThunk(
   'ipam/deleteBlockResvs',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await deleteBlockResvs(args.token, args.space, args.block, args.body);
-      // The value we return becomes the `fulfilled` action payload
+      const response = await deleteBlockResvs(args.space, args.block, args.body);
+
       return response;
     } catch (err) {
-      throw rejectWithValue(err.response.data);
+      return rejectWithValue(err);
     }
   }
 );
 
 export const fetchVNetsAsync = createAsyncThunk(
   'ipam/fetchVNets',
-  async (token) => {
-    const response = await fetchVNets(token);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await fetchVNets();
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
   }
 );
 
 export const fetchVHubsAsync = createAsyncThunk(
   'ipam/fetchVHubs',
-  async (token) => {
-    const response = await fetchVHubs(token);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await fetchVHubs();
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
   }
 );
 
 export const fetchSubnetsAsync = createAsyncThunk(
   'ipam/fetchSubnets',
-  async (token) => {
-    const response = await fetchSubnets(token);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await fetchSubnets();
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
   }
 );
 
 export const fetchEndpointsAsync = createAsyncThunk(
   'ipam/fetchEndpoints',
-  async (token) => {
-    const response = await fetchEndpoints(token);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await fetchEndpoints();
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
   }
 );
 
 export const fetchNetworksAsync = createAsyncThunk(
   'ipam/fetchNetworks',
-  async (token) => {
-    const response = await fetchNetworks(token);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await fetchNetworks();
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
   }
 );
 
 export const refreshAllAsync = createAsyncThunk(
   'ipam/refreshAll',
-  async (token) => {
-    const response = await refreshAll(token);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await refreshAll();
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
   }
 );
 
 export const getMeAsync = createAsyncThunk(
   'ipam/getMe',
-  async (token) => {
-    const response = await getMe(token);
-    // The value we return becomes the `fulfilled` action payload
-    return response;
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await getMe();
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
   }
 );
 
@@ -203,11 +267,11 @@ export const updateMeAsync = createAsyncThunk(
   'ipam/updateMe',
   async (args, { rejectWithValue }) => {
     try {
-      const response = await updateMe(args.token, args.body);
-      // The value we return becomes the `fulfilled` action payload
+      const response = await updateMe(args.body);
+
       return response;
     } catch (err) {
-      throw rejectWithValue(err.response.data);
+      return rejectWithValue(err);
     }
   }
 );
@@ -247,6 +311,12 @@ export const ipamSlice = createSlice({
           return space;
         });
       })
+      .addCase(fetchSpacesAsync.rejected, (state, action) => {
+        console.log("fetchSpacesAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
       .addCase(createSpaceAsync.fulfilled, (state, action) => {
         const newSpace = action.payload;
 
@@ -258,6 +328,9 @@ export const ipamSlice = createSlice({
         state.spaces.push(newSpace);
       })
       .addCase(createSpaceAsync.rejected, (state, action) => {
+        console.log("createSpaceAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(updateSpaceAsync.fulfilled, (state, action) => {
@@ -296,6 +369,9 @@ export const ipamSlice = createSlice({
         }
       })
       .addCase(updateSpaceAsync.rejected, (state, action) => {
+        console.log("updateSpaceAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(deleteSpaceAsync.fulfilled, (state, action) => {
@@ -308,6 +384,9 @@ export const ipamSlice = createSlice({
         }
       })
       .addCase(deleteSpaceAsync.rejected, (state, action) => {
+        console.log("deleteSpaceAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(createBlockAsync.fulfilled, (state, action) => {
@@ -324,6 +403,47 @@ export const ipamSlice = createSlice({
         state.spaces[spaceIndex].blocks.push(newBlock);
       })
       .addCase(createBlockAsync.rejected, (state, action) => {
+        console.log("createBlockAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
+      .addCase(updateBlockAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const blockName = action.meta.arg.block;
+        const updatedBlock = action.payload;
+        const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);
+
+        if (spaceIndex > -1) {
+          const blockIndex = state.spaces[spaceIndex].blocks.findIndex((x) => x.name === blockName);
+
+          if(blockIndex > -1) {
+            state.spaces[spaceIndex].blocks[blockIndex] = merge(state.spaces[spaceIndex].blocks[blockIndex], updatedBlock);
+
+            if(blockName !== updatedBlock.name) {
+              state.vNets = state.vNets.map((vnet) => {
+                if(vnet.parent_block === blockName) {
+                  vnet.parent_block = updatedBlock.name;
+                }
+
+                return vnet;
+              });
+
+              state.vHubs = state.vHubs.map((vhub) => {
+                if(vhub.parent_block === blockName) {
+                  vhub.parent_block = updatedBlock.name;
+                }
+
+                return vhub;
+              });
+            }
+          }
+        }
+      })
+      .addCase(updateBlockAsync.rejected, (state, action) => {
+        console.log("updateBlockAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(deleteBlockAsync.fulfilled, (state, action) => {
@@ -338,6 +458,9 @@ export const ipamSlice = createSlice({
         }
       })
       .addCase(deleteBlockAsync.rejected, (state, action) => {
+        console.log("deleteBlockAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(deleteBlockResvsAsync.fulfilled, (state, action) => {
@@ -363,6 +486,9 @@ export const ipamSlice = createSlice({
         }
       })
       .addCase(deleteBlockResvsAsync.rejected, (state, action) => {
+        console.log("deleteBlockResvsAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(fetchVNetsAsync.fulfilled, (state, action) => {
@@ -404,6 +530,12 @@ export const ipamSlice = createSlice({
 
         state.subnets = subnets;
       })
+      .addCase(fetchVNetsAsync.rejected, (state, action) => {
+        console.log("fetchVNetsAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
       .addCase(fetchSubnetsAsync.fulfilled, (state, action) => {
         const subnets = action.payload.map((subnet) => {
           subnet.available = (subnet.size - subnet.used);
@@ -415,8 +547,20 @@ export const ipamSlice = createSlice({
 
         state.subnets = subnets;
       })
+      .addCase(fetchSubnetsAsync.rejected, (state, action) => {
+        console.log("fetchSubnetsAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
       .addCase(fetchEndpointsAsync.fulfilled, (state, action) => {
         state.endpoints = action.payload;
+      })
+      .addCase(fetchEndpointsAsync.rejected, (state, action) => {
+        console.log("fetchEndpointsAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
       })
       .addCase(fetchNetworksAsync.fulfilled, (state, action) => {
         const vNetProvider = "Microsoft.Network/virtualNetworks";
@@ -465,38 +609,48 @@ export const ipamSlice = createSlice({
 
         state.vHubs = vHubData;
       })
+      .addCase(fetchNetworksAsync.rejected, (state, action) => {
+        console.log("fetchNetworksAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
       .addCase(refreshAllAsync.fulfilled, (state, action) => {
         const vNetProvider = "Microsoft.Network/virtualNetworks";
         const vHubProvider = "Microsoft.Network/virtualHubs";
 
         state.refreshing = false;
 
-        state.spaces = action.payload[0].value.map((space) => {
-          if('size' in space && 'used' in space) {
-            if(space.used === null) {
-              space.used = 0;
+        if(action.payload[0].status === 'fulfilled') {
+          state.spaces = action.payload[0].value.map((space) => {
+            if('size' in space && 'used' in space) {
+              if(space.used === null) {
+                space.used = 0;
+              }
+
+              space.available = (space.size - space.used);
+              space.utilization = Math.round((space.used / space.size) * 100) || 0;
             }
 
-            space.available = (space.size - space.used);
-            space.utilization = Math.round((space.used / space.size) * 100) || 0;
-          }
+            space.blocks.map((block) => {
+              block.parent_space = space.name;
+              block.available = (block.size - block.used);
+              block.utilization = Math.round((block.used / block.size) * 100);
+              block.id = `${block.name}@${block.parent_space}`;
 
-          space.blocks.map((block) => {
-            block.parent_space = space.name;
-            block.available = (block.size - block.used);
-            block.utilization = Math.round((block.used / block.size) * 100);
-            block.id = `${block.name}@${block.parent_space}`;
+              return block;
+            });
 
-            return block;
+            return space;
           });
-
-          return space;
-        });
+        } else {
+          state.spaces ??= [];
+        }
 
         if(action.payload[1].status === 'fulfilled') {
           state.subscriptions = action.payload[1].value;
         } else {
-          state.subscriptions = [];
+          state.subscriptions ??= [];
         }
 
         if(action.payload[2].status === 'fulfilled') {
@@ -543,9 +697,9 @@ export const ipamSlice = createSlice({
 
           state.vHubs = vHubData;
         } else {
-          state.vNets = [];
-          state.subnets = [];
-          state.vHubs = [];
+          state.vNets ??= [];
+          state.subnets ??= [];
+          state.vHubs ??= [];
         }
 
         if(action.payload[3].status === 'fulfilled') {
@@ -557,7 +711,7 @@ export const ipamSlice = createSlice({
 
           state.endpoints = endpoints;
         } else {
-          state.endpoints = [];
+          state.endpoints ??= [];
         }
       })
       .addCase(refreshAllAsync.pending, (state) => {
@@ -565,10 +719,11 @@ export const ipamSlice = createSlice({
       })
       .addCase(refreshAllAsync.rejected, (state, action) => {
         state.refreshing = false;
-        console.log("REFRESH ALL REJECTED");
-        console.log("-----------------");
-        console.log(action.error);
-        console.log("-----------------");
+
+        console.log("refreshAllAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
       })
       .addCase(getMeAsync.fulfilled, (state, action) => {
         if(state.refreshInterval !== action.payload['apiRefresh']) {
@@ -591,10 +746,10 @@ export const ipamSlice = createSlice({
         state.meLoaded = true;
       })
       .addCase(getMeAsync.rejected, (state, action) => {
-        console.log("GET ME REJECTED");
-        console.log("-----------------");
-        console.log(action.error);
-        console.log("-----------------");
+        console.log("getMeAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
       })
       .addCase(updateMeAsync.fulfilled, (state, action) => {
         action.meta.arg.body.forEach((update) => {
@@ -613,6 +768,9 @@ export const ipamSlice = createSlice({
         });
       })
       .addCase(updateMeAsync.rejected, (state, action) => {
+        console.log("updateMeAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       });
   },
@@ -669,7 +827,7 @@ export const selectUpdatedVNets = createSelector(
     return vnets?.map((vnet) => {
       var newVNet = cloneDeep(vnet);
 
-      newVNet.subscription_name = subscriptions?.find((x) => x.subscription_id === vnet.subscription_id).name || 'Unknown';
+      newVNet.subscription_name = subscriptions?.find((x) => x.subscription_id === vnet.subscription_id)?.name || 'Unknown';
 
       return newVNet;
     });
@@ -682,7 +840,7 @@ export const selectUpdatedVHubs = createSelector(
     return vhubs?.map((vhub) => {
       var newVHub = cloneDeep(vhub);
 
-      newVHub.subscription_name = subscriptions?.find((x) => x.subscription_id === vhub.subscription_id).name || 'Unknown';
+      newVHub.subscription_name = subscriptions?.find((x) => x.subscription_id === vhub.subscription_id)?.name || 'Unknown';
 
       return newVHub;
     });
@@ -695,7 +853,7 @@ export const selectUpdatedSubnets = createSelector(
     return subnets?.map((subnet) => {
       var newSubnet = cloneDeep(subnet);
 
-      newSubnet.subscription_name = subscriptions?.find((x) => x.subscription_id === subnet.subscription_id).name || 'Unknown';
+      newSubnet.subscription_name = subscriptions?.find((x) => x.subscription_id === subnet.subscription_id)?.name || 'Unknown';
 
       return newSubnet;
     });
@@ -708,7 +866,7 @@ export const selectUpdatedEndpoints = createSelector(
     return endpoints?.map((endpoint) => {
       var newEndpoint = cloneDeep(endpoint);
 
-      newEndpoint.subscription_name = subscriptions?.find((x) => x.subscription_id === endpoint.subscription_id).name || 'Unknown';
+      newEndpoint.subscription_name = subscriptions?.find((x) => x.subscription_id === endpoint.subscription_id)?.name || 'Unknown';
 
       return newEndpoint;
     });
@@ -721,7 +879,7 @@ export const selectUpdatedNetworks = createSelector(
     return networks?.map((network) => {
       var newNetwork = cloneDeep(network);
 
-      newNetwork.subscription_name = subscriptions?.find((x) => x.subscription_id === network.subscription_id).name || 'Unknown';
+      newNetwork.subscription_name = subscriptions?.find((x) => x.subscription_id === network.subscription_id)?.name || 'Unknown';
 
       return newNetwork;
     });

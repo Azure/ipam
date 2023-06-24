@@ -22,6 +22,7 @@ import {
 } from "@mui/material";
 
 import {
+  Edit as EditIcon,
   DeleteOutline as DeleteOutlineIcon,
   MoreVert as MoreVertIcon,
   GridView as GridViewIcon,
@@ -30,6 +31,7 @@ import {
 } from "@mui/icons-material";
 
 import AddBlock from "./Utils/addBlock";
+import EditBlock from "./Utils/editBlock";
 import EditVnets from "./Utils/editVnets";
 import EditReservations from "./Utils/editReservations";
 import ConfirmDelete from "./Utils/confirmDelete";
@@ -77,6 +79,7 @@ export default function BlockDataGrid(props) {
   const [selectionModel, setSelectionModel] = React.useState({});
 
   const [addBlockOpen, setAddBlockOpen] = React.useState(false);
+  const [editBlockOpen, setEditBlockOpen] = React.useState(false);
   const [editVNetsOpen, setEditVNetsOpen] = React.useState(false);
   const [editResvOpen, setEditResvOpen] = React.useState(false);
   const [deleteBlockOpen, setDeleteBlockOpen] = React.useState(false);
@@ -136,6 +139,11 @@ export default function BlockDataGrid(props) {
     setAddBlockOpen(true);
   };
 
+  const handleEditBlock = () => {
+    handleMenuClose();
+    setEditBlockOpen(true);
+  };
+
   const handleEditVNets = () => {
     handleMenuClose();
     setEditVNetsOpen(true);
@@ -183,6 +191,14 @@ export default function BlockDataGrid(props) {
     <React.Fragment>
       { isAdmin &&
         <React.Fragment>
+          <EditBlock
+            open={editBlockOpen}
+            handleClose={() => setEditBlockOpen(false)}
+            space={selectedSpace ? selectedSpace.name : null}
+            blocks={selectedSpace ? selectedSpace.blocks : null}
+            block={selectedBlock ? selectedBlock : null}
+            refresh={refresh}
+          />
           <AddBlock
             open={addBlockOpen}
             handleClose={() => setAddBlockOpen(false)}
@@ -286,6 +302,17 @@ export default function BlockDataGrid(props) {
                     <GridViewIcon fontSize="small" />
                   </ListItemIcon>
                   Add Block
+                </MenuItem>
+              }
+              { isAdmin &&
+                <MenuItem
+                  onClick={handleEditBlock}
+                  disabled={!selectedBlock}
+                >
+                  <ListItemIcon>
+                    <EditIcon fontSize="small" />
+                  </ListItemIcon>
+                  Edit Block
                 </MenuItem>
               }
               { isAdmin &&

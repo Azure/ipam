@@ -3,9 +3,6 @@ import { useDispatch } from 'react-redux';
 
 import { useSnackbar } from "notistack";
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-
 import {
   Box,
   Button,
@@ -14,20 +11,16 @@ import {
   Dialog,
   DialogTitle,
   DialogActions,
-  DialogContent,
-  // CircularProgress
+  DialogContent
 } from "@mui/material";
 
 import LoadingButton from '@mui/lab/LoadingButton';
 
 import { createBlockAsync } from "../../../ipam/ipamSlice";
 
-import { apiRequest } from "../../../../msal/authConfig";
-
 export default function AddBlock(props) {
   const { open, handleClose, space, blocks } = props;
 
-  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [blockName, setBlockName] = React.useState({ value: "", error: false });
@@ -52,29 +45,19 @@ export default function AddBlock(props) {
       name: blockName.value,
       cidr: cidr.value
     };
-  
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
 
     (async () => {
       try {
         setSending(true);
-        const response = await instance.acquireTokenSilent(request);
-        await dispatch(createBlockAsync({ token: response.accessToken, space: space, body: body}));
+        await dispatch(createBlockAsync({ space: space, body: body }));
         enqueueSnackbar("Successfully created new Block", { variant: "success" });
         onCancel();
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar(e.error, { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.message, { variant: "error" });
       } finally {
         setSending(false);
       }
@@ -89,7 +72,15 @@ export default function AddBlock(props) {
   }
 
   function validateName(name) {
-    return blocks.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
+    const regex = new RegExp(
+      //eslint-disable-next-line
+      "^([a-zA-Z0-9/\._-]){1,32}$"
+    );
+
+    const nameValid = name ? !regex.test(name) : false;
+    const blockExists = blocks.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
+
+    return nameValid || blockExists;
   }
 
   function onCidrChange(event) {
@@ -112,14 +103,6 @@ export default function AddBlock(props) {
       <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
         <DialogTitle>
           Add Block
-          {/* <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', marginRight: 'auto' }}>
-              Add Block
-            </Box>
-            <Box sx={{ display: 'flex', visibility: sending ? 'visible' : 'hidden' }}>
-              <CircularProgress size={32} />
-            </Box>
-          </Box> */}
         </DialogTitle>
         <DialogContent>
           <Box display="flex" flexDirection="column" alignItems="center">
@@ -130,7 +113,9 @@ export default function AddBlock(props) {
               title={
                 <>
                   - Block name must be unique
+                  <br />- Max of 32 characters
                   <br />- Can contain alphnumerics
+                  <br />- Can underscore, hypen, lash, and period
                 </>
               }
             >
@@ -176,8 +161,12 @@ export default function AddBlock(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={onCancel}>Cancel</Button>
-          <LoadingButton onClick={onSubmit} loading={sending} disabled={invalidForm}>
-            Apply
+          <LoadingButton
+            onClick={onSubmit}
+            loading={sending}
+            disabled={invalidForm}
+          >
+            Create
           </LoadingButton>
         </DialogActions>
       </Dialog>

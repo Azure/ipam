@@ -479,10 +479,22 @@ process {
     )
 
     $msGraphMap = @{
-      AZURE_PUBLIC  = "graph.microsoft.com"
-      AZURE_US_GOV  = "graph.microsoft.us"
-      AZURE_GERMANY = "graph.microsoft.de"
-      AZURE_CHINA   = "microsoftgraph.chinacloudapi.cn"
+      AZURE_PUBLIC  = @{
+        Endpoint    = "graph.microsoft.com"
+        Environment = "Global"
+      }
+      AZURE_US_GOV  = @{
+        Endpoint    = "graph.microsoft.us"
+        Environment = "USGov"
+      }
+      AZURE_GERMANY = @{
+        Endpoint    = "graph.microsoft.de"
+        Environment = "Germany"
+      }
+      AZURE_CHINA   = @{
+        Endpoint    = "microsoftgraph.chinacloudapi.cn"
+        Environment = "China"
+      }
     };
 
     $uiGraphScopes = [System.Collections.ArrayList]@(
@@ -500,12 +512,12 @@ process {
     )
 
     # Get Microsoft Graph Access Token
-    $accesstoken = (Get-AzAccessToken -Resource "https://$($msGraphMap[$AzureCloud])/").Token
+    $accesstoken = (Get-AzAccessToken -Resource "https://$($msGraphMap[$AzureCloud].Endpoint)/").Token
 
     # Connect to Microsoft Graph
     Write-Host "INFO: Logging in to Microsoft Graph" -ForegroundColor Green
     Write-Verbose -Message "Logging in to Microsoft Graph"
-    Connect-MgGraph -AccessToken $accesstoken | Out-Null
+    Connect-MgGraph -Environment $msGraphMap[$AzureCloud].Environment -AccessToken $accesstoken | Out-Null
 
     # Fetch Azure IPAM UI Service Principal (If not deployed as Function App)
     if (-not $AsFunction) {

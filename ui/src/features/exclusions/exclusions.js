@@ -4,9 +4,6 @@ import { styled } from '@mui/material/styles';
 
 import { useSnackbar } from 'notistack';
 
-import { useMsal } from '@azure/msal-react';
-import { InteractionRequiredAuthError } from '@azure/msal-browser';
-
 import { isEqual, isEmpty, pickBy, orderBy } from 'lodash';
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
@@ -49,8 +46,6 @@ import {
   selectViewSetting,
   updateMeAsync
 } from '../ipam/ipamSlice';
-
-import { apiRequest } from "../../msal/authConfig";
 
 const ExclusionContext = React.createContext({});
 
@@ -247,7 +242,6 @@ function HeaderMenu(props) {
 }
 
 export default function ManageExclusions() {
-  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [saving, setSaving] = React.useState(false);
@@ -293,20 +287,13 @@ export default function ManageExclusions() {
   }, [subscriptions, selected]);
 
   const loadData = React.useCallback(() => {
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         if(subscriptions) {
           // setLoading(true);
           var excluded = {};
 
-          const response = await instance.acquireTokenSilent(request);
-
-          const exclusions = await getExclusions(response.accessToken);
+          const exclusions = await getExclusions();
             
           exclusions.forEach(exclusion => {
             var targetSub = subscriptions.find((sub) => sub.subscription_id === exclusion);
@@ -326,20 +313,16 @@ export default function ManageExclusions() {
           setLoadedExclusions(excluded);
         }
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar("Error fetching subscriptions/exclusions", { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar("Error fetching subscriptions/exclusions", { variant: "error" });
       } finally {
         // setLoading(false);
       }
     })();
-  }, [accounts, subscriptions, enqueueSnackbar, instance]);
+  }, [subscriptions, enqueueSnackbar]);
 
   React.useEffect(() => {
     if(!dataLoadedRef.current && subscriptions) {
@@ -361,31 +344,21 @@ export default function ManageExclusions() {
   }, [saveTimer, sendResults]);
 
   function onSave() {
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setSending(true);
         let selectedValues = Object.values(selected);
         let update = selectedValues.map(item => item.subscription_id);
-        const response = await instance.acquireTokenSilent(request);
-        await replaceExclusions(response.accessToken, update);
+        await replaceExclusions(update);
         enqueueSnackbar("Successfully updated exclusions", { variant: "success" });
         setLoadedExclusions(selected);
-        dispatch(refreshAllAsync(response.accessToken))
+        dispatch(refreshAllAsync())
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar(e.response.data.error, { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.message, { variant: "error" });
       } finally {
         setSending(false);
       }
@@ -457,28 +430,18 @@ export default function ManageExclusions() {
       { "op": "add", "path": `/views/exclusions`, "value": saveData }
     ];
 
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setSaving(true);
-        const response = await instance.acquireTokenSilent(request);
-        await dispatch(updateMeAsync({ token: response.accessToken, body: body}));
+        await dispatch(updateMeAsync({ body: body}));
         setSendResults(true);
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          setSendResults(false);
-          enqueueSnackbar("Error saving view settings", { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        setSendResults(false);
+        enqueueSnackbar("Error saving view settings", { variant: "error" });
       } finally {
         setSaving(false);
       }
@@ -543,6 +506,13 @@ export default function ManageExclusions() {
     }
   },[subscriptions, columnSortState]);
 
+  const onCellDoubleClick = React.useCallback((event, cellProps) => {
+    const { value } = cellProps
+
+    navigator.clipboard.writeText(value);
+    enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
+  }, [enqueueSnackbar]);
+
   function NoRowsOverlay() {
     return (
       <React.Fragment>
@@ -606,6 +576,7 @@ export default function ManageExclusions() {
                 dataSource={gridData || []}
                 defaultFilterValue={filterValue}
                 onRowClick={(rowData) => onClick(rowData.data)}
+                onCellDoubleClick={onCellDoubleClick}
                 selected={selected || {}}
                 sortInfo={columnSortState}
                 emptyText={NoRowsOverlay}

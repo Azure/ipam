@@ -3,9 +3,6 @@ import { useDispatch } from 'react-redux';
 
 import { useSnackbar } from "notistack";
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-
 import {
   Box,
   Button,
@@ -14,20 +11,16 @@ import {
   Dialog,
   DialogTitle,
   DialogActions,
-  DialogContent,
-  // CircularProgress
+  DialogContent
 } from "@mui/material";
 
 import LoadingButton from '@mui/lab/LoadingButton';
 
 import { updateSpaceAsync } from "../../../ipam/ipamSlice";
 
-import { apiRequest } from "../../../../msal/authConfig";
-
 export default function EditSpace(props) {
   const { open, handleClose, space, spaces } = props;
 
-  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [spaceName, setSpaceName] = React.useState({ value: "", error: false });
@@ -77,28 +70,18 @@ export default function EditSpace(props) {
       { "op": "replace", "path": "/desc", "value": description.value }
     ];
 
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setSending(true);
-        const response = await instance.acquireTokenSilent(request);
-        await dispatch(updateSpaceAsync({ token: response.accessToken, space: space.name, body: body}));
+        await dispatch(updateSpaceAsync({ space: space.name, body: body }));
         enqueueSnackbar("Successfully updated Space", { variant: "success" });
         onCancel();
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar("Error updating space", { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.message, { variant: "error" });
       } finally {
         setSending(false);
       }
@@ -113,10 +96,18 @@ export default function EditSpace(props) {
   }
 
   function validateName(name) {
-    return spaces.some((e) => e.name.toLowerCase() === name.toLowerCase())
-           && name.toLowerCase() !== space.name.toLowerCase()
-           ? true
-           : false;
+    const regex = new RegExp(
+      //eslint-disable-next-line
+      "^([a-zA-Z0-9\._-]){1,32}$"
+    );
+
+    const nameValid = name ? !regex.test(name) : false;
+    const spaceExists = spaces.some((e) => e.name.toLowerCase() === name.toLowerCase())
+                        && name.toLowerCase() !== space.name.toLowerCase()
+                        ? true
+                        : false;
+
+    return nameValid || spaceExists;
   }
 
   function onDescriptionChange(event) {
@@ -129,7 +120,7 @@ export default function EditSpace(props) {
   function validateDescription(description) {
     const regex = new RegExp(
       //eslint-disable-next-line
-      "^([a-zA-Z0-9 \._-]){1,32}$"
+      "^([a-zA-Z0-9 /\._-]){1,64}$"
     );
 
     return description ? !regex.test(description) : false;
@@ -140,14 +131,6 @@ export default function EditSpace(props) {
       <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
         <DialogTitle>
           Edit Space
-          {/* <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', marginRight: 'auto' }}>
-              Edit Space
-            </Box>
-            <Box sx={{ display: 'flex', visibility: sending ? 'visible' : 'hidden' }}>
-              <CircularProgress size={32} />
-            </Box>
-          </Box> */}
         </DialogTitle>
         <DialogContent>
           <Box display="flex" flexDirection="column" alignItems="center">
@@ -158,7 +141,9 @@ export default function EditSpace(props) {
               title={
                 <>
                   - Space name must be unique
+                  <br />- Max of 32 characters
                   <br />- Can contain alphnumerics
+                  <br />- Can underscore, hypen, and period
                 </>
               }
             >
@@ -183,10 +168,10 @@ export default function EditSpace(props) {
               placement="right"
               title={
                 <>
-                  - Max of 32 characters
+                  - Max of 64 characters
                   <br />- Can contain alphnumerics
                   <br />- Can contain spaces
-                  <br />- Can underscore, hypen, and period
+                  <br />- Can underscore, hypen, slash, and period
                 </>
               }
             >
@@ -206,7 +191,11 @@ export default function EditSpace(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={onCancel}>Cancel</Button>
-          <LoadingButton onClick={onSubmit} loading={sending} disabled={invalidForm}>
+          <LoadingButton
+            onClick={onSubmit}
+            loading={sending}
+            disabled={invalidForm}
+          >
             Update
           </LoadingButton>
         </DialogActions>

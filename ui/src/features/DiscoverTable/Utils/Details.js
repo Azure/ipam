@@ -159,7 +159,7 @@ export default function ItemDetails(props) {
                 {field.name}:&nbsp;
               </Typography>
               <Typography noWrap variant="overline" sx={{ fontSize: 10, textAlign: "left", pl: 5 }}>
-                {get(rowData, field.value) != null ? Array.isArray(get(rowData, field.value)) ? get(rowData, field.value).join(', ') : get(rowData, field.value) : "N/A"}
+                {get(rowData, field.value) != null ? Array.isArray(get(rowData, field.value)) ? get(rowData, field.value).join(', ') : get(rowData, field.value).toString() : "N/A"}
               </Typography>
             </React.Fragment>
           ))}

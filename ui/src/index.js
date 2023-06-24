@@ -13,7 +13,7 @@ import { msalConfig } from "./msal/authConfig";
 const container = document.getElementById('root');
 const root = createRoot(container);
 
-const msalInstance = new PublicClientApplication(msalConfig);
+export const msalInstance = new PublicClientApplication(msalConfig);
 
 root.render(
   <React.StrictMode>

@@ -1,441 +1,248 @@
 import axios from 'axios';
 
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
+
+import {
+  apiRequest
+} from '../../msal/authConfig';
+
+import { msalInstance } from '../../index';
 import { getEngineURL } from '../../global/globals';
 
-// const ENGINE_URL = window.location.origin
 const ENGINE_URL = getEngineURL();
 
-export function fetchSpaces(token, utilization = false) {
+async function generateToken() {
+  // const activeAccount = msalInstance.getActiveAccount();
+  const accounts = msalInstance.getAllAccounts();
+
+  // if (!activeAccount && accounts.length === 0) {
+  // }
+
+  const request = {
+    scopes: apiRequest.scopes,
+    account: accounts[0]
+  };
+
+  await msalInstance.handleRedirectPromise();
+
+  try {
+    const response = await msalInstance.acquireTokenSilent(request);
+
+    return response.accessToken;
+  } catch (e) {
+    if (e instanceof InteractionRequiredAuthError) {
+      const response = await msalInstance.acquireTokenRedirect(request);
+      
+      return response.accessToken;
+    } else {
+      console.log("ERROR FETCHING API TOKEN");
+      console.log("------------------");
+      console.log(e);
+      console.log("------------------");
+      throw(e);
+    }
+  }
+}
+
+const api = axios.create();
+
+api.interceptors.request.use(
+  async config => {
+    const token = await generateToken();
+
+    config.headers['Authorization'] = `Bearer ${token}`;
+  
+    return config;
+  },
+  error => {
+    Promise.reject(error)
+});
+
+api.interceptors.response.use(
+  response => response.data,
+  error => {
+    console.log("ERROR CALLING IPAM API");
+    console.log(error);
+
+    if(error.response) {
+      return Promise.reject(new Error(error.response.data.error));
+    } else {
+      return Promise.reject(error);
+    }
+});
+
+export function fetchSpaces(utilization = false) {
   var url = new URL(`${ENGINE_URL}/api/spaces`);
   var urlParams = url.searchParams;
 
   utilization && urlParams.append('utilization', true);
 
-  return axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR FETCHING SPACES FROM API");
-    console.log(error);
-    throw error;
-  });
+  return api.get(url);
 }
 
-export function fetchSpace(token, space) {
+export function fetchSpace(space) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}`);
 
-  return axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR FETCHING SPACE FROM API");
-    console.log(error);
-    throw error;
-  });
+  return api.get(url);
 }
 
-export function createSpace(token, body) {
+export function createSpace(body) {
   const url = new URL(`${ENGINE_URL}/api/spaces`);
 
-  return axios
-    .post(url, body, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR CREATING SPACE VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.post(url, body);
 }
 
-export function updateSpace(token, space, body) {
+export function updateSpace(space, body) {
   const url = new URL(`${ENGINE_URL}/api/spaces/${space}`);
 
-  return axios
-    .patch(url, body, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR UPDATING SPACE VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.patch(url, body);
 }
 
-export function deleteSpace(token, space, force) {
+export function deleteSpace(space, force) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}`);
   var urlParams = url.searchParams;
 
   force && urlParams.append('force', true);
 
-  return axios
-    .delete(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR DELETING SPACE VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.delete(url);
 }
 
-export function createBlock(token, space, body) {
+export function createBlock(space, body) {
   const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks`);
 
-  return axios
-    .post(url, body, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR CREATING BLOCK VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.post(url, body);
 }
 
-export function deleteBlock(token, space, block, force) {
+export function updateBlock(space, block, body) {
+  const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}`);
+
+  return api.patch(url, body);
+}
+
+export function deleteBlock(space, block, force) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}`);
   var urlParams = url.searchParams;
 
   force && urlParams.append('force', true);
 
-  return axios
-    .delete(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR DELETING BLOCK VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.delete(url);
 }
 
-export function fetchBlockAvailable(token, space, block) {
+export function fetchBlockAvailable(space, block) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/available`);
   var urlParams = url.searchParams;
 
   urlParams.append('expand', true);
 
-  return axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR FETCHING AVAILABLE BLOCK NETWORKS FROM API");
-    console.log(error);
-    throw error;
-  });
+  return api.get(url);
 }
 
-export function replaceBlockNetworks(token, space, block, body) {
+export function replaceBlockNetworks(space, block, body) {
   const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/networks`);
 
-  return axios
-    .put(url, body, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR UPDATING BLOCK NETWORKS VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.put(url, body);
 }
 
-export function fetchBlockResv(token, space, block) {
+export function fetchBlockResv(space, block) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/reservations`);
 
-  return axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR FETCHING AVAILABLE BLOCK RESERVATIONS VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.get(url);
 }
 
-export function deleteBlockResvs(token, space, block, body) {
+export function deleteBlockResvs(space, block, body) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/reservations`);
 
-  return axios
-    .delete(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-      data: body
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR DELETING BLOCK RESERVATIONS VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.delete(url, { data: body });
 }
 
-export function fetchSubscriptions(token) {
+export function fetchSubscriptions() {
   var url = new URL(`${ENGINE_URL}/api/azure/subscription`);
 
-  return axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR FETCHING SUBSCRIPTIONS FROM API");
-    console.log(error);
-    throw error;
-  });
+  return api.get(url);
 }
 
-export function fetchVNets(token) {
+export function fetchVNets() {
   var url = new URL(`${ENGINE_URL}/api/azure/vnet`);
 
-  return axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR FETCHING VNETS FROM API");
-    console.log(error);
-    throw error;
-  });
+  return api.get(url);
 }
 
-export function fetchVHubs(token) {
+export function fetchVHubs() {
   var url = new URL(`${ENGINE_URL}/api/azure/vhub`);
 
-  return axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR FETCHING VHUBS FROM API");
-    console.log(error);
-    throw error;
-  });
+  return api.get(url);
 }
 
-export function fetchSubnets(token) {
+export function fetchSubnets() {
   var url = new URL(`${ENGINE_URL}/api/azure/subnet`);
 
-  return axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR FETCHING SUBNETS FROM API");
-    console.log(error);
-    throw error;
-  });
+  return api.get(url);
 }
 
-export function fetchEndpoints(token) {
+export function fetchEndpoints() {
   var url = new URL(`${ENGINE_URL}/api/azure/multi`);
 
-  return axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR FETCHING ENDPOINTS FROM API");
-    console.log(error);
-    throw error;
-  });
+  return api.get(url);
 }
 
-export function fetchNetworks(token) {
+export function fetchNetworks() {
   var url = new URL(`${ENGINE_URL}/api/azure/network`);
 
-  return axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR FETCHING NETWORKS FROM API");
-    console.log(error);
-    throw error;
-  });
+  return api.get(url);
 }
 
-export function refreshAll(token) {
+export function refreshAll() {
   const stack = [
-    (async () => await fetchSpaces(token, true))(),
-    (async () => await fetchSubscriptions(token, true))(),
-    (async () => await fetchNetworks(token))(),
-    (async () => await fetchEndpoints(token))()
+    (async () => await fetchSpaces(true))(),
+    (async () => await fetchSubscriptions(true))(),
+    (async () => await fetchNetworks())(),
+    (async () => await fetchEndpoints())()
   ];
 
   return Promise.allSettled(stack);
 }
 
-export function fetchTreeView(token) {
+export function fetchTreeView() {
   var url = new URL(`${ENGINE_URL}/api/internal/tree`);
 
-  return axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR FETCHING TREE VIEW VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.get(url);
 }
 
-export function getAdmins(token) {
+export function getAdmins() {
   var url = new URL(`${ENGINE_URL}/api/admin/admins`);
 
-  return axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR FETCHING ADMINS VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.get(url);
 }
 
-export function replaceAdmins(token, body) {
+export function replaceAdmins(body) {
   var url = new URL(`${ENGINE_URL}/api/admin/admins`);
 
-  return axios
-    .put(url, body, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR UPDATING ADMINS VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.put(url, body);
 }
 
-export function getExclusions(token) {
+export function getExclusions() {
   var url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
 
-  return axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR FETCHING EXCLUSIONS VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.get(url);
 }
 
-export function replaceExclusions(token, body) {
+export function replaceExclusions(body) {
   var url = new URL(`${ENGINE_URL}/api/admin/exclusions`);
 
-  return axios
-    .put(url, body, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR UPDATING EXCLUSIONS VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.put(url, body);
 }
 
-export function getMe(token) {
+export function getMe() {
   var url = new URL(`${ENGINE_URL}/api/users/me`);
   var urlParams = url.searchParams;
 
   urlParams.append('expand', true);
 
-  return axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR FETCHING ME VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.get(url);
 }
 
-export function updateMe(token, body) {
+export function updateMe(body) {
   var url = new URL(`${ENGINE_URL}/api/users/me`);
 
-  return axios
-    .patch(url, body, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-    })
-  .then(response => response.data)
-  .catch(error => {
-    console.log("ERROR UPDATING ME VIA API");
-    console.log(error);
-    throw error;
-  });
+  return api.patch(url, body);
 }

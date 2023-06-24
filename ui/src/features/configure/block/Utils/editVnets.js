@@ -6,9 +6,6 @@ import { isEmpty, isEqual, pickBy, orderBy, sortBy } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
-import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
 import '@inovua/reactdatagrid-community/theme/default-dark.css'
@@ -53,8 +50,6 @@ import {
   selectViewSetting,
   updateMeAsync
 } from "../../../ipam/ipamSlice";
-
-import { apiRequest } from "../../../../msal/authConfig";
 
 const NetworkContext = React.createContext({});
 
@@ -242,7 +237,6 @@ function HeaderMenu(props) {
 export default function EditVnets(props) {
   const { open, handleClose, block, refresh, refreshingState } = props;
 
-  const { instance, accounts } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
   const [saving, setSaving] = React.useState(false);
@@ -338,28 +332,18 @@ export default function EditVnets(props) {
       { "op": "add", "path": `/views/networks`, "value": saveData }
     ];
 
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setSaving(true);
-        const response = await instance.acquireTokenSilent(request);
-        await dispatch(updateMeAsync({ token: response.accessToken, body: body}));
+        await dispatch(updateMeAsync({ body: body }));
         setSendResults(true);
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          setSendResults(false);
-          enqueueSnackbar("Error saving view settings", { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        setSendResults(false);
+        enqueueSnackbar("Error saving view settings", { variant: "error" });
       } finally {
         setSaving(false);
       }
@@ -478,11 +462,6 @@ export default function EditVnets(props) {
   }
 
   function refreshData() {
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       setVNets([]);
 
@@ -490,10 +469,8 @@ export default function EditVnets(props) {
         try {
           setRefreshing(true);
           setSelectionModel([]);
-
           var missing_data = [];
-          const response = await instance.acquireTokenSilent(request);
-          var data = await fetchBlockAvailable(response.accessToken, block.parent_space, block.name);
+          var data = await fetchBlockAvailable(block.parent_space, block.name);
           data.forEach((item) => {
             item['subscription_name'] = subscriptions.find(sub => sub.subscription_id === item.subscription_id)?.name || 'Unknown';
             item['active'] = true;
@@ -506,15 +483,11 @@ export default function EditVnets(props) {
           //eslint-disable-next-line
           setSelectionModel(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}));
         } catch (e) {
-          if (e instanceof InteractionRequiredAuthError) {
-            instance.acquireTokenRedirect(request);
-          } else {
-            console.log("ERROR");
-            console.log("------------------");
-            console.log(e);
-            console.log("------------------");
-            enqueueSnackbar("Error fetching available IP Block networks", { variant: "error" });
-          }
+          console.log("ERROR");
+          console.log("------------------");
+          console.log(e);
+          console.log("------------------");
+          enqueueSnackbar("Error fetching available IP Block networks", { variant: "error" });
         } finally {
           setRefreshing(false);
         }
@@ -528,35 +501,32 @@ export default function EditVnets(props) {
   }
 
   function onSubmit() {
-    const request = {
-      scopes: apiRequest.scopes,
-      account: accounts[0],
-    };
-
     (async () => {
       try {
         setSending(true);
-        const response = await instance.acquireTokenSilent(request);
-        await replaceBlockNetworks(response.accessToken, block.parent_space, block.name, Object.keys(selectionModel));
+        await replaceBlockNetworks(block.parent_space, block.name, Object.keys(selectionModel));
         handleClose();
         enqueueSnackbar("Successfully updated IP Block vNets", { variant: "success" });
-        dispatch(fetchNetworksAsync(response.accessToken));
+        dispatch(fetchNetworksAsync());
+        refresh();
       } catch (e) {
-        if (e instanceof InteractionRequiredAuthError) {
-          instance.acquireTokenRedirect(request);
-        } else {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          enqueueSnackbar(e.error, { variant: "error" });
-        }
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.message, { variant: "error" });
       } finally {
         setSending(false);
-        refresh();
       }
     })();
   }
+
+  const onCellDoubleClick = React.useCallback((event, cellProps) => {
+    const { value } = cellProps
+
+    navigator.clipboard.writeText(value);
+    enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
+  }, [enqueueSnackbar]);
 
   return (
     <NetworkContext.Provider value={{ saving, sendResults, saveConfig, loadConfig, resetConfig }}>
@@ -644,6 +614,7 @@ export default function EditVnets(props) {
               selected={selectionModel}
               onSelectionChange={({selected}) => setSelectionModel(selected)}
               rowClassName={({data}) => `ipam-block-vnet-${!data.active ? 'stale' : 'normal'}`}
+              onCellDoubleClick={onCellDoubleClick}
               sortInfo={columnSortState}
               filterTypes={filterTypes}
               defaultFilterValue={filterValue}
@@ -660,8 +631,9 @@ export default function EditVnets(props) {
           </Button>
           <LoadingButton
             onClick={onSubmit}
-            loading={sending} disabled={unchanged || sending || refreshing || refreshingState}
-            sx={{ position: "unset" }}
+            loading={sending}
+            disabled={unchanged || sending || refreshing || refreshingState}
+            // sx={{ position: "unset" }}
           >
             Apply
           </LoadingButton>
