@@ -517,7 +517,7 @@ process {
     # Connect to Microsoft Graph
     Write-Host "INFO: Logging in to Microsoft Graph" -ForegroundColor Green
     Write-Verbose -Message "Logging in to Microsoft Graph"
-    Connect-MgGraph -Environment $msGraphMap[$AzureCloud].Endpoint -AccessToken $accesstoken | Out-Null
+    Connect-MgGraph -Environment $msGraphMap[$AzureCloud].Environment -AccessToken $accesstoken | Out-Null
 
     # Fetch Azure IPAM UI Service Principal (If not deployed as Function App)
     if (-not $AsFunction) {
