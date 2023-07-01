@@ -293,6 +293,33 @@ async def db_upgrade():
     else:
         logger.info("No existing reservations to patch...")
 
+    external_fixup_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks WHERE (c.type = 'space' AND NOT IS_DEFINED(block.externals))", globals.TENANT_ID)
+
+    if external_fixup_query:
+        for space in external_fixup_query:
+            space_data = copy.deepcopy(space)
+
+            new_blocks = []
+
+            for block in space_data['blocks']:
+                new_block = {
+                    "name": block['name'],
+                    "cidr": block['cidr'],
+                    "vnets": block['vnets'],
+                    "externals": [],
+                    "resv": block['resv']
+                }
+
+                new_blocks.append(new_block)
+
+            space_data['blocks'] = new_blocks
+
+            await cosmos_replace(space, space_data)
+
+        logger.warning('External CIDR patching complete!')
+    else:
+        logger.info("No existing External CIDRs to patch...")
+
     # vhub_fixup_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN vnet in block.vnets WHERE (c.type = 'space' AND RegexMatch (vnet.id, '/Microsoft.Network/virtualHubs/', ''))", globals.TENANT_ID)
 
     # if vhub_fixup_query:
@@ -310,7 +337,7 @@ async def db_upgrade():
     #                 "cidr": block['cidr'],
     #                 "vnets": vnets,
     #                 "vhubs": vhubs,
-    #                 "external": [],
+    #                 "external": block['external'],
     #                 "resv": block['resv']
     #             }
 

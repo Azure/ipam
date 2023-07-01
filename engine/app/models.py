@@ -100,6 +100,9 @@ class BlockUpdate(List[JSONPatch]):
 class VNetsUpdate(List[str]):
     """DOCSTRING"""
 
+class ExtNetsUpdate(List[str]):
+    """DOCSTRING"""
+
 class SpaceCIDRReq(BaseModel):
     """DOCSTRING"""
 
@@ -135,6 +138,13 @@ class Network(BaseModel):
 
     id: str
     active: Optional[bool]
+
+class ExternalNetwork(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    desc: str
+    cidr : IPv4Network
 
 class VNets(BaseModel):
     """DOCSTRING"""
@@ -228,6 +238,7 @@ class BlockBasic(BaseModel):
     name: str
     cidr: str
     vnets: List[VNet]
+    externals: List[ExternalNetwork]
     resv: List[Reservation]
 
 class BlockBasicUtil(BaseModel):
@@ -236,6 +247,7 @@ class BlockBasicUtil(BaseModel):
     name: str
     cidr: str
     vnets: List[VNet]
+    externals: List[ExternalNetwork]
     resv: List[Reservation]
     size: int
     used: int
@@ -246,6 +258,7 @@ class Block(BaseModel):
     name: str
     cidr: str
     vnets: List[VNet]
+    externals: List[ExternalNetwork]
     resv: List[Reservation]
 
 class BlockExpand(BaseModel):
@@ -254,6 +267,7 @@ class BlockExpand(BaseModel):
     name: str
     cidr: str
     vnets: List[VNetExpand]
+    externals: List[ExternalNetwork]
     resv: List[Reservation]
 
 class BlockUtil(BaseModel):
@@ -262,6 +276,7 @@ class BlockUtil(BaseModel):
     name: str
     cidr: str
     vnets: List[VNet]
+    externals: List[ExternalNetwork]
     resv: List[Reservation]
     size: int
     used: int
@@ -272,6 +287,7 @@ class BlockExpandUtil(BaseModel):
     name: str
     cidr: str
     vnets: List[VNetExpandUtil]
+    externals: List[ExternalNetwork]
     resv: List[Reservation]
     size: int
     used: int
