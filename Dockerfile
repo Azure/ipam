@@ -43,7 +43,8 @@ RUN mkdir /var/run/sshd
 RUN apt install curl -y
 RUN curl -sL https://deb.nodesource.com/setup_16.x -o nodesource_setup.sh
 RUN bash ./nodesource_setup.sh
-RUN apt install nodejs -y
+RUN apt install nodejs -y \
+    npm
 RUN npm install -g react-inject-env
 
 # Set Working Directory
