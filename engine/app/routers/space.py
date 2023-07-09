@@ -747,6 +747,74 @@ async def create_multi_block_reservation(
 
     return new_cidr
 
+@router.post(
+    "/{space}/reservations/custom",
+    summary="Create CIDR Reservation with Custom CIDR for All Blocks",
+    response_model=ReservationExpand,
+    status_code=201
+)
+@cosmos_retry(
+    max_retry=5,
+    error_msg="Error creating custom CIDR reservation, please try again."
+)
+async def create_custom_cidr_reservation_all_blocks(
+    req: CustomCIDRReservationReq,
+    space: str = Path(..., description="Name of the target Space"),
+    authorization: str = Header(None, description="Azure Bearer token"),
+    tenant_id: str = Depends(get_tenant_id)
+):
+    """
+    Create a custom CIDR Reservation for all blocks within the target Space with the following information:
+
+    - **cidr**: The custom CIDR to reserve within each block's range.
+    - **desc** (optional): Description for the CIDR reservation
+    """
+
+    user_assertion = authorization.split(' ')[1]
+    decoded = jwt.decode(user_assertion, options={"verify_signature": False})
+
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
+
+    # Validate the provided CIDR
+    try:
+        provided_cidr = IPNetwork(req.cidr)
+    except AddrFormatError:
+        raise HTTPException(status_code=400, detail="Invalid CIDR format.")
+
+    new_cidr = {
+        "id": shortuuid.uuid(),
+        "cidr": str(provided_cidr),
+        "desc": req.desc,
+        "createdOn": time.time(),
+        "createdBy": decoded.get("preferred_username", f"spn:{decoded['oid']}"),
+        "settledOn": None,
+        "settledBy": None,
+        "status": "wait"
+    }
+
+    new_cidr['space'] = target_space['name']
+    new_cidr['block'] = "All Blocks"
+    
+    found_block = False
+
+    for block in target_space['blocks']:
+        block_cidr = IPNetwork(block['cidr'])
+        if provided_cidr in block_cidr:
+            block['resv'].append(new_cidr)
+            found_block = True
+
+    if not found_block:
+        raise HTTPException(status_code=400, detail="Provided CIDR is not within the address space of any block.")
+
+    await cosmos_replace(space_query[0], target_space)
+
+    return new_cidr
+
 @router.get(
     "/{space}/blocks/{block}",
     summary = "Get Block Details",
