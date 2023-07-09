@@ -117,6 +117,11 @@ class BlockCIDRReq(BaseModel):
     reverse_search: Optional[bool] = False
     smallest_cidr: Optional[bool] = False
 
+class CustomCIDRReservationReq(BaseModel):
+    """DOCSTRING"""
+    cidr: str
+    desc: Optional[str] = None
+
 class DeleteResvReq(List[str]):
     """DOCSTRING"""
 

@@ -16,6 +16,7 @@ import asyncio
 import shortuuid
 import jsonpatch
 from netaddr import IPSet, IPNetwork
+from netaddr.core import AddrFormatError
 
 from app.dependencies import (
     check_token_expired,
@@ -1429,6 +1430,74 @@ async def create_block_reservation(
         "desc": req.desc,
         "createdOn": time.time(),
         "createdBy": creator_id,
+        "settledOn": None,
+        "settledBy": None,
+        "status": "wait"
+    }
+
+    target_block['resv'].append(new_cidr)
+
+    await cosmos_replace(space_query[0], target_space)
+
+    new_cidr['space'] = target_space['name']
+    new_cidr['block'] = target_block['name']
+
+    return new_cidr
+
+@router.post(
+    "/{space}/blocks/{block}/reservations/custom",
+    summary="Create CIDR Reservation with Custom CIDR",
+    response_model=ReservationExpand,
+    status_code=201
+)
+@cosmos_retry(
+    max_retry=5,
+    error_msg="Error creating custom CIDR reservation, please try again."
+)
+async def create_custom_cidr_reservation(
+    req: CustomCIDRReservationReq,
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    authorization: str = Header(None, description="Azure Bearer token"),
+    tenant_id: str = Depends(get_tenant_id)
+):
+    """
+    Create a custom CIDR Reservation for the target Block with the following information:
+
+    - **cidr**: The custom CIDR to reserve within the target block's range.
+    - **desc** (optional): Description for the CIDR reservation
+    """
+
+    user_assertion = authorization.split(' ')[1]
+    decoded = jwt.decode(user_assertion, options={"verify_signature": False})
+
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
+
+    target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
+
+    if not target_block:
+        raise HTTPException(status_code=400, detail="Invalid block name.")
+
+    # Validate the provided CIDR
+    try:
+        provided_cidr = IPNetwork(req.cidr)
+    except AddrFormatError:
+        raise HTTPException(status_code=400, detail="Invalid CIDR format.")
+
+    if provided_cidr not in IPNetwork(target_block['cidr']):
+        raise HTTPException(status_code=400, detail="Provided CIDR is not within the target block's range.")
+
+    new_cidr = {
+        "id": shortuuid.uuid(),
+        "cidr": str(provided_cidr),
+        "desc": req.desc,
+        "createdOn": time.time(),
+        "createdBy": decoded.get("preferred_username", f"spn:{decoded['oid']}"),
         "settledOn": None,
         "settledBy": None,
         "status": "wait"
