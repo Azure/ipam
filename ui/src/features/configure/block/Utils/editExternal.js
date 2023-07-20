@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
-import { isEmpty, isEqual, pickBy, orderBy, sortBy, cloneDeep } from 'lodash';
+import { isEmpty, isEqual, pickBy, orderBy, debounce, cloneDeep } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
@@ -24,7 +24,9 @@ import {
   CircularProgress,
   Menu,
   MenuItem,
-  ListItemIcon
+  ListItemIcon,
+  TextField,
+  Tooltip
 } from "@mui/material";
 
 import {
@@ -34,22 +36,29 @@ import {
   FileUploadOutlined,
   ReplayOutlined,
   TaskAltOutlined,
-  CancelOutlined
+  CancelOutlined,
+  PlaylistAddOutlined,
+  HighlightOff
 } from "@mui/icons-material";
 
 import LoadingButton from '@mui/lab/LoadingButton';
 
 import {
-  fetchBlockAvailable,
-  replaceBlockNetworks
+  replaceBlockExternals
 } from "../../../ipam/ipamAPI";
 
 import {
   selectSubscriptions,
-  fetchNetworksAsync,
+  selectNetworks,
+  // fetchNetworksAsync,
   selectViewSetting,
   updateMeAsync
 } from "../../../ipam/ipamSlice";
+
+import {
+  isSubnetOf,
+  isSubnetOverlap
+} from "../../../tools/utils/iputils";
 
 const ExternalContext = React.createContext({});
 
@@ -69,6 +78,43 @@ const gridStyle = {
   border: '1px solid rgba(224, 224, 224, 1)',
   fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
 };
+
+function RenderDelete(props) {
+  const { value } = props;
+  const { externals, setAdded, deleted, setDeleted, selectionModel } = React.useContext(ExternalContext);
+
+  const flexCenter = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  }
+
+  return (
+    <Tooltip title="Delete">
+      <span style={{...flexCenter}}>
+        <IconButton
+          color="error"
+          sx={{
+            padding: 0,
+            display: (isEqual([value.id], Object.keys(selectionModel))) ? "flex" : "none"
+          }}
+          disableFocusRipple
+          disableTouchRipple
+          disableRipple
+          onClick={() => {
+            if(externals.find(e => e.name === value.name) && !deleted.includes(value.name)) {
+              setDeleted(prev => [...prev, value.name]);
+            } else {
+              setAdded(prev => prev.filter(e => e.name !== value.name));
+            }
+          }}
+        >
+          <HighlightOff />
+        </IconButton>
+      </span>
+    </Tooltip>
+  );
+}
 
 function HeaderMenu(props) {
   const { setting } = props;
@@ -202,25 +248,33 @@ function HeaderMenu(props) {
 }
 
 export default function EditExternals(props) {
-  const { open, handleClose, block, refresh, refreshing, refreshingState } = props;
+  const { open, handleClose, space, block, refresh, refreshing, refreshingState } = props;
 
   const { enqueueSnackbar } = useSnackbar();
 
   const [saving, setSaving] = React.useState(false);
   const [sendResults, setSendResults] = React.useState(null);
   const [externals, setExternals] = React.useState(null);
+  const [added, setAdded] = React.useState([]);
+  const [deleted, setDeleted] = React.useState([]);
   const [gridData, setGridData] = React.useState(null);
-  // const [selectionModel, setSelectionModel] = React.useState([]);
-  const [newEntry, setNewEntry] = React.useState({ name: "", desc: "", cidr: "" });
-  const [newEntryId, setNewEntryId] = React.useState(null);
-  const [validMap, setValidMap] = React.useState({ name: false, desc: false, cidr: false });
   const [sending, setSending] = React.useState(false);
+  const [selectionModel, setSelectionModel] = React.useState({});
 
   const [columnState, setColumnState] = React.useState(null);
   const [columnOrderState, setColumnOrderState] = React.useState([]);
   const [columnSortState, setColumnSortState] = React.useState({});
 
+  const [extName, setExtName] = React.useState("");
+  const [extNameErr, setExtNameErr] = React.useState(false);
+  const [extDesc, setExtDesc] = React.useState("");
+  const [extDescErr, setExtDescErr] = React.useState(false);
+  const [extCidr, setExtCidr] = React.useState("");
+  const [extCidrErr, setExtCidrErr] = React.useState(false);
+  const [hasError, setHasError] = React.useState(true);
+
   const subscriptions = useSelector(selectSubscriptions);
+  const networks = useSelector(selectNetworks);
   const viewSetting = useSelector(state => selectViewSetting(state, 'externals'));
   const dispatch = useDispatch();
 
@@ -229,25 +283,13 @@ export default function EditExternals(props) {
   const theme = useTheme();
 
   //eslint-disable-next-line
-  // const unchanged = block ? isEqual(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}), selectionModel) : false;
-  const unchanged = false;
+  const unchanged = (block && externals) ? isEqual(block['externals'], externals.map(({id, ...rest}) => rest)) : false;
 
   const columns = React.useMemo(() => [
-    {
-      name: "name",
-      header: "Name",
-      type: "string",
-      flex: 1,
-      visible: true,
-      renderEditor: (props) => {
-        const { value, cellProps } = props;
-
-        console.log(props);
-      }
-    },
-    { name: "desc", header: "Description", type: "string", flex: 1, visible: true },
-    { name: "cidr", header: "CIDR", type: "string", flex: 1, visible: true },
-    { name: "id", header: () => <HeaderMenu setting="externals"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => "", visible: true }
+    { name: "name", header: "Name", type: "string", flex: 0.5, draggable: false, visible: true },
+    { name: "desc", header: "Description", type: "string", flex: 1, draggable: false, visible: true },
+    { name: "cidr", header: "CIDR", type: "string", flex: 0.25, draggable: false, visible: true },
+    { name: "id", header: () => <HeaderMenu setting="externals"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => <RenderDelete value={data} />, visible: true }
   ], []);
 
   const filterValue = [
@@ -255,6 +297,19 @@ export default function EditExternals(props) {
     { name: "desc", operator: "contains", type: "string", value: "" },
     { name: "cidr", operator: "contains", type: "string", value: "" }
   ];
+
+  function onClick(data) {
+    var id = data.id;
+    var newSelectionModel = {};
+
+    setSelectionModel(prevState => {
+      if(!prevState.hasOwnProperty(id)) {
+        newSelectionModel[id] = data;
+      }
+      
+      return newSelectionModel;
+    });
+  }
 
   const onBatchColumnResize = (batchColumnInfo) => {
     const colsMap = batchColumnInfo.reduce((acc, colInfo) => {
@@ -362,17 +417,6 @@ export default function EditExternals(props) {
   }, []);
 
   React.useEffect(() => {
-    const data = {
-      name: "Name",
-      desc: "Description",
-      cidr: "CIDR"
-    };
-
-    // setExternals(block?.externals || []);
-    setExternals([data]);
-  }, [block]);
-
-  React.useEffect(() => {
     if(!columnState && viewSetting) {
       if(columns && !isEmpty(viewSetting)) {
         loadConfig();
@@ -383,35 +427,17 @@ export default function EditExternals(props) {
   },[columns, viewSetting, columnState, loadConfig, resetConfig]);
 
   React.useEffect(() => {
-    const idData = externals?.reduce((acc, item, index) => {
-      item.id = index;
-
-      acc.push(item);
-
-      return acc;
-    }, []);
-
-    setNewEntryId(idData?.length);
-
-    const newEntryData = { ...newEntry, id: idData?.length };
-
-    console.log(`NEW ENTRY DATA: ${JSON.stringify(newEntryData)}`);
-
     if(columnSortState) {
-      var newData = orderBy(
-        idData,
-        [columnSortState.name],
-        [columnSortState.dir === -1 ? 'desc' : 'asc']
+      setGridData(
+        orderBy(
+          externals,
+          [columnSortState.name],
+          [columnSortState.dir === -1 ? 'desc' : 'asc']
+        )
       );
-
-      newData.push(newEntryData);
     } else {
-      var newData = cloneDeep(idData);
-
-      newData.push(newEntryData);
+      setGridData(externals);
     }
-
-    setGridData(newData);
   },[externals, columnSortState]);
 
   React.useEffect(() => {
@@ -426,15 +452,37 @@ export default function EditExternals(props) {
     }
   }, [saveTimer, sendResults]);
 
+  function onAddExternal() {
+    if(!hasError) {
+      setAdded(prev => [
+        ...prev,
+        {
+          name: extName,
+          desc: extDesc,
+          cidr: extCidr
+        }
+      ]);
+
+      setExtName("");
+      setExtDesc("");
+      setExtCidr("");
+    }
+  }
+
   function onSubmit() {
     (async () => {
       try {
-        // setSending(true);
-        // await replaceBlockNetworks(block.parent_space, block.name, Object.keys(selectionModel));
+        setSending(true);
+        const bodyData = externals.map(({id, ...rest}) => rest);
+        await replaceBlockExternals(block.parent_space, block.name, bodyData);
         handleClose();
-        // enqueueSnackbar("Successfully updated IP Block vNets", { variant: "success" });
-        // dispatch(fetchNetworksAsync());
-        // refresh();
+        setAdded([]);
+        setDeleted([]);
+        setExtName("");
+        setExtDesc("");
+        setExtCidr("");
+        enqueueSnackbar("Successfully updated Block External Networks", { variant: "success" });
+        refresh();
       } catch (e) {
         console.log("ERROR");
         console.log("------------------");
@@ -447,22 +495,152 @@ export default function EditExternals(props) {
     })();
   }
 
+  function onCancel() {
+    setAdded([]);
+    setDeleted([]);
+
+    setExtName("");
+    setExtDesc("");
+    setExtCidr("");
+
+    handleClose();
+  }
   const onCellDoubleClick = React.useCallback((event, cellProps) => {
-    if(cellProps.data.id !== newEntryId) {
-      const { value } = cellProps
+    const { value } = cellProps
 
-      console.log(`CELL ID: ${cellProps.data.id}, NEW ENTRY ID: ${newEntryId}`);
+    navigator.clipboard.writeText(value);
+    enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
+  }, [enqueueSnackbar]);
 
-      navigator.clipboard.writeText(value);
-      enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
+  const onNameChange = React.useCallback(() => {
+    if(externals) {
+      const regex = new RegExp(
+        //eslint-disable-next-line
+        "^(?![\._-])([a-zA-Z0-9\._-]){1,32}(?<![\._-])$"
+      );
+
+      const nameError = extName ? !regex.test(extName) : false;
+      const nameExists = externals.map(e => e.name.toLowerCase()).includes(extName.toLowerCase());
+
+      setExtNameErr(nameError || nameExists)
     }
-  }, [enqueueSnackbar, newEntryId]);
+  }, [externals, extName]);
+
+  const updateName = React.useMemo(() => debounce(() => onNameChange(), 100), [onNameChange]);
+
+  React.useEffect(() => {
+    updateName();
+  }, [extName, updateName]);
+
+  const onDescChange = React.useCallback(() => {
+    const regex = new RegExp(
+      //eslint-disable-next-line
+      "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,64}(?<![ /\._-])$"
+    );
+
+    setExtDescErr(extDesc ? !regex.test(extDesc) : false);
+  }, [extDesc]);
+
+  const updateDesc = React.useMemo(() => debounce(() => onDescChange(), 100), [onDescChange]);
+
+  React.useEffect(() => {
+    updateDesc();
+  }, [extDesc, updateDesc]);
+
+  const onCidrChange = React.useCallback(() => {
+    const regex = new RegExp(
+      "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(/(3[0-2]|[1-2][0-9]|[0-9]))$"
+    );
+
+    const cidrError = extCidr ? !regex.test(extCidr) : false;
+
+    var blockNetworks= [];
+    var extNetworks = [];
+    var cidrInBlock = false;
+    var resvOverlap = true;
+    var vnetOverlap = true;
+    var extOverlap = true;
+
+    if(!cidrError && extCidr.length > 0) {
+      cidrInBlock = isSubnetOf(extCidr, block.cidr);
+
+      const openResv = block?.resv.reduce((acc, curr) => {
+        if(!curr['settledOn']) {
+          acc.push(curr['cidr']);
+        }
+
+        return acc;
+      }, []);
+
+      if(space && block && networks) {
+        blockNetworks = networks?.reduce((acc, curr) => {
+          if(curr['parent_space'] && curr['parent_block']) {
+            if(curr['parent_space'] === space && curr['parent_block'].includes(block.name)) {
+              acc = acc.concat(curr['prefixes']);
+            }
+          }
+
+          return acc;
+        }, []);
+      }
+
+      if(externals) {
+        extNetworks = externals?.reduce((acc, curr) => {
+          acc.push(curr['cidr']);
+
+          return acc;
+        }, []);
+      }
+
+      resvOverlap = isSubnetOverlap(extCidr, openResv);
+      vnetOverlap = isSubnetOverlap(extCidr, blockNetworks);
+      extOverlap = isSubnetOverlap(extCidr, extNetworks);
+    }
+
+    if(extCidr.length > 0) {
+      setExtCidrErr(cidrError || !cidrInBlock || resvOverlap || vnetOverlap || extOverlap);
+    } else {
+      setExtCidrErr(false);
+    }
+  }, [extCidr, space, block, networks, externals]);
+
+  const updateCidr = React.useMemo(() => debounce(() => onCidrChange(), 100), [onCidrChange]);
+
+  React.useEffect(() => {
+    updateCidr();
+  }, [extCidr, updateCidr]);
+
+  React.useEffect(() => {
+    if(block) {
+      var newExternals = cloneDeep(block['externals']);
+
+      newExternals = newExternals.filter(e => !deleted.includes(e.name));
+      newExternals = newExternals.concat(added);
+
+      const newData = newExternals.reduce((acc, curr) => {
+        curr['id'] = `${space}@${block.name}@${curr.name}}`
+
+        acc.push(curr);
+
+        return acc;
+      }, []);
+
+      setExternals(newData);
+    }
+  }, [space, block, added, deleted]);
+
+  React.useEffect(() => {
+    const errorCheck = (extNameErr || extDescErr || extCidrErr);
+    const emptyCheck = (extName.length === 0 || extDesc.length === 0 || extCidr.length === 0);
+
+    setHasError(errorCheck || emptyCheck);
+  }, [extName, extNameErr, extDesc, extDescErr, extCidr, extCidrErr]);
 
   return (
-    <ExternalContext.Provider value={{ saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+    <ExternalContext.Provider value={{ externals, setAdded, deleted, setDeleted, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
       <Dialog
         open={open}
-        onClose={handleClose}
+        onClose={onCancel}
         maxWidth="lg"
         fullWidth
         PaperProps={{
@@ -497,33 +675,15 @@ export default function EditExternals(props) {
           <Box
             sx={{
               pt: 4,
-              height: "400px",
-              '& .ipam-external-editing': {
-                  background: theme.palette.mode === 'dark' ? 'rgb(220, 20, 20) !important' : 'rgb(255, 230, 230) !important',
-                '.InovuaReactDataGrid__row-hover-target': {
-                  '&:hover': {
-                    background: theme.palette.mode === 'dark' ? 'rgb(220, 100, 100) !important' : 'rgb(255, 220, 220) !important',
-                  }
-                }
-              },
-              '& .ipam-external-normal': {
-                  background: theme.palette.mode === 'dark' ? 'rgb(49, 57, 67)' : 'white',
-                '.InovuaReactDataGrid__row-hover-target': {
-                  '&:hover': {
-                    background: theme.palette.mode === 'dark' ? 'rgb(74, 84, 115) !important' : 'rgb(208, 213, 237) !important',
-                  }
-                }
-              }
+              height: "335px"
             }}
           >
             <ReactDataGrid
               theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
               idProperty="id"
               showCellBorders="horizontal"
-              // checkboxColumn
-              // checkboxOnlyRowSelect
               showZebraRows={false}
-              // multiSelect={true}
+              multiSelect={true}
               click
               showActiveRowIndicator={false}
               enableColumnAutosize={false}
@@ -541,21 +701,227 @@ export default function EditExternals(props) {
               loading={sending || !subscriptions || !externals || refreshing || refreshingState}
               loadingText={sending ? <Update>Updating</Update> : "Loading"}
               dataSource={gridData || []}
-              // selected={selectionModel}
-              // onSelectionChange={({selected}) => setSelectionModel(selected)}
-              rowClassName={({data}) => `ipam-external-${data.id === newEntryId ? 'editing' : 'normal'}`}
-              onCellDoubleClick={onCellDoubleClick}
               sortInfo={columnSortState}
-              // filterTypes={filterTypes}
               defaultFilterValue={filterValue}
+              onRowClick={(rowData) => onClick(rowData.data)}
+              onCellDoubleClick={onCellDoubleClick}
+              selected={selectionModel}
               style={gridStyle}
-              editable
             />
+          </Box>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '25px',
+              borderWidth: '0px 1px 1px 1px',
+              borderStyle: 'solid',
+              borderColor: 'rgb(224, 224, 224)',
+              backgroundColor: theme.palette.mode === 'dark' ? 'rgb(80, 80, 80)' : 'rgb(240, 240, 240)'
+              
+            }}
+          >
+            <span
+              style={{
+                fontSize: '14px',
+                fontWeight: 700,
+                color: theme.palette.mode === 'dark' ? '#9ba7b4' : '#555e68'
+              }}
+            >
+              Add New External Network
+            </span>
+          </Box>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              height: '40px',
+              borderWidth: '0px 1px 1px 1px',
+              borderStyle: 'solid',
+              borderColor: 'rgb(224, 224, 224)'
+            }}
+          >
+            <Box
+              sx={{
+                pl:2,
+                height: '100%',
+                display: 'flex',
+                flex: '1 1 auto',
+                alignItems: 'center',
+                width: columnState && columnState[0].flex > 1 ? columnState[0].flex : 'calc(((100% - 40px) / 1.75) * 0.5)',
+                borderRight: '1px solid rgb(224, 224, 224)',
+                // backgroundColor: extNameErr ? theme.palette.mode === 'dark' ? 'rgba(255, 0, 0, 0.5)' : 'rgba(255, 0, 0, 0.1)' : 'unset'
+              }}
+              style={
+                theme.palette.mode === 'dark'
+                ? extNameErr
+                  ? { backgroundColor: 'rgba(255, 0, 0, 0.5)' }
+                  : { backgroundColor: 'rgb(49, 57, 67)' }
+                : extNameErr
+                  ? { backgroundColor: 'rgba(255, 0, 0, 0.1)' }
+                  : { backgroundColor: 'unset' }
+              }
+            >
+              <Tooltip
+                arrow
+                placement="bottom"
+                title="Network Name"
+              >
+                <TextField
+                  fullWidth
+                  placeholder="Name"
+                  value={extName}
+                  onChange={(event) => { setExtName(event.target.value) }}
+                  inputProps={{
+                    spellCheck: 'false',
+                    style: {
+                      fontSize: '14px',
+                      fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+                      padding: '4px 0px 5px'
+                    }
+                  }}
+                  sx={{
+                    "& fieldset": { border: 'none' },
+                  }}
+                />
+              </Tooltip>
+            </Box>
+            <Box
+              sx={{
+                pl:2,
+                height: '100%',
+                display: 'flex',
+                flex: '1 1 auto',
+                alignItems: 'center',
+                width: columnState && columnState[1].flex > 1 ? columnState[1].flex : 'calc(((100% - 40px) / 1.75) * 1)',
+                borderRight: '1px solid rgb(224, 224, 224)',
+                // backgroundColor: extDescErr ? theme.palette.mode === 'dark' ? 'rgba(255, 0, 0, 0.5)' : 'rgba(255, 0, 0, 0.1)' : 'unset'
+              }}
+              style={
+                theme.palette.mode === 'dark'
+                ? extDescErr
+                  ? { backgroundColor: 'rgba(255, 0, 0, 0.5)' }
+                  : { backgroundColor: 'rgb(49, 57, 67)' }
+                : extDescErr
+                  ? { backgroundColor: 'rgba(255, 0, 0, 0.1)' }
+                  : { backgroundColor: 'unset' }
+              }
+            >
+              <Tooltip
+                arrow
+                placement="bottom"
+                title="Network Description"
+              >
+                <TextField
+                  fullWidth
+                  placeholder="Description"
+                  value={extDesc}
+                  onChange={(event) => { setExtDesc(event.target.value) }}
+                  inputProps={{
+                    spellCheck: 'false',
+                    style: {
+                      fontSize: '14px',
+                      fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+                      padding: '4px 0px 5px'
+                    }
+                  }}
+                  sx={{
+                    "& fieldset": { border: 'none' },
+                  }}
+                />
+              </Tooltip>
+            </Box>
+            <Box
+              sx={{
+                pl:2,
+                pr: 2,
+                height: '100%',
+                display: 'flex',
+                flex: '1 1 auto',
+                alignItems: 'center',
+                width: columnState && columnState[2].flex > 1 ? columnState[2].flex : 'calc(((100% - 40px) / 1.75) * 0.25)',
+                // backgroundColor: extCidrErr ? theme.palette.mode === 'dark' ? 'rgba(255, 0, 0, 0.5)' : 'rgba(255, 0, 0, 0.1)' : 'unset'
+              }}
+              style={
+                theme.palette.mode === 'dark'
+                ? extCidrErr
+                  ? { backgroundColor: 'rgba(255, 0, 0, 0.5)' }
+                  : { backgroundColor: 'rgb(49, 57, 67)' }
+                : extCidrErr
+                  ? { backgroundColor: 'rgba(255, 0, 0, 0.1)' }
+                  : { backgroundColor: 'unset' }
+              }
+            >
+              <Tooltip
+                arrow
+                placement="bottom"
+                title="Network CIDR"
+              >
+                <TextField
+                  fullWidth
+                  placeholder="CIDR"
+                  value={extCidr}
+                  onChange={(event) => { setExtCidr(event.target.value) }}
+                  inputProps={{
+                    spellCheck: 'false',
+                    style: {
+                      fontSize: '14px',
+                      fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+                      padding: '4px 0px 5px'
+                    }
+                  }}
+                  sx={{
+                    "& fieldset": { border: 'none' },
+                  }}
+                />
+              </Tooltip>
+            </Box>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                minWidth: '40px',
+                height: '100%',
+                borderLeft: '1px solid rgb(224, 224, 224)',
+                backgroundColor: theme.palette.mode === 'dark' ? 'rgb(49, 57, 67)' : 'unset'
+              }}
+            >
+              <Tooltip
+                arrow
+                placement="top"
+                title="Add Network"
+              >
+                <span>
+                  <IconButton
+                    disableRipple
+                    disabled={hasError}
+                    onClick={onAddExternal}
+                  >
+                    <PlaylistAddOutlined
+                      style={
+                        theme.palette.mode === 'dark'
+                        ? hasError
+                          ? { color: "lightgrey", opacity: 0.25 }
+                          : { color: "forestgreen", opacity: 1 }
+                        : hasError
+                          ? { color: "black", opacity: 0.25 }
+                          : { color: "limegreen", opacity: 1 }
+                      }
+                    />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button
-            onClick={handleClose}
+            onClick={onCancel}
             sx={{ position: "unset" }}
           >
             Cancel

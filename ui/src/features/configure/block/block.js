@@ -227,6 +227,8 @@ export default function BlockDataGrid(props) {
             handleClose={() => setEditExtOpen(false)}
             space={selectedSpace ? selectedSpace.name : null}
             block={selectedBlock ? selectedBlock : null}
+            refresh={refresh}
+            refreshingState={refreshing}
           />
           <ConfirmDelete
             open={deleteBlockOpen}

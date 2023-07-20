@@ -67,6 +67,21 @@ function getIpRangeForSubnet(subnetCIDR) {
   };
 }
 
+export function isSubnetOf(childCIDR, parentCIDR) {
+  const parentRange = getIpRangeForSubnet(parentCIDR);
+  const childRange = getIpRangeForSubnet(childCIDR);
+
+  const parentStart = ip2Integer(parentRange.start);
+  const parentEnd = ip2Integer(parentRange.end);
+
+  const childStart = ip2Integer(childRange.start);
+  const childEnd = ip2Integer(childRange.end);
+
+  const isSubnet = (parentStart <= childStart) && (parentEnd >= childEnd);
+
+  return isSubnet;
+}
+
 export function isSubnetOverlap(subnetCIDR, existingSubnetCIDR) {
   var ipRangeforCurrent = getIpRangeForSubnet(subnetCIDR);
 

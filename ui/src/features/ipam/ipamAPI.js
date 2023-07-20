@@ -143,6 +143,12 @@ export function replaceBlockNetworks(space, block, body) {
   return api.put(url, body);
 }
 
+export function replaceBlockExternals(space, block, body) {
+  const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals`);
+
+  return api.put(url, body);
+}
+
 export function fetchBlockResv(space, block) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/reservations`);
 
