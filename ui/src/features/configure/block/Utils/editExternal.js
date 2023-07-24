@@ -25,7 +25,7 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
-  TextField,
+  OutlinedInput,
   Tooltip
 } from "@mui/material";
 
@@ -38,7 +38,8 @@ import {
   TaskAltOutlined,
   CancelOutlined,
   PlaylistAddOutlined,
-  HighlightOff
+  HighlightOff,
+  InfoOutlined
 } from "@mui/icons-material";
 
 import LoadingButton from '@mui/lab/LoadingButton';
@@ -50,7 +51,6 @@ import {
 import {
   selectSubscriptions,
   selectNetworks,
-  // fetchNetworksAsync,
   selectViewSetting,
   updateMeAsync
 } from "../../../ipam/ipamSlice";
@@ -59,6 +59,12 @@ import {
   isSubnetOf,
   isSubnetOverlap
 } from "../../../tools/utils/iputils";
+
+import {
+  EXTERNAL_NAME_REGEX,
+  EXTERNAL_DESC_REGEX,
+  CIDR_REGEX
+} from "../../../../global/globals";
 
 const ExternalContext = React.createContext({});
 
@@ -266,11 +272,11 @@ export default function EditExternals(props) {
   const [columnSortState, setColumnSortState] = React.useState({});
 
   const [extName, setExtName] = React.useState("");
-  const [extNameErr, setExtNameErr] = React.useState(false);
+  const [extNameErr, setExtNameErr] = React.useState(true);
   const [extDesc, setExtDesc] = React.useState("");
-  const [extDescErr, setExtDescErr] = React.useState(false);
+  const [extDescErr, setExtDescErr] = React.useState(true);
   const [extCidr, setExtCidr] = React.useState("");
-  const [extCidrErr, setExtCidrErr] = React.useState(false);
+  const [extCidrErr, setExtCidrErr] = React.useState(true);
   const [hasError, setHasError] = React.useState(true);
 
   const subscriptions = useSelector(selectSubscriptions);
@@ -288,7 +294,7 @@ export default function EditExternals(props) {
   const columns = React.useMemo(() => [
     { name: "name", header: "Name", type: "string", flex: 0.5, draggable: false, visible: true },
     { name: "desc", header: "Description", type: "string", flex: 1, draggable: false, visible: true },
-    { name: "cidr", header: "CIDR", type: "string", flex: 0.25, draggable: false, visible: true },
+    { name: "cidr", header: "CIDR", type: "string", flex: 0.30, draggable: false, visible: true },
     { name: "id", header: () => <HeaderMenu setting="externals"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => <RenderDelete value={data} />, visible: true }
   ], []);
 
@@ -515,8 +521,7 @@ export default function EditExternals(props) {
   const onNameChange = React.useCallback(() => {
     if(externals) {
       const regex = new RegExp(
-        //eslint-disable-next-line
-        "^(?![\._-])([a-zA-Z0-9\._-]){1,32}(?<![\._-])$"
+        EXTERNAL_NAME_REGEX
       );
 
       const nameError = extName ? !regex.test(extName) : false;
@@ -526,7 +531,7 @@ export default function EditExternals(props) {
     }
   }, [externals, extName]);
 
-  const updateName = React.useMemo(() => debounce(() => onNameChange(), 100), [onNameChange]);
+  const updateName = React.useMemo(() => debounce(() => onNameChange(), 250), [onNameChange]);
 
   React.useEffect(() => {
     updateName();
@@ -534,14 +539,13 @@ export default function EditExternals(props) {
 
   const onDescChange = React.useCallback(() => {
     const regex = new RegExp(
-      //eslint-disable-next-line
-      "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,64}(?<![ /\._-])$"
+      EXTERNAL_DESC_REGEX
     );
 
     setExtDescErr(extDesc ? !regex.test(extDesc) : false);
   }, [extDesc]);
 
-  const updateDesc = React.useMemo(() => debounce(() => onDescChange(), 100), [onDescChange]);
+  const updateDesc = React.useMemo(() => debounce(() => onDescChange(), 250), [onDescChange]);
 
   React.useEffect(() => {
     updateDesc();
@@ -549,7 +553,7 @@ export default function EditExternals(props) {
 
   const onCidrChange = React.useCallback(() => {
     const regex = new RegExp(
-      "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(/(3[0-2]|[1-2][0-9]|[0-9]))$"
+      CIDR_REGEX
     );
 
     const cidrError = extCidr ? !regex.test(extCidr) : false;
@@ -597,14 +601,10 @@ export default function EditExternals(props) {
       extOverlap = isSubnetOverlap(extCidr, extNetworks);
     }
 
-    if(extCidr.length > 0) {
-      setExtCidrErr(cidrError || !cidrInBlock || resvOverlap || vnetOverlap || extOverlap);
-    } else {
-      setExtCidrErr(false);
-    }
+    setExtCidrErr(cidrError || !cidrInBlock || resvOverlap || vnetOverlap || extOverlap);
   }, [extCidr, space, block, networks, externals]);
 
-  const updateCidr = React.useMemo(() => debounce(() => onCidrChange(), 100), [onCidrChange]);
+  const updateCidr = React.useMemo(() => debounce(() => onCidrChange(), 250), [onCidrChange]);
 
   React.useEffect(() => {
     updateCidr();
@@ -746,138 +746,191 @@ export default function EditExternals(props) {
           >
             <Box
               sx={{
-                pl:2,
+                pl: 1,
                 height: '100%',
                 display: 'flex',
                 flex: '1 1 auto',
                 alignItems: 'center',
-                width: columnState && columnState[0].flex > 1 ? columnState[0].flex : 'calc(((100% - 40px) / 1.75) * 0.5)',
-                borderRight: '1px solid rgb(224, 224, 224)',
-                // backgroundColor: extNameErr ? theme.palette.mode === 'dark' ? 'rgba(255, 0, 0, 0.5)' : 'rgba(255, 0, 0, 0.1)' : 'unset'
+                width: columnState && columnState[0].flex > 1 ? columnState[0].flex : 'calc(((100% - 40px) / 1.80) * 0.5)',
+                borderRight: '1px solid rgb(224, 224, 224)'
               }}
               style={
                 theme.palette.mode === 'dark'
-                ? extNameErr
+                ? (extNameErr && extName.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.5)' }
                   : { backgroundColor: 'rgb(49, 57, 67)' }
-                : extNameErr
+                : (extNameErr && extName.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.1)' }
                   : { backgroundColor: 'unset' }
               }
             >
-              <Tooltip
-                arrow
-                placement="bottom"
-                title="Network Name"
-              >
-                <TextField
-                  fullWidth
-                  placeholder="Name"
-                  value={extName}
-                  onChange={(event) => { setExtName(event.target.value) }}
-                  inputProps={{
-                    spellCheck: 'false',
-                    style: {
-                      fontSize: '14px',
-                      fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
-                      padding: '4px 0px 5px'
+              <OutlinedInput
+                fullWidth
+                placeholder="Name"
+                value={extName}
+                onChange={(event) => { setExtName(event.target.value) }}
+                inputProps={{
+                  spellCheck: 'false',
+                  style: {
+                    fontSize: '14px',
+                    fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+                    padding: '4px 0px 5px'
+                  }
+                }}
+                endAdornment={
+                  <Tooltip
+                    arrow
+                    placement="top"
+                    title={
+                      <>
+                        - External network name must be unique
+                        <br />- Max of 32 characters
+                        <br />- Can contain alphnumerics
+                        <br />- Can contain underscore, hypen, and period
+                        <br />- Cannot start/end with underscore, hypen, or period
+                      </>
                     }
-                  }}
-                  sx={{
-                    "& fieldset": { border: 'none' },
-                  }}
-                />
-              </Tooltip>
+                  >
+                    <InfoOutlined
+                      fontSize="small"
+                      sx={{
+                        pl: 0.5,
+                        color: 'lightgrey',
+                        cursor: 'default'
+                      }}
+                    />
+                  </Tooltip>
+                }
+                sx={{
+                  "& fieldset": { border: 'none' },
+                }}
+              />
             </Box>
             <Box
               sx={{
-                pl:2,
+                pl: 1,
                 height: '100%',
                 display: 'flex',
                 flex: '1 1 auto',
                 alignItems: 'center',
-                width: columnState && columnState[1].flex > 1 ? columnState[1].flex : 'calc(((100% - 40px) / 1.75) * 1)',
-                borderRight: '1px solid rgb(224, 224, 224)',
-                // backgroundColor: extDescErr ? theme.palette.mode === 'dark' ? 'rgba(255, 0, 0, 0.5)' : 'rgba(255, 0, 0, 0.1)' : 'unset'
+                width: columnState && columnState[1].flex > 1 ? columnState[1].flex : 'calc(((100% - 40px) / 1.80) * 1)',
+                borderRight: '1px solid rgb(224, 224, 224)'
               }}
               style={
                 theme.palette.mode === 'dark'
-                ? extDescErr
+                ? (extDescErr && extDesc.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.5)' }
                   : { backgroundColor: 'rgb(49, 57, 67)' }
-                : extDescErr
+                : (extDescErr && extDesc.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.1)' }
                   : { backgroundColor: 'unset' }
               }
             >
-              <Tooltip
-                arrow
-                placement="bottom"
-                title="Network Description"
-              >
-                <TextField
-                  fullWidth
-                  placeholder="Description"
-                  value={extDesc}
-                  onChange={(event) => { setExtDesc(event.target.value) }}
-                  inputProps={{
-                    spellCheck: 'false',
-                    style: {
-                      fontSize: '14px',
-                      fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
-                      padding: '4px 0px 5px'
+              <OutlinedInput
+                fullWidth
+                placeholder="Description"
+                value={extDesc}
+                onChange={(event) => { setExtDesc(event.target.value) }}
+                inputProps={{
+                  spellCheck: 'false',
+                  style: {
+                    fontSize: '14px',
+                    fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+                    padding: '4px 0px 5px'
+                  }
+                }}
+                endAdornment={
+                  <Tooltip
+                    arrow
+                    placement="top"
+                    title={
+                      <>
+                        - Max of 64 characters
+                        <br />- Can contain alphnumerics
+                        <br />- Can contain spaces
+                        <br />- Can contain underscore, hypen, slash, and period
+                        <br />- Cannot start/end with underscore, hypen, slash, or period
+                      </>
                     }
-                  }}
-                  sx={{
-                    "& fieldset": { border: 'none' },
-                  }}
-                />
-              </Tooltip>
+                  >
+                    <InfoOutlined
+                      fontSize="small"
+                      sx={{
+                        pl: 0.5,
+                        color: 'lightgrey',
+                        cursor: 'default'
+                      }}
+                    />
+                  </Tooltip>
+                }
+                sx={{
+                  "& fieldset": { border: 'none' },
+                }}
+              />
             </Box>
             <Box
               sx={{
-                pl:2,
-                pr: 2,
+                pl: 1,
                 height: '100%',
                 display: 'flex',
                 flex: '1 1 auto',
                 alignItems: 'center',
-                width: columnState && columnState[2].flex > 1 ? columnState[2].flex : 'calc(((100% - 40px) / 1.75) * 0.25)',
-                // backgroundColor: extCidrErr ? theme.palette.mode === 'dark' ? 'rgba(255, 0, 0, 0.5)' : 'rgba(255, 0, 0, 0.1)' : 'unset'
+                width: columnState && columnState[2].flex > 1 ? columnState[2].flex : 'calc(((100% - 40px) / 1.80) * 0.3)',
               }}
               style={
                 theme.palette.mode === 'dark'
-                ? extCidrErr
+                ? (extCidrErr && extCidr.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.5)' }
                   : { backgroundColor: 'rgb(49, 57, 67)' }
-                : extCidrErr
+                : (extCidrErr && extCidr.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.1)' }
                   : { backgroundColor: 'unset' }
               }
             >
-              <Tooltip
-                arrow
-                placement="bottom"
-                title="Network CIDR"
-              >
-                <TextField
-                  fullWidth
-                  placeholder="CIDR"
-                  value={extCidr}
-                  onChange={(event) => { setExtCidr(event.target.value) }}
-                  inputProps={{
-                    spellCheck: 'false',
-                    style: {
-                      fontSize: '14px',
-                      fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
-                      padding: '4px 0px 5px'
+              <OutlinedInput
+                fullWidth
+                placeholder="CIDR"
+                value={extCidr}
+                onChange={(event) => { setExtCidr(event.target.value) }}
+                inputProps={{
+                  spellCheck: 'false',
+                  style: {
+                    fontSize: '14px',
+                    fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+                    padding: '4px 0px 5px'
+                  }
+                }}
+                endAdornment={
+                  <Tooltip
+                    arrow
+                    placement="top"
+                    title={
+                      <>
+                        - Must be in valid CIDR notation format
+                        <br />&nbsp;&nbsp;&nbsp;&nbsp;• Example: 1.2.3.4/5
+                        <br />- Must be a subset of the containing Block CIDR
+                        <br />- Cannot overlap any associated Networks
+                        <br />&nbsp;&nbsp;&nbsp;&nbsp;• Virtual Networks
+                        <br />&nbsp;&nbsp;&nbsp;&nbsp;• Virtual Hubs
+                        <br />- Cannot overlap any unfulfilled Reservations
+                      </>
                     }
-                  }}
-                  sx={{
-                    "& fieldset": { border: 'none' },
-                  }}
-                />
-              </Tooltip>
+                  >
+                    <InfoOutlined
+                      fontSize="small"
+                      sx={{
+                        pl: 0.5,
+                        color: 'lightgrey',
+                        cursor: 'default'
+                      }}
+                    />
+                  </Tooltip>
+                }
+                sx={{
+                  pr: 1,
+                  "& fieldset": { border: 'none' },
+                }}
+              />
             </Box>
             <Box
               sx={{

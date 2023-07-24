@@ -45,6 +45,12 @@ from app.routers.azure import (
 
 from app.logs.logs import ipam_logger as logger
 
+SPACE_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9\._-]){1,64}(?<![\._-])$"
+SPACE_DESC_REGEX = "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$"
+BLOCK_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9/\._-]){1,64}(?<![\._-])$"
+EXTERNAL_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9\._-]){1,32}(?<![\._-])$"
+EXTERNAL_DESC_REGEX = "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,64}(?<![ /\._-])$"
+
 router = APIRouter(
     prefix="/spaces",
     tags=["spaces"],
@@ -58,14 +64,14 @@ async def scrub_space_patch(patch):
         {
             "op": "replace",
             "path": "/name",
-            "valid": "^([a-zA-Z0-9\._-]){1,32}$",
-            "error": "Space name can be a maximum of 32 characters and may contain alphanumerics, underscores, hypens, and periods."
+            "valid": SPACE_NAME_REGEX,
+            "error": "Space name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods."
         },
         {
             "op": "replace",
             "path": "/desc",
-            "valid": "^([a-zA-Z0-9 /\._-]){1,64}$",
-            "error": "Space description can be a maximum of 64 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods."
+            "valid": SPACE_DESC_REGEX,
+            "error": "Space description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods."
         }
     ]
 
@@ -129,8 +135,8 @@ async def scrub_block_patch(patch, space, block_name):
         {
             "op": "replace",
             "path": "/name",
-            "valid": "^([a-zA-Z0-9/\._-]){1,32}$",
-            "error": "Block name can be a maximum of 32 characters and may contain alphanumerics, underscores, hypens, slashes, and periods."
+            "valid": BLOCK_NAME_REGEX,
+            "error": "Block name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, slashes, and periods."
         },
         {
             "op": "replace",
@@ -273,10 +279,10 @@ async def create_space(
     if not is_admin:
         raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
-    if not re.match("^([a-zA-Z0-9\._-]){1,32}$", space.name, re.IGNORECASE):
+    if not re.match(SPACE_NAME_REGEX, space.name, re.IGNORECASE):
         raise HTTPException(status_code=400, detail="Space name can be a maximum of 32 characters and may contain alphanumerics, underscores, hypens, and periods.")
 
-    if not re.match("^([a-zA-Z0-9 /\._-]){1,64}$", space.desc, re.IGNORECASE):
+    if not re.match(SPACE_DESC_REGEX, space.desc, re.IGNORECASE):
         raise HTTPException(status_code=400, detail="Space description can be a maximum of 64 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
@@ -481,6 +487,121 @@ async def delete_space(
 
     return PlainTextResponse(status_code=status.HTTP_200_OK)
 
+@router.post(
+    "/{space}/reservations",
+    summary = "Create CIDR Reservation from List of Blocks",
+    response_model = ReservationExpand,
+    status_code = 201
+)
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error creating cidr reservation, please try again."
+)
+async def create_multi_block_reservation(
+    req: SpaceCIDRReq,
+    space: str = Path(..., description="Name of the target Space"),
+    authorization: str = Header(None, description="Azure Bearer token"),
+    tenant_id: str = Depends(get_tenant_id)
+):
+    """
+    Create a CIDR Reservation for the first available Block from a list of Blocks with the following information:
+
+    - **blocks**: Array of Block names (*Evaluated in the order provided*)
+    - **size**: Network mask bits
+    - **desc**: Description (optional)
+    - **reverse_search**:
+        - **true**: New networks will be created as close to the <u>end</u> of the block as possible
+        - **false (default)**: New networks will be created as close to the <u>beginning</u> of the block as possible
+    - **smallest_cidr**:
+        - **true**: New networks will be created using the smallest possible available block (e.g. it will not break up large CIDR blocks when possible)
+        - **false (default)**: New networks will be created using the first available block, regardless of size
+    """
+
+    user_assertion = authorization.split(' ')[1]
+    decoded = jwt.decode(user_assertion, options={"verify_signature": False})
+
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
+
+    request_blocks = set(req.blocks)
+    space_blocks = set([x['name'] for x in target_space['blocks']])
+    invalid_blocks = (request_blocks - space_blocks)
+
+    if invalid_blocks:
+        raise HTTPException(status_code=400, detail="Invalid Block(s) in Block list: {}.".format(list(invalid_blocks)))
+
+    net_list = await get_network(authorization, True)
+
+    available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
+    next_selector = -1 if req.reverse_search else 0
+
+    available_block = None
+    available_block_name = None
+
+    for block in req.blocks:
+        if not available_block:
+            target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
+
+            block_all_cidrs = []
+
+            for v in target_block['vnets']:
+                target = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
+                prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes'])) if target else []
+                block_all_cidrs += prefixes
+
+            for r in (r for r in target_block['resv'] if not r['settledOn']):
+                block_all_cidrs.append(r['cidr'])
+
+            for e in (e for e in target_block['externals']):
+                block_all_cidrs.append(e['cidr'])
+
+            block_set = IPSet([target_block['cidr']])
+            reserved_set = IPSet(block_all_cidrs)
+            available_set = block_set ^ reserved_set
+
+            if req.smallest_cidr:
+                cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
+                min_mask = max(map(lambda x: x.prefixlen, cidr_list), default = None)
+                available_block = next((net for net in list(filter(lambda network: network.prefixlen == min_mask, cidr_list))), None)
+            else:
+                available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
+
+            available_block_name = block if available_block else None
+
+    if not available_block:
+        raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block(s).")
+
+    next_cidr = list(available_block.subnet(req.size))[next_selector]
+
+    if "preferred_username" in decoded:
+        creator_id = decoded["preferred_username"]
+    else:
+        creator_id = f"spn:{decoded['oid']}"
+
+    new_cidr = {
+        "id": shortuuid.uuid(),
+        "cidr": str(next_cidr),
+        "desc": req.desc,
+        "createdOn": time.time(),
+        "createdBy": creator_id,
+        "settledOn": None,
+        "settledBy": None,
+        "status": "wait"
+    }
+
+    target_block['resv'].append(new_cidr)
+
+    await cosmos_replace(space_query[0], target_space)
+
+    new_cidr['space'] = target_space['name']
+    new_cidr['block'] = available_block_name
+
+    return new_cidr
+
 @router.get(
     "/{space}/blocks",
     summary = "Get all Blocks within a Space",
@@ -604,7 +725,7 @@ async def create_block(
     except:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
-    if not re.match("^([a-zA-Z0-9/\._-]){1,32}$", block.name, re.IGNORECASE):
+    if not re.match(BLOCK_NAME_REGEX, block.name, re.IGNORECASE):
         raise HTTPException(status_code=400, detail="Block name can be a maximum of 32 characters and may contain alphanumerics, underscores, hypens, slashes, and periods.")
 
     try:
@@ -633,118 +754,6 @@ async def create_block(
     await cosmos_replace(space_query[0], target_space)
 
     return new_block
-
-@router.post(
-    "/{space}/reservations",
-    summary = "Create CIDR Reservation from List of Blocks",
-    response_model = ReservationExpand,
-    status_code = 201
-)
-@cosmos_retry(
-    max_retry = 5,
-    error_msg = "Error creating cidr reservation, please try again."
-)
-async def create_multi_block_reservation(
-    req: SpaceCIDRReq,
-    space: str = Path(..., description="Name of the target Space"),
-    authorization: str = Header(None, description="Azure Bearer token"),
-    tenant_id: str = Depends(get_tenant_id)
-):
-    """
-    Create a CIDR Reservation for the first available Block from a list of Blocks with the following information:
-
-    - **blocks**: Array of Block names (*Evaluated in the order provided*)
-    - **size**: Network mask bits
-    - **desc**: Description (optional)
-    - **reverse_search**:
-        - **true**: New networks will be created as close to the <u>end</u> of the block as possible
-        - **false (default)**: New networks will be created as close to the <u>beginning</u> of the block as possible
-    - **smallest_cidr**:
-        - **true**: New networks will be created using the smallest possible available block (e.g. it will not break up large CIDR blocks when possible)
-        - **false (default)**: New networks will be created using the first available block, regardless of size
-    """
-
-    user_assertion = authorization.split(' ')[1]
-    decoded = jwt.decode(user_assertion, options={"verify_signature": False})
-
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
-
-    try:
-        target_space = copy.deepcopy(space_query[0])
-    except:
-        raise HTTPException(status_code=400, detail="Invalid space name.")
-
-    request_blocks = set(req.blocks)
-    space_blocks = set([x['name'] for x in target_space['blocks']])
-    invalid_blocks = (request_blocks - space_blocks)
-
-    if invalid_blocks:
-        raise HTTPException(status_code=400, detail="Invalid Block(s) in Block list: {}.".format(list(invalid_blocks)))
-
-    net_list = await get_network(authorization, True)
-
-    available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
-    next_selector = -1 if req.reverse_search else 0
-
-    available_block = None
-    available_block_name = None
-
-    for block in req.blocks:
-        if not available_block:
-            target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
-
-            block_all_cidrs = []
-
-            for v in target_block['vnets']:
-                target = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
-                prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes'])) if target else []
-                block_all_cidrs += prefixes
-
-            for r in (r for r in target_block['resv'] if not r['settledOn']):
-                block_all_cidrs.append(r['cidr'])
-
-            block_set = IPSet([target_block['cidr']])
-            reserved_set = IPSet(block_all_cidrs)
-            available_set = block_set ^ reserved_set
-
-            if req.smallest_cidr:
-                cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
-                min_mask = max(map(lambda x: x.prefixlen, cidr_list), default = None)
-                available_block = next((net for net in list(filter(lambda network: network.prefixlen == min_mask, cidr_list))), None)
-            else:
-                available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
-
-            available_block_name = block if available_block else None
-
-    if not available_block:
-        raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block(s).")
-
-    next_cidr = list(available_block.subnet(req.size))[next_selector]
-
-    if "preferred_username" in decoded:
-        creator_id = decoded["preferred_username"]
-    else:
-        creator_id = f"spn:{decoded['oid']}"
-
-    new_cidr = {
-        "id": shortuuid.uuid(),
-        "cidr": str(next_cidr),
-        "desc": req.desc,
-        "createdOn": time.time(),
-        "createdBy": creator_id,
-        "settledOn": None,
-        "settledBy": None,
-        "status": "wait"
-    }
-
-    target_block['resv'].append(new_cidr)
-
-    await cosmos_replace(space_query[0], target_space)
-
-    new_cidr['space'] = target_space['name']
-    new_cidr['block'] = available_block_name
-
-    return new_cidr
 
 @router.get(
     "/{space}/blocks/{block}",
@@ -985,10 +994,13 @@ async def available_block_nets(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     net_list = await get_network(authorization, True)
-    resv_list = IPSet(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
+    resv_cidrs = IPSet(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
+    ext_cidrs = IPSet(x['cidr'] for x in target_block['externals'])
+
+    excluded_cidrs = (resv_cidrs | ext_cidrs)
 
     for net in net_list:
-        valid = list(filter(lambda x: (IPNetwork(x) in IPNetwork(target_block['cidr']) and not (IPSet([x]) & resv_list)), net['prefixes']))
+        valid = list(filter(lambda x: (IPNetwork(x) in IPNetwork(target_block['cidr']) and not (IPSet([x]) & excluded_cidrs)), net['prefixes']))
 
         if valid:
             net['prefixes'] = valid
@@ -1117,8 +1129,12 @@ async def create_block_net(
         raise HTTPException(status_code=400, detail="Network CIDR not within block CIDR.")
 
     block_net_cidrs = []
-    resv_cidrs = IPSet(x['cidr'] for x in target_block['resv'])
+
+    resv_cidrs = list(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
     block_net_cidrs += resv_cidrs
+
+    ext_cidrs = list(x['cidr'] for x in target_block['externala'])
+    block_net_cidrs += ext_cidrs
 
     for v in target_block['vnets']:
         target = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
@@ -1190,7 +1206,8 @@ async def update_block_vnets(
     outside_block_cidr = []
     net_ipset = IPSet([])
     net_overlap = False
-    resv_ipset = IPSet(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
+    resv_cidrs = IPSet(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
+    ext_cidrs = IPSet(x['cidr'] for x in target_block['externals'])
 
     for v in vnets:
         target_net = next((x for x in net_list if x['id'].lower() == v.lower()), None)
@@ -1208,17 +1225,20 @@ async def update_block_vnets(
                 else:
                     net_overlap = True
 
+    if len(invalid_nets) > 0:
+        raise HTTPException(status_code=400, detail="Invalid network ID(s): {}".format(invalid_nets))
+
     if net_overlap:
         raise HTTPException(status_code=400, detail="Network list contains overlapping CIDRs.")
 
-    if (net_ipset & resv_ipset):
+    if (net_ipset & resv_cidrs):
         raise HTTPException(status_code=400, detail="Network list contains CIDR(s) that overlap outstanding reservations.")
+
+    if (net_ipset & ext_cidrs):
+        raise HTTPException(status_code=400, detail="Network list contains CIDR(s) that overlap external networks.")
 
     if len(outside_block_cidr) > 0:
         raise HTTPException(status_code=400, detail="Network CIDR(s) not within Block CIDR: {}".format(outside_block_cidr))
-
-    if len(invalid_nets) > 0:
-        raise HTTPException(status_code=400, detail="Invalid network ID(s): {}".format(invalid_nets))
 
     new_net_list = []
 
@@ -1366,10 +1386,10 @@ async def create_block_external_net(
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    if not re.match("^(?![\._-])([a-zA-Z0-9\._-]){1,32}(?<![\._-])$", external.name, re.IGNORECASE):
+    if not re.match(EXTERNAL_NAME_REGEX, external.name, re.IGNORECASE):
         raise HTTPException(status_code=400, detail="External network name can be a maximum of 32 characters and may contain alphanumerics, underscores, hypens, and periods.")
 
-    if not re.match("^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,64}(?<![ /\._-])$", external.desc, re.IGNORECASE):
+    if not re.match(EXTERNAL_DESC_REGEX, external.desc, re.IGNORECASE):
         raise HTTPException(status_code=400, detail="External network description can be a maximum of 64 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
@@ -1397,8 +1417,6 @@ async def create_block_external_net(
     block_net_cidrs = []
     resv_cidrs = IPSet(x['cidr'] for x in target_block['resv'])
     ext_cidrs = IPSet(x['cidr'] for x in target_block['externals'])
-    block_net_cidrs += resv_cidrs
-    block_net_cidrs += ext_cidrs
 
     for v in target_block['vnets']:
         target = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
@@ -1407,10 +1425,14 @@ async def create_block_external_net(
             prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes']))
             block_net_cidrs += prefixes
 
-    cidr_overlap = IPSet(block_net_cidrs) & IPSet([external.cidr])
+    if IPSet([external.cidr]) & ext_cidrs:
+        raise HTTPException(status_code=400, detail="Block contains external network(s) which overlap the target external network.")
 
-    if cidr_overlap:
-        raise HTTPException(status_code=400, detail="Block already contains network(s) and/or reservation(s) within the CIDR range of target external network.")
+    if IPSet([external.cidr]) & resv_cidrs:
+        raise HTTPException(status_code=400, detail="Block contains unfulfilled reservation(s) which overlap the target external network.")
+    
+    if IPSet([external.cidr]) & IPSet(block_net_cidrs):
+        raise HTTPException(status_code=400, detail="Block contains a virtual network(s) or hub(s) which overlap the target external network.")
 
     target_block['externals'].append(jsonable_encoder(external))
 
@@ -1461,10 +1483,10 @@ async def update_block_external_net(
     invalid_descs = []
 
     for external in externals:
-        if not re.match("^(?![\._-])([a-zA-Z0-9\._-]){1,32}(?<![\._-])$", external['name'], re.IGNORECASE):
+        if not re.match(EXTERNAL_NAME_REGEX, external['name'], re.IGNORECASE):
             invalid_names.append(external['name'])
 
-        if not re.match("^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,64}(?<![ /\._-])$", external['desc'], re.IGNORECASE):
+        if not re.match(EXTERNAL_DESC_REGEX, external['desc'], re.IGNORECASE):
             invalid_descs.append(external['desc'])
 
     if invalid_names:
@@ -1505,10 +1527,7 @@ async def update_block_external_net(
         raise HTTPException(status_code=400, detail="List contains external network CIDR(s) outside the block CIDR.")
 
     block_net_cidrs = []
-    resv_cidrs = IPSet(x['cidr'] for x in target_block['resv'])
-    # ext_cidrs = IPSet(x['cidr'] for x in target_block['externals'])
-    block_net_cidrs += resv_cidrs
-    # block_net_cidrs += ext_cidrs
+    resv_cidrs = IPSet(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
 
     for v in target_block['vnets']:
         target = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
@@ -1517,11 +1536,12 @@ async def update_block_external_net(
             prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes']))
             block_net_cidrs += prefixes
 
-    cidr_overlap = IPSet(block_net_cidrs) & external_nets_set
+    if external_nets_set & IPSet(block_net_cidrs):
+        raise HTTPException(status_code=400, detail="Block contains virtual network(s) or hub(s) within the CIDR range of one or more external networks.")
 
-    if cidr_overlap:
-        raise HTTPException(status_code=400, detail="Block already contains network(s) and/or reservation(s) within the CIDR range of one or more external networks.")
-
+    if external_nets_set & resv_cidrs:
+        raise HTTPException(status_code=400, detail="Block contains unfulfilled reservation(s) within the CIDR range of one or more external networks.")
+    
     target_block['externals'] = jsonable_encoder(externals)
 
     await cosmos_replace(space_query[0], target_space)
@@ -1778,6 +1798,9 @@ async def create_block_reservation(
 
     for r in (r for r in target_block['resv'] if not r['settledOn']):
         block_all_cidrs.append(r['cidr'])
+
+    for e in (e for e in target_block['externals']):
+        block_all_cidrs.append(e['cidr'])
 
     block_set = IPSet([target_block['cidr']])
     reserved_set = IPSet(block_all_cidrs)
