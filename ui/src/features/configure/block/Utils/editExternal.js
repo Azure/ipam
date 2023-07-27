@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
-import { isEmpty, isEqual, pickBy, orderBy, debounce, cloneDeep } from 'lodash';
+import { isEmpty, isEqual, pickBy, orderBy, cloneDeep } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
@@ -49,6 +49,7 @@ import {
 } from "../../../ipam/ipamAPI";
 
 import {
+  fetchNetworksAsync,
   selectSubscriptions,
   selectNetworks,
   selectViewSetting,
@@ -185,7 +186,6 @@ function HeaderMenu(props) {
             anchorEl={menuRef.current}
             open={menuOpen}
             onClose={onClick}
-            // onClick={onClick}
             anchorOrigin={{
               vertical: 'bottom',
               horizontal: 'center',
@@ -265,19 +265,16 @@ export default function EditExternals(props) {
   const [deleted, setDeleted] = React.useState([]);
   const [gridData, setGridData] = React.useState(null);
   const [sending, setSending] = React.useState(false);
+  const [refreshingData, setRefreshingData] = React.useState(false);
   const [selectionModel, setSelectionModel] = React.useState({});
 
   const [columnState, setColumnState] = React.useState(null);
   const [columnOrderState, setColumnOrderState] = React.useState([]);
   const [columnSortState, setColumnSortState] = React.useState({});
 
-  const [extName, setExtName] = React.useState("");
-  const [extNameErr, setExtNameErr] = React.useState(true);
-  const [extDesc, setExtDesc] = React.useState("");
-  const [extDescErr, setExtDescErr] = React.useState(true);
-  const [extCidr, setExtCidr] = React.useState("");
-  const [extCidrErr, setExtCidrErr] = React.useState(true);
-  const [hasError, setHasError] = React.useState(true);
+  const [extName, setExtName] = React.useState({ value: "", error: true });
+  const [extDesc, setExtDesc] = React.useState({ value: "", error: true });
+  const [extCidr, setExtCidr] = React.useState({ value: "", error: true });
 
   const subscriptions = useSelector(selectSubscriptions);
   const networks = useSelector(selectNetworks);
@@ -458,20 +455,42 @@ export default function EditExternals(props) {
     }
   }, [saveTimer, sendResults]);
 
+  function refreshData() {
+    (async() => {
+      try {
+        setRefreshingData(true);
+        await dispatch(fetchNetworksAsync());
+      } catch (e) {
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.message, { variant: "error" });
+      } finally {
+        setRefreshingData(false);
+      }
+    })();
+  }
+
+  function refreshAll() {
+    refresh();
+    refreshData();
+  }
+
   function onAddExternal() {
     if(!hasError) {
       setAdded(prev => [
         ...prev,
         {
-          name: extName,
-          desc: extDesc,
-          cidr: extCidr
+          name: extName.value,
+          desc: extDesc.value,
+          cidr: extCidr.value
         }
       ]);
 
-      setExtName("");
-      setExtDesc("");
-      setExtCidr("");
+      setExtName({ value: "", error: true });
+      setExtDesc({ value: "", error: true });
+      setExtCidr({ value: "", error: true });
     }
   }
 
@@ -505,9 +524,9 @@ export default function EditExternals(props) {
     setAdded([]);
     setDeleted([]);
 
-    setExtName("");
-    setExtDesc("");
-    setExtCidr("");
+    setExtName({ value: "", error: true });
+    setExtDesc({ value: "", error: true });
+    setExtCidr({ value: "", error: true });
 
     handleClose();
   }
@@ -518,55 +537,56 @@ export default function EditExternals(props) {
     enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
   }, [enqueueSnackbar]);
 
-  const onNameChange = React.useCallback(() => {
+  function onNameChange(event) {
+    const newName = event.target.value;
+
     if(externals) {
       const regex = new RegExp(
         EXTERNAL_NAME_REGEX
       );
 
-      const nameError = extName ? !regex.test(extName) : false;
-      const nameExists = externals.map(e => e.name.toLowerCase()).includes(extName.toLowerCase());
+      const nameError = newName ? !regex.test(newName) : false;
+      const nameExists = externals.map(e => e.name.toLowerCase()).includes(newName.toLowerCase());
 
-      setExtNameErr(nameError || nameExists)
+      setExtName({
+          value: newName,
+          error: (nameError || nameExists)
+      });
     }
-  }, [externals, extName]);
+  }
 
-  const updateName = React.useMemo(() => debounce(() => onNameChange(), 250), [onNameChange]);
+  function onDescChange(event) {
+    const newDesc = event.target.value;
 
-  React.useEffect(() => {
-    updateName();
-  }, [extName, updateName]);
-
-  const onDescChange = React.useCallback(() => {
     const regex = new RegExp(
       EXTERNAL_DESC_REGEX
     );
 
-    setExtDescErr(extDesc ? !regex.test(extDesc) : false);
-  }, [extDesc]);
+    setExtDesc({
+      value: newDesc,
+      error: (newDesc ? !regex.test(newDesc) : false)
+    });
+  }
 
-  const updateDesc = React.useMemo(() => debounce(() => onDescChange(), 250), [onDescChange]);
+  function onCidrChnage(event) {
+    const newCidr = event.target.value;
 
-  React.useEffect(() => {
-    updateDesc();
-  }, [extDesc, updateDesc]);
-
-  const onCidrChange = React.useCallback(() => {
     const regex = new RegExp(
       CIDR_REGEX
     );
 
-    const cidrError = extCidr ? !regex.test(extCidr) : false;
+    const cidrError = newCidr ? !regex.test(newCidr) : false;
 
     var blockNetworks= [];
     var extNetworks = [];
+
     var cidrInBlock = false;
     var resvOverlap = true;
     var vnetOverlap = true;
     var extOverlap = true;
 
-    if(!cidrError && extCidr.length > 0) {
-      cidrInBlock = isSubnetOf(extCidr, block.cidr);
+    if(!cidrError && newCidr.length > 0) {
+      cidrInBlock = isSubnetOf(newCidr, block.cidr);
 
       const openResv = block?.resv.reduce((acc, curr) => {
         if(!curr['settledOn']) {
@@ -596,19 +616,23 @@ export default function EditExternals(props) {
         }, []);
       }
 
-      resvOverlap = isSubnetOverlap(extCidr, openResv);
-      vnetOverlap = isSubnetOverlap(extCidr, blockNetworks);
-      extOverlap = isSubnetOverlap(extCidr, extNetworks);
+      resvOverlap = isSubnetOverlap(newCidr, openResv);
+      vnetOverlap = isSubnetOverlap(newCidr, blockNetworks);
+      extOverlap = isSubnetOverlap(newCidr, extNetworks);
     }
 
-    setExtCidrErr(cidrError || !cidrInBlock || resvOverlap || vnetOverlap || extOverlap);
-  }, [extCidr, space, block, networks, externals]);
+    setExtCidr({
+      value: newCidr,
+      error: (cidrError || !cidrInBlock || resvOverlap || vnetOverlap || extOverlap)
+    });
+  }
 
-  const updateCidr = React.useMemo(() => debounce(() => onCidrChange(), 250), [onCidrChange]);
+  const hasError = React.useMemo(() => {
+    const errorCheck = (extName.error || extDesc.error || extCidr.error);
+    const emptyCheck = (extName.value.length === 0 || extDesc.value.length === 0 || extCidr.value.length === 0);
 
-  React.useEffect(() => {
-    updateCidr();
-  }, [extCidr, updateCidr]);
+    return (errorCheck || emptyCheck);
+  }, [extName, extDesc, extCidr]);
 
   React.useEffect(() => {
     if(block) {
@@ -628,13 +652,6 @@ export default function EditExternals(props) {
       setExternals(newData);
     }
   }, [space, block, added, deleted]);
-
-  React.useEffect(() => {
-    const errorCheck = (extNameErr || extDescErr || extCidrErr);
-    const emptyCheck = (extName.length === 0 || extDesc.length === 0 || extCidr.length === 0);
-
-    setHasError(errorCheck || emptyCheck);
-  }, [extName, extNameErr, extDesc, extDescErr, extCidr, extCidrErr]);
 
   return (
     <ExternalContext.Provider value={{ externals, setAdded, deleted, setDeleted, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
@@ -658,8 +675,8 @@ export default function EditExternals(props) {
               <IconButton
                 color="primary"
                 size="small"
-                onClick={refresh}
-                disabled={refreshing || sending}
+                onClick={refreshAll}
+                disabled={refreshing || refreshingData || sending}
               >
                 <Refresh />
               </IconButton>
@@ -698,7 +715,7 @@ export default function EditExternals(props) {
               reservedViewportWidth={0}
               columns={columnState || []}
               columnOrder={columnOrderState}
-              loading={sending || !subscriptions || !externals || refreshing || refreshingState}
+              loading={sending || !subscriptions || !externals || refreshing || refreshingData || refreshingState}
               loadingText={sending ? <Update>Updating</Update> : "Loading"}
               dataSource={gridData || []}
               sortInfo={columnSortState}
@@ -756,10 +773,10 @@ export default function EditExternals(props) {
               }}
               style={
                 theme.palette.mode === 'dark'
-                ? (extNameErr && extName.length > 0)
+                ? (extName.error && extName.value.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.5)' }
                   : { backgroundColor: 'rgb(49, 57, 67)' }
-                : (extNameErr && extName.length > 0)
+                : (extName.error && extName.value.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.1)' }
                   : { backgroundColor: 'unset' }
               }
@@ -767,8 +784,8 @@ export default function EditExternals(props) {
               <OutlinedInput
                 fullWidth
                 placeholder="Name"
-                value={extName}
-                onChange={(event) => { setExtName(event.target.value) }}
+                value={extName.value}
+                onChange={onNameChange}
                 inputProps={{
                   spellCheck: 'false',
                   style: {
@@ -818,10 +835,10 @@ export default function EditExternals(props) {
               }}
               style={
                 theme.palette.mode === 'dark'
-                ? (extDescErr && extDesc.length > 0)
+                ? (extDesc.error && extDesc.value.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.5)' }
                   : { backgroundColor: 'rgb(49, 57, 67)' }
-                : (extDescErr && extDesc.length > 0)
+                : (extDesc.error && extDesc.value.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.1)' }
                   : { backgroundColor: 'unset' }
               }
@@ -829,8 +846,8 @@ export default function EditExternals(props) {
               <OutlinedInput
                 fullWidth
                 placeholder="Description"
-                value={extDesc}
-                onChange={(event) => { setExtDesc(event.target.value) }}
+                value={extDesc.value}
+                onChange={onDescChange}
                 inputProps={{
                   spellCheck: 'false',
                   style: {
@@ -879,10 +896,10 @@ export default function EditExternals(props) {
               }}
               style={
                 theme.palette.mode === 'dark'
-                ? (extCidrErr && extCidr.length > 0)
+                ? (extCidr.error && extCidr.value.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.5)' }
                   : { backgroundColor: 'rgb(49, 57, 67)' }
-                : (extCidrErr && extCidr.length > 0)
+                : (extCidr.error && extCidr.value.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.1)' }
                   : { backgroundColor: 'unset' }
               }
@@ -890,8 +907,8 @@ export default function EditExternals(props) {
               <OutlinedInput
                 fullWidth
                 placeholder="CIDR"
-                value={extCidr}
-                onChange={(event) => { setExtCidr(event.target.value) }}
+                value={extCidr.value}
+                onChange={onCidrChnage}
                 inputProps={{
                   spellCheck: 'false',
                   style: {
@@ -952,16 +969,16 @@ export default function EditExternals(props) {
                 <span>
                   <IconButton
                     disableRipple
-                    disabled={hasError}
+                    disabled={(hasError || sending || refreshing || refreshingData)}
                     onClick={onAddExternal}
                   >
                     <PlaylistAddOutlined
                       style={
                         theme.palette.mode === 'dark'
-                        ? hasError
+                        ? (hasError || sending || refreshing || refreshingData)
                           ? { color: "lightgrey", opacity: 0.25 }
                           : { color: "forestgreen", opacity: 1 }
-                        : hasError
+                        : (hasError || sending || refreshing || refreshingData)
                           ? { color: "black", opacity: 0.25 }
                           : { color: "limegreen", opacity: 1 }
                       }
@@ -982,7 +999,7 @@ export default function EditExternals(props) {
           <LoadingButton
             onClick={onSubmit}
             loading={sending}
-            disabled={unchanged || sending || refreshing || refreshingState}
+            disabled={unchanged || sending || refreshing || refreshingData || refreshingState}
             // sx={{ position: "unset" }}
           >
             Apply

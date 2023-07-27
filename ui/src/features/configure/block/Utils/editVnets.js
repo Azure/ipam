@@ -166,7 +166,6 @@ function HeaderMenu(props) {
             anchorEl={menuRef.current}
             open={menuOpen}
             onClose={onClick}
-            // onClick={onClick}
             anchorOrigin={{
               vertical: 'bottom',
               horizontal: 'center',

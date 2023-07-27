@@ -18,7 +18,7 @@ import {
 } from "../ipam/ipamSlice";
 
 const Wrapper = styled("div")(({ theme }) => ({
-  height: "calc(100vh - 112px)",
+  height: "calc(100vh - 64px)",
   display: "flex",
   flexDirection: "column",
   justifyContent: "flex-start",
