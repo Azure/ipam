@@ -15,6 +15,9 @@ USER root
 # Copy Requirements File
 ADD ./requirements.txt /ipam
 
+# Upgrade PIP
+RUN pip install --upgrade pip
+
 # Install Dependencies
 RUN pip install --no-cache-dir --upgrade -r ./requirements.txt --progress-bar off
 
