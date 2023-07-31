@@ -514,6 +514,13 @@ process {
     # Get Microsoft Graph Access Token
     $accesstoken = (Get-AzAccessToken -Resource "https://$($msGraphMap[$AzureCloud].Endpoint)/").Token
 
+    # Switch Access Token to SecureString if Graph Version is 2.x
+    $graphVersion = [System.Version](Get-InstalledModule -Name Microsoft.Graph).Version
+
+    if ($graphVersion.Major -gt 1) {
+      $accesstoken = ConvertTo-SecureString $accesstoken -AsPlainText -Force
+    }
+
     # Connect to Microsoft Graph
     Write-Host "INFO: Logging in to Microsoft Graph" -ForegroundColor Green
     Write-Verbose -Message "Logging in to Microsoft Graph"
