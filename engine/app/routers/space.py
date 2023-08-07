@@ -746,6 +746,7 @@ async def create_block(
     new_block = {
         **block.dict(),
         "vnets": [],
+        "externals": [],
         "resv": []
     }
 
