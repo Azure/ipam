@@ -339,7 +339,7 @@ export default function BlockDataGrid(props) {
                   <ListItemIcon>
                     <SettingsEthernetIcon fontSize="small" />
                   </ListItemIcon>
-                  Virtual Networks
+                  Block Networks
                 </MenuItem>
               }
               { isAdmin &&
