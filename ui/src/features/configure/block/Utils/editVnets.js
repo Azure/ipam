@@ -517,10 +517,10 @@ export default function EditVnets(props) {
     })();
   }
 
-  function manualRefresh() {
-    refresh();
-    refreshData();
-  }
+  // function manualRefresh() {
+  //   refresh();
+  //   refreshData();
+  // }
 
   function onSubmit() {
     (async () => {
@@ -572,7 +572,7 @@ export default function EditVnets(props) {
               <IconButton
                 color="primary"
                 size="small"
-                onClick={manualRefresh}
+                onClick={refresh}
                 disabled={sending || refreshing || refreshingState}
               >
                 <Refresh />
