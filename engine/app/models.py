@@ -89,7 +89,7 @@ class ExtNet(BaseModel):
 
     name: str
     desc: str
-    cidr : IPv4Network
+    cidr: IPv4Network
 
 class VNets(BaseModel):
     """DOCSTRING"""
