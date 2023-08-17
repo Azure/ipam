@@ -156,7 +156,7 @@ resources
 | where type =~ 'microsoft.network/virtualhubs'
 | where subscriptionId !in~ {}
 | where isempty(kind)
-| project name, id, prefix = properties.addressPrefix, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, vwan_id = tostring(properties.virtualWan.id)
+| project name, id, prefix = properties.addressPrefix, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, vwan_id = tostring(properties.virtualWan.id), resv = tostring(coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id']))
 | extend vwan_id_lower = tolower(vwan_id)
 | join kind = leftouter (
     resources
@@ -164,7 +164,7 @@ resources
     | project vwan_id = tostring(id), vwan_name = name
     | extend vwan_id_lower = tolower(vwan_id)
 ) on vwan_id_lower
-| project name, id, prefix, vwan_name, vwan_id, resource_group, subscription_id, tenant_id
+| project name, id, prefix, vwan_name, vwan_id, resource_group, subscription_id, tenant_id, resv
 """
 
 PRIVATE_ENDPOINT = """
@@ -434,6 +434,7 @@ resources
 | where type =~ 'Microsoft.ApiManagement/service'
 | where subscriptionId !in~ {}
 | where properties.provisioningState =~ 'Succeeded'
+| where isnotnull(properties.virtualNetworkConfiguration)
 | mv-expand privateIP = properties.privateIPAddresses, publicIP = properties.publicIPAddresses
 | project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, private_ip = privateIP, public_ip = publicIP, subnet_id = tostring(properties.virtualNetworkConfiguration.subnetResourceId), tenant_id = tenantId, vnet_type = properties.virtualNetworkType
 | extend subnet_id_lower = tolower(subnet_id)

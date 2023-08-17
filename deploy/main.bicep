@@ -175,6 +175,7 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
 }
 
 // Outputs
+output suffix string = uniqueString(guid)
 output resourceGroupName string = resourceGroup.name
 output appServiceName string = deployAsFunc ? resourceNames.functionName : resourceNames.appServiceName
 output appServiceHostName string = deployAsFunc ? functionApp.outputs.functionAppHostName : appService.outputs.appServiceHostName

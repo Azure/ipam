@@ -168,8 +168,11 @@ async def next_available_vnet(
                 prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes'])) if target else []
                 block_all_cidrs += prefixes
 
-            for r in target_block['resv']:
+            for r in (r for r in target_block['resv'] if not r['settledOn']):
                 block_all_cidrs.append(r['cidr'])
+
+            for e in (e for e in target_block['externals']):
+                block_all_cidrs.append(e['cidr'])
 
             block_set = IPSet([target_block['cidr']])
             reserved_set = IPSet(block_all_cidrs)

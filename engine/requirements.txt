@@ -1,4 +1,5 @@
 fastapi[all]
+pydantic==1.*
 fastapi-restful[all]
 msal
 pyjwt

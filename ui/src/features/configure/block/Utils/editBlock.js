@@ -18,6 +18,11 @@ import LoadingButton from '@mui/lab/LoadingButton';
 
 import { updateBlockAsync } from "../../../ipam/ipamSlice";
 
+import {
+  BLOCK_NAME_REGEX,
+  CIDR_REGEX
+} from "../../../../global/globals";
+
 export default function EditBlock(props) {
   const { open, handleClose, space, blocks, block } = props;
 
@@ -97,8 +102,7 @@ export default function EditBlock(props) {
 
   function validateName(name) {
     const regex = new RegExp(
-      //eslint-disable-next-line
-      "^([a-zA-Z0-9/\._-]){1,32}$"
+      BLOCK_NAME_REGEX
     );
 
     const nameValid = name ? !regex.test(name) : false;
@@ -116,7 +120,7 @@ export default function EditBlock(props) {
 
   function validateCidr(cidr) {
     const regex = new RegExp(
-      "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(/(3[0-2]|[1-2][0-9]|[0-9]))$"
+      CIDR_REGEX
     );
 
     return cidr ? !regex.test(cidr) : false;
@@ -137,9 +141,10 @@ export default function EditBlock(props) {
               title={
                 <>
                   - Block name must be unique
-                  <br />- Max of 32 characters
+                  <br />- Max of 64 characters
                   <br />- Can contain alphnumerics
-                  <br />- Can underscore, hypen, lash, and period
+                  <br />- Can contain underscore, hypen, slash, and period
+                  <br />- Cannot start/end with underscore, hypen, slash, or period
                 </>
               }
             >

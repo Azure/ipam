@@ -18,6 +18,11 @@ import LoadingButton from '@mui/lab/LoadingButton';
 
 import { createSpaceAsync } from "../../../ipam/ipamSlice";
 
+import {
+  SPACE_NAME_REGEX,
+  SPACE_DESC_REGEX
+} from "../../../../global/globals";
+
 export default function AddSpace(props) {
   const { open, handleClose, spaces } = props;
 
@@ -75,8 +80,7 @@ export default function AddSpace(props) {
 
   function validateName(name) {
     const regex = new RegExp(
-      //eslint-disable-next-line
-      "^([a-zA-Z0-9\._-]){1,32}$"
+      SPACE_NAME_REGEX
     );
 
     const nameValid = name ? !regex.test(name) : false;
@@ -94,8 +98,7 @@ export default function AddSpace(props) {
 
   function validateDescription(description) {
     const regex = new RegExp(
-      //eslint-disable-next-line
-      "^([a-zA-Z0-9 /\._-]){1,64}$"
+      SPACE_DESC_REGEX
     );
 
     return description ? !regex.test(description) : false;
@@ -116,9 +119,10 @@ export default function AddSpace(props) {
               title={
                 <>
                   - Space name must be unique
-                  <br />- Max of 32 characters
+                  <br />- Max of 64 characters
                   <br />- Can contain alphnumerics
-                  <br />- Can underscore, hypen, and period
+                  <br />- Can contain underscore, hypen, and period
+                  <br />- Cannot start/end with underscore, hypen, or period
                 </>
               }
             >
@@ -143,10 +147,11 @@ export default function AddSpace(props) {
               placement="right"
               title={
                 <>
-                  - Max of 64 characters
+                  - Max of 128 characters
                   <br />- Can contain alphnumerics
                   <br />- Can contain spaces
-                  <br />- Can underscore, hypen, slash, and period
+                  <br />- Can contain underscore, hypen, slash, and period
+                  <br />- Cannot start/end with underscore, hypen, slash, or period
                 </>
               }
             >

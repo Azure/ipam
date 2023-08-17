@@ -490,7 +490,7 @@ async def get_network(
     for vwan in networks[1]:
         vwan['type'] = 'vhub'
         vwan['prefixes'] = [vwan['prefix']]
-        vwan['resv'] = None
+
         del vwan['prefix']
 
         for peering in vwan['peerings']:
@@ -729,7 +729,6 @@ async def multi(
 async def match_resv_to_vnets():
     net_list = await get_network(None, globals.TENANT_ID, True)
     stale_resv = list(i for j in list(str_to_list(x['resv']) for x in net_list if x['resv'] != None) for i in j)
-    # ignore_status = ['fulfilled', 'cencelledByUser', 'cancelledTimeout']
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", globals.TENANT_ID)
 
@@ -751,18 +750,13 @@ async def match_resv_to_vnets():
                 else:
                     net['active'] = False
 
+            # print("Beginning Reservation Matching...")
             for index, resv in enumerate(block['resv']):
+                # print("Block {} has reservations...".format(block['name']))
                 if resv['settledOn'] is None:
+                    # print("Reservation {} is not settled...".format(resv['id']))
                     if resv['id'] in stale_resv:
                         net = next((x for x in net_list if resv['id'] in str_to_list(x['resv'])), None)
-
-                        # print("RESV: {}".format(resv['id']))
-                        # print("BLOCK: {}".format(block['name']))
-                        # print("VNET IDS:")
-                        # for x in net_list:
-                        #     if x['resv'] == resv['id']:
-                        #         print("Match Found!")
-                        #         print(x['resv'])
 
                         stale_resv.remove(resv['id'])
                         resv['status'] = "wait"
@@ -813,7 +807,3 @@ async def match_resv_to_vnets():
                         resv['status'] = "wait"
 
         await cosmos_replace(original_space, space)
-
-    # print("STALE:")
-    # print(stale_resv)
-    # print(query['spaces'])

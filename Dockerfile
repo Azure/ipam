@@ -52,6 +52,10 @@ WORKDIR /code
 # Install Engine Dependencies
 COPY ./engine/requirements.txt /code/requirements.txt
 
+# Upgrade PIP
+RUN pip install --upgrade pip
+
+# Install Dependencies
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
 # Copy Engine Code

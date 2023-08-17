@@ -7,6 +7,7 @@ import { isEmpty, isEqual, pickBy, orderBy, sortBy } from 'lodash';
 import { useSnackbar } from "notistack";
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
+// import SelectFilter from '@inovua/reactdatagrid-community/SelectFilter'
 import '@inovua/reactdatagrid-community/index.css';
 import '@inovua/reactdatagrid-community/theme/default-dark.css'
 
@@ -50,6 +51,9 @@ import {
   selectViewSetting,
   updateMeAsync
 } from "../../../ipam/ipamSlice";
+
+const vNetPattern = "/Microsoft.Network/virtualNetworks/";
+const vHubPattern = "/Microsoft.Network/virtualHubs/";
 
 const NetworkContext = React.createContext({});
 
@@ -166,7 +170,6 @@ function HeaderMenu(props) {
             anchorEl={menuRef.current}
             open={menuOpen}
             onClose={onClick}
-            // onClick={onClick}
             anchorOrigin={{
               vertical: 'bottom',
               horizontal: 'center',
@@ -264,6 +267,21 @@ export default function EditVnets(props) {
 
   const columns = React.useMemo(() => [
     { name: "name", header: "Name", type: "string", flex: 1, visible: true },
+    {
+      name: "type",
+      header: "Type",
+      type: "string",
+      flex: 0.45,
+      visible: true,
+      // filterEditor: SelectFilter,
+      // filterEditorProps: {
+      //   multiple: true,
+      //   wrapMultiple: false,
+      //   dataSource: ['vNET', 'vHUB'].map(c => {
+      //     return { id: c, label: c}
+      //   }),
+      // }
+    },
     { name: "resource_group", header: "Resource Group", type: "string", flex: 1, visible: true },
     { name: "subscription_name", header: "Subscription Name", type: "string", flex: 1, visible: true },
     { name: "subscription_id", header: "Subscription ID", type: "string", flex: 1, visible: false },
@@ -273,6 +291,8 @@ export default function EditVnets(props) {
 
   const filterValue = [
     { name: "name", operator: "contains", type: "string", value: "" },
+    // { name: "type", operator: "inlist", type: "select", value: ["vNET", "vHUB"] },
+    { name: "type", operator: "contains", type: "string", value: "" },
     { name: "resource_group", operator: "contains", type: "string", value: "" },
     { name: "subscription_name", operator: "contains", type: "string", value: "" },
     { name: "subscription_id", operator: "contains", type: "string", value: "" },
@@ -449,6 +469,7 @@ export default function EditVnets(props) {
     const mockNet = {
       name: name,
       id: id,
+      type: id.includes(vNetPattern) ? "vNET" : id.includes(vHubPattern) ? "vHUB" : "Unknown",
       prefixes: ["ErrNotFound"],
       subnets: [],
       resource_group: resourceGroup.toLowerCase(),
@@ -472,6 +493,7 @@ export default function EditVnets(props) {
           var missing_data = [];
           var data = await fetchBlockAvailable(block.parent_space, block.name);
           data.forEach((item) => {
+            item['type'] = item.id.includes(vNetPattern) ? "vNET" : item.id.includes(vHubPattern) ? "vHUB" : "Unknown";
             item['subscription_name'] = subscriptions.find(sub => sub.subscription_id === item.subscription_id)?.name || 'Unknown';
             item['active'] = true;
           });
@@ -495,10 +517,10 @@ export default function EditVnets(props) {
     })();
   }
 
-  function manualRefresh() {
-    refresh();
-    refreshData();
-  }
+  // function manualRefresh() {
+  //   refresh();
+  //   refreshData();
+  // }
 
   function onSubmit() {
     (async () => {
@@ -544,13 +566,13 @@ export default function EditVnets(props) {
         <DialogTitle>
           <Box sx={{ display: "flex", flexDirection: "row" }}>
             <Box>
-            Virtual Network Association
+              Network Association
             </Box>
             <Box sx={{ ml: "auto" }}>
               <IconButton
                 color="primary"
                 size="small"
-                onClick={manualRefresh}
+                onClick={refresh}
                 disabled={sending || refreshing || refreshingState}
               >
                 <Refresh />
@@ -562,7 +584,7 @@ export default function EditVnets(props) {
           sx={{ overflowY: "unset" }}
         >
           <DialogContentText>
-            Select the Virtual Networks below which should be associated with the Block <Spotlight>'{block && block.name}'</Spotlight>
+            Select the Networks below which should be associated with the Block <Spotlight>'{block && block.name}'</Spotlight>
           </DialogContentText>
           <Box
             sx={{

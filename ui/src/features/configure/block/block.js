@@ -28,12 +28,14 @@ import {
   GridView as GridViewIcon,
   PieChartOutline as PieChartOutlineIcon,
   SettingsEthernet as SettingsEthernetIcon,
+  MapOutlined as MapOutlinedIcon
 } from "@mui/icons-material";
 
 import AddBlock from "./Utils/addBlock";
 import EditBlock from "./Utils/editBlock";
 import EditVnets from "./Utils/editVnets";
 import EditReservations from "./Utils/editReservations";
+import EditExternals from "./Utils/editExternal";
 import ConfirmDelete from "./Utils/confirmDelete";
 
 import { ConfigureContext } from "../configureContext";
@@ -82,6 +84,7 @@ export default function BlockDataGrid(props) {
   const [editBlockOpen, setEditBlockOpen] = React.useState(false);
   const [editVNetsOpen, setEditVNetsOpen] = React.useState(false);
   const [editResvOpen, setEditResvOpen] = React.useState(false);
+  const [editExtOpen, setEditExtOpen] = React.useState(false);
   const [deleteBlockOpen, setDeleteBlockOpen] = React.useState(false);
 
   const [anchorEl, setAnchorEl] = React.useState(null);
@@ -154,6 +157,11 @@ export default function BlockDataGrid(props) {
     setEditResvOpen(true);
   };
 
+  const handleEditExt = () => {
+    handleMenuClose();
+    setEditExtOpen(true);
+  };
+
   const handleDeleteBlock = () => {
     handleMenuClose();
     setDeleteBlockOpen(true);
@@ -209,6 +217,14 @@ export default function BlockDataGrid(props) {
           <EditVnets
             open={editVNetsOpen}
             handleClose={() => setEditVNetsOpen(false)}
+            space={selectedSpace ? selectedSpace.name : null}
+            block={selectedBlock ? selectedBlock : null}
+            refresh={refresh}
+            refreshingState={refreshing}
+          />
+          <EditExternals
+            open={editExtOpen}
+            handleClose={() => setEditExtOpen(false)}
             space={selectedSpace ? selectedSpace.name : null}
             block={selectedBlock ? selectedBlock : null}
             refresh={refresh}
@@ -323,7 +339,18 @@ export default function BlockDataGrid(props) {
                   <ListItemIcon>
                     <SettingsEthernetIcon fontSize="small" />
                   </ListItemIcon>
-                  Virtual Networks
+                  Block Networks
+                </MenuItem>
+              }
+              { isAdmin &&
+                <MenuItem
+                  onClick={handleEditExt}
+                  disabled={!selectedBlock}
+                >
+                  <ListItemIcon>
+                    <MapOutlinedIcon fontSize="small" />
+                  </ListItemIcon>
+                  External Networks
                 </MenuItem>
               }
               <MenuItem

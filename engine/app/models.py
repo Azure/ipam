@@ -68,58 +68,6 @@ class IPv4Address(str):
     def __repr__(self):
         return f'IPAddress({super().__repr__()})'
 
-######################
-#   REQUEST MODELS   #
-######################
-
-class SpaceReq(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    desc: str
-
-class BlockReq(BaseModel):
-    """DOCSTRING"""
-
-    name: str
-    cidr: IPv4Network
-
-class JSONPatch(BaseModel):
-    """DOCSTRING"""
-
-    op: str
-    path: str
-    value: Any
-
-class SpaceUpdate(List[JSONPatch]):
-    """DOCSTRING"""
-
-class BlockUpdate(List[JSONPatch]):
-    """DOCSTRING"""
-
-class VNetsUpdate(List[str]):
-    """DOCSTRING"""
-
-class SpaceCIDRReq(BaseModel):
-    """DOCSTRING"""
-
-    blocks: list
-    size: int
-    desc: Optional[str] = None
-    reverse_search: Optional[bool] = False
-    smallest_cidr: Optional[bool] = False
-
-class BlockCIDRReq(BaseModel):
-    """DOCSTRING"""
-
-    size: int
-    desc: Optional[str] = None
-    reverse_search: Optional[bool] = False
-    smallest_cidr: Optional[bool] = False
-
-class DeleteResvReq(List[str]):
-    """DOCSTRING"""
-
 #######################
 #   RESPONSE MODELS   #
 #######################
@@ -135,6 +83,13 @@ class Network(BaseModel):
 
     id: str
     active: Optional[bool]
+
+class ExtNet(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    desc: str
+    cidr: IPv4Network
 
 class VNets(BaseModel):
     """DOCSTRING"""
@@ -228,6 +183,7 @@ class BlockBasic(BaseModel):
     name: str
     cidr: str
     vnets: List[VNet]
+    externals: List[ExtNet]
     resv: List[Reservation]
 
 class BlockBasicUtil(BaseModel):
@@ -236,6 +192,7 @@ class BlockBasicUtil(BaseModel):
     name: str
     cidr: str
     vnets: List[VNet]
+    externals: List[ExtNet]
     resv: List[Reservation]
     size: int
     used: int
@@ -246,6 +203,7 @@ class Block(BaseModel):
     name: str
     cidr: str
     vnets: List[VNet]
+    externals: List[ExtNet]
     resv: List[Reservation]
 
 class BlockExpand(BaseModel):
@@ -254,6 +212,7 @@ class BlockExpand(BaseModel):
     name: str
     cidr: str
     vnets: List[VNetExpand]
+    externals: List[ExtNet]
     resv: List[Reservation]
 
 class BlockUtil(BaseModel):
@@ -262,6 +221,7 @@ class BlockUtil(BaseModel):
     name: str
     cidr: str
     vnets: List[VNet]
+    externals: List[ExtNet]
     resv: List[Reservation]
     size: int
     used: int
@@ -272,6 +232,7 @@ class BlockExpandUtil(BaseModel):
     name: str
     cidr: str
     vnets: List[VNetExpandUtil]
+    externals: List[ExtNet]
     resv: List[Reservation]
     size: int
     used: int
@@ -323,6 +284,64 @@ class SpaceExpandUtil(BaseModel):
     blocks: List[BlockExpandUtil]
     size: int
     used: int
+
+######################
+#   REQUEST MODELS   #
+######################
+
+class SpaceReq(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    desc: str
+
+class BlockReq(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    cidr: IPv4Network
+
+class JSONPatch(BaseModel):
+    """DOCSTRING"""
+
+    op: str
+    path: str
+    value: Any
+
+class SpaceUpdate(List[JSONPatch]):
+    """DOCSTRING"""
+
+class BlockUpdate(List[JSONPatch]):
+    """DOCSTRING"""
+
+class VNetsUpdate(List[str]):
+    """DOCSTRING"""
+
+class ExtNetsUpdate(List[ExtNet]):
+    """DOCSTRING"""
+
+class SpaceCIDRReq(BaseModel):
+    """DOCSTRING"""
+
+    blocks: list
+    size: int
+    desc: Optional[str] = None
+    reverse_search: Optional[bool] = False
+    smallest_cidr: Optional[bool] = False
+
+class BlockCIDRReq(BaseModel):
+    """DOCSTRING"""
+
+    size: int
+    desc: Optional[str] = None
+    reverse_search: Optional[bool] = False
+    smallest_cidr: Optional[bool] = False
+
+class DeleteExtNetReq(List[str]):
+    """DOCSTRING"""
+
+class DeleteResvReq(List[str]):
+    """DOCSTRING"""
 
 ####################
 #   AZURE MODELS   #
