@@ -1,0 +1,58 @@
+name: Azure IPAM Testing
+
+permissions:
+  id-token: write
+  contents: read
+
+run-name: Azure IPAM Deployment & Testing
+
+on:
+  push:
+    branches: [ github-actions ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  IPAM_UI_ID: ipam-ui-${{ github.run_id }}-${{ github.run_attempt }}
+  IPAM_ENGINE_ID: ipam-engine-${{ github.run_id }}-${{ github.run_attempt }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Job triggered by a ${{ github.event_name }} event from ${{ github.head_ref }} to main."
+
+      - name: "Azure Login"
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+
+      - name: Checkout Azure IPAM Code
+        uses: actions/checkout@v3
+
+      - name: List files in the repository
+        run: |
+          ls ${{ github.workspace }}
+
+      - run: echo "UI-ID -> $IPAM_UI_ID"
+      - run: echo "ENGINE-ID -> $IPAM_ENGINE_ID"
+
+      - name: Deploy Azure IPAM
+        working-directory: "deploy"
+        id: "pwshScript"
+        shell: pwsh
+        run: .\deploy.ps1 -Location "westus3" -UIAppName $Env:IPAM_UI_ID -EngineAppName $Env:IPAM_ENGINE_ID
+
+      - name: "Output PowerShell Value 'ipamSuffix'"
+        run: echo "${{ steps.pwshScript.outputs.ipamSuffix }}"
+
+      - name: "Test Sleepy Time"
+        run: |
+            echo "Time: $(date +'%T')"
+            echo "Sleeping for 30 seconds"
+            sleep 30
+            echo "Time: $(date +'%T')"
+
+      - run: echo "${{ github.job }} status is ${{ job.status }}."
