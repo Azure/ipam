@@ -28,6 +28,7 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          enable-AzPSSession: true
 
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v3
