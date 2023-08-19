@@ -859,6 +859,8 @@ process {
         -AsFunction $AsFunction `
         -Tags $Tags `
         -ResourceNames $ResourceNames
+
+      Write-Output "ipamSuffix=$($deployment.Outputs["suffix"].Value)" >> $Env:GITHUB_OUTPUT
     }
 
     if ($PSCmdlet.ParameterSetName -eq 'Full') {
