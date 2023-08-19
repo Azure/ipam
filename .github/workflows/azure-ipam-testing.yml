@@ -43,7 +43,7 @@ jobs:
         working-directory: "deploy"
         id: "pwshScript"
         shell: pwsh
-        run: .\deploy.ps1 -Location "westus3" -UIAppName $Env:IPAM_UI_ID -EngineAppName $Env:IPAM_ENGINE_ID
+        run: ./deploy.ps1 -Location "westus3" -UIAppName $Env:IPAM_UI_ID -EngineAppName $Env:IPAM_ENGINE_ID
 
       - name: "Output PowerShell Value 'ipamSuffix'"
         run: echo "${{ steps.pwshScript.outputs.ipamSuffix }}"
