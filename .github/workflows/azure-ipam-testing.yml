@@ -22,6 +22,12 @@ jobs:
     steps:
       - run: echo "Job triggered by a ${{ github.event_name }} event from ${{ github.head_ref }} to main."
 
+      - name: Install Deployment Prerequisites
+      shell: pwsh
+      run: |
+        Set-PSRepository PSGallery -InstallationPolicy Trusted
+        Install-Module Az, Microsoft.Graph -Force
+
       - name: "Azure Login"
         uses: azure/login@v1
         with:
@@ -32,12 +38,6 @@ jobs:
 
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v3
-
-      - name: Install Deployment Prerequisites
-        shell: pwsh
-        run: |
-          Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module Az, Microsoft.Graph
 
       - name: Deploy Azure IPAM
         working-directory: "deploy"
