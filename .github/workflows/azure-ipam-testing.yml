@@ -41,10 +41,9 @@ jobs:
 
       - name: Deploy Azure IPAM
         uses: azure/powershell@v1
-        working-directory: "deploy"
         id: "pwshScript"
         with:
-          inlineScript: ./deploy.ps1 -Location "westus3" -UIAppName $Env:IPAM_UI_ID -EngineAppName $Env:IPAM_ENGINE_ID
+          inlineScript: ./deploy/deploy.ps1 -Location "westus3" -UIAppName $Env:IPAM_UI_ID -EngineAppName $Env:IPAM_ENGINE_ID
           azPSVersion: "latest"
 
       - name: "Output PowerShell Value 'ipamSuffix'"
