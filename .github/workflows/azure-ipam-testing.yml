@@ -1,8 +1,8 @@
 name: Azure IPAM Testing
 
-permissions:
-  id-token: write
-  contents: read
+# permissions:
+#   id-token: write
+#   contents: read
 
 run-name: Azure IPAM Deployment & Testing
 
@@ -23,30 +23,33 @@ jobs:
       - run: echo "Job triggered by a ${{ github.event_name }} event from ${{ github.head_ref }} to main."
 
       - name: Install Deployment Prerequisites
-        uses: azure/powershell@v1
-        with:
-          inlineScript: |
-            Set-PSRepository PSGallery -InstallationPolicy Trusted
-            Install-Module Az, Microsoft.Graph -Force
-          azPSVersion: "latest"
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Az, Microsoft.Graph -Force
+
+      # - name: "Azure Login"
+      #   uses: azure/login@v1
+      #   with:
+      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     enable-AzPSSession: true
 
       - name: "Azure Login"
         uses: azure/login@v1
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
           enable-AzPSSession: true
 
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v3
 
       - name: Deploy Azure IPAM
-        uses: azure/powershell@v1
+        working-directory: "deploy"
         id: "pwshScript"
-        with:
-          inlineScript: ./deploy/deploy.ps1 -Location "westus3" -UIAppName $Env:IPAM_UI_ID -EngineAppName $Env:IPAM_ENGINE_ID
-          azPSVersion: "latest"
+        shell: pwsh
+        run: ./deploy.ps1 -Location "westus3" -UIAppName $Env:IPAM_UI_ID -EngineAppName $Env:IPAM_ENGINE_ID
 
       - name: "Output PowerShell Value 'ipamSuffix'"
         run: echo "${{ steps.pwshScript.outputs.ipamSuffix }}"
@@ -59,22 +62,21 @@ jobs:
             echo "Time: $(date +'%T')"
 
       - name: "Upload Logs"
-        uses: azure/powershell@v1
-        with:
-          inlineScript: |
-            $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
-            $archiveName = "ipam-${dateStamp}.zip"
-            Compress-Archive -Path ./logs/* -DestinationPath /tmp/$archiveName
-            $storage = Get-AzStorageAccount -Name "ipamghactionlogs" -ResourceGroupName "Logging-RG"
-            $context = $storage.Context
-            $uploadDetails = @{
-              File = "/tmp/$archiveName"
-              Container = "deploy-logs"
-              Blob = $archiveName
-              Context = $context
-              StandardBlobTier = "Hot"
-            }
-            Set-AzStorageBlobContent @uploadDetails
-          azPSVersion: "latest"
+        working-directory: "logs"
+        shell: pwsh
+        run: |
+          $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
+          $archiveName = "ipam-${dateStamp}.zip"
+          Compress-Archive -Pat ./* -DestinationPath /tmp/$archiveName
+          $storage = Get-AzStorageAccount -Name "ipamghactionlogs" -ResourceGroupName "Logging-RG"
+          $context = $storage.Context
+          $uploadDetails = @{
+            File = "/tmp/$archiveName"
+            Container = "deploy-logs"
+            Blob = $archiveName
+            Context = $context
+            StandardBlobTier = "Hot"
+          }
+          Set-AzStorageBlobContent @uploadDetails
 
       - run: echo "${{ github.job }} status is ${{ job.status }}."
