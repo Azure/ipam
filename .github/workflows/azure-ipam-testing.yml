@@ -55,4 +55,20 @@ jobs:
             sleep 30
             echo "Time: $(date +'%T')"
 
+      - name: "Upload Logs"
+        working-directory: "logs"
+        run: |
+          $archiveName = "ipam-" + (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring() + ".zip"
+          Compress-Archive -Pat ./* -DestinationPath /tmp/$archiveName
+          $storage = Get-AzStorageAccount -Name "ipamghactionlogs" -ResourceGroupName "Logging-RG"
+          $context = $storage.Context
+          @uploadDetails = @{
+            File = "/tmp/$archiveName"
+            Container = "deploy-logs"
+            Blob = $archiveName
+            Context = $context
+            StandardBlobTier = "Hot"
+          }
+          Set-AzStorageBlobContent @uploadDetails
+
       - run: echo "${{ github.job }} status is ${{ job.status }}."
