@@ -23,10 +23,12 @@ jobs:
       - run: echo "Job triggered by a ${{ github.event_name }} event from ${{ github.head_ref }} to main."
 
       - name: Install Deployment Prerequisites
-        shell: pwsh
-        run: |
-          Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module Az, Microsoft.Graph -Force
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            Set-PSRepository PSGallery -InstallationPolicy Trusted
+            Install-Module Az, Microsoft.Graph -Force
+          azPSVersion: "latest"
 
       - name: "Azure Login"
         uses: azure/login@v1
@@ -57,21 +59,22 @@ jobs:
             echo "Time: $(date +'%T')"
 
       - name: "Upload Logs"
-        working-directory: "logs"
-        shell: pwsh
-        run: |
-          $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
-          $archiveName = "ipam-${dateStamp}.zip"
-          Compress-Archive -Pat ./* -DestinationPath /tmp/$archiveName
-          $storage = Get-AzStorageAccount -Name "ipamghactionlogs" -ResourceGroupName "Logging-RG"
-          $context = $storage.Context
-          $uploadDetails = @{
-            File = "/tmp/$archiveName"
-            Container = "deploy-logs"
-            Blob = $archiveName
-            Context = $context
-            StandardBlobTier = "Hot"
-          }
-          Set-AzStorageBlobContent @uploadDetails
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
+            $archiveName = "ipam-${dateStamp}.zip"
+            Compress-Archive -Path ./logs/* -DestinationPath /tmp/$archiveName
+            $storage = Get-AzStorageAccount -Name "ipamghactionlogs" -ResourceGroupName "Logging-RG"
+            $context = $storage.Context
+            $uploadDetails = @{
+              File = "/tmp/$archiveName"
+              Container = "deploy-logs"
+              Blob = $archiveName
+              Context = $context
+              StandardBlobTier = "Hot"
+            }
+            Set-AzStorageBlobContent @uploadDetails
+          azPSVersion: "latest"
 
       - run: echo "${{ github.job }} status is ${{ job.status }}."
