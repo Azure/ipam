@@ -40,10 +40,12 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Deploy Azure IPAM
+        uses: azure/powershell@v1
         working-directory: "deploy"
         id: "pwshScript"
-        shell: pwsh
-        run: ./deploy.ps1 -Location "westus3" -UIAppName $Env:IPAM_UI_ID -EngineAppName $Env:IPAM_ENGINE_ID
+        with:
+          inlineScript: ./deploy.ps1 -Location "westus3" -UIAppName $Env:IPAM_UI_ID -EngineAppName $Env:IPAM_ENGINE_ID
+          azPSVersion: "latest"
 
       - name: "Output PowerShell Value 'ipamSuffix'"
         run: echo "${{ steps.pwshScript.outputs.ipamSuffix }}"
