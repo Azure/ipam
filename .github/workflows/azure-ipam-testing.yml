@@ -57,6 +57,7 @@ jobs:
 
       - name: "Upload Logs"
         working-directory: "logs"
+        shell: pwsh
         run: |
           $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
           $archiveName = "ipam-${dateStamp}.zip"
