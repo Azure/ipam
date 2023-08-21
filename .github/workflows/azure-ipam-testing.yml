@@ -96,10 +96,10 @@ jobs:
     needs: [ deploy, sleep ]
     steps:
       - name: "Azure Login"
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-        enable-AzPSSession: true
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          enable-AzPSSession: true
 
       - name : "Cleanup Azure IPAM Deployment"
         shell: pwsh
