@@ -1029,6 +1029,7 @@ process {
     Stop-Transcript | Out-Null
 
     Write-Output "ipamSuffix=$($deployment.Outputs["suffix"].Value)" >> $Env:GITHUB_OUTPUT
+    Write-Output "ipamResourceGroup=$($deployment.Outputs["resourceGroupName"].Value)" >> $Env:GITHUB_OUTPUT
 
     exit
   }

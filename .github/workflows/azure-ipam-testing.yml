@@ -110,6 +110,6 @@ jobs:
       - name : "Cleanup Azure IPAM Deployment"
         shell: pwsh
         run: |
-          Remove-AzResourceGroup -Name "ipam-${{ needs.deploy.outputs.ipamSuffix }}" -Force
+          Remove-AzResourceGroup -Name ${{ needs.deploy.outputs.ipamResourceGroup }} -Force
           Remove-AzADApplication -DisplayName $Env:IPAM_UI_ID
           Remove-AzADApplication -DisplayName $Env:IPAM_ENGINE_ID
