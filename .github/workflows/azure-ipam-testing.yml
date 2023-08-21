@@ -19,6 +19,8 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    outputs:
+      ipamSuffix: ${{ steps.pwshScript.outputs.ipamSuffix }}
     steps:
       - run: echo "Job triggered by a ${{ github.event_name }} event from ${{ github.head_ref }} to main."
 
@@ -84,3 +86,25 @@ jobs:
           Set-AzStorageBlobContent @uploadDetails
 
       - run: echo "${{ github.job }} status is ${{ job.status }}."
+
+  sleep:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: "Test Sleepy Time"
+        run: |
+            echo "Time: $(date +'%T')"
+            echo "Sleeping for 30 seconds"
+            sleep 30
+            echo "Time: $(date +'%T')"
+
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: [ deploy, sleep ]
+    steps:
+      - name : "Cleanup Azure IPAM Deployment"
+        shell: pwsh
+        run: |
+          Remove-AzResourceGroup -Name "ipam-${{ needs.deploy.outputs.ipamSuffix }}"
+          Remove-AzADApplication -DisplayName $Env:IPAM_UI_ID
+          Remove-AzADApplication -DisplayName $Env:IPAM_ENGINE_ID

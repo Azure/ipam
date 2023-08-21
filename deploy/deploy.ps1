@@ -860,7 +860,7 @@ process {
         -Tags $Tags `
         -ResourceNames $ResourceNames
 
-      Write-Output "ipamSuffix=$($deployment.Outputs["suffix"].Value)" >> $Env:GITHUB_OUTPUT
+      # Write-Output "ipamSuffix=$($deployment.Outputs["suffix"].Value)" >> $Env:GITHUB_OUTPUT
     }
 
     if ($PSCmdlet.ParameterSetName -eq 'Full') {
@@ -1027,6 +1027,9 @@ process {
   finally {
     Write-Host
     Stop-Transcript | Out-Null
+
+    Write-Output "ipamSuffix=$($deployment.Outputs["suffix"].Value)" >> $Env:GITHUB_OUTPUT
+
     exit
   }
 }
