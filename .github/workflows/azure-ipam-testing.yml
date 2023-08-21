@@ -67,9 +67,12 @@ jobs:
         run: |
           $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
           $archiveName = "ipam-${dateStamp}.zip"
+
           Compress-Archive -Pat ./* -DestinationPath /tmp/$archiveName
+
           $storage = Get-AzStorageAccount -Name "ipamghactionlogs" -ResourceGroupName "Logging-RG"
           $context = $storage.Context
+
           $uploadDetails = @{
             File = "/tmp/$archiveName"
             Container = "deploy-logs"
@@ -77,6 +80,7 @@ jobs:
             Context = $context
             StandardBlobTier = "Hot"
           }
+
           Set-AzStorageBlobContent @uploadDetails
 
       - run: echo "${{ github.job }} status is ${{ job.status }}."
