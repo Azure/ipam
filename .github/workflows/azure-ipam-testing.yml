@@ -20,6 +20,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     outputs:
+      ipamUIAppId: ${{ steps.pwshScript.outputs.ipamUIAppId }}
+      ipamEngineAppId: ${{ steps.pwshScript.outputs.ipamEngineAppId }}
       ipamSuffix: ${{ steps.pwshScript.outputs.ipamSuffix }}
       ipamResourceGroup: ${{ steps.pwshScript.outputs.ipamResourceGroup }}
     steps:
@@ -112,5 +114,5 @@ jobs:
         shell: pwsh
         run: |
           Remove-AzResourceGroup -Name ${{ needs.deploy.outputs.ipamResourceGroup }} -Force
-          Remove-AzADApplication -DisplayName $Env:IPAM_UI_ID
-          Remove-AzADApplication -DisplayName $Env:IPAM_ENGINE_ID
+          Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamUIAppId }} | Remove-AzADApplication
+          Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamEngineAppId }} | Remove-AzADApplication
