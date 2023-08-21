@@ -56,13 +56,6 @@ jobs:
       - name: "Output PowerShell Value 'ipamSuffix'"
         run: echo "${{ steps.pwshScript.outputs.ipamSuffix }}"
 
-      - name: "Test Sleepy Time"
-        run: |
-            echo "Time: $(date +'%T')"
-            echo "Sleeping for 30 seconds"
-            sleep 30
-            echo "Time: $(date +'%T')"
-
       - name: "Upload Logs"
         working-directory: "logs"
         shell: pwsh
@@ -102,6 +95,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ deploy, sleep ]
     steps:
+      - name: "Azure Login"
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        enable-AzPSSession: true
+
       - name : "Cleanup Azure IPAM Deployment"
         shell: pwsh
         run: |
