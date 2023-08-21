@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       ipamSuffix: ${{ steps.pwshScript.outputs.ipamSuffix }}
-      ipamResourceGroupName: ${{ steps.pwshScript.outputs.ipamResourceGroup }}
+      ipamResourceGroup: ${{ steps.pwshScript.outputs.ipamResourceGroup }}
     steps:
       - run: echo "Job triggered by a ${{ github.event_name }} event from ${{ github.head_ref }} to main."
 
