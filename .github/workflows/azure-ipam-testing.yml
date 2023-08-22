@@ -111,27 +111,27 @@ jobs:
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module Az, Pester -AllowClobber -Force
 
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-        enable-AzPSSession: true
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          enable-AzPSSession: true
 
-    - name: Checkout Azure IPAM Code
-      uses: actions/checkout@v3
-      with:
-        sparse-checkout: |
-          tests
+      - name: Checkout Azure IPAM Code
+        uses: actions/checkout@v3
+        with:
+          sparse-checkout: |
+            tests
 
-    - name: Test Azure IPAM via Pester
-      working-directory: tests
-      env:
-        IPAM_URL: ${{ needs.deploy.outputs.ipamURL }}
-        IPAM_ENGINE_APP_ID: ${{ needs.deploy.outputs.ipamEngineAppId }}
-      shell: pwsh
-      run: |
-        Import-Module Pester -PassThru
-        Invoke-Pester -Output Detailed ./azureipam.tests.ps1 -PassThru
+      - name: Invoke Pester Tests
+        working-directory: tests
+        env:
+          IPAM_URL: ${{ needs.deploy.outputs.ipamURL }}
+          IPAM_ENGINE_APP_ID: ${{ needs.deploy.outputs.ipamEngineAppId }}
+        shell: pwsh
+        run: |
+          Import-Module Pester -PassThru
+          Invoke-Pester -Output Detailed ./azureipam.tests.ps1 -PassThru
 
   cleanup:
     name: Cleanup Azure IPAM Deployment
