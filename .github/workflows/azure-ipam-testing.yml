@@ -18,6 +18,7 @@ env:
 
 jobs:
   deploy:
+    name: Deploy Azure IPAM
     runs-on: ubuntu-latest
     outputs:
       ipamURL: ${{ steps.pwshScript.outputs.ipamURL }}
@@ -42,7 +43,7 @@ jobs:
       #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
       #     enable-AzPSSession: true
 
-      - name: "Azure Login"
+      - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -64,7 +65,7 @@ jobs:
         run: echo "${{ steps.pwshScript.outputs.ipamSuffix }}"
 
       - name: "Upload Logs"
-        working-directory: "logs"
+        working-directory: logs
         shell: pwsh
         run: |
           $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
@@ -88,10 +89,11 @@ jobs:
       - run: echo "${{ github.job }} status is ${{ job.status }}."
 
   sleep:
+    name: Sleep for 5 Minutes
     runs-on: ubuntu-latest
     needs: deploy
     steps:
-      - name: "Test Sleepy Time"
+      - name: Test Sleepy Time
         run: |
             echo "Time: $(date +'%T')"
             echo "Sleeping for 30 seconds"
@@ -99,6 +101,7 @@ jobs:
             echo "Time: $(date +'%T')"
 
   test:
+    name: Test Azure IPAM via Pester
     runs-on: ubuntu-latest
     needs: [ deploy, sleep ]
     steps:
@@ -108,7 +111,7 @@ jobs:
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module Az, Pester -AllowClobber -Force
 
-    - name: "Azure Login"
+    - name: Azure Login
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -121,7 +124,7 @@ jobs:
           tests
 
     - name: Test Azure IPAM via Pester
-      working-directory: "tests"
+      working-directory: tests
       env:
         IPAM_URL: ${{ needs.deploy.outputs.ipamURL }}
         IPAM_ENGINE_APP_ID: ${{ needs.deploy.outputs.ipamEngineAppId }}
@@ -129,8 +132,9 @@ jobs:
       run: |
         Import-Module Pester -PassThru
         Invoke-Pester -Output Detailed ./azureipam.tests.ps1 -PassThru
-  
+
   cleanup:
+    name: Cleanup Azure IPAM Deployment
     runs-on: ubuntu-latest
     needs: [ deploy, sleep, test ]
     steps:
@@ -140,13 +144,13 @@ jobs:
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module Az -AllowClobber -Force
 
-      - name: "Azure Login"
+      - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           enable-AzPSSession: true
 
-      - name : "Cleanup Azure IPAM Deployment"
+      - name : Cleanup Azure IPAM Deployment
         shell: pwsh
         run: |
           Remove-AzResourceGroup -Name ${{ needs.deploy.outputs.ipamResourceGroup }} -Force
