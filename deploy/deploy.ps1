@@ -1028,6 +1028,7 @@ process {
     Write-Host
     Stop-Transcript | Out-Null
 
+    Write-Output "ipamURL=https://$($deployment.Outputs["appServiceHostName"].Value)" >> $Env:GITHUB_OUTPUT
     Write-Output "ipamUIAppId=$($appDetails.UIAppId)" >> $Env:GITHUB_OUTPUT
     Write-Output "ipamEngineAppId=$($appDetails.EngineAppId)" >> $Env:GITHUB_OUTPUT
     Write-Output "ipamSuffix=$($deployment.Outputs["suffix"].Value)" >> $Env:GITHUB_OUTPUT

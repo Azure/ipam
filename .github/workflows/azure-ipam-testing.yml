@@ -20,6 +20,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     outputs:
+      ipamURL: ${{ steps.pwshScript.outputs.ipamURL }}
       ipamUIAppId: ${{ steps.pwshScript.outputs.ipamUIAppId }}
       ipamEngineAppId: ${{ steps.pwshScript.outputs.ipamEngineAppId }}
       ipamSuffix: ${{ steps.pwshScript.outputs.ipamSuffix }}
@@ -31,7 +32,7 @@ jobs:
         shell: pwsh
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module Az, Microsoft.Graph -Force
+          Install-Module Az, Microsoft.Graph -AllowClobber -Force
 
       # - name: "Azure Login"
       #   uses: azure/login@v1
@@ -49,6 +50,9 @@ jobs:
 
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v3
+        with:
+          sparse-checkout: |
+            deploy
 
       - name: Deploy Azure IPAM
         working-directory: "deploy"
@@ -94,15 +98,47 @@ jobs:
             sleep 30
             echo "Time: $(date +'%T')"
 
-  cleanup:
+  test:
     runs-on: ubuntu-latest
     needs: [ deploy, sleep ]
+    steps:
+      - name: Install Testing Prerequisites
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Az, Pester -AllowClobber -Force
+
+    - name: "Azure Login"
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        enable-AzPSSession: true
+
+    - name: Checkout Azure IPAM Code
+      uses: actions/checkout@v3
+      with:
+        sparse-checkout: |
+          tests
+
+    - name: Test Azure IPAM via Pester
+      working-directory: "tests"
+      env:
+        IPAM_URL: ${{ needs.deploy.outputs.ipamURL }}
+        IPAM_ENGINE_APP_ID: ${{ needs.deploy.outputs.ipamEngineAppId }}
+      shell: pwsh
+      run: |
+        Import-Module Pester -PassThru
+        Invoke-Pester -Output Detailed ./azureipam.tests.ps1 -PassThru
+  
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: [ deploy, sleep, test ]
     steps:
       - name: Install Deployment Prerequisites
         shell: pwsh
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module Az -Force
+          Install-Module Az -AllowClobber -Force
 
       - name: "Azure Login"
         uses: azure/login@v1
