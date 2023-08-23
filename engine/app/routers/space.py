@@ -1134,7 +1134,7 @@ async def create_block_net(
     resv_cidrs = list(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
     block_net_cidrs += resv_cidrs
 
-    ext_cidrs = list(x['cidr'] for x in target_block['externala'])
+    ext_cidrs = list(x['cidr'] for x in target_block['externals'])
     block_net_cidrs += ext_cidrs
 
     for v in target_block['vnets']:

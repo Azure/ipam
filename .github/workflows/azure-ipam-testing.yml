@@ -126,6 +126,7 @@ jobs:
       - name: Invoke Pester Tests
         working-directory: tests
         env:
+          IPAM_RESOURCE_GROUP: ${{ needs.deploy.outputs.ipamResourceGroup }}
           IPAM_URL: ${{ needs.deploy.outputs.ipamURL }}
           IPAM_ENGINE_APP_ID: ${{ needs.deploy.outputs.ipamEngineAppId }}
         shell: pwsh
