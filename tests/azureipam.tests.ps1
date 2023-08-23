@@ -417,7 +417,7 @@ Context 'Reservations' {
       -ResourceGroupName $env:IPAM_RESOURCE_GROUP `
       -Location 'westus3' `
       -AddressPrefix $script:reservationA.Cidr `
-      -Tag $script:reservationA.Tag
+      -Tag @{ "X-IPAM-RES-ID" = $script:reservationA.Id }
 
     Start-Sleep -Seconds 180
 
