@@ -14,7 +14,10 @@ BeforeAll {
     [CmdletBinding()]
     Param (
       [Parameter(Mandatory=$True, Position=0)]
-      [string]$resource
+      [string]$resource,
+
+      [Parameter(Mandatory=$False, Position=1)]
+	    [hashtable]$query
     )
 
     $response = Invoke-RestMethod `
@@ -22,7 +25,8 @@ BeforeAll {
       -Authentication Bearer `
       -Token $accessToken `
       -Uri "${baseUrl}${resource}" `
-      -Headers $headers
+      -Headers $headers `
+      -Body $query
 
     Write-Output $response
   }
@@ -421,11 +425,16 @@ Context 'Reservations' {
 
     Start-Sleep -Seconds 180
 
+    $query = @{
+      settled = $true
+    }
+
     $networks = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks'
-    $reservations = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations'
+    $reservations = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $query
 
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetA.Id | Should -Be $true
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetC.Id | Should -Be $true
+    $reservations | Should -Not -Be $null
     $reservations[0].SettledOn -eq $null | Should -Be $false
     $reservations[0].Status -eq "fulfilled" | Should -Be $true
   }
