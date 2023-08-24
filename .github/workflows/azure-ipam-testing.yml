@@ -68,7 +68,7 @@ jobs:
 
       - name: Update Docker-Compose YAML
         shell: pwsh
-        run |
+        run: |
           $composeFile = Get-Content -Path ./docker-compose.prod.yml
           $composeYaml = $composeFile | ConvertFrom-Yaml
           $composeYaml['services']['ipam-ui'].image = "$env:ACR_NAME.azurecr.io/ipam-ui:${{ github.run_id }}-${{ github.run_attempt }}"
