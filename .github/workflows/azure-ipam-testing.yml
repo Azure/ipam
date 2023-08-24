@@ -13,6 +13,7 @@ on:
     branches: [ main ]
 
 env:
+  ACR_NAME: azureipamtest
   IPAM_UI_ID: ipam-ui-${{ github.run_id }}-${{ github.run_attempt }}
   IPAM_ENGINE_ID: ipam-engine-${{ github.run_id }}-${{ github.run_attempt }}
 
@@ -33,7 +34,7 @@ jobs:
         shell: pwsh
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module Az, Microsoft.Graph -AllowClobber -Force
+          Install-Module Az, Microsoft.Graph, powershell-yaml -AllowClobber -Force
 
       # - name: "Azure Login"
       #   uses: azure/login@v1
@@ -54,6 +55,26 @@ jobs:
         with:
           sparse-checkout: |
             deploy
+            engine
+            ui
+            lb
+
+      - name: Build Azure IPAM Containers
+        run |
+          az acr build -r $ACR_NAME -t ipam-engine:${{ github.run_id }}-${{ github.run_attempt }} -f ./engine/Dockerfile.deb ./engine
+          az acr build -r $ACR_NAME -t ipam-func:${{ github.run_id }}-${{ github.run_attempt }} -f ./engine/Dockerfile.func ./engine
+          az acr build -r $ACR_NAME -t ipam-ui:${{ github.run_id }}-${{ github.run_attempt }}  -f ./ui/Dockerfile.deb ./ui
+          az acr build -r $ACR_NAME -t ipam-lb:${{ github.run_id }}-${{ github.run_attempt }} -f ./lb/Dockerfile ./lb
+
+      - name: Update Docker-Compose YAML
+        shell: pwsh
+        run |
+          $composeFile = Get-Content -Path ./docker-compose.prod.yml
+          $composeYaml = $composeFile | ConvertFrom-Yaml
+          $composeYaml['services']['ipam-ui'].image = "$env:ACR_NAME.azurecr.io/ipam-ui:${{ github.run_id }}-${{ github.run_attempt }}"
+          $composeYaml['services']['ipam-engine'].image = "$env:ACR_NAME".azurecr.io/ipam-engine:${{ github.run_id }}-${{ github.run_attempt }}"
+          $composeYaml['services']['nginx-proxy'].image = "$env:ACR_NAME".azurecr.io/ipam-lb:${{ github.run_id }}-${{ github.run_attempt }}"
+          $composeYaml | ConvertTo-Yaml | Out-File -Path ./docker-compose-prod.yml
 
       - name: Deploy Azure IPAM
         working-directory: "deploy"
