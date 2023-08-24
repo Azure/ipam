@@ -187,6 +187,11 @@ jobs:
           $uiApp = Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamUIAppId }}
           $engineApp = Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamEngineAppId }}
 
+          Write-Host "-------------------------------"
+          Write-Host "Scope: $scope"
+          $engineApp | ConvertTo-Json
+          Write-Host "-------------------------------"
+
           Remove-AzResourceGroup -Name ${{ needs.deploy.outputs.ipamResourceGroup }} -Force
           Remove-AzRoleAssignment -ObjectId $engineApp.Id -Scope $scope -RoleDefinitionName Reader
 
