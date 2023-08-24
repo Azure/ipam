@@ -60,7 +60,7 @@ jobs:
             lb
 
       - name: Build Azure IPAM Containers
-        run |
+        run: |
           az acr build -r $ACR_NAME -t ipam-engine:${{ github.run_id }}-${{ github.run_attempt }} -f ./engine/Dockerfile.deb ./engine
           az acr build -r $ACR_NAME -t ipam-func:${{ github.run_id }}-${{ github.run_attempt }} -f ./engine/Dockerfile.func ./engine
           az acr build -r $ACR_NAME -t ipam-ui:${{ github.run_id }}-${{ github.run_attempt }}  -f ./ui/Dockerfile.deb ./ui
