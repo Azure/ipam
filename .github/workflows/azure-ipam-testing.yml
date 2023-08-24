@@ -182,19 +182,16 @@ jobs:
         shell: pwsh
         run: |
           $tenantId = (Get-AzContext).Tenant.Id
-          $scope = "/providers/Microsoft.Management/managementGroups/$TenantId"
+          $scope = "/providers/Microsoft.Management/managementGroups/$tenantId"
 
           $uiApp = Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamUIAppId }}
           $engineApp = Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamEngineAppId }}
-
-          Write-Host "-------------------------------"
-          Write-Host "Scope: $scope"
-          $engineApp | ConvertTo-Json
-          Write-Host "-------------------------------"
+          $engineSpn = Get-AzADServicePrincipal -ApplicationId ${{ needs.deploy.outputs.ipamEngineAppId }}
 
           Remove-AzResourceGroup -Name ${{ needs.deploy.outputs.ipamResourceGroup }} -Force
-          Remove-AzRoleAssignment -ObjectId $engineApp.Id -Scope $scope -RoleDefinitionName Reader
+          Remove-AzRoleAssignment -ObjectId $engineSpn.Id -Scope $scope -RoleDefinitionName Reader
 
+          $engineSpn | Remove-AzADServicePrincipal
           $uiApp | Remove-AzADApplication
           $engineApp | Remove-AzADApplication
 
