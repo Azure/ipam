@@ -67,7 +67,6 @@ jobs:
           az acr build -r $ACR_NAME -t ipam-lb:${{ github.run_id }}-${{ github.run_attempt }} -f ./lb/Dockerfile ./lb
 
       - name: Update Docker-Compose YAML
-        working-directory: .
         shell: pwsh
         run: |
           $uiContainer = "$env:ACR_NAME.azurecr.io/ipam-ui:${{ github.run_id }}-${{ github.run_attempt }}"
@@ -81,7 +80,7 @@ jobs:
           $composeYaml['services']['ipam-engine'].image = $engineContainer
           $composeYaml['services']['nginx-proxy'].image = $lbContainer
 
-          Get-ChildItem
+          Get-ChildItem | Select-Object Name
           $composeYaml | ConvertTo-Yaml
 
           $composeYaml | ConvertTo-Yaml | Out-File -Path ./docker-compose-prod.yml
