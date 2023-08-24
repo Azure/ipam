@@ -80,10 +80,15 @@ jobs:
           $composeYaml['services']['ipam-engine'].image = $engineContainer
           $composeYaml['services']['nginx-proxy'].image = $lbContainer
 
-          Get-ChildItem | Select-Object Name
-          $composeYaml | ConvertTo-Yaml
+          $composeYaml | ConvertTo-Yaml | Out-File -FilePath ./docker-compose-prod.yml
 
-          $composeYaml | ConvertTo-Yaml | Out-File -Path ./docker-compose-prod.yml
+          Write-Host "-----------------------------------"
+          Get-ChildItem | Select-Object Name
+          Write-Host "-----------------------------------"
+          $composeYaml | ConvertTo-Yaml
+          Write-Host "-----------------------------------"
+          Get-Content -Path ./docker-compose.prod.yml
+          Write-Host "-----------------------------------"
 
       - name: Deploy Azure IPAM
         working-directory: deploy
