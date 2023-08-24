@@ -80,15 +80,7 @@ jobs:
           $composeYaml['services']['ipam-engine'].image = $engineContainer
           $composeYaml['services']['nginx-proxy'].image = $lbContainer
 
-          $composeYaml | ConvertTo-Yaml | Out-File -FilePath ./docker-compose-prod.yml
-
-          Write-Host "-----------------------------------"
-          Get-ChildItem | Select-Object Name
-          Write-Host "-----------------------------------"
-          $composeYaml | ConvertTo-Yaml
-          Write-Host "-----------------------------------"
-          Get-Content -Path ./docker-compose.prod.yml
-          Write-Host "-----------------------------------"
+          $composeYaml | ConvertTo-Yaml | Out-File -FilePath ./docker-compose.prod.yml
 
       - name: Deploy Azure IPAM
         working-directory: deploy
@@ -196,7 +188,7 @@ jobs:
           $engineApp = Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamEngineAppId }}
 
           Remove-AzResourceGroup -Name ${{ needs.deploy.outputs.ipamResourceGroup }} -Force
-          Remove-AzRoleAssignment -ObjectId $engineApp.ObjectId -Scope $scope -RoleDefinitionName Reader
+          Remove-AzRoleAssignment -ObjectId $engineApp.Id -Scope $scope -RoleDefinitionName Reader
 
           $uiApp | Remove-AzADApplication
           $engineApp | Remove-AzADApplication
