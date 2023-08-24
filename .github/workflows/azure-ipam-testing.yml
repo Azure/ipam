@@ -72,8 +72,8 @@ jobs:
           $composeFile = Get-Content -Path ./docker-compose.prod.yml
           $composeYaml = $composeFile | ConvertFrom-Yaml
           $composeYaml['services']['ipam-ui'].image = "$env:ACR_NAME.azurecr.io/ipam-ui:${{ github.run_id }}-${{ github.run_attempt }}"
-          $composeYaml['services']['ipam-engine'].image = "$env:ACR_NAME".azurecr.io/ipam-engine:${{ github.run_id }}-${{ github.run_attempt }}"
-          $composeYaml['services']['nginx-proxy'].image = "$env:ACR_NAME".azurecr.io/ipam-lb:${{ github.run_id }}-${{ github.run_attempt }}"
+          $composeYaml['services']['ipam-engine'].image = "$env:ACR_NAME.azurecr.io/ipam-engine:${{ github.run_id }}-${{ github.run_attempt }}"
+          $composeYaml['services']['nginx-proxy'].image = "$env:ACR_NAME.azurecr.io/ipam-lb:${{ github.run_id }}-${{ github.run_attempt }}"
           $composeYaml | ConvertTo-Yaml | Out-File -Path ./docker-compose-prod.yml
 
       - name: Deploy Azure IPAM
@@ -175,6 +175,18 @@ jobs:
       - name : Cleanup Azure IPAM Deployment
         shell: pwsh
         run: |
+          $tenantId = (Get-AzContext).Tenant.Id
+          $scope = "/providers/Microsoft.Management/managementGroups/$TenantId"
+          $uiApp = Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamUIAppId }}
+          $engineApp = Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamEngineAppId }}
           Remove-AzResourceGroup -Name ${{ needs.deploy.outputs.ipamResourceGroup }} -Force
-          Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamUIAppId }} | Remove-AzADApplication
-          Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamEngineAppId }} | Remove-AzADApplication
+          Remove-AzRoleAssignment -ObjectId $engineApp.ObjectId -Scope $scope -RoleDefinitionName Reader
+          $uiApp | Remove-AzADApplication
+          $engineApp | Remove-AzADApplication
+
+      - name: "Remove Azure IPAM Containers"
+        run: |
+          az acr repository delete -r $ACR_NAME -n ipam-engine
+          az acr repository delete -r $ACR_NAME -n ipam-func
+          az acr repository delete -r $ACR_NAME -n ipam-ui
+          az acr repository delete -r $ACR_NAME -n ipam-lb
