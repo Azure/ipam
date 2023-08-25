@@ -197,7 +197,7 @@ jobs:
 
       - name: "Remove Azure IPAM Containers"
         run: |
-          az acr repository delete --name $ACR_NAME --repository ipam-engine
-          az acr repository delete --name $ACR_NAME --repository ipam-func
-          az acr repository delete --name $ACR_NAME --repository ipam-ui
-          az acr repository delete --name $ACR_NAME --repository ipam-lb
+          az acr repository delete --name $ACR_NAME --repository ipam-engine --yes
+          az acr repository delete --name $ACR_NAME --repository ipam-func --yes
+          az acr repository delete --name $ACR_NAME --repository ipam-ui --yes
+          az acr repository delete --name $ACR_NAME --repository ipam-lb --yes
