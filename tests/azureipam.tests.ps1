@@ -26,9 +26,10 @@ BeforeAll {
       -Token $accessToken `
       -Uri "${baseUrl}${resource}" `
       -Headers $headers `
-      -Body $query
+      -Body $query `
+      -StatusCodeVariable status
 
-    Write-Output $response
+    Write-Output $response, $status
   }
 
   # POST API Request
@@ -49,9 +50,10 @@ BeforeAll {
       -Token $accessToken `
       -Uri "${baseUrl}${resource}" `
       -Headers $headers `
-      -Body $jsonBody
+      -Body $jsonBody `
+      -StatusCodeVariable status
 
-    Write-Output $response
+    Write-Output $response, $status
   }
 
   # PUT API Request
@@ -72,9 +74,10 @@ BeforeAll {
       -Token $accessToken `
       -Uri "${baseUrl}${resource}" `
       -Headers $headers `
-      -Body $jsonBody
+      -Body $jsonBody `
+      -StatusCodeVariable status
 
-    Write-Output $response
+    Write-Output $response, $status
   }
 
   # PATCH API Request
@@ -95,9 +98,10 @@ BeforeAll {
       -Token $accessToken `
       -Uri "${baseUrl}${resource}" `
       -Headers $headers `
-      -Body $jsonBody
+      -Body $jsonBody `
+      -StatusCodeVariable status
 
-    Write-Output $response
+    Write-Output $response, $status
   }
 
   # DELETE API Request
@@ -118,16 +122,17 @@ BeforeAll {
       -Token $accessToken `
       -Uri "${baseUrl}${resource}" `
       -Headers $headers `
-      -Body $jsonBody
+      -Body $jsonBody `
+      -StatusCodeVariable status
 
-    Write-Output $response
+    Write-Output $response, $status
   }
 }
 
 Context 'Spaces' {
   It 'Verify No Spaces Exist' {
 
-    $spaces = Get-ApiResource '/spaces'
+    $spaces, $spacesStatus = Get-ApiResource '/spaces'
 
     $spaces | Should -Be $null
   }
@@ -146,7 +151,7 @@ Context 'Spaces' {
     New-ApiResource '/spaces' $spaceA
     New-ApiResource '/spaces' $spaceB
 
-    $spaces = Get-ApiResource '/spaces'
+    $spaces, $spacesStatus = Get-ApiResource '/spaces'
     
     $spaces.Count | Should -Be 2
     $spaces.Name -contains 'TestSpace01' | Should -Be $true
@@ -156,7 +161,7 @@ Context 'Spaces' {
   It 'Delete a Space' {
     Remove-ApiResource '/spaces/TestSpace02'
 
-    $spaces = Get-ApiResource '/spaces'
+    $spaces, $spacesStatus = Get-ApiResource '/spaces'
     
     $spaces.Count | Should -Be 1
     $spaces.Name -contains 'TestSpace01' | Should -Be $true
@@ -179,7 +184,7 @@ Context 'Spaces' {
 
     Update-ApiResource '/spaces/TestSpace01' $update
 
-    $spaces = Get-ApiResource '/spaces'
+    $spaces, $spacesStatus = Get-ApiResource '/spaces'
     
     $spaces.Count | Should -Be 1
     $spaces[0].Name -eq 'TestSpaceA' | Should -Be $true
@@ -190,7 +195,7 @@ Context 'Spaces' {
 Context 'Blocks' {
   It 'Verify No Blocks Exist' {
 
-    $blocks = Get-ApiResource '/spaces/TestSpaceA/blocks'
+    $blocks, $blocksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks'
 
     $blocks | Should -Be $null
   }
@@ -209,7 +214,7 @@ Context 'Blocks' {
     New-ApiResource '/spaces/TestSpaceA/blocks' $blockA
     New-ApiResource '/spaces/TestSpaceA/blocks' $blockB
 
-    $blocks = Get-ApiResource '/spaces/TestSpaceA/blocks'
+    $blocks, $blocksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks'
     
     $blocks.Count | Should -Be 2
     $blocks.Name -contains 'TestBlock01' | Should -Be $true
@@ -219,7 +224,7 @@ Context 'Blocks' {
   It 'Delete a Block' {
     Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlock02'
 
-    $blocks = Get-ApiResource '/spaces/TestSpaceA/blocks'
+    $blocks, $blocksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks'
     
     $blocks.Count | Should -Be 1
     $blocks.Name -contains 'TestBlock01' | Should -Be $true
@@ -242,7 +247,7 @@ Context 'Blocks' {
 
     Update-ApiResource '/spaces/TestSpaceA/blocks/TestBlock01' $update
 
-    $blocks = Get-ApiResource '/spaces/TestSpaceA/blocks'
+    $blocks, $blocksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks'
     
     $blocks.Count | Should -Be 1
     $blocks[0].Name -eq 'TestBlockA' | Should -Be $true
@@ -253,7 +258,7 @@ Context 'Blocks' {
 Context 'Networks' {
   It 'Verify No Networks Exist in Block' {
 
-    $networks = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks'
+    $networks, $networksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks'
     
     $networks | Should -Be $null
   }
@@ -271,7 +276,8 @@ Context 'Networks' {
       id = $script:newNetA.Id
     }
 
-    $block = New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks' $body
+    ### FIX THIS ###
+    $block, $blockStatus = New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks' $body
 
     $($block.vnets | Select-Object -ExpandProperty id) -contains $script:newNetA.Id | Should -Be $true
   }
@@ -291,7 +297,7 @@ Context 'Networks' {
     )
 
     Set-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks' $body
-    $networks = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks'
+    $networks, $networksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks'
 
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetA.Id | Should -Be $true
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetB.Id | Should -Be $true
@@ -303,7 +309,7 @@ Context 'Networks' {
     )
 
     Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks' $body
-    $networks = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks'
+    $networks, $networksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks'
 
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetA.Id | Should -Be $true
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetB.Id | Should -Be $false
@@ -313,7 +319,7 @@ Context 'Networks' {
 Context 'External Networks' {
   It 'Verify No External Networks Exist in Block' {
 
-    $externals = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
+    $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
     
     $externals | Should -Be $null
   }
@@ -326,7 +332,7 @@ Context 'External Networks' {
     }
 
     New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals' $script:externalA
-    $externals = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
+    $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
     
     $externals.Name -contains "ExternalNetA" | Should -Be $true
   }
@@ -351,7 +357,7 @@ Context 'External Networks' {
     )
 
     Set-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals' $body
-    $externals = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
+    $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
     
     $externals.Name -contains "ExternalNetA" | Should -Be $true
     $externals.Name -contains "ExternalNetB" | Should -Be $true
@@ -363,7 +369,7 @@ Context 'External Networks' {
     )
 
     Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals' $body
-    $externals = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
+    $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
     
     $externals.Name -contains "ExternalNetA" | Should -Be $true
     $externals.Name -contains "ExternalNetB" | Should -Be $true
@@ -372,7 +378,7 @@ Context 'External Networks' {
 
   It 'Get Specific Block External Network' {
 
-    $external = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetB'
+    $external, $externalStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetB'
     
     $external.Name | Should -Be "ExternalNetB"
     $external.Desc | Should -Be "External Network B"
@@ -382,7 +388,7 @@ Context 'External Networks' {
   It 'Delete Specific Block External Network' {
 
     Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetB'
-    $externals = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
+    $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
 
     $externals.Name -contains "ExternalNetA" | Should -Be $true
     $externals.Name -contains "ExternalNetB" | Should -Be $false
@@ -393,7 +399,7 @@ Context 'External Networks' {
 Context 'Reservations' {
   It 'Verify No Reservations Exist in Block' {
 
-    $reservations = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations'
+    $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations'
     
     $reservations | Should -Be $null
   }
@@ -404,8 +410,8 @@ Context 'Reservations' {
       desc = "Test Reservation A"
     }
 
-    $script:reservationA = New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $body
-    $reservations = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations'
+    $script:reservationA, $reservationAStatus = New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $body
+    $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations'
     
     $reservations.Count | Should -Be 1
     $reservations[0].Space -eq "TestSpaceA" | Should -Be $true
@@ -429,8 +435,8 @@ Context 'Reservations' {
       settled = $true
     }
 
-    $networks = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks'
-    $reservations = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $query
+    $networks, $networksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks'
+    $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $query
 
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetA.Id | Should -Be $true
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetC.Id | Should -Be $true

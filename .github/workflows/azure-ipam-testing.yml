@@ -113,14 +113,12 @@ jobs:
 
           Set-AzStorageBlobContent @uploadDetails
 
-      - run: echo "${{ github.job }} status is ${{ job.status }}."
-
   sleep:
-    name: Sleep for 5 Minutes
+    name: Sleep for 1 Minute
     runs-on: ubuntu-latest
     needs: deploy
     steps:
-      - name: Test Sleepy Time
+      - name: Sleep to Allow Azure IPAM Startup
         run: |
             echo "Time: $(date +'%T')"
             echo "Sleeping for 30 seconds"
@@ -159,7 +157,21 @@ jobs:
         shell: pwsh
         run: |
           Import-Module Pester -PassThru
-          Invoke-Pester -Output Detailed ./azureipam.tests.ps1 -PassThru
+
+          $pesterSettings = @{
+            Run = @{
+              Path = "./azureipam.tests.ps1"
+              PassThru = $true
+              SkipRemainingOnFailure = "Run"
+            }
+            Output = @{
+              Verbosity = "Detailed"
+            }
+          }
+
+          $pesterConfig = New-PesterConfiguration -Hashtable $pesterSettings
+
+          Invoke-Pester -Configuration $pesterConfig
 
   cleanup:
     name: Cleanup Azure IPAM Deployment
@@ -178,7 +190,12 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           enable-AzPSSession: true
 
-      - name : Cleanup Azure IPAM Deployment
+      - name : Remove Azure IPAM Resources
+        shell: pwsh
+        run: |
+          Remove-AzResourceGroup -Name ${{ needs.deploy.outputs.ipamResourceGroup }} -Force
+
+      - name : Remove Azure IPAM Identities
         shell: pwsh
         run: |
           $tenantId = (Get-AzContext).Tenant.Id
@@ -188,7 +205,6 @@ jobs:
           $engineApp = Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamEngineAppId }}
           $engineSpn = Get-AzADServicePrincipal -ApplicationId ${{ needs.deploy.outputs.ipamEngineAppId }}
 
-          Remove-AzResourceGroup -Name ${{ needs.deploy.outputs.ipamResourceGroup }} -Force
           Remove-AzRoleAssignment -ObjectId $engineSpn.Id -Scope $scope -RoleDefinitionName Reader
 
           $engineSpn | Remove-AzADServicePrincipal
