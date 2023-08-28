@@ -85,7 +85,7 @@ jobs:
           STORAGE_ACCT_CTR: ${{ vars.LOGGING_STORAGE_CTR }}
         shell: pwsh
         run: |
-          # $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
+          $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
           # $archiveName = "ipam-${env:AZURE_IPAM_SUFFIX}-${dateStamp}.zip"
           $archiveName = "ipam-${{ github.run_id }}(${{ github.run_attempt }})-${dateStamp}.zip"
 
@@ -123,7 +123,7 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Deployment Details:"
-          $env:DEPLOYMENT_DETAILS
+          Write-Output $env:DEPLOYMENT_DETAILS
 
   test:
     name: Test Azure IPAM
