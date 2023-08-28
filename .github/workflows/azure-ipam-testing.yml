@@ -128,7 +128,7 @@ jobs:
   test:
     name: Test Azure IPAM
     runs-on: ubuntu-latest
-    needs: [ deploy, sleep ]
+    needs: [ deploy ]
     steps:
       - name: Install Testing Prerequisites
         shell: pwsh
@@ -176,7 +176,7 @@ jobs:
   cleanup:
     name: Cleanup Azure IPAM
     runs-on: ubuntu-latest
-    needs: [ deploy, sleep, test ]
+    needs: [ deploy, test ]
     steps:
       - name: Install Deployment Prerequisites
         shell: pwsh
