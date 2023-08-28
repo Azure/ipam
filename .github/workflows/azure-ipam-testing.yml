@@ -1,9 +1,5 @@
 name: Azure IPAM Testing
 
-# permissions:
-#   id-token: write
-#   contents: read
-
 run-name: Azure IPAM Deployment & Testing
 
 on:
@@ -13,7 +9,7 @@ on:
     branches: [ main ]
 
 env:
-  ACR_NAME: azureipamtest
+  ACR_NAME: ${{ vars.IPAM_TEST_ACR }}
   IPAM_UI_ID: ipam-ui-${{ github.run_id }}-${{ github.run_attempt }}
   IPAM_ENGINE_ID: ipam-engine-${{ github.run_id }}-${{ github.run_attempt }}
 
@@ -35,14 +31,6 @@ jobs:
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module Az, Microsoft.Graph, powershell-yaml -AllowClobber -Force
-
-      # - name: "Azure Login"
-      #   uses: azure/login@v1
-      #   with:
-      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
-      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-      #     enable-AzPSSession: true
 
       - name: Azure Login
         uses: azure/login@v1
@@ -86,26 +74,28 @@ jobs:
         working-directory: deploy
         id: "pwshScript"
         shell: pwsh
-        run: ./deploy.ps1 -Location "westus3" -UIAppName $Env:IPAM_UI_ID -EngineAppName $Env:IPAM_ENGINE_ID
-
-      - name: "Output PowerShell Value 'ipamSuffix'"
-        run: echo "${{ steps.pwshScript.outputs.ipamSuffix }}"
+        run: ./deploy.ps1 -Location "westus3" -UIAppName $env:IPAM_UI_ID -EngineAppName $env:IPAM_ENGINE_ID
 
       - name: "Upload Logs"
         working-directory: logs
+        env:
+          AZURE_IPAM_SUFFIX: ${{ steps.pwshScript.outputs.ipamSuffix }}
+          STORAGE_ACCT_RG: ${{ vars.LOGGING_STORAGE_RG }}
+          STORAGE_ACCT_NAME: ${{ vars.LOGGING_STORAGE_NAME }}
+          STORAGE_ACCT_CTR: ${{ vars.LOGGING_STORAGE_CTR }}
         shell: pwsh
         run: |
           $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
-          $archiveName = "ipam-${dateStamp}.zip"
+          $archiveName = "ipam-${env:AZURE_IPAM_SUFFIX}-${dateStamp}.zip"
 
-          Compress-Archive -Pat ./* -DestinationPath /tmp/$archiveName
+          Compress-Archive -Path ./* -DestinationPath /tmp/$archiveName
 
-          $storage = Get-AzStorageAccount -Name "ipamghactionlogs" -ResourceGroupName "Logging-RG"
+          $storage = Get-AzStorageAccount -Name $env:STORAGE_ACCT_NAME -ResourceGroupName $env:STORAGE_ACCT_RG
           $context = $storage.Context
 
           $uploadDetails = @{
             File = "/tmp/$archiveName"
-            Container = "deploy-logs"
+            Container = $env:STORAGE_ACCT_CTR
             Blob = $archiveName
             Context = $context
             StandardBlobTier = "Hot"
@@ -113,17 +103,19 @@ jobs:
 
           Set-AzStorageBlobContent @uploadDetails
 
-  # sleep:
-  #   name: Sleep for 1 Minute
-  #   runs-on: ubuntu-latest
-  #   needs: deploy
-  #   steps:
-  #     - name: Sleep to Allow Azure IPAM Startup
-  #       run: |
-  #           echo "Time: $(date +'%T')"
-  #           echo "Sleeping for 30 seconds"
-  #           sleep 30
-  #           echo "Time: $(date +'%T')"
+          Write-Output "ipamLogFile=$archiveName" >> $Env:GITHUB_OUTPUT
+
+      - name: "Output Azure IPAM Deployment Details"
+        shell: pwsh
+        run: |
+          Write-Host "Deployment Details:"
+          Write-Host "-------------------"
+          Write-Host "IPAM Suffix: ${{ steps.pwshScript.outputs.ipamSuffix }}"
+          Write-Host "IPAM UI App ID: ${{ steps.pwshScript.outputs.ipamUIAppId }}"
+          Write-Host "IPAM Engine App ID: ${{ steps.pwshScript.outputs.ipamEngineAppId }}"
+          Write-Host "IPAM URL: ${{ steps.pwshScript.outputs.ipamURL }}"
+          Write-Host "IPAM Log File: ${{ steps.pwshScript.outputs.ipamLogFile }}}}"
+          Write-Host "-------------------"
 
   test:
     name: Test Azure IPAM
