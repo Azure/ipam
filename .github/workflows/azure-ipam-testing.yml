@@ -85,8 +85,20 @@ jobs:
           STORAGE_ACCT_CTR: ${{ vars.LOGGING_STORAGE_CTR }}
         shell: pwsh
         run: |
-          $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
-          $archiveName = "ipam-${env:AZURE_IPAM_SUFFIX}-${dateStamp}.zip"
+          # $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
+          # $archiveName = "ipam-${env:AZURE_IPAM_SUFFIX}-${dateStamp}.zip"
+          $archiveName = "ipam-${{ github.run_id }}(${{ github.run_attempt }})-${dateStamp}.zip"
+
+          $logDetails = @{
+            GITHUB_RUN_ID = "${{ github.run_id }}/${{ github.run_attempt }}"
+            IPAM_SUFFIX = "${{ steps.pwshScript.outputs.ipamSuffix }}"
+            IPAM_UI_APP_ID = "${{ steps.pwshScript.outputs.ipamUIAppId }}"
+            IPAM_ENGINE_APP_ID = "${{ steps.pwshScript.outputs.ipamEngineAppId }}"
+            IPAM_URL = "${{ steps.pwshScript.outputs.ipamURL }}"
+            IPAM_LOG_FILE = "${{ steps.pwshScript.outputs.ipamLogFile }}"
+          }
+
+          $logDetails | ConvertTo-Json | Out-File -FilePath ./deploymentDetails.json
 
           Compress-Archive -Path ./* -DestinationPath /tmp/$archiveName
 
@@ -103,19 +115,15 @@ jobs:
 
           Set-AzStorageBlobContent @uploadDetails
 
-          Write-Output "ipamLogFile=$archiveName" >> $Env:GITHUB_OUTPUT
+          Write-Output "deployDetails=$logDetails" >> $Env:GITHUB_OUTPUT
 
       - name: "Output Azure IPAM Deployment Details"
+        env:
+          DEPLOYMENT_DETAILS: ${{ steps.pwshScript.outputs.deployDetails }}
         shell: pwsh
         run: |
           Write-Host "Deployment Details:"
-          Write-Host "-------------------"
-          Write-Host "IPAM Suffix: ${{ steps.pwshScript.outputs.ipamSuffix }}"
-          Write-Host "IPAM UI App ID: ${{ steps.pwshScript.outputs.ipamUIAppId }}"
-          Write-Host "IPAM Engine App ID: ${{ steps.pwshScript.outputs.ipamEngineAppId }}"
-          Write-Host "IPAM URL: ${{ steps.pwshScript.outputs.ipamURL }}"
-          Write-Host "IPAM Log File: ${{ steps.pwshScript.outputs.ipamLogFile }}}}"
-          Write-Host "-------------------"
+          $env:DEPLOYMENT_DETAILS
 
   test:
     name: Test Azure IPAM
