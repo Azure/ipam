@@ -276,8 +276,9 @@ Context 'Networks' {
       id = $script:newNetA.Id
     }
 
-    ### FIX THIS ###
-    $block, $blockStatus = New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks' $body
+    New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks' $body
+
+    $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA'
 
     $($block.vnets | Select-Object -ExpandProperty id) -contains $script:newNetA.Id | Should -Be $true
   }
@@ -297,6 +298,7 @@ Context 'Networks' {
     )
 
     Set-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks' $body
+
     $networks, $networksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks'
 
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetA.Id | Should -Be $true
@@ -309,6 +311,7 @@ Context 'Networks' {
     )
 
     Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks' $body
+
     $networks, $networksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks'
 
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetA.Id | Should -Be $true
@@ -332,6 +335,7 @@ Context 'External Networks' {
     }
 
     New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals' $script:externalA
+
     $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
     
     $externals.Name -contains "ExternalNetA" | Should -Be $true
@@ -357,6 +361,7 @@ Context 'External Networks' {
     )
 
     Set-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals' $body
+
     $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
     
     $externals.Name -contains "ExternalNetA" | Should -Be $true
@@ -369,6 +374,7 @@ Context 'External Networks' {
     )
 
     Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals' $body
+
     $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
     
     $externals.Name -contains "ExternalNetA" | Should -Be $true
@@ -388,6 +394,7 @@ Context 'External Networks' {
   It 'Delete Specific Block External Network' {
 
     Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetB'
+
     $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
 
     $externals.Name -contains "ExternalNetA" | Should -Be $true
