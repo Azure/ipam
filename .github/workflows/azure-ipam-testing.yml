@@ -18,11 +18,11 @@ jobs:
     name: Deploy Azure IPAM
     runs-on: ubuntu-latest
     outputs:
-      ipamURL: ${{ steps.pwshScript.outputs.ipamURL }}
-      ipamUIAppId: ${{ steps.pwshScript.outputs.ipamUIAppId }}
-      ipamEngineAppId: ${{ steps.pwshScript.outputs.ipamEngineAppId }}
-      ipamSuffix: ${{ steps.pwshScript.outputs.ipamSuffix }}
-      ipamResourceGroup: ${{ steps.pwshScript.outputs.ipamResourceGroup }}
+      ipamURL: ${{ steps.deployScript.outputs.ipamURL }}
+      ipamUIAppId: ${{ steps.deployScript.outputs.ipamUIAppId }}
+      ipamEngineAppId: ${{ steps.deployScript.outputs.ipamEngineAppId }}
+      ipamSuffix: ${{ steps.deployScript.outputs.ipamSuffix }}
+      ipamResourceGroup: ${{ steps.deployScript.outputs.ipamResourceGroup }}
     steps:
       - run: echo "Job triggered by a ${{ github.event_name }} event from ${{ github.head_ref }} to main."
 
@@ -72,14 +72,15 @@ jobs:
 
       - name: Deploy Azure IPAM
         working-directory: deploy
-        id: "pwshScript"
+        id: deployScript
         shell: pwsh
         run: ./deploy.ps1 -Location "westus3" -UIAppName $env:IPAM_UI_ID -EngineAppName $env:IPAM_ENGINE_ID
 
       - name: "Upload Logs"
         working-directory: logs
+        id: uploadLogs
         env:
-          AZURE_IPAM_SUFFIX: ${{ steps.pwshScript.outputs.ipamSuffix }}
+          AZURE_IPAM_SUFFIX: ${{ steps.deployScript.outputs.ipamSuffix }}
           STORAGE_ACCT_RG: ${{ vars.LOGGING_STORAGE_RG }}
           STORAGE_ACCT_NAME: ${{ vars.LOGGING_STORAGE_NAME }}
           STORAGE_ACCT_CTR: ${{ vars.LOGGING_STORAGE_CTR }}
@@ -91,11 +92,11 @@ jobs:
 
           $logDetails = @{
             GITHUB_RUN_ID = "${{ github.run_id }}/${{ github.run_attempt }}"
-            IPAM_SUFFIX = "${{ steps.pwshScript.outputs.ipamSuffix }}"
-            IPAM_UI_APP_ID = "${{ steps.pwshScript.outputs.ipamUIAppId }}"
-            IPAM_ENGINE_APP_ID = "${{ steps.pwshScript.outputs.ipamEngineAppId }}"
-            IPAM_URL = "${{ steps.pwshScript.outputs.ipamURL }}"
-            IPAM_LOG_FILE = "${{ steps.pwshScript.outputs.ipamLogFile }}"
+            IPAM_SUFFIX = "${{ steps.deployScript.outputs.ipamSuffix }}"
+            IPAM_UI_APP_ID = "${{ steps.deployScript.outputs.ipamUIAppId }}"
+            IPAM_ENGINE_APP_ID = "${{ steps.deployScript.outputs.ipamEngineAppId }}"
+            IPAM_URL = "${{ steps.deployScript.outputs.ipamURL }}"
+            IPAM_LOG_FILE = "${{ steps.deployScript.outputs.ipamLogFile }}"
           }
 
           $logDetails | ConvertTo-Json | Out-File -FilePath ./deploymentDetails.json
@@ -119,11 +120,14 @@ jobs:
 
       - name: "Output Azure IPAM Deployment Details"
         env:
-          DEPLOYMENT_DETAILS: ${{ steps.pwshScript.outputs.deployDetails }}
+          DEPLOYMENT_DETAILS: ${{ steps.uploadLogs.outputs.deployDetails }}
         shell: pwsh
         run: |
+          Write-Host "-------------------"
           Write-Host "Deployment Details:"
-          Write-Output $env:DEPLOYMENT_DETAILS
+          Write-Host "-------------------"
+          Write-Host ($env:DEPLOYMENT_DETAILS | Format-Table | Out-String) -NoNewline
+          Write-Host "-------------------"
 
   test:
     name: Test Azure IPAM
