@@ -116,7 +116,7 @@ jobs:
 
           Set-AzStorageBlobContent @uploadDetails
 
-          Write-Output "deployDetails=$logDetails" >> $Env:GITHUB_OUTPUT
+          Write-Output "deployDetails=$($logDetails | ConvertTo-Json)" >> $Env:GITHUB_OUTPUT
 
       - name: "Output Azure IPAM Deployment Details"
         env:
@@ -126,7 +126,7 @@ jobs:
           Write-Host "-------------------"
           Write-Host "Deployment Details:"
           Write-Host "-------------------"
-          Write-Host ($env:DEPLOYMENT_DETAILS | Format-Table | Out-String) -NoNewline
+          Write-Host ($env:DEPLOYMENT_DETAILS | ConvertFrom-Json -AsHashtable | Format-Table | Out-String) -NoNewline
           Write-Host "-------------------"
 
   test:
