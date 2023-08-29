@@ -86,17 +86,18 @@ jobs:
           STORAGE_ACCT_CTR: ${{ vars.LOGGING_STORAGE_CTR }}
         shell: pwsh
         run: |
-          $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
+          # $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
           # $archiveName = "ipam-${env:AZURE_IPAM_SUFFIX}-${dateStamp}.zip"
-          $archiveName = "ipam-${{ github.run_id }}(${{ github.run_attempt }})-${dateStamp}.zip"
+          # $archiveName = "ipam-${{ github.run_id }}(${{ github.run_attempt }})-${dateStamp}.zip"
+          $archiveName = "IPAM-RUN(${{ github.run_id }})-ATTEMPT(${{ github.run_attempt }})-SUFFIX($env:AZURE_IPAM_SUFFIX).zip"
 
           $logDetails = @{
-            GITHUB_RUN_ID = "${{ github.run_id }}/${{ github.run_attempt }}"
+            GITHUB_RUN_ID = "${{ github.run_id }}(${{ github.run_attempt }})"
             IPAM_SUFFIX = "${{ steps.deployScript.outputs.ipamSuffix }}"
             IPAM_UI_APP_ID = "${{ steps.deployScript.outputs.ipamUIAppId }}"
             IPAM_ENGINE_APP_ID = "${{ steps.deployScript.outputs.ipamEngineAppId }}"
             IPAM_URL = "${{ steps.deployScript.outputs.ipamURL }}"
-            IPAM_LOG_FILE = "${{ steps.deployScript.outputs.ipamLogFile }}"
+            IPAM_LOG_FILE = $archiveName
           }
 
           $logDetails | ConvertTo-Json | Out-File -FilePath ./deploymentDetails.json
