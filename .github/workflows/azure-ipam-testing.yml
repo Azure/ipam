@@ -91,17 +91,6 @@ jobs:
           # $archiveName = "ipam-${{ github.run_id }}(${{ github.run_attempt }})-${dateStamp}.zip"
           $archiveName = "IPAM-RUN(${{ github.run_id }})-ATTEMPT(${{ github.run_attempt }})-SUFFIX($env:AZURE_IPAM_SUFFIX).zip"
 
-          $logDetails = @{
-            GITHUB_RUN_ID = "${{ github.run_id }}(${{ github.run_attempt }})"
-            IPAM_SUFFIX = "${{ steps.deployScript.outputs.ipamSuffix }}"
-            IPAM_UI_APP_ID = "${{ steps.deployScript.outputs.ipamUIAppId }}"
-            IPAM_ENGINE_APP_ID = "${{ steps.deployScript.outputs.ipamEngineAppId }}"
-            IPAM_URL = "${{ steps.deployScript.outputs.ipamURL }}"
-            IPAM_LOG_FILE = $archiveName
-          }
-
-          $logDetails | ConvertTo-Json | Out-File -FilePath ./deploymentDetails.json
-
           Compress-Archive -Path ./* -DestinationPath /tmp/$archiveName
 
           $storage = Get-AzStorageAccount -Name $env:STORAGE_ACCT_NAME -ResourceGroupName $env:STORAGE_ACCT_RG
@@ -117,17 +106,26 @@ jobs:
 
           Set-AzStorageBlobContent @uploadDetails
 
-          Write-Output "deployDetails=$($logDetails | ConvertTo-Json)" >> $Env:GITHUB_OUTPUT
+          Write-Output "logFile=$archiveName" >> $Env:GITHUB_OUTPUT
 
       - name: "Output Azure IPAM Deployment Details"
         env:
           DEPLOYMENT_DETAILS: ${{ steps.uploadLogs.outputs.deployDetails }}
         shell: pwsh
         run: |
+          $deployDetails = @{
+            GITHUB_RUN_ID = "${{ github.run_id }}(${{ github.run_attempt }})"
+            IPAM_SUFFIX = "${{ steps.deployScript.outputs.ipamSuffix }}"
+            IPAM_UI_APP_ID = "${{ steps.deployScript.outputs.ipamUIAppId }}"
+            IPAM_ENGINE_APP_ID = "${{ steps.deployScript.outputs.ipamEngineAppId }}"
+            IPAM_URL = "${{ steps.deployScript.outputs.ipamURL }}"
+            IPAM_LOG_FILE = "${{ steps.uploadLogs.outputs.logFile }}"
+          }
+
           Write-Host "-------------------"
           Write-Host "Deployment Details:"
           Write-Host "-------------------"
-          Write-Host ($env:DEPLOYMENT_DETAILS | ConvertFrom-Json -AsHashtable | Format-Table | Out-String) -NoNewline
+          Write-Host ($deployDetails | Format-Table | Out-String) -NoNewline
           Write-Host "-------------------"
 
   test:
