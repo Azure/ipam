@@ -53,7 +53,7 @@ WORKDIR /code
 COPY ./engine/requirements.txt /code/requirements.txt
 
 # Upgrade PIP
-RUN pip install --upgrade pip
+RUN pip install --upgrade pip --progress-bar off
 
 # Install Dependencies
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
