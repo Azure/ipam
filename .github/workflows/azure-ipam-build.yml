@@ -4,7 +4,7 @@ run-name: Azure IPAM Production Container Build
 
 on:
   push:
-    branches: [ github-actions ]
+    branches: [ ghactions-build ]
 
 env:
   ACR_NAME: ${{ vars.IPAM_TEST_ACR }}
