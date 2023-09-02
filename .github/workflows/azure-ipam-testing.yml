@@ -1,0 +1,220 @@
+name: Azure IPAM Testing
+
+run-name: Azure IPAM Deployment & Testing
+
+on:
+  pull_request:
+    branches: [ main ]
+
+env:
+  ACR_NAME: ${{ vars.IPAM_TEST_ACR }}
+  IPAM_UI_ID: ipam-ui-${{ github.run_id }}-${{ github.run_attempt }}
+  IPAM_ENGINE_ID: ipam-engine-${{ github.run_id }}-${{ github.run_attempt }}
+
+jobs:
+  deploy:
+    name: Deploy Azure IPAM
+    runs-on: ubuntu-latest
+    outputs:
+      ipamURL: ${{ steps.deployScript.outputs.ipamURL }}
+      ipamUIAppId: ${{ steps.deployScript.outputs.ipamUIAppId }}
+      ipamEngineAppId: ${{ steps.deployScript.outputs.ipamEngineAppId }}
+      ipamSuffix: ${{ steps.deployScript.outputs.ipamSuffix }}
+      ipamResourceGroup: ${{ steps.deployScript.outputs.ipamResourceGroup }}
+    steps:
+      - run: echo "Job triggered by a ${{ github.event_name }} event from ${{ github.head_ref }} to main."
+
+      - name: Install Deployment Prerequisites
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Az, Microsoft.Graph, powershell-yaml -AllowClobber -Force
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          enable-AzPSSession: true
+
+      - name: Checkout Azure IPAM Code
+        uses: actions/checkout@v3
+        with:
+          sparse-checkout: |
+            deploy
+            engine
+            ui
+            lb
+
+      - name: Build Azure IPAM Containers
+        run: |
+          az acr build -r $ACR_NAME -t ipam-engine:${{ github.run_id }}-${{ github.run_attempt }} -f ./engine/Dockerfile.deb ./engine
+          az acr build -r $ACR_NAME -t ipam-func:${{ github.run_id }}-${{ github.run_attempt }} -f ./engine/Dockerfile.func ./engine
+          az acr build -r $ACR_NAME -t ipam-ui:${{ github.run_id }}-${{ github.run_attempt }}  -f ./ui/Dockerfile.deb ./ui
+          az acr build -r $ACR_NAME -t ipam-lb:${{ github.run_id }}-${{ github.run_attempt }} -f ./lb/Dockerfile ./lb
+
+      - name: Update Docker-Compose YAML
+        shell: pwsh
+        run: |
+          $uiContainer = "$env:ACR_NAME.azurecr.io/ipam-ui:${{ github.run_id }}-${{ github.run_attempt }}"
+          $engineContainer = "$env:ACR_NAME.azurecr.io/ipam-engine:${{ github.run_id }}-${{ github.run_attempt }}"
+          $lbContainer = "$env:ACR_NAME.azurecr.io/ipam-lb:${{ github.run_id }}-${{ github.run_attempt }}"
+
+          $composeFile = Get-Content -Path ./docker-compose.prod.yml
+          $composeYaml = $composeFile | ConvertFrom-Yaml
+
+          $composeYaml['services']['ipam-ui'].image = $uiContainer
+          $composeYaml['services']['ipam-engine'].image = $engineContainer
+          $composeYaml['services']['nginx-proxy'].image = $lbContainer
+
+          $composeYaml | ConvertTo-Yaml | Out-File -FilePath ./docker-compose.prod.yml
+
+      - name: Deploy Azure IPAM
+        working-directory: deploy
+        id: deployScript
+        shell: pwsh
+        run: ./deploy.ps1 -Location "westus3" -UIAppName $env:IPAM_UI_ID -EngineAppName $env:IPAM_ENGINE_ID
+
+      - name: "Upload Logs"
+        working-directory: logs
+        id: uploadLogs
+        env:
+          AZURE_IPAM_SUFFIX: ${{ steps.deployScript.outputs.ipamSuffix }}
+          STORAGE_ACCT_RG: ${{ vars.LOGGING_STORAGE_RG }}
+          STORAGE_ACCT_NAME: ${{ vars.LOGGING_STORAGE_NAME }}
+          STORAGE_ACCT_CTR: ${{ vars.LOGGING_STORAGE_CTR }}
+        shell: pwsh
+        run: |
+          # $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
+          # $archiveName = "ipam-${env:AZURE_IPAM_SUFFIX}-${dateStamp}.zip"
+          # $archiveName = "ipam-${{ github.run_id }}(${{ github.run_attempt }})-${dateStamp}.zip"
+          $archiveName = "IPAM-RUN(${{ github.run_id }})-ATTEMPT(${{ github.run_attempt }})-SUFFIX($env:AZURE_IPAM_SUFFIX).zip"
+
+          Compress-Archive -Path ./* -DestinationPath /tmp/$archiveName
+
+          $storage = Get-AzStorageAccount -Name $env:STORAGE_ACCT_NAME -ResourceGroupName $env:STORAGE_ACCT_RG
+          $context = $storage.Context
+
+          $uploadDetails = @{
+            File = "/tmp/$archiveName"
+            Container = $env:STORAGE_ACCT_CTR
+            Blob = $archiveName
+            Context = $context
+            StandardBlobTier = "Hot"
+          }
+
+          Set-AzStorageBlobContent @uploadDetails
+
+          Write-Output "logFile=$archiveName" >> $Env:GITHUB_OUTPUT
+
+      - name: "Output Azure IPAM Deployment Details"
+        env:
+          DEPLOYMENT_DETAILS: ${{ steps.uploadLogs.outputs.deployDetails }}
+        shell: pwsh
+        run: |
+          $deployDetails = @{
+            GITHUB_RUN_ID = "${{ github.run_id }}(${{ github.run_attempt }})"
+            IPAM_SUFFIX = "${{ steps.deployScript.outputs.ipamSuffix }}"
+            IPAM_UI_APP_ID = "${{ steps.deployScript.outputs.ipamUIAppId }}"
+            IPAM_ENGINE_APP_ID = "${{ steps.deployScript.outputs.ipamEngineAppId }}"
+            IPAM_URL = "${{ steps.deployScript.outputs.ipamURL }}"
+            IPAM_LOG_FILE = "${{ steps.uploadLogs.outputs.logFile }}"
+          }
+
+          Write-Host "-------------------"
+          Write-Host "Deployment Details:"
+          Write-Host "-------------------"
+          Write-Host ($deployDetails | Format-Table | Out-String) -NoNewline
+          Write-Host "-------------------"
+
+  test:
+    name: Test Azure IPAM
+    runs-on: ubuntu-latest
+    needs: [ deploy ]
+    steps:
+      - name: Install Testing Prerequisites
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Az, Pester -AllowClobber -Force
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          enable-AzPSSession: true
+
+      - name: Checkout Azure IPAM Code
+        uses: actions/checkout@v3
+        with:
+          sparse-checkout: |
+            tests
+
+      - name: Test Azure IPAM w/ Pester
+        working-directory: tests
+        env:
+          IPAM_RESOURCE_GROUP: ${{ needs.deploy.outputs.ipamResourceGroup }}
+          IPAM_URL: ${{ needs.deploy.outputs.ipamURL }}
+          IPAM_ENGINE_APP_ID: ${{ needs.deploy.outputs.ipamEngineAppId }}
+        shell: pwsh
+        run: |
+          Import-Module Pester -PassThru
+
+          $pesterSettings = @{
+            Run = @{
+              Path = "./azureipam.tests.ps1"
+              PassThru = $true
+              SkipRemainingOnFailure = "Run"
+            }
+            Output = @{
+              Verbosity = "Detailed"
+            }
+          }
+
+          $pesterConfig = New-PesterConfiguration -Hashtable $pesterSettings
+
+          Invoke-Pester -Configuration $pesterConfig
+
+  cleanup:
+    name: Cleanup Azure IPAM
+    runs-on: ubuntu-latest
+    needs: [ deploy, test ]
+    steps:
+      - name: Install Deployment Prerequisites
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Az -AllowClobber -Force
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          enable-AzPSSession: true
+
+      - name : Remove Azure IPAM Resources
+        shell: pwsh
+        run: |
+          Remove-AzResourceGroup -Name ${{ needs.deploy.outputs.ipamResourceGroup }} -Force
+
+      - name : Remove Azure IPAM Identities
+        shell: pwsh
+        run: |
+          $tenantId = (Get-AzContext).Tenant.Id
+          $scope = "/providers/Microsoft.Management/managementGroups/$tenantId"
+
+          $uiApp = Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamUIAppId }}
+          $engineApp = Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamEngineAppId }}
+          $engineSpn = Get-AzADServicePrincipal -ApplicationId ${{ needs.deploy.outputs.ipamEngineAppId }}
+
+          Remove-AzRoleAssignment -ObjectId $engineSpn.Id -Scope $scope -RoleDefinitionName Reader
+
+          $engineSpn | Remove-AzADServicePrincipal
+          $uiApp | Remove-AzADApplication
+          $engineApp | Remove-AzADApplication
+
+      - name: "Remove Azure IPAM Containers"
+        run: |
+          az acr repository delete --name $ACR_NAME --repository ipam-engine --yes
+          az acr repository delete --name $ACR_NAME --repository ipam-func --yes
+          az acr repository delete --name $ACR_NAME --repository ipam-ui --yes
+          az acr repository delete --name $ACR_NAME --repository ipam-lb --yes

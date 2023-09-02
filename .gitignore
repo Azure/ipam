@@ -1,6 +1,5 @@
 .env
 .VSCodeCounter
-.github/workflows
 NOTES.md
 TODO.md
 /logs
