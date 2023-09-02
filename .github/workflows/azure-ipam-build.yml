@@ -1,0 +1,54 @@
+name: Azure IPAM Build
+
+run-name: Azure IPAM Production Container Build
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ACR_NAME: ${{ vars.IPAM_PROD_ACR }}
+
+jobs:
+  deploy:
+    name: Update Azure IPAM Containers
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Job triggered by a ${{ github.event_name }} event to main."
+
+      - name: Azure login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: true
+
+      - name: Checkout Azure IPAM Code
+        uses: actions/checkout@v3
+        with:
+          sparse-checkout: |
+            engine
+            ui
+            lb
+
+      - name: "Upload Azure IPAM Version"
+        id: updateVersion
+        shell: pwsh
+        run: |
+          $newVersion = "latest"
+
+          Write-Output "ipamVersion=$newVersion" >> $Env:GITHUB_OUTPUT
+
+      - name: Build Azure IPAM Containers
+        env:
+          IPAM_VERSION: ${{ steps.updateVersion.outputs.ipamVersion }}
+        run: |
+          az acr build -r $ACR_NAME -t ipam-engine:$IPAM_VERSION -f ./engine/Dockerfile.deb ./engine
+          az acr build -r $ACR_NAME -t ipam-func:$IPAM_VERSION -f ./engine/Dockerfile.func ./engine
+          az acr build -r $ACR_NAME -t ipam-ui:$IPAM_VERSION -f ./ui/Dockerfile.deb ./ui
+          az acr build -r $ACR_NAME -t ipam-lb:$IPAM_VERSION -f ./lb/Dockerfile ./lb
