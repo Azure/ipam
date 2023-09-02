@@ -4,14 +4,14 @@ run-name: Azure IPAM Production Container Build
 
 on:
   push:
-    branches: [ ghactions-build ]
+    branches: [ main ]
 
 permissions:
   id-token: write
   contents: read
 
 env:
-  ACR_NAME: ${{ vars.IPAM_GITHUB_ACR }}
+  ACR_NAME: ${{ vars.IPAM_PROD_ACR }}
 
 jobs:
   deploy:
