@@ -1,6 +1,6 @@
 {
   "name": "azure-ipam-ui",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "private": true,
   "dependencies": {
     "@azure/msal-browser": "^2.37.0",
@@ -26,15 +26,12 @@
     "react-dom": "^18.2.0",
     "react-redux": "^8.0.5",
     "react-router-dom": "^6.11.1",
-    "react-scripts": "5.0.1",
     "spinners-react": "^1.0.7",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "start": "vite",
+    "build": "vite build"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -52,7 +49,9 @@
     ]
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.4",
     "http-server": "^14.1.1",
-    "react-inject-env": "^2.1.0"
+    "react-inject-env": "^2.1.0",
+    "vite": "^4.4.9"
   }
 }

@@ -3,6 +3,8 @@ name: Azure IPAM Testing
 run-name: Azure IPAM Deployment & Testing
 
 on:
+  push:
+    branches: [ ipam-vite ]
   pull_request:
     branches: [ main ]
 

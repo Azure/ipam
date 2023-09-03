@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:16-slim AS builder
+FROM node:18-slim AS builder
 
 # Set Working Directory
 WORKDIR /app
@@ -41,7 +41,7 @@ RUN mkdir /var/run/sshd
 
 # Install NodeJS 16.x
 RUN apt install curl -y
-RUN curl -sL https://deb.nodesource.com/setup_16.x -o nodesource_setup.sh
+RUN curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh
 RUN bash ./nodesource_setup.sh
 RUN apt install nodejs
 RUN npm install -g react-inject-env

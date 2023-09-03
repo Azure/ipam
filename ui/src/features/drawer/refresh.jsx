@@ -73,7 +73,7 @@ function Refresh() {
   }, []);
 
   React.useEffect(()=>{
-    const env = { ...process.env, ...window['env'] }
+    const env = { ...import.meta.env, ...window['env'] }
     console.log("+++WEBSITE_DETAILS+++");
     console.log(env);
     console.log("+++++++++++++++++++++");
