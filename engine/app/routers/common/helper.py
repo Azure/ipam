@@ -24,6 +24,8 @@ from app.globals import globals
 
 # SCOPE = "https://management.azure.com/user_impersonation"
 
+cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+
 def valid_ipv4(addr):
     try:
         ip_net = IPNetwork(addr, version=4)
@@ -139,7 +141,7 @@ async def get_mgmt_group_name(tenant_id):
 async def cosmos_query(query: str, tenant_id: str):
     """DOCSTRING"""
 
-    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+    # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
     database = cosmos_client.get_database_client(database_name)
@@ -155,14 +157,14 @@ async def cosmos_query(query: str, tenant_id: str):
 
     result_array = [result async for result in query_results]
 
-    await cosmos_client.close()
+    # await cosmos_client.close()
 
     return result_array
 
 async def cosmos_upsert(data):
     """DOCSTRING"""
 
-    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+    # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
     database = cosmos_client.get_database_client(database_name)
@@ -177,14 +179,14 @@ async def cosmos_upsert(data):
     finally:
         await cosmos_client.close()
 
-    await cosmos_client.close()
+    # await cosmos_client.close()
 
     return res
 
 async def cosmos_replace(old, new):
     """DOCSTRING"""
 
-    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+    # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
     database = cosmos_client.get_database_client(database_name)
@@ -204,14 +206,14 @@ async def cosmos_replace(old, new):
     finally:
         await cosmos_client.close()
 
-    await cosmos_client.close()
+    # await cosmos_client.close()
 
     return
 
 async def cosmos_delete(item, tenant_id: str):
     """DOCSTRING"""
 
-    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+    # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
     database = cosmos_client.get_database_client(database_name)
@@ -229,7 +231,7 @@ async def cosmos_delete(item, tenant_id: str):
     finally:
         await cosmos_client.close()
 
-    await cosmos_client.close()
+    # await cosmos_client.close()
 
     return
 
