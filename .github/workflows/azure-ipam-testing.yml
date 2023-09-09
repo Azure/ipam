@@ -22,8 +22,6 @@ jobs:
       ipamSuffix: ${{ steps.deployScript.outputs.ipamSuffix }}
       ipamResourceGroup: ${{ steps.deployScript.outputs.ipamResourceGroup }}
     steps:
-      - run: echo "Job triggered by a ${{ github.event_name }} event from ${{ github.head_ref }} to main."
-
       - name: Install Deployment Prerequisites
         shell: pwsh
         run: |
@@ -84,9 +82,6 @@ jobs:
           STORAGE_ACCT_CTR: ${{ vars.LOGGING_STORAGE_CTR }}
         shell: pwsh
         run: |
-          # $dateStamp = (Get-Date -UFormat "%Y-%m-%d_%I-%M-%S_%p").tostring()
-          # $archiveName = "ipam-${env:AZURE_IPAM_SUFFIX}-${dateStamp}.zip"
-          # $archiveName = "ipam-${{ github.run_id }}(${{ github.run_attempt }})-${dateStamp}.zip"
           $archiveName = "IPAM-RUN(${{ github.run_id }})-ATTEMPT(${{ github.run_attempt }})-SUFFIX($env:AZURE_IPAM_SUFFIX).zip"
 
           Compress-Archive -Path ./* -DestinationPath /tmp/$archiveName
