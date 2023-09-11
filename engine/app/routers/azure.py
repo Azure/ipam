@@ -44,6 +44,7 @@ from app.routers.common.helper import (
 )
 
 from app.globals import globals
+from app.clients import client_factory
 
 from app.logs.logs import ipam_logger as logger
 
@@ -62,7 +63,7 @@ def str_to_list(input):
 
     return split
 
-async def get_subscriptions_sdk(credentials):
+async def get_subscriptions_sdk(assertion):
     """DOCSTRING"""
 
     QUOTA_MAP = {
@@ -72,18 +73,23 @@ async def get_subscriptions_sdk(credentials):
         "Internal": "Microsoft Internal"
     }
 
-    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
-    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+    # azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
+    # azure_arm_scope = '{}/.default'.format(azure_arm_url)
+
+    # subscription_client = SubscriptionClient(
+    #     credential=credentials,
+    #     base_url=azure_arm_url,
+    #     credential_scopes=[azure_arm_scope]
+    # )
+
+    subscription_client = client_factory.get_client(
+        SubscriptionClient,
+        assertion
+    )
 
     subscriptions = []
 
-    subscription_client = SubscriptionClient(
-        credential=credentials,
-        base_url=azure_arm_url,
-        credential_scopes=[azure_arm_scope]
-    )
-
-    async for poll in subscription_client.subscriptions.list():
+    async for poll in subscription_client.client.subscriptions.list():
         quota_id = poll.subscription_policies.quota_id
         quota_id_parts = quota_id.split("_")
 
@@ -102,7 +108,7 @@ async def get_subscriptions_sdk(credentials):
 
         subscriptions.append(sub)
 
-    await subscription_client.close()
+    # await subscription_client.close()
 
     return subscriptions
 
@@ -110,26 +116,33 @@ async def update_vhub_data(auth, admin, hubs):
     """DOCSTRING"""
 
     if admin:
-        creds = await get_client_credentials()
+        # creds = await get_client_credentials()
+        user_assertion = "admin"
     else:
         user_assertion=auth.split(' ')[1]
-        creds = await get_obo_credentials(user_assertion)
+        # creds = await get_obo_credentials(user_assertion)
 
-    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
-    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+    # azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
+    # azure_arm_scope = '{}/.default'.format(azure_arm_url)
 
     for hub in hubs:
-        network_client = NetworkManagementClient(
-            credential=creds,
-            subscription_id=hub['subscription_id'],
-            base_url=azure_arm_url,
-            credential_scopes=[azure_arm_scope]
+        # network_client = NetworkManagementClient(
+        #     credential=creds,
+        #     subscription_id=hub['subscription_id'],
+        #     base_url=azure_arm_url,
+        #     credential_scopes=[azure_arm_scope]
+        # )
+
+        network_client = client_factory.get_client(
+            NetworkManagementClient,
+            user_assertion,
+            subscription_id=hub['subscription_id']
         )
 
         hub['peerings'] = []
 
         try:
-            async for poll in network_client.hub_virtual_network_connections.list(hub['resource_group'], hub['name']):
+            async for poll in network_client.client.hub_virtual_network_connections.list(hub['resource_group'], hub['name']):
                 connection_data = {
                     "name": poll.name,
                     "remote_network": poll.remote_virtual_network.id,
@@ -141,9 +154,9 @@ async def update_vhub_data(auth, admin, hubs):
             logger.error("Error fetching vWAN Hub connections on subscription {}".format(hub['subscription_id']))
             pass
 
-        await network_client.close()
+        # await network_client.close()
 
-    await creds.close()
+    # await creds.close()
 
     return hubs
 
@@ -151,51 +164,58 @@ async def get_vmss(auth, admin):
     """DOCSTRING"""
 
     if admin:
-        creds = await get_client_credentials()
+        # creds = await get_client_credentials()
+        user_assertion = "admin"
     else:
         user_assertion=auth.split(' ')[1]
-        creds = await get_obo_credentials(user_assertion)
+        # creds = await get_obo_credentials(user_assertion)
 
     try:
-        subscriptions = await get_subscriptions_sdk(creds)
-        vmss_list = await get_vmss_list_sdk(creds, subscriptions)
-        vmss_vm_interfaces = await get_vmss_interfaces_sdk(creds, vmss_list)
+        subscriptions = await get_subscriptions_sdk(user_assertion)
+        vmss_list = await get_vmss_list_sdk(user_assertion, subscriptions)
+        vmss_vm_interfaces = await get_vmss_interfaces_sdk(user_assertion, vmss_list)
     except ClientAuthenticationError:
-        await creds.close()
+        # await creds.close()
         raise HTTPException(status_code=401, detail="Access token expired.")
 
-    await creds.close()
+    # await creds.close()
 
     return vmss_vm_interfaces
 
-async def get_vmss_list_sdk(credentials, subscriptions):
+async def get_vmss_list_sdk(assertion, subscriptions):
     """DOCSTRING"""
 
     tasks = []
     vmss_list = []
 
     for subscription in subscriptions:
-        tasks.append(asyncio.create_task(get_vmss_list_sdk_helper(credentials, subscription, vmss_list)))
+        tasks.append(asyncio.create_task(get_vmss_list_sdk_helper(assertion, subscription, vmss_list)))
 
     await asyncio.gather(*tasks)
 
     return vmss_list
 
-async def get_vmss_list_sdk_helper(credentials, subscription, list):
+async def get_vmss_list_sdk_helper(assertion, subscription, list):
     """DOCSTRING"""
 
-    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
-    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+    # azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
+    # azure_arm_scope = '{}/.default'.format(azure_arm_url)
 
-    compute_client = ComputeManagementClient(
-        credential=credentials,
+    # compute_client = ComputeManagementClient(
+    #     credential=credentials,
+    #     subscription_id=subscription['subscription_id'],
+    #     base_url=azure_arm_url,
+    #     credential_scopes=[azure_arm_scope]
+    # )
+
+    compute_client = client_factory.get_client(
+        ComputeManagementClient,
+        assertion,
         subscription_id=subscription['subscription_id'],
-        base_url=azure_arm_url,
-        credential_scopes=[azure_arm_scope]
     )
 
     try:
-        async for poll in compute_client.virtual_machine_scale_sets.list_all():
+        async for poll in compute_client.client.virtual_machine_scale_sets.list_all():
             rg_name_search = re.search(r"(?<=resourceGroups/).*(?=/providers)", poll.id)
             rg_name = rg_name_search.group(0)
 
@@ -218,34 +238,40 @@ async def get_vmss_list_sdk_helper(credentials, subscription, list):
 
     await compute_client.close()
 
-async def get_vmss_interfaces_sdk(credentials, vmss_list):
+async def get_vmss_interfaces_sdk(assertion, vmss_list):
     """DOCSTRING"""
 
     tasks = []
     vmss_interfaces = []
 
     for vmss in vmss_list:
-        tasks.append(asyncio.create_task(get_vmss_interfaces_sdk_helper(credentials, vmss, vmss_interfaces)))
+        tasks.append(asyncio.create_task(get_vmss_interfaces_sdk_helper(assertion, vmss, vmss_interfaces)))
 
     await asyncio.gather(*tasks)
 
     return vmss_interfaces
 
-async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
+async def get_vmss_interfaces_sdk_helper(assertion, vmss, list):
     """DOCSTRING"""
 
-    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
-    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+    # azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
+    # azure_arm_scope = '{}/.default'.format(azure_arm_url)
 
-    network_client = NetworkManagementClient(
-        credential=credentials,
-        subscription_id=vmss['subscription']['subscription_id'],
-        base_url=azure_arm_url,
-        credential_scopes=[azure_arm_scope]
+    # network_client = NetworkManagementClient(
+    #     credential=credentials,
+    #     subscription_id=vmss['subscription']['subscription_id'],
+    #     base_url=azure_arm_url,
+    #     credential_scopes=[azure_arm_scope]
+    # )
+
+    network_client = client_factory.get_client(
+        NetworkManagementClient,
+        assertion,
+        subscription_id=vmss['subscription']['subscription_id']
     )
 
     try:
-        async for poll in network_client.network_interfaces.list_virtual_machine_scale_set_network_interfaces(vmss['resource_group_name'], vmss['name']):
+        async for poll in network_client.client.network_interfaces.list_virtual_machine_scale_set_network_interfaces(vmss['resource_group_name'], vmss['name']):
             for ip_config in poll.ip_configurations:
                 vnet_name_search = re.search(r"(?<=virtualNetworks/).*(?=/subnets)", ip_config.subnet.id)
                 vnet_name = vnet_name_search.group(0)
@@ -302,14 +328,15 @@ async def subscription(
     # subscription_list = await arg_query(authorization, admin, argquery.SUBSCRIPTION)
 
     if admin:
-        creds = await get_client_credentials()
+        # creds = await get_client_credentials()
+        user_assertion = "admin"
     else:
         user_assertion=authorization.split(' ')[1]
-        creds = await get_obo_credentials(user_assertion)
+        # creds = await get_obo_credentials(user_assertion)
 
-    subscription_list = await get_subscriptions_sdk(creds)
+    subscription_list = await get_subscriptions_sdk(user_assertion)
 
-    await creds.close()
+    # await creds.close()
 
     return subscription_list
 

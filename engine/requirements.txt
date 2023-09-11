@@ -1,6 +1,6 @@
-fastapi[all]
-pydantic==1.*
-fastapi-restful[all]
+fastapi[all]>=0.99.*
+pydantic>=0.*,<=2.*
+fastapi-restful[all]>=0.4.5
 msal
 pyjwt
 cryptography
