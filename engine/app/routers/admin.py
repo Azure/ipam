@@ -1,12 +1,8 @@
-from fastapi import APIRouter, Depends, Request, Response, HTTPException, Header, Path, status
-from fastapi.responses import JSONResponse, PlainTextResponse
-from fastapi.exceptions import HTTPException as StarletteHTTPException
+from fastapi import APIRouter, Depends, Response, HTTPException, Header, Path, status
+from fastapi.responses import PlainTextResponse
 from fastapi.encoders import jsonable_encoder
 
-import azure.cosmos.exceptions as exceptions
-
-from pydantic import BaseModel, EmailStr, constr
-from typing import Optional, List
+from typing import List
 
 import copy
 import uuid
@@ -24,7 +20,6 @@ from app.routers.common.helper import (
     cosmos_query,
     cosmos_upsert,
     cosmos_replace,
-    cosmos_delete,
     cosmos_retry,
     arg_query
 )

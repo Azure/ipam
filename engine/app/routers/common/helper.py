@@ -1,5 +1,4 @@
 from fastapi import HTTPException
-from fastapi.responses import JSONResponse
 
 from azure.identity.aio import OnBehalfOfCredential, ClientSecretCredential
 
@@ -13,19 +12,17 @@ from azure.mgmt.managementgroups.aio import ManagementGroupsAPI
 from azure.cosmos.aio import CosmosClient
 import azure.cosmos.exceptions as exceptions
 
-import os
 import jwt
 from netaddr import IPNetwork
 from functools import wraps
 
-from requests import options
-
 from app.globals import globals
-from app.clients import client_factory
 
-# SCOPE = "https://management.azure.com/user_impersonation"
-
-cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+cosmos_client = CosmosClient(
+    url=globals.COSMOS_URL,
+    credential=globals.COSMOS_KEY,
+    transport=globals.SHARED_TRANSPORT
+)
 
 def valid_ipv4(addr):
     try:
@@ -260,12 +257,11 @@ async def arg_query(auth, admin, query):
     """DOCSTRING"""
 
     if admin:
-        # creds = await get_client_credentials()
-        user_assertion = "admin"
+        creds = await get_client_credentials()
         tenant_id = globals.TENANT_ID
     else:
         user_assertion=auth.split(' ')[1]
-        # creds = await get_obo_credentials(user_assertion)
+        creds = await get_obo_credentials(user_assertion)
         tenant_id = get_tenant_from_jwt(user_assertion)
 
     exclusions_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
@@ -281,14 +277,14 @@ async def arg_query(auth, admin, query):
         exclusions = "('')"
 
     try:
-        results = await arg_query_helper(user_assertion, query.format(exclusions))
+        results = await arg_query_helper(creds, query.format(exclusions))
     except ClientAuthenticationError:
         raise HTTPException(status_code=401, detail="Token has expired.")
     except HttpResponseError as e:
         print(e)
         raise HTTPException(status_code=403, detail="Access denied.")
-    # finally:
-    #     await creds.close()
+    finally:
+        await creds.close()
 
     return results
 
@@ -324,21 +320,20 @@ async def arg_query_obo(auth, query):
 
     return results
 
-async def arg_query_helper(assertion, query):
+async def arg_query_helper(credentials, query):
     """DOCSTRING"""
 
     results = []
 
-    # azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
-    # azure_arm_scope = '{}/.default'.format(azure_arm_url)
+    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
+    azure_arm_scope = '{}/.default'.format(azure_arm_url)
 
-    # resource_graph_client = ResourceGraphClient(
-    #     credential=credentials,
-    #     base_url=azure_arm_url,
-    #     credential_scopes=[azure_arm_scope]
-    # )
-
-    resource_graph_client = client_factory.get_client(ResourceGraphClient, assertion)
+    resource_graph_client = ResourceGraphClient(
+        credential=credentials,
+        base_url=azure_arm_url,
+        credential_scopes=[azure_arm_scope],
+        transport=globals.SHARED_TRANSPORT
+    )
 
     try:
         skip_token = None
@@ -353,7 +348,7 @@ async def arg_query_helper(assertion, query):
                 )
             )
 
-            poll = await resource_graph_client.client.resources(query_request)
+            poll = await resource_graph_client.resources(query_request)
             results = results + poll.data
 
             if poll.skip_token:
@@ -366,7 +361,7 @@ async def arg_query_helper(assertion, query):
     except HttpResponseError as e:
         print(e)
         raise HTTPException(status_code=403, detail="Access denied.")
-    # finally:
-    #     await resource_graph_client.close()
+    finally:
+        await resource_graph_client.close()
 
     return results
