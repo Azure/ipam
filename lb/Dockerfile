@@ -1,4 +1,4 @@
-# registry.access.redhat.com/ubi8/nginx-120
+# registry.access.redhat.com/ubi8/nginx-122
 ARG BASE_IMAGE=nginx:alpine
 FROM $BASE_IMAGE
 
