@@ -17,7 +17,7 @@ export default () => {
                 tag: 'script',
                 attrs: {
                   type: 'text/javascript',
-                  src: 'env.js',
+                  src: '/env.js',
                 },
                 injectTo: 'head',
               },
