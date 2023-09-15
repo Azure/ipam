@@ -52,6 +52,7 @@
     "@vitejs/plugin-react": "^4.0.4",
     "http-server": "^14.1.1",
     "react-inject-env": "^2.1.0",
+    "serve": "^14.2.1",
     "vite": "^4.4.9"
   }
 }

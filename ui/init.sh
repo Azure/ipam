@@ -30,4 +30,5 @@ echo "}" >> env.js
 mv env.js ./dist/
 
 # npx --yes react-inject-env set
-npx --yes http-server -a 0.0.0.0 -P http://localhost:${PORT}? -p ${PORT} dist
+# npx --yes http-server -a 0.0.0.0 -P http://localhost:${PORT}? -p ${PORT} dist
+npx serve -s -L -p ${PORT} dist
