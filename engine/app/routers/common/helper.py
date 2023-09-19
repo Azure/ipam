@@ -1,5 +1,4 @@
 from fastapi import HTTPException
-from fastapi.responses import JSONResponse
 
 from azure.identity.aio import OnBehalfOfCredential, ClientSecretCredential
 
@@ -13,16 +12,17 @@ from azure.mgmt.managementgroups.aio import ManagementGroupsAPI
 from azure.cosmos.aio import CosmosClient
 import azure.cosmos.exceptions as exceptions
 
-import os
 import jwt
 from netaddr import IPNetwork
 from functools import wraps
 
-from requests import options
-
 from app.globals import globals
 
-# SCOPE = "https://management.azure.com/user_impersonation"
+cosmos_client = CosmosClient(
+    url=globals.COSMOS_URL,
+    credential=globals.COSMOS_KEY,
+    transport=globals.SHARED_TRANSPORT
+)
 
 def valid_ipv4(addr):
     try:
@@ -139,7 +139,7 @@ async def get_mgmt_group_name(tenant_id):
 async def cosmos_query(query: str, tenant_id: str):
     """DOCSTRING"""
 
-    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+    # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
     database = cosmos_client.get_database_client(database_name)
@@ -155,14 +155,14 @@ async def cosmos_query(query: str, tenant_id: str):
 
     result_array = [result async for result in query_results]
 
-    await cosmos_client.close()
+    # await cosmos_client.close()
 
     return result_array
 
 async def cosmos_upsert(data):
     """DOCSTRING"""
 
-    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+    # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
     database = cosmos_client.get_database_client(database_name)
@@ -174,17 +174,17 @@ async def cosmos_upsert(data):
         res = await container.upsert_item(data)
     except:
         raise
-    finally:
-        await cosmos_client.close()
+    # finally:
+    #     await cosmos_client.close()
 
-    await cosmos_client.close()
+    # await cosmos_client.close()
 
     return res
 
 async def cosmos_replace(old, new):
     """DOCSTRING"""
 
-    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+    # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
     database = cosmos_client.get_database_client(database_name)
@@ -201,17 +201,17 @@ async def cosmos_replace(old, new):
         )
     except:
         raise
-    finally:
-        await cosmos_client.close()
+    # finally:
+    #     await cosmos_client.close()
 
-    await cosmos_client.close()
+    # await cosmos_client.close()
 
     return
 
 async def cosmos_delete(item, tenant_id: str):
     """DOCSTRING"""
 
-    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+    # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
     database = cosmos_client.get_database_client(database_name)
@@ -226,10 +226,10 @@ async def cosmos_delete(item, tenant_id: str):
         )
     except:
         raise
-    finally:
-        await cosmos_client.close()
+    # finally:
+    #     await cosmos_client.close()
 
-    await cosmos_client.close()
+    # await cosmos_client.close()
 
     return
 
@@ -331,7 +331,8 @@ async def arg_query_helper(credentials, query):
     resource_graph_client = ResourceGraphClient(
         credential=credentials,
         base_url=azure_arm_url,
-        credential_scopes=[azure_arm_scope]
+        credential_scopes=[azure_arm_scope],
+        transport=globals.SHARED_TRANSPORT
     )
 
     try:

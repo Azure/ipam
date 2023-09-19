@@ -7,10 +7,10 @@ services:
       args:
         PORT: 8080
     environment:
-      REACT_APP_AZURE_ENV: ${AZURE_ENV}
-      REACT_APP_UI_ID: ${UI_APP_ID}
-      REACT_APP_ENGINE_ID: ${ENGINE_APP_ID}
-      REACT_APP_TENANT_ID: ${TENANT_ID}
+      VITE_AZURE_ENV: ${AZURE_ENV}
+      VITE_UI_ID: ${UI_APP_ID}
+      VITE_ENGINE_ID: ${ENGINE_APP_ID}
+      VITE_TENANT_ID: ${TENANT_ID}
       WDS_SOCKET_PORT: 3000
     volumes:
       - ./ui:/app

@@ -1,6 +1,6 @@
-fastapi[all]
-pydantic==1.*
-fastapi-restful[all]
+fastapi[all]>=0.99.0
+pydantic>=0.*,<=2.*
+fastapi-restful[all]>=0.4.5
 msal
 pyjwt
 cryptography
@@ -21,6 +21,6 @@ azure-mgmt-resource
 azure-mgmt-resourcegraph
 azure-mgmt-managementgroups
 azure-keyvault-secrets
-azure-cosmos==4.3.0
+azure-cosmos
 azure-functions
 nest_asyncio

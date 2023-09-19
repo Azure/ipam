@@ -1,6 +1,9 @@
 import os
+import aiohttp
 
 from azure.identity import AzureAuthorityHosts
+
+from azure.core.pipeline.transport import AioHttpTransport
 
 AZURE_ENV_MAP = {
     'AZURE_PUBLIC': {
@@ -26,6 +29,11 @@ AZURE_ENV_MAP = {
 }
 
 class Globals:
+    def __init__(self):
+        conn = aiohttp.TCPConnector(limit=100)
+        session = aiohttp.ClientSession(connector=conn)
+        self.shared_transport = AioHttpTransport(session=session, session_owner=False)
+
     @property
     def CLIENT_ID(self):
         return os.environ.get('CLIENT_ID')
@@ -88,5 +96,9 @@ class Globals:
         ctr_name =  os.environ.get('CONTAINER_NAME')
 
         return ctr_name if ctr_name else 'ipam-ctr'
+    
+    @property
+    def SHARED_TRANSPORT(self):
+        return self.shared_transport
 
 globals = Globals()

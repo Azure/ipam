@@ -1,18 +1,14 @@
-from fastapi import APIRouter, Depends, Request, Response, HTTPException, Header, Query, Path, status
-from fastapi.responses import JSONResponse, PlainTextResponse
-from fastapi.exceptions import HTTPException as StarletteHTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path, status
+from fastapi.responses import PlainTextResponse
 from fastapi.encoders import jsonable_encoder
 
-from typing import Optional, List, Union, Any
-
-import azure.cosmos.exceptions as exceptions
+from typing import Optional, List, Union
 
 import re
 import jwt
 import time
 import uuid
 import copy
-import asyncio
 import shortuuid
 import jsonpatch
 from netaddr import IPSet, IPNetwork
@@ -24,7 +20,6 @@ from app.dependencies import (
 )
 
 from app.models import *
-from . import argquery
 
 from app.routers.common.helper import (
     get_username_from_jwt,
@@ -32,14 +27,10 @@ from app.routers.common.helper import (
     cosmos_upsert,
     cosmos_replace,
     cosmos_delete,
-    cosmos_retry,
-    arg_query,
-    vnet_fixup
+    cosmos_retry
 )
 
 from app.routers.azure import (
-    get_vnet,
-    get_vhub,
     get_network
 )
 

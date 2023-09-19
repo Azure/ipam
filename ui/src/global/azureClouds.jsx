@@ -1,4 +1,4 @@
-const AZURE_ENV = process.env.REACT_APP_AZURE_ENV || window['env'].REACT_APP_AZURE_ENV;
+const AZURE_ENV = import.meta.env.VITE_AZURE_ENV || window['env'].VITE_AZURE_ENV;
 
 const AZURE_ENV_MAP = {
   AZURE_PUBLIC: {

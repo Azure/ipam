@@ -1,4 +1,4 @@
-ARG VARIANT=16-bullseye
+ARG VARIANT=18-bullseye
 FROM mcr.microsoft.com/vscode/devcontainers/javascript-node:${VARIANT}
 
 ARG PORT=3000
@@ -17,6 +17,9 @@ ENV PORT=$PORT
 COPY package.json ./
 COPY package-lock.json ./
 
+# Upgrade NPM
+RUN npm install npm@latest -g
+
 RUN npm install
 RUN chmod 777 node_modules
 
@@ -27,4 +30,4 @@ COPY . ./
 EXPOSE $PORT
 
 # start app
-CMD ["npm", "start"]
+CMD npx vite --host "0.0.0.0" --port $PORT

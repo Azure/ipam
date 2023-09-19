@@ -878,7 +878,7 @@ process {
           Extension = "deb"
           Port = 80
           Images = @{
-            UI     = 'node:16-slim'
+            UI     = 'node:18-slim'
             Engine = 'python:3.9-slim'
             LB     = 'nginx:alpine'
           }
@@ -887,9 +887,9 @@ process {
           Extension = "rhel"
           Port = 8080
           Images = @{
-            UI     = 'registry.access.redhat.com/ubi8/nodejs-16'
+            UI     = 'registry.access.redhat.com/ubi8/nodejs-18'
             Engine = 'registry.access.redhat.com/ubi8/python-39'
-            LB     = 'registry.access.redhat.com/ubi8/nginx-120'
+            LB     = 'registry.access.redhat.com/ubi8/nginx-122'
           }
         }
       }

@@ -1,26 +1,18 @@
-from fastapi import APIRouter, Depends, Request, Response, HTTPException, Header, status
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import HTTPException as StarletteHTTPException
-from fastapi.encoders import jsonable_encoder
+from fastapi import APIRouter, Depends, HTTPException, Header
 
 from azure.core.exceptions import ClientAuthenticationError, HttpResponseError
 from azure.mgmt.compute.aio import ComputeManagementClient
 from azure.mgmt.network.aio import NetworkManagementClient
 from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
 
-import azure.cosmos.exceptions as exceptions
-
-from typing import Optional, List
+from typing import  List
 
 import re
 import copy
 import time
 import asyncio
-from ipaddress import IPv4Network
 from netaddr import IPSet, IPNetwork
 from uuid import uuid4
-
-from sqlalchemy import true
 
 from app.dependencies import (
     check_token_expired,
@@ -35,7 +27,6 @@ from app.routers.common.helper import (
     get_client_credentials,
     get_obo_credentials,
     cosmos_query,
-    cosmos_upsert,
     cosmos_replace,
     cosmos_retry,
     arg_query,
@@ -75,13 +66,14 @@ async def get_subscriptions_sdk(credentials):
     azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
 
-    subscriptions = []
-
     subscription_client = SubscriptionClient(
         credential=credentials,
         base_url=azure_arm_url,
-        credential_scopes=[azure_arm_scope]
+        credential_scopes=[azure_arm_scope],
+        transport=globals.SHARED_TRANSPORT
     )
+
+    subscriptions = []
 
     async for poll in subscription_client.subscriptions.list():
         quota_id = poll.subscription_policies.quota_id
@@ -123,7 +115,8 @@ async def update_vhub_data(auth, admin, hubs):
             credential=creds,
             subscription_id=hub['subscription_id'],
             base_url=azure_arm_url,
-            credential_scopes=[azure_arm_scope]
+            credential_scopes=[azure_arm_scope],
+            transport=globals.SHARED_TRANSPORT
         )
 
         hub['peerings'] = []
@@ -191,7 +184,8 @@ async def get_vmss_list_sdk_helper(credentials, subscription, list):
         credential=credentials,
         subscription_id=subscription['subscription_id'],
         base_url=azure_arm_url,
-        credential_scopes=[azure_arm_scope]
+        credential_scopes=[azure_arm_scope],
+        transport=globals.SHARED_TRANSPORT
     )
 
     try:
@@ -241,7 +235,8 @@ async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
         credential=credentials,
         subscription_id=vmss['subscription']['subscription_id'],
         base_url=azure_arm_url,
-        credential_scopes=[azure_arm_scope]
+        credential_scopes=[azure_arm_scope],
+        transport=globals.SHARED_TRANSPORT
     )
 
     try:
