@@ -1,4 +1,4 @@
-fastapi[all]>=0.99.*
+fastapi[all]>=0.99.0
 pydantic>=0.*,<=2.*
 fastapi-restful[all]>=0.4.5
 msal
