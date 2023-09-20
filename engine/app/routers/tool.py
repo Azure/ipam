@@ -1,4 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Depends,
+    Header
+)
 
 import regex
 import copy
@@ -54,8 +59,6 @@ async def next_available_subnet(
     - **smallest_cidr**:
         - **true**: New subnets will be created using the smallest possible available CIDR (e.g. it will not break up large CIDR blocks when possible)
         - **false (default)**: New subnets will be created using the first available CIDR, regardless of size
-
-    <font color='red'>**EXPERIMENTAL**: This API is currently in testing and may change in future releases!</font>
     """
 
     vnet_pattern = regex.compile(r'(?i)^\/subscriptions\/[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}\/resourceGroups\/(?=.{1,90})([a-zA-Z0-9-_\.\p{L}\p{N}]*)(?<!\.)\/providers\/Microsoft.Network\/virtualNetworks\/(?=.{2,64})([a-zA-Z0-9-_\.]*)(?<=[a-zA-Z0-9_])$')
@@ -199,3 +202,5 @@ async def next_available_vnet(
     }
 
     return new_cidr
+
+# <font color='red'>**EXPERIMENTAL**: This API is currently in testing and may change in future releases!</font>

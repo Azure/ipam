@@ -1,6 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path, status
 from fastapi.responses import PlainTextResponse
 from fastapi.encoders import jsonable_encoder
+
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    status,
+    Depends,
+    Header,
+    Query,
+    Path
+)
 
 from typing import Optional, List, Union
 
@@ -391,7 +400,7 @@ async def get_space(
 @router.patch(
     "/{space}",
     summary = "Update Space Details",
-    response_model = Space,
+    # response_model = Space,
     status_code = 200
 )
 @cosmos_retry(
