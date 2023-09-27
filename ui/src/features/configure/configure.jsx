@@ -74,6 +74,8 @@ export default function ConfigureIPAM() {
 
   const dispatch = useDispatch();
 
+  var configureRef = React.useRef(null);
+
   const refresh = React.useCallback(() => {
     (async() => {
       try {
@@ -111,8 +113,8 @@ export default function ConfigureIPAM() {
   // }, [blocks, selectedBlock]);
 
   return (
-    <ConfigureContext.Provider value={{ spaces, blocks, refreshing, refresh }}>
-      <Wrapper>
+    <ConfigureContext.Provider value={{ configureRef, spaces, blocks, refreshing, refresh }}>
+      <Wrapper ref={configureRef}>
         <Header>
           Configure Azure IPAM
         </Header>

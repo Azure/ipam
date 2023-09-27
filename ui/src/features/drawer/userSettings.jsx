@@ -5,6 +5,8 @@ import { isEqual } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
+import Draggable from 'react-draggable';
+
 import {
   Box,
   Button,
@@ -15,7 +17,7 @@ import {
   Typography,
   ToggleButton,
   ToggleButtonGroup,
-  // CircularProgress
+  Paper
 } from "@mui/material";
 
 import {
@@ -33,6 +35,21 @@ import {
 } from "../ipam/ipamSlice";
 
 import { updateMe } from "../ipam/ipamAPI";
+
+function DraggablePaper(props) {
+  const nodeRef = React.useRef(null);
+
+  return (
+    <Draggable
+      nodeRef={nodeRef}
+      handle="#draggable-dialog-title"
+      cancel={'[class*="MuiDialogContent-root"]'}
+      bounds="parent"
+    >
+      <Paper {...props} ref={nodeRef}/>
+    </Draggable>
+  );
+}
 
 export default function UserSettings(props) {
   const { open, handleClose } = props;
@@ -116,17 +133,15 @@ export default function UserSettings(props) {
 
   return (
     <div>
-      <Dialog open={open} onClose={handleClose} fullWidth>
-        <DialogTitle>
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        PaperComponent={DraggablePaper}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
           Settings
-          {/* <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', marginRight: 'auto' }}>
-              Settings
-            </Box>
-            <Box sx={{ display: 'flex', visibility: sending ? 'visible' : 'hidden' }}>
-              <CircularProgress size={32} />
-            </Box>
-          </Box> */}
         </DialogTitle>
         <DialogContent>
           <Box

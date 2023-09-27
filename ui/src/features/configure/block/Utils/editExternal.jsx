@@ -10,6 +10,8 @@ import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
 import '@inovua/reactdatagrid-community/theme/default-dark.css'
 
+import Draggable from 'react-draggable';
+
 import { useTheme } from '@mui/material/styles';
 
 import {
@@ -26,7 +28,8 @@ import {
   MenuItem,
   ListItemIcon,
   OutlinedInput,
-  Tooltip
+  Tooltip,
+  Paper
 } from "@mui/material";
 
 import {
@@ -251,6 +254,21 @@ function HeaderMenu(props) {
       }
     </Box>
   )
+}
+
+function DraggablePaper(props) {
+  const nodeRef = React.useRef(null);
+
+  return (
+    <Draggable
+      nodeRef={nodeRef}
+      handle="#draggable-dialog-title"
+      cancel={'[class*="MuiDialogContent-root"]'}
+      bounds="parent"
+    >
+      <Paper {...props} ref={nodeRef}/>
+    </Draggable>
+  );
 }
 
 export default function EditExternals(props) {
@@ -658,6 +676,7 @@ export default function EditExternals(props) {
       <Dialog
         open={open}
         onClose={onCancel}
+        PaperComponent={DraggablePaper}
         maxWidth="lg"
         fullWidth
         PaperProps={{
@@ -666,7 +685,7 @@ export default function EditExternals(props) {
           },
         }}
       >
-        <DialogTitle>
+        <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
           <Box sx={{ display: "flex", flexDirection: "row" }}>
             <Box>
             External Network Association

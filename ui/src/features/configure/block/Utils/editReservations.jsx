@@ -13,6 +13,8 @@ import '@inovua/reactdatagrid-community/index.css';
 import '@inovua/reactdatagrid-community/theme/default-dark.css'
 import DateFilter from '@inovua/reactdatagrid-community/DateFilter'
 
+import Draggable from 'react-draggable';
+
 import { useTheme } from '@mui/material/styles';
 
 import {
@@ -29,7 +31,8 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
-  Divider
+  Divider,
+  Paper
 } from "@mui/material";
 
 import {
@@ -277,6 +280,21 @@ function HeaderMenu(props) {
       }
     </Box>
   )
+}
+
+function DraggablePaper(props) {
+  const nodeRef = React.useRef(null);
+
+  return (
+    <Draggable
+      nodeRef={nodeRef}
+      handle="#draggable-dialog-title"
+      cancel={'[class*="MuiDialogContent-root"]'}
+      bounds="parent"
+    >
+      <Paper {...props} ref={nodeRef}/>
+    </Draggable>
+  );
 }
 
 function ReservationStatus(props) {
@@ -707,6 +725,7 @@ export default function EditReservations(props) {
         <Dialog
           open={open}
           onClose={onClose}
+          PaperComponent={DraggablePaper}
           maxWidth="lg"
           fullWidth
           PaperProps={{
@@ -715,7 +734,7 @@ export default function EditReservations(props) {
             },
           }}
         >
-          <DialogTitle>
+          <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
             <Box sx={{ display: "flex", flexDirection: "row" }}>
               <Box>
                 Block Reservations

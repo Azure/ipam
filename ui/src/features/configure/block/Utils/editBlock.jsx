@@ -3,6 +3,8 @@ import { useDispatch } from 'react-redux';
 
 import { useSnackbar } from "notistack";
 
+import Draggable from 'react-draggable';
+
 import {
   Box,
   Button,
@@ -11,7 +13,8 @@ import {
   Dialog,
   DialogTitle,
   DialogActions,
-  DialogContent
+  DialogContent,
+  Paper
 } from "@mui/material";
 
 import LoadingButton from '@mui/lab/LoadingButton';
@@ -22,6 +25,21 @@ import {
   BLOCK_NAME_REGEX,
   CIDR_REGEX
 } from "../../../../global/globals";
+
+function DraggablePaper(props) {
+  const nodeRef = React.useRef(null);
+
+  return (
+    <Draggable
+      nodeRef={nodeRef}
+      handle="#draggable-dialog-title"
+      cancel={'[class*="MuiDialogContent-root"]'}
+      bounds="parent"
+    >
+      <Paper {...props} ref={nodeRef}/>
+    </Draggable>
+  );
+}
 
 export default function EditBlock(props) {
   const { open, handleClose, space, blocks, block } = props;
@@ -128,8 +146,14 @@ export default function EditBlock(props) {
 
   return (
     <div sx={{ height: "300px", width: "100%" }}>
-      <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-        <DialogTitle>
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        PaperComponent={DraggablePaper}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
           Edit Block
         </DialogTitle>
         <DialogContent>
