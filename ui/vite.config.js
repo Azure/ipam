@@ -34,6 +34,7 @@ export default () => {
     },
     define: {
       IPAM_VERSION: JSON.stringify(process.env.npm_package_version),
-    }
+    },
+    logLevel: 'warn'
   })
 }
