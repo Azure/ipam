@@ -486,11 +486,16 @@ Context 'Reservations' {
   }
 
   It 'Delete A Reservation' {
+    $body = @(
+      $script:reservationB.Id
+    )
+
     $query = @{
       settled = $true
     }
 
-    $remove, $removeStatus = Remove-ApiResource "/spaces/TestSpaceA/blocks/TestBlockA/reservations/$($script:reservationB.Id)"
+    Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $body
+
     $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $query
 
     $reservations[0].SettledOn -eq $null | Should -Be $false
