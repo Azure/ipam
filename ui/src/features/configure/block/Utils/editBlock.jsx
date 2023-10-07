@@ -57,6 +57,11 @@ export default function EditBlock(props) {
                       && cidr.value
                       && !cidr.error ? false : true;
 
+  const unchanged = block
+                    ? (blockName.value === block.name && cidr.value === block.cidr)
+                    ? true : false
+                    : true;
+
   React.useEffect(() => {
     if(block) {
       setBlockName({
@@ -123,10 +128,11 @@ export default function EditBlock(props) {
       BLOCK_NAME_REGEX
     );
 
-    const nameValid = name ? !regex.test(name) : false;
-    const blockExists = blocks.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
+    const invalidName = name ? !regex.test(name) : false;
+    const otherBlocks = blocks.filter((e) => e.name.toLowerCase() !== block.name.toLowerCase());
+    const blockExists = otherBlocks.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
 
-    return nameValid || blockExists;
+    return invalidName || blockExists;
   }
 
   function onCidrChange(event) {
@@ -145,7 +151,7 @@ export default function EditBlock(props) {
   }
 
   return (
-    <div sx={{ height: "300px", width: "100%" }}>
+    <div>
       <Dialog
         open={open}
         onClose={handleClose}
@@ -217,7 +223,7 @@ export default function EditBlock(props) {
           <LoadingButton
             onClick={onSubmit}
             loading={sending}
-            disabled={invalidForm}
+            disabled={invalidForm || unchanged}
           >
             Update
           </LoadingButton>

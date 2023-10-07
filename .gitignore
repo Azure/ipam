@@ -1,5 +1,6 @@
 .env
 .VSCodeCounter
+.eslintcache
 NOTES.md
 TODO.md
 /logs

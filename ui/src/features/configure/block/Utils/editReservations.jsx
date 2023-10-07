@@ -707,7 +707,6 @@ export default function EditReservations(props) {
         enqueueSnackbar(e.message, { variant: "error" });
       } finally {
         setSending(false);
-        // refresh();
       }
     })();
   }
@@ -721,7 +720,7 @@ export default function EditReservations(props) {
 
   return (
     <ReservationContext.Provider value={{ copied, setCopied, filterActive, setFilterActive, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
-      <div sx={{ height: "400px", width: "100%" }}>
+      <div>
         <Dialog
           open={open}
           onClose={onClose}

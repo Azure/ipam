@@ -57,6 +57,11 @@ export default function EditSpace(props) {
                       && description.value
                       && !description.error ? false : true;
 
+  const unchanged = space
+                    ? (spaceName.value === space.name && description.value === space.desc)
+                    ? true : false
+                    : true;
+
   React.useEffect(() => {
     if(space) {
       setSpaceName({
@@ -124,10 +129,8 @@ export default function EditSpace(props) {
     );
 
     const nameValid = name ? !regex.test(name) : false;
-    const spaceExists = spaces.some((e) => e.name.toLowerCase() === name.toLowerCase())
-                        && name.toLowerCase() !== space.name.toLowerCase()
-                        ? true
-                        : false;
+    const otherSpaces = spaces.filter((e) => e.name.toLowerCase() !== space.name.toLowerCase());
+    const spaceExists = otherSpaces.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
 
     return nameValid || spaceExists;
   }
@@ -148,7 +151,7 @@ export default function EditSpace(props) {
   }
 
   return (
-    <div sx={{ height: "300px", width: "100%" }}>
+    <div>
       <Dialog
         open={open}
         onClose={handleClose}
@@ -223,7 +226,7 @@ export default function EditSpace(props) {
           <LoadingButton
             onClick={onSubmit}
             loading={sending}
-            disabled={invalidForm}
+            disabled={invalidForm || unchanged}
           >
             Update
           </LoadingButton>

@@ -101,10 +101,10 @@ export default function AddSpace(props) {
       SPACE_NAME_REGEX
     );
 
-    const nameValid = name ? !regex.test(name) : false;
+    const invalidName = name ? !regex.test(name) : false;
     const spaceExists = spaces.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
 
-    return nameValid || spaceExists;
+    return invalidName || spaceExists;
   }
 
   function onDescriptionChange(event) {
@@ -123,7 +123,7 @@ export default function AddSpace(props) {
   }
 
   return (
-    <div sx={{ height: "300px", width: "100%" }}>
+    <div>
       <Dialog
         open={open}
         onClose={handleClose}

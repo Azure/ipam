@@ -49,13 +49,14 @@ def vnet_fixup(vnet_list):
         vnet['prefixes'] = ipv4_prefixes
         # vnet['prefixes_v6'] = ipv6_prefixes
 
-        for subnet in vnet['subnets']:
-            # Subnet IPv4 & IPv6 prefix
-            ipv4_prefix = subnet['prefix'][0]
-            # ipv6_prefix = subnet['prefix'][1] if len(subnet['prefix']) > 1 else None
+        if 'subnets' in vnet:
+            for subnet in vnet['subnets']:
+                # Subnet IPv4 & IPv6 prefix
+                ipv4_prefix = subnet['prefix'][0]
+                # ipv6_prefix = subnet['prefix'][1] if len(subnet['prefix']) > 1 else None
 
-            subnet['prefix'] = ipv4_prefix
-            # subnet['prefix_v6'] = ipv6_prefix
+                subnet['prefix'] = ipv4_prefix
+                # subnet['prefix_v6'] = ipv6_prefix
 
     return vnet_list
 

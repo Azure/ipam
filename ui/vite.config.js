@@ -1,10 +1,20 @@
 import { defineConfig, splitVendorChunkPlugin } from "vite";
 import react from "@vitejs/plugin-react";
+import eslint from 'vite-plugin-eslint2';
 
 export default () => {
   return defineConfig({
     plugins: [
       react(),
+      eslint(
+        {
+          // cache: false,
+          lintOnStart: true,
+          lintInWorker: true,
+          include: ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"],
+          exclude: []
+        }
+      ),
       splitVendorChunkPlugin(),
       {
         name: 'build-ui-html',

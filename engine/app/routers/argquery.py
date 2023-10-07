@@ -167,6 +167,20 @@ resources
 | project name, id, prefix, vwan_name, vwan_id, resource_group, subscription_id, tenant_id, resv
 """
 
+NET_BASIC = """
+resources
+| where type =~ 'Microsoft.Network/virtualNetworks'
+| project name, id, resourceGroup, subscriptionId, tenantId, prefixes = properties.addressSpace.addressPrefixes
+| union (
+    resources
+    | where type =~ 'microsoft.network/virtualhubs'
+    | where isempty(kind)
+    | project name, id, resourceGroup, subscriptionId, tenantId, prefixes = pack_array(properties.addressPrefix)
+)
+| where subscriptionId !in~ {}
+| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes
+"""
+
 PRIVATE_ENDPOINT = """
 resources
 | where type =~ 'microsoft.network/networkinterfaces'

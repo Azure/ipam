@@ -99,10 +99,10 @@ export default function AddBlock(props) {
       BLOCK_NAME_REGEX
     );
 
-    const nameValid = name ? !regex.test(name) : false;
+    const invalidName = name ? !regex.test(name) : false;
     const blockExists = blocks.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
 
-    return nameValid || blockExists;
+    return invalidName || blockExists;
   }
 
   function onCidrChange(event) {
@@ -121,7 +121,7 @@ export default function AddBlock(props) {
   }
 
   return (
-    <div sx={{ height: "300px", width: "100%" }}>
+    <div>
       <Dialog
         open={open}
         onClose={handleClose}

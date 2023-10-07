@@ -521,9 +521,9 @@ export default function EditExternals(props) {
         handleClose();
         setAdded([]);
         setDeleted([]);
-        setExtName("");
-        setExtDesc("");
-        setExtCidr("");
+        setExtName({ value: "", error: true });
+        setExtDesc({ value: "", error: true });
+        setExtCidr({ value: "", error: true });
         enqueueSnackbar("Successfully updated Block External Networks", { variant: "success" });
         refresh();
       } catch (e) {

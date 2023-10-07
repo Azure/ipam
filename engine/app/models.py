@@ -365,7 +365,7 @@ BlockUpdate = Annotated[List[JSONPatch], None]
 
 VNetsUpdate = Annotated[List[str], None]
 
-ExtNetsUpdate = Annotated[List[ExtNet], None]
+ExtNetsUpdate = Annotated[list[ExtNet], None]
 
 DeleteExtNetReq = Annotated[List[str], None]
 
@@ -541,3 +541,23 @@ class NewVNetCIDR(BaseModel):
     space: str
     block: str
     cidr: str
+
+class CIDRContainer(BaseModel):
+    space: str
+    block: str
+
+class CIDRCheckReq(BaseModel):
+    """DOCSTRING"""
+
+    cidr: IPv4Network
+
+class CIDRCheckRes(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    id: str
+    resource_group: str
+    subscription_id: UUID
+    tenant_id: UUID
+    prefixes: List[IPv4Network]
+    containers: List[CIDRContainer]

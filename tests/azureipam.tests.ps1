@@ -190,6 +190,14 @@ Context 'Spaces' {
     $spaces[0].Name -eq 'TestSpaceA' | Should -Be $true
     $spaces[0].Desc -eq 'Test Space A' | Should -Be $true
   }
+
+  It 'Get A Specific Space' {
+
+    $space, $spaceStatus = Get-ApiResource '/spaces/TestSpaceA'
+
+    $space.Name -eq 'TestSpaceA' | Should -Be $true
+    $space.Desc -eq 'Test Space A' | Should -Be $true
+  }
 }
 
 Context 'Blocks' {
@@ -252,6 +260,14 @@ Context 'Blocks' {
     $blocks.Count | Should -Be 1
     $blocks[0].Name -eq 'TestBlockA' | Should -Be $true
     $blocks[0].Cidr -eq '10.1.0.0/16' | Should -Be $true
+  }
+
+  It 'Get A Specific Block' {
+
+    $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA'
+
+    $block.Name -eq 'TestBlockA' | Should -Be $true
+    $block.Cidr -eq '10.1.0.0/16' | Should -Be $true
   }
 }
 
@@ -411,21 +427,34 @@ Context 'Reservations' {
     $reservations | Should -Be $null
   }
 
-  It 'Create Block Reservation' {
-    $body = @{
+  It 'Create Two Block Reservations' {
+    $bodyA = @{
       size = 24
       desc = "Test Reservation A"
     }
 
-    $script:reservationA, $reservationAStatus = New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $body
+    $bodyB = @{
+      size = 24
+      desc = "Test Reservation B"
+    }
+
+    $script:reservationA, $reservationAStatus = New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $bodyA
+    $script:reservationB, $reservationBStatus = New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $bodyB
     $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations'
     
-    $reservations.Count | Should -Be 1
+    $reservations.Count | Should -Be 2
+
     $reservations[0].Space -eq "TestSpaceA" | Should -Be $true
     $reservations[0].Block -eq "TestBlockA" | Should -Be $true
     $reservations[0].Desc -eq "Test Reservation A" | Should -Be $true
     $reservations[0].Cidr -eq "10.1.2.0/24" | Should -Be $true
     $reservations[0].SettledOn -eq $null | Should -Be $true
+
+    $reservations[1].Space -eq "TestSpaceA" | Should -Be $true
+    $reservations[1].Block -eq "TestBlockA" | Should -Be $true
+    $reservations[1].Desc -eq "Test Reservation B" | Should -Be $true
+    $reservations[1].Cidr -eq "10.1.3.0/24" | Should -Be $true
+    $reservations[1].SettledOn -eq $null | Should -Be $true
   }
 
   It 'Import Virtual Network via Reservation ID' {
@@ -447,8 +476,26 @@ Context 'Reservations' {
 
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetA.Id | Should -Be $true
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetC.Id | Should -Be $true
+
     $reservations | Should -Not -Be $null
+
     $reservations[0].SettledOn -eq $null | Should -Be $false
     $reservations[0].Status -eq "fulfilled" | Should -Be $true
+    $reservations[1].SettledOn -eq $null | Should -Be $true
+    $reservations[1].Status -eq "wait" | Should -Be $true
+  }
+
+  It 'Delete A Reservation' {
+    $query = @{
+      settled = $true
+    }
+
+    $remove, $removeStatus = Remove-ApiResource "/spaces/TestSpaceA/blocks/TestBlockA/reservations/$($script:reservationB.Id)"
+    $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $query
+
+    $reservations[0].SettledOn -eq $null | Should -Be $false
+    $reservations[0].Status -eq "fulfilled" | Should -Be $true
+    $reservations[1].SettledOn -eq $null | Should -Be $false
+    $reservations[1].Status -eq "cancelledByUser" | Should -Be $true
   }
 }

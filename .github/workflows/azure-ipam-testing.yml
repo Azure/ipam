@@ -3,6 +3,8 @@ name: Azure IPAM Testing
 run-name: Azure IPAM Deployment & Testing
 
 on:
+  push:
+    branches: [ ipam-pydantic-v2 ]
   pull_request:
     branches: [ main ]
 
