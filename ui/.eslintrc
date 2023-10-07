@@ -2,6 +2,7 @@
   "env": {
     "node": true,
     "browser": true,
+    "jest": true,
     "es2021": true
   },
   "settings": {

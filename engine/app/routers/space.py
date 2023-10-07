@@ -470,7 +470,7 @@ async def update_space(
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     try:
-        patch = jsonpatch.JsonPatch(updates.model_dump())
+        patch = jsonpatch.JsonPatch([x.model_dump() for x in updates])
     except jsonpatch.InvalidJsonPatch:
         raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
 
@@ -928,7 +928,7 @@ async def update_block(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     try:
-        patch = jsonpatch.JsonPatch(updates.model_dump())
+        patch = jsonpatch.JsonPatch([x.model_dump() for x in updates])
     except jsonpatch.InvalidJsonPatch:
         raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
 

@@ -365,7 +365,7 @@ BlockUpdate = Annotated[List[JSONPatch], None]
 
 VNetsUpdate = Annotated[List[str], None]
 
-ExtNetsUpdate = Annotated[list[ExtNet], None]
+ExtNetsUpdate = Annotated[List[ExtNet], None]
 
 DeleteExtNetReq = Annotated[List[str], None]
 
