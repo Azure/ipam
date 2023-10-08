@@ -1,8 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Depends,
+    Header
+)
+
+from typing import List
 
 import regex
 import copy
-from netaddr import IPSet
+from netaddr import IPSet, IPNetwork
 
 from app.dependencies import (
     check_token_expired,
@@ -54,8 +61,6 @@ async def next_available_subnet(
     - **smallest_cidr**:
         - **true**: New subnets will be created using the smallest possible available CIDR (e.g. it will not break up large CIDR blocks when possible)
         - **false (default)**: New subnets will be created using the first available CIDR, regardless of size
-
-    <font color='red'>**EXPERIMENTAL**: This API is currently in testing and may change in future releases!</font>
     """
 
     vnet_pattern = regex.compile(r'(?i)^\/subscriptions\/[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}\/resourceGroups\/(?=.{1,90})([a-zA-Z0-9-_\.\p{L}\p{N}]*)(?<!\.)\/providers\/Microsoft.Network\/virtualNetworks\/(?=.{2,64})([a-zA-Z0-9-_\.]*)(?<=[a-zA-Z0-9_])$')
@@ -199,3 +204,66 @@ async def next_available_vnet(
     }
 
     return new_cidr
+
+@router.post(
+    "/cidrCheck",
+    summary = "Find Virtual Networks that Overlap a Given CIDR Range",
+    response_model = List[CIDRCheckRes],
+    status_code = 200
+)
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error fetching overlapping virtual networks, please try again."
+)
+async def cidr_check(
+    req: CIDRCheckReq,
+    authorization: str = Header(None, description="Azure Bearer token"),
+    tenant_id: str = Depends(get_tenant_id)
+):
+    """
+    Get a list of Virtual Networks which overlap a given CIDR range with the following information:
+
+    - **cidr**: CIDR range
+
+    <font color='red'>**EXPERIMENTAL**: This API is currently in testing and may change in future releases!</font>
+    """
+
+    if IPNetwork(req.cidr).ip != IPNetwork(req.cidr).network:
+        raise HTTPException(status_code=400, detail="Invalid CIDR range.")
+
+    spaces = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
+
+    nets = await arg_query(authorization, True, argquery.NET_BASIC)
+
+    nets = vnet_fixup(nets)
+
+    overlap = [net for net in nets if IPSet([req.cidr]) & IPSet(net['prefixes'])]
+
+    for item in overlap:
+        new_prefixes = []
+
+        for prefix in item['prefixes']:
+            if IPSet([req.cidr]) & IPSet([prefix]):
+                new_prefixes.append(prefix)
+
+        item['prefixes'] = new_prefixes
+
+        item['containers'] = []
+
+        for space in spaces:
+            for block in space['blocks']:
+                for vnet in block['vnets']:
+                    if vnet['id'] == item['id']:
+                        container = {
+                            "space": space['name'],
+                            "block": block['name']
+                        }
+
+                        # container = "/spaces/{}/blocks/{}".format(space['name'], block['name'])
+
+                        item['containers'].append(container)
+
+    return overlap
+
+# Use below for new/experimental APIs:
+# <font color='red'>**EXPERIMENTAL**: This API is currently in testing and may change in future releases!</font>

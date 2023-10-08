@@ -3,6 +3,8 @@ import { useDispatch } from 'react-redux';
 
 import { useSnackbar } from "notistack";
 
+import Draggable from 'react-draggable';
+
 import {
   Box,
   Button,
@@ -11,7 +13,8 @@ import {
   Dialog,
   DialogTitle,
   DialogActions,
-  DialogContent
+  DialogContent,
+  Paper
 } from "@mui/material";
 
 import LoadingButton from '@mui/lab/LoadingButton';
@@ -22,6 +25,21 @@ import {
   BLOCK_NAME_REGEX,
   CIDR_REGEX
 } from "../../../../global/globals";
+
+function DraggablePaper(props) {
+  const nodeRef = React.useRef(null);
+
+  return (
+    <Draggable
+      nodeRef={nodeRef}
+      handle="#draggable-dialog-title"
+      cancel={'[class*="MuiDialogContent-root"]'}
+      bounds="parent"
+    >
+      <Paper {...props} ref={nodeRef}/>
+    </Draggable>
+  );
+}
 
 export default function AddBlock(props) {
   const { open, handleClose, space, blocks } = props;
@@ -81,10 +99,10 @@ export default function AddBlock(props) {
       BLOCK_NAME_REGEX
     );
 
-    const nameValid = name ? !regex.test(name) : false;
+    const invalidName = name ? !regex.test(name) : false;
     const blockExists = blocks.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
 
-    return nameValid || blockExists;
+    return invalidName || blockExists;
   }
 
   function onCidrChange(event) {
@@ -103,9 +121,15 @@ export default function AddBlock(props) {
   }
 
   return (
-    <div sx={{ height: "300px", width: "100%" }}>
-      <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-        <DialogTitle>
+    <div>
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        PaperComponent={DraggablePaper}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
           Add Block
         </DialogTitle>
         <DialogContent>

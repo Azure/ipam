@@ -1,6 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path, status
 from fastapi.responses import PlainTextResponse
 from fastapi.encoders import jsonable_encoder
+
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    status,
+    Depends,
+    Header,
+    Query,
+    Path
+)
 
 from typing import Optional, List, Union
 
@@ -48,14 +57,25 @@ router = APIRouter(
     dependencies=[Depends(check_token_expired)]
 )
 
-async def scrub_space_patch(patch):
+async def valid_space_name_update(name, space_name, tenant_id):
+    space_names = await cosmos_query("SELECT VALUE LOWER(c.name) FROM c WHERE c.type = 'space' AND LOWER(c.name) != LOWER('{}')".format(space_name), tenant_id)
+
+    if name.lower() in space_names:
+        raise HTTPException(status_code=400, detail="Updated Space name must be unique.")
+    
+    if re.match(SPACE_NAME_REGEX, name):
+        return True
+
+    return False
+
+async def scrub_space_patch(patch, space_name, tenant_id):
     scrubbed_patch = []
 
     allowed_ops = [
         {
             "op": "replace",
             "path": "/name",
-            "valid": SPACE_NAME_REGEX,
+            "valid": valid_space_name_update,
             "error": "Space name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods."
         },
         {
@@ -70,18 +90,39 @@ async def scrub_space_patch(patch):
         target = next((x for x in allowed_ops if (x['op'] == item['op'] and x['path'] == item['path'])), None)
 
         if target:
-            if re.match(target['valid'], str(item['value'])):
-                scrubbed_patch.append(item)
+            if isinstance(target['valid'], str):
+                if re.match(target['valid'], str(item['value']), re.IGNORECASE):
+                    scrubbed_patch.append(item)
+                else:
+                    raise HTTPException(status_code=400, detail=target['error'])
+            elif callable(target['valid']):
+                if await target['valid'](item['value'], space_name, tenant_id):
+                    scrubbed_patch.append(item)
+                else:
+                    raise HTTPException(status_code=400, detail=target['error'])
             else:
                 raise HTTPException(status_code=400, detail=target['error'])
 
     return scrubbed_patch
 
-async def valid_block_cidr_update(cidr, space, block_name):
+async def valid_block_name_update(name, space_name, block_name, tenant_id):
+    blocks = await cosmos_query("SELECT VALUE LOWER(t.name) FROM c join t IN c.blocks WHERE c.type = 'space' AND LOWER(c.name) != LOWER('{}')".format(space_name), tenant_id)
+    other_blocks = [x for x in blocks if x != block_name.lower()]
+
+    if name.lower() in other_blocks:
+        raise HTTPException(status_code=400, detail="Updated Block name cannot match existing Blocks within the Space.")
+    
+    if re.match(BLOCK_NAME_REGEX, name):
+        return True
+
+    return False
+
+async def valid_block_cidr_update(cidr, space_name, block_name, tenant_id):
     space_cidrs = []
     block_cidrs = []
 
-    target_block = next((x for x in space['blocks'] if x['name'].lower() == block_name.lower()), None)
+    blocks = await cosmos_query("SELECT VALUE t FROM c join t IN c.blocks WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space_name), tenant_id)
+    target_block = next((x for x in blocks if x['name'].lower() == block_name.lower()), None)
 
     if target_block:
         if(cidr == target_block['cidr']):
@@ -90,11 +131,11 @@ async def valid_block_cidr_update(cidr, space, block_name):
         block_network = IPNetwork(cidr)
 
         if(str(block_network.cidr) != cidr):
-            raise HTTPException(status_code=400, detail="Invalid CIDR value, Try '{}' instead.".format(block_network.cidr))
+            raise HTTPException(status_code=400, detail="Invalid CIDR value, try '{}' instead.".format(block_network.cidr))
 
     net_list = await get_network(None, True)
 
-    for block in space['blocks']:
+    for block in blocks:
         if block['name'] != block_name:
             space_cidrs.append(block['cidr'])
         else:
@@ -112,21 +153,21 @@ async def valid_block_cidr_update(cidr, space, block_name):
     block_set = IPSet(block_cidrs)
 
     if space_set & update_set:
-        return False
+        raise HTTPException(status_code=400, detail="Updated CIDR cannot overlap other Block CIDRs within the Space.")
     
     if not block_set.issubset(update_set):
         return False
     
     return True
 
-async def scrub_block_patch(patch, space, block_name):
+async def scrub_block_patch(patch, space_name, block_name, tenant_id):
     scrubbed_patch = []
 
     allowed_ops = [
         {
             "op": "replace",
             "path": "/name",
-            "valid": BLOCK_NAME_REGEX,
+            "valid": valid_block_name_update,
             "error": "Block name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, slashes, and periods."
         },
         {
@@ -147,7 +188,7 @@ async def scrub_block_patch(patch, space, block_name):
                 else:
                     raise HTTPException(status_code=400, detail=target['error'])
             elif callable(target['valid']):
-                if await target['valid'](item['value'], space, block_name):
+                if await target['valid'](item['value'], space_name, block_name, tenant_id):
                     scrubbed_patch.append(item)
                 else:
                     raise HTTPException(status_code=400, detail=target['error'])
@@ -287,7 +328,7 @@ async def create_space(
         "id": uuid.uuid4(),
         "type": "space",
         "tenant_id": tenant_id,
-        **space.dict(),
+        **space.model_dump(),
         "blocks": []
     }
 
@@ -391,7 +432,7 @@ async def get_space(
 @router.patch(
     "/{space}",
     summary = "Update Space Details",
-    response_model = Space,
+    # response_model = Space,
     status_code = 200
 )
 @cosmos_retry(
@@ -429,11 +470,11 @@ async def update_space(
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     try:
-        patch = jsonpatch.JsonPatch(updates)
+        patch = jsonpatch.JsonPatch([x.model_dump() for x in updates])
     except jsonpatch.InvalidJsonPatch:
         raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
 
-    scrubbed_patch = jsonpatch.JsonPatch(await scrub_space_patch(patch))
+    scrubbed_patch = jsonpatch.JsonPatch(await scrub_space_patch(patch, space, tenant_id))
     update_space = scrubbed_patch.apply(target_space)
 
     await cosmos_replace(target_space, update_space)
@@ -887,11 +928,11 @@ async def update_block(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     try:
-        patch = jsonpatch.JsonPatch(updates)
+        patch = jsonpatch.JsonPatch([x.model_dump() for x in updates])
     except jsonpatch.InvalidJsonPatch:
         raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
 
-    scrubbed_patch = jsonpatch.JsonPatch(await scrub_block_patch(patch, target_space, block))
+    scrubbed_patch = jsonpatch.JsonPatch(await scrub_block_patch(patch, space, block, tenant_id))
     scrubbed_patch.apply(update_block, in_place=True)
 
     await cosmos_replace(target_space, update_space)
@@ -1465,7 +1506,7 @@ async def update_block_external_net(
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    external_names = list(map(lambda x: x['name'], externals))
+    external_names = list(map(lambda x: x.name, externals))
     unique_ext_nets = len(set(external_names)) == len(external_names)
 
     if not unique_ext_nets:
@@ -1475,10 +1516,10 @@ async def update_block_external_net(
     invalid_descs = []
 
     for external in externals:
-        if not re.match(EXTERNAL_NAME_REGEX, external['name'], re.IGNORECASE):
+        if not re.match(EXTERNAL_NAME_REGEX, external.name, re.IGNORECASE):
             invalid_names.append(external['name'])
 
-        if not re.match(EXTERNAL_DESC_REGEX, external['desc'], re.IGNORECASE):
+        if not re.match(EXTERNAL_DESC_REGEX, external.desc, re.IGNORECASE):
             invalid_descs.append(external['desc'])
 
     if invalid_names:
@@ -1503,8 +1544,8 @@ async def update_block_external_net(
     external_nets_set = IPSet([])
 
     for external in externals:
-        if not (external_nets_set & IPSet([external['cidr']])):
-            external_nets_set.add(external['cidr'])
+        if not (external_nets_set & IPSet([external.cidr])):
+            external_nets_set.add(external.cidr)
         else:
             external_nets_overlap = True
 

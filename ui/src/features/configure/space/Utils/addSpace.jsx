@@ -3,6 +3,8 @@ import { useDispatch } from 'react-redux';
 
 import { useSnackbar } from "notistack";
 
+import Draggable from 'react-draggable';
+
 import {
   Box,
   Button,
@@ -11,7 +13,8 @@ import {
   Dialog,
   DialogTitle,
   DialogActions,
-  DialogContent
+  DialogContent,
+  Paper
 } from "@mui/material";
 
 import LoadingButton from '@mui/lab/LoadingButton';
@@ -22,6 +25,21 @@ import {
   SPACE_NAME_REGEX,
   SPACE_DESC_REGEX
 } from "../../../../global/globals";
+
+function DraggablePaper(props) {
+  const nodeRef = React.useRef(null);
+
+  return (
+    <Draggable
+      nodeRef={nodeRef}
+      handle="#draggable-dialog-title"
+      cancel={'[class*="MuiDialogContent-root"]'}
+      bounds="parent"
+    >
+      <Paper {...props} ref={nodeRef}/>
+    </Draggable>
+  );
+}
 
 export default function AddSpace(props) {
   const { open, handleClose, spaces } = props;
@@ -83,10 +101,10 @@ export default function AddSpace(props) {
       SPACE_NAME_REGEX
     );
 
-    const nameValid = name ? !regex.test(name) : false;
+    const invalidName = name ? !regex.test(name) : false;
     const spaceExists = spaces.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
 
-    return nameValid || spaceExists;
+    return invalidName || spaceExists;
   }
 
   function onDescriptionChange(event) {
@@ -105,9 +123,15 @@ export default function AddSpace(props) {
   }
 
   return (
-    <div sx={{ height: "300px", width: "100%" }}>
-      <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-        <DialogTitle>
+    <div>
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        PaperComponent={DraggablePaper}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
           Add Space
         </DialogTitle>
         <DialogContent>

@@ -3,6 +3,8 @@ import { useDispatch } from 'react-redux';
 
 import { useSnackbar } from "notistack";
 
+import Draggable from 'react-draggable';
+
 import {
   Box,
   Button,
@@ -11,7 +13,8 @@ import {
   Dialog,
   DialogTitle,
   DialogActions,
-  DialogContent
+  DialogContent,
+  Paper
 } from "@mui/material";
 
 import LoadingButton from '@mui/lab/LoadingButton';
@@ -22,6 +25,21 @@ import {
   SPACE_NAME_REGEX,
   SPACE_DESC_REGEX
 } from "../../../../global/globals";
+
+function DraggablePaper(props) {
+  const nodeRef = React.useRef(null);
+
+  return (
+    <Draggable
+      nodeRef={nodeRef}
+      handle="#draggable-dialog-title"
+      cancel={'[class*="MuiDialogContent-root"]'}
+      bounds="parent"
+    >
+      <Paper {...props} ref={nodeRef}/>
+    </Draggable>
+  );
+}
 
 export default function EditSpace(props) {
   const { open, handleClose, space, spaces } = props;
@@ -38,6 +56,11 @@ export default function EditSpace(props) {
                       && !spaceName.error
                       && description.value
                       && !description.error ? false : true;
+
+  const unchanged = space
+                    ? (spaceName.value === space.name && description.value === space.desc)
+                    ? true : false
+                    : true;
 
   React.useEffect(() => {
     if(space) {
@@ -106,10 +129,8 @@ export default function EditSpace(props) {
     );
 
     const nameValid = name ? !regex.test(name) : false;
-    const spaceExists = spaces.some((e) => e.name.toLowerCase() === name.toLowerCase())
-                        && name.toLowerCase() !== space.name.toLowerCase()
-                        ? true
-                        : false;
+    const otherSpaces = spaces.filter((e) => e.name.toLowerCase() !== space.name.toLowerCase());
+    const spaceExists = otherSpaces.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
 
     return nameValid || spaceExists;
   }
@@ -130,9 +151,15 @@ export default function EditSpace(props) {
   }
 
   return (
-    <div sx={{ height: "300px", width: "100%" }}>
-      <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-        <DialogTitle>
+    <div>
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        PaperComponent={DraggablePaper}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
           Edit Space
         </DialogTitle>
         <DialogContent>
@@ -199,7 +226,7 @@ export default function EditSpace(props) {
           <LoadingButton
             onClick={onSubmit}
             loading={sending}
-            disabled={invalidForm}
+            disabled={invalidForm || unchanged}
           >
             Update
           </LoadingButton>

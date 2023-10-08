@@ -1,4 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Depends,
+    Header
+)
 
 from azure.core.exceptions import ClientAuthenticationError, HttpResponseError
 from azure.mgmt.compute.aio import ComputeManagementClient
@@ -12,7 +17,6 @@ import copy
 import time
 import asyncio
 from netaddr import IPSet, IPNetwork
-from uuid import uuid4
 
 from app.dependencies import (
     check_token_expired,

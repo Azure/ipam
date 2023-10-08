@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException, Header
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import HTTPException as StarletteHTTPException
@@ -46,7 +46,7 @@ Azure IPAM is a lightweight solution developed on top of the Azure platform desi
 app = FastAPI(
     title = "Azure IPAM",
     description = description,
-    version = "2.0.0",
+    version = "2.1.0",
     contact = {
         "name": "Azure IPAM Team",
         "url": "https://github.com/azure/ipam",

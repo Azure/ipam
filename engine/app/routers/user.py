@@ -1,5 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from fastapi.encoders import jsonable_encoder
+
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Depends,
+    Header,
+    Query
+)
 
 from pydantic import BaseModel
 from typing import Union, List

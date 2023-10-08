@@ -1,5 +1,24 @@
-from pydantic import BaseModel, EmailStr, root_validator, validator
-from typing import Optional, Union, Literal, List, Dict, Any
+from pydantic_core import CoreSchema, core_schema
+from pydantic.json_schema import JsonSchemaValue
+
+from pydantic import (
+    GetCoreSchemaHandler,
+    GetJsonSchemaHandler,
+    ConfigDict,
+    BaseModel,
+    EmailStr,
+    model_validator
+)
+
+from typing import (
+    Annotated,
+    Optional,
+    Union,
+    Literal,
+    List,
+    Dict,
+    Any
+)
 
 from netaddr import IPNetwork, IPAddress
 from uuid import UUID
@@ -10,30 +29,37 @@ class IPv4Network(str):
     """
 
     @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> CoreSchema:
+        return core_schema.no_info_after_validator_function(cls.validate, handler(str))
 
     @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(
-            pattern='x.x.x.x/x',
-            examples=['10.0.0.0/8', '172.16.0.0/16', '192.168.0.0/24'],
-        )
+    def __get_pydantic_json_schema__(
+        cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler(core_schema)
+        json_schema = handler.resolve_ref_schema(json_schema)
+        json_schema['pattern'] = 'x.x.x.x/x'
+        json_schema['examples'] = [
+            '10.0.0.0/8',
+            '172.16.0.0/16',
+            '192.168.0.0/24'
+        ]
+
+        return json_schema
 
     @classmethod
-    def validate(cls, v):
-        if not isinstance(v, str):
+    def validate(cls, input_value: Any):
+        if not isinstance(input_value, str):
             raise TypeError('string required')
         try:
-            m = IPNetwork(v)
+            m = IPNetwork(input_value)
         except:
             m = None
         if not m:
             raise ValueError('invalid ip network format')
-        return v
-
-    def __repr__(self):
-        return f'IPNetwork({super().__repr__()})'
+        return input_value
 
 class IPv4Address(str):
     """
@@ -41,30 +67,37 @@ class IPv4Address(str):
     """
 
     @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> CoreSchema:
+        return core_schema.no_info_after_validator_function(cls.validate, handler(str))
 
     @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(
-            pattern='x.x.x.x',
-            examples=['10.0.0.1', '172.16.0.1', '192.168.0.1'],
-        )
+    def __get_pydantic_json_schema__(
+        cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler(core_schema)
+        json_schema = handler.resolve_ref_schema(json_schema)
+        json_schema['pattern'] = 'x.x.x.x'
+        json_schema['examples'] = [
+            '10.0.0.1',
+            '172.16.0.1',
+            '192.168.0.1'
+        ]
+
+        return json_schema
 
     @classmethod
-    def validate(cls, v):
-        if not isinstance(v, str):
+    def validate(cls, input_value: Any):
+        if not isinstance(input_value, str):
             raise TypeError('string required')
         try:
-            m = IPAddress(v)
+            m = IPAddress(input_value)
         except:
             m = None
         if not m:
             raise ValueError('invalid ip address format')
-        return v
-
-    def __repr__(self):
-        return f'IPAddress({super().__repr__()})'
+        return input_value
 
 #######################
 #   RESPONSE MODELS   #
@@ -74,13 +107,13 @@ class VNet(BaseModel):
     """DOCSTRING"""
 
     id: str
-    active: Optional[bool]
+    active: Optional[bool] = None
 
 class Network(BaseModel):
     """DOCSTRING"""
 
     id: str
-    active: Optional[bool]
+    active: Optional[bool] = None
 
 class ExtNet(BaseModel):
     """DOCSTRING"""
@@ -147,33 +180,36 @@ class Reservation(BaseModel):
 
     id: str
     cidr: str
-    desc: Union[str, None]
+    desc: Union[str, None] = None
     createdOn: float
     createdBy: str
-    settledOn: Union[float, None]
-    settledBy: Union[str, None]
+    settledOn: Union[float, None] = None
+    settledBy: Union[str, None] = None
     status: str
 
 class ReservationExpand(BaseModel):
     """DOCSTRING"""
 
     id: str
-    space: Optional[str]
-    block: Optional[str]
+    space: Optional[str] = None
+    block: Optional[str] = None
     cidr: str
-    desc: Union[str, None]
+    desc: Union[str, None] = None
     createdOn: float
     createdBy: str
-    settledOn: Union[float, None]
-    settledBy: Union[str, None]
+    settledOn: Union[float, None] = None
+    settledBy: Union[str, None] = None
     status: str
-    tag: Optional[dict]
+    tag: Optional[dict] = None
 
-    @root_validator
-    def format_tag(cls, values) -> dict:
-        values["tag"] = { "X-IPAM-RES-ID": values["id"]}
-        
-        return values
+    @model_validator(mode='before')
+    @classmethod
+    def format_tag(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if 'id' in data:
+                data["tag"] = { "X-IPAM-RES-ID": data["id"]}
+          
+                return data
 
 class BlockBasic(BaseModel):
     """DOCSTRING"""
@@ -299,25 +335,6 @@ class BlockReq(BaseModel):
     name: str
     cidr: IPv4Network
 
-class JSONPatch(BaseModel):
-    """DOCSTRING"""
-
-    op: str
-    path: str
-    value: Any
-
-class SpaceUpdate(List[JSONPatch]):
-    """DOCSTRING"""
-
-class BlockUpdate(List[JSONPatch]):
-    """DOCSTRING"""
-
-class VNetsUpdate(List[str]):
-    """DOCSTRING"""
-
-class ExtNetsUpdate(List[ExtNet]):
-    """DOCSTRING"""
-
 class SpaceCIDRReq(BaseModel):
     """DOCSTRING"""
 
@@ -335,21 +352,28 @@ class BlockCIDRReq(BaseModel):
     reverse_search: Optional[bool] = False
     smallest_cidr: Optional[bool] = False
 
-class DeleteExtNetReq(List[str]):
+class JSONPatch(BaseModel):
     """DOCSTRING"""
 
-class DeleteResvReq(List[str]):
-    """DOCSTRING"""
+    op: str
+    path: str
+    value: Any = None
+
+SpaceUpdate = Annotated[List[JSONPatch], None]
+
+BlockUpdate = Annotated[List[JSONPatch], None]
+
+VNetsUpdate = Annotated[List[str], None]
+
+ExtNetsUpdate = Annotated[List[ExtNet], None]
+
+DeleteExtNetReq = Annotated[List[str], None]
+
+DeleteResvReq = Annotated[List[str], None]
 
 ####################
 #   AZURE MODELS   #
 ####################
-
-# class VWanHubMetadata(BaseModel):
-#     """DOCSTRING"""
-
-#     vwan_name: str
-#     vwan_id: str
 
 class VNetPeering(BaseModel):
     """DOCSTRING"""
@@ -366,18 +390,19 @@ class VWanHub(BaseModel):
     prefix: IPv4Network
     vwan_name: str
     vwan_id: str
-    parent_space: Union[str,  None]
-    parent_block: Union[str, None]
+    parent_space: Union[str,  None] = None
+    parent_block: Union[str, None] = None
     resource_group: str
     subscription_id: UUID
     tenant_id: str
     peerings: List[VNetPeering]
     size: int
 
-    class Config:
+    model_config = ConfigDict(
         json_encoders = {
-            UUID: lambda v: str(v),
+            UUID: lambda v: str(v)
         }
+    )
 
 class AzureNetwork(BaseModel):
     """DOCSTRING"""
@@ -391,12 +416,13 @@ class AzureNetwork(BaseModel):
     tenant_id: str
     peerings: List[VNetPeering]
     size: int
-    used: Union[int, None]
+    used: Union[int, None] = None
 
-    class Config:
+    model_config = ConfigDict(
         json_encoders = {
-            UUID: lambda v: str(v),
+            UUID: lambda v: str(v)
         }
+    )
 
 ####################
 #   ADMIN MODELS   #
@@ -407,28 +433,31 @@ class Admin(BaseModel):
 
     type: Literal["User", "Principal"]
     name: str
-    email: Optional[EmailStr]
+    email: Optional[EmailStr] = None
     id: UUID
+        
+    @model_validator(mode='before')
+    @classmethod
+    def check_email(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if 'type' in data and 'email' in data:
+                if data['type'] == "Principal":
+                    raise ValueError("email should not be set for 'principal' type")
+            if 'type' in data and 'email' not in data:
+                if data['type'] == "User":
+                    raise ValueError("email must be set for 'user' type")
 
-    @validator('email', pre=True, always=True)
-    def check_email(cls, v, values, **kwargs):
-        if 'type' in values and values['type'] == "Principal" and v is not None:
-            raise ValueError("email should not be set for 'principal' type")
-        if 'type' in values and values['type'] == "User" and v is None:
-            raise ValueError("email must be set for 'user' type")
+        return data
 
-        return v
-
-    class Config:
+    model_config = ConfigDict(
         json_encoders = {
-            UUID: lambda v: str(v),
+            UUID: lambda v: str(v)
         }
+    )
 
-class Subscription(UUID):
-    """DOCSTRING"""
+Subscription = Annotated[UUID, None]
 
-class Exclusions(List[UUID]):
-    """DOCSTRING"""
+Exclusions = Annotated[List[UUID], None]
 
 ###################
 #   USER MODELS   #
@@ -437,7 +466,7 @@ class Exclusions(List[UUID]):
 class ViewSettings(BaseModel):
     values: Dict[str, dict]
     order: List[str]
-    sort: Union[dict, None]
+    sort: Union[dict, None] = None
 
 class User(BaseModel):
     """DOCSTRING"""
@@ -447,10 +476,11 @@ class User(BaseModel):
     apiRefresh: int
     isAdmin: bool
 
-    class Config:
+    model_config = ConfigDict(
         json_encoders = {
-            UUID: lambda v: str(v),
+            UUID: lambda v: str(v)
         }
+    )
 
 class UserExpand(BaseModel):
     """DOCSTRING"""
@@ -461,20 +491,20 @@ class UserExpand(BaseModel):
     isAdmin: bool
     views: Dict[str, ViewSettings]
 
-    class Config:
+    model_config = ConfigDict(
         json_encoders = {
-            UUID: lambda v: str(v),
+            UUID: lambda v: str(v)
         }
+    )
 
 class JSONPatch(BaseModel):
     """DOCSTRING"""
 
     op: str
     path: str
-    value: Any
+    value: Any = None
 
-class UserUpdate(List[JSONPatch]):
-    """DOCSTRING"""
+UserUpdate = Annotated[List[JSONPatch], None]
 
 ###################
 #   TOOL MODELS   #
@@ -511,3 +541,23 @@ class NewVNetCIDR(BaseModel):
     space: str
     block: str
     cidr: str
+
+class CIDRContainer(BaseModel):
+    space: str
+    block: str
+
+class CIDRCheckReq(BaseModel):
+    """DOCSTRING"""
+
+    cidr: IPv4Network
+
+class CIDRCheckRes(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    id: str
+    resource_group: str
+    subscription_id: UUID
+    tenant_id: UUID
+    prefixes: List[IPv4Network]
+    containers: List[CIDRContainer]

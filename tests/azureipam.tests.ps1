@@ -130,6 +130,7 @@ BeforeAll {
 }
 
 Context 'Spaces' {
+  # GET /api/spaces
   It 'Verify No Spaces Exist' {
 
     $spaces, $spacesStatus = Get-ApiResource '/spaces'
@@ -137,6 +138,7 @@ Context 'Spaces' {
     $spaces | Should -Be $null
   }
 
+  # POST /api/spaces
   It 'Create Two Spaces' {
     $spaceA = @{
       name = 'TestSpace01'
@@ -158,6 +160,7 @@ Context 'Spaces' {
     $spaces.Name -contains 'TestSpace02' | Should -Be $true
   }
 
+  # DELETE /api/spaces/{space}
   It 'Delete a Space' {
     Remove-ApiResource '/spaces/TestSpace02'
 
@@ -168,6 +171,7 @@ Context 'Spaces' {
     $spaces.Name -contains 'TestSpace02' | Should -Be $false
   }
 
+  # PATCH /api/spaces/{space}
   It 'Update a Space' {
     $update = @(
       @{
@@ -190,9 +194,19 @@ Context 'Spaces' {
     $spaces[0].Name -eq 'TestSpaceA' | Should -Be $true
     $spaces[0].Desc -eq 'Test Space A' | Should -Be $true
   }
+
+  # GET /api/spaces/{space}
+  It 'Get A Specific Space' {
+
+    $space, $spaceStatus = Get-ApiResource '/spaces/TestSpaceA'
+
+    $space.Name -eq 'TestSpaceA' | Should -Be $true
+    $space.Desc -eq 'Test Space A' | Should -Be $true
+  }
 }
 
 Context 'Blocks' {
+  # GET /api/spaces/{space}/blocks
   It 'Verify No Blocks Exist' {
 
     $blocks, $blocksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks'
@@ -200,6 +214,7 @@ Context 'Blocks' {
     $blocks | Should -Be $null
   }
 
+  # POST /api/spaces/{space}/blocks
   It 'Create Two Blocks' {
     $blockA = @{
       name = 'TestBlock01'
@@ -221,6 +236,7 @@ Context 'Blocks' {
     $blocks.Name -contains 'TestBlock02' | Should -Be $true
   }
 
+  # DELETE /api/spaces/{space}/blocks/{block}
   It 'Delete a Block' {
     Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlock02'
 
@@ -231,6 +247,7 @@ Context 'Blocks' {
     $blocks.Name -contains 'TestBlock02' | Should -Be $false
   }
 
+  # PATCH /api/spaces/{space}/blocks/{block}
   It 'Update a Block' {
     $update = @(
       @{
@@ -253,9 +270,19 @@ Context 'Blocks' {
     $blocks[0].Name -eq 'TestBlockA' | Should -Be $true
     $blocks[0].Cidr -eq '10.1.0.0/16' | Should -Be $true
   }
+
+  # GET /api/spaces/{space}/blocks/{block}
+  It 'Get A Specific Block' {
+
+    $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA'
+
+    $block.Name -eq 'TestBlockA' | Should -Be $true
+    $block.Cidr -eq '10.1.0.0/16' | Should -Be $true
+  }
 }
 
 Context 'Networks' {
+  # GET /api/spaces/{space}/blocks/{block}/networks
   It 'Verify No Networks Exist in Block' {
 
     $networks, $networksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks'
@@ -263,6 +290,7 @@ Context 'Networks' {
     $networks | Should -Be $null
   }
 
+  # POST /api/spaces/{space}/blocks/{block}/networks
   It 'Add a Virtual Network to a Block' {
     $script:newNetA = New-AzVirtualNetwork `
       -Name 'TestVNet01' `
@@ -283,6 +311,7 @@ Context 'Networks' {
     $($block.vnets | Select-Object -ExpandProperty id) -contains $script:newNetA.Id | Should -Be $true
   }
 
+  # PUT /api/spaces/{space}/blocks/{block}/networks
   It 'Replace Block Virtual Networks' {
     $script:newNetB = New-AzVirtualNetwork `
       -Name 'TestVNet02' `
@@ -305,6 +334,7 @@ Context 'Networks' {
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetB.Id | Should -Be $true
   }
 
+  # DELETE /api/spaces/{space}/blocks/{block}/networks
   It 'Delete Block Virtual Network' {
     $body = @(
       $script:newNetB.Id
@@ -320,6 +350,7 @@ Context 'Networks' {
 }
 
 Context 'External Networks' {
+  # GET /api/spaces/{space}/blocks/{block}/externals
   It 'Verify No External Networks Exist in Block' {
 
     $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
@@ -327,6 +358,7 @@ Context 'External Networks' {
     $externals | Should -Be $null
   }
 
+  # POST /api/spaces/{space}/blocks/{block}/externals
   It 'Add an External Network to Block' {
     $script:externalA = @{
       name = "ExternalNetA"
@@ -341,6 +373,7 @@ Context 'External Networks' {
     $externals.Name -contains "ExternalNetA" | Should -Be $true
   }
 
+  # PUT /api/spaces/{space}/blocks/{block}/externals
   It 'Replace Block External Networks' {
     $script:externalB = @{
       name = "ExternalNetB"
@@ -368,6 +401,7 @@ Context 'External Networks' {
     $externals.Name -contains "ExternalNetB" | Should -Be $true
   }
 
+  # DELETE /api/spaces/{space}/blocks/{block}/externals
   It 'Delete Block External Network' {
     $body = @(
       $script:externalC.name
@@ -382,6 +416,7 @@ Context 'External Networks' {
     $externals.Name -contains "ExternalNetC" | Should -Be $false
   }
 
+  # GET /api/spaces/{space}/blocks/{block}/externals/{external}
   It 'Get Specific Block External Network' {
 
     $external, $externalStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetB'
@@ -391,6 +426,7 @@ Context 'External Networks' {
     $external.Cidr | Should -Be "10.1.2.0/24"
   }
 
+  # PATCH /api/spaces/{space}/blocks/{block}/externals/{external}
   It 'Delete Specific Block External Network' {
 
     Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetB'
@@ -404,6 +440,7 @@ Context 'External Networks' {
 }
 
 Context 'Reservations' {
+  # GET /api/spaces/{space}/blocks/{block}/reservations
   It 'Verify No Reservations Exist in Block' {
 
     $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations'
@@ -411,23 +448,37 @@ Context 'Reservations' {
     $reservations | Should -Be $null
   }
 
-  It 'Create Block Reservation' {
-    $body = @{
+  It 'Create Two Block Reservations' {
+    $bodyA = @{
       size = 24
       desc = "Test Reservation A"
     }
 
-    $script:reservationA, $reservationAStatus = New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $body
+    $bodyB = @{
+      size = 24
+      desc = "Test Reservation B"
+    }
+
+    $script:reservationA, $reservationAStatus = New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $bodyA
+    $script:reservationB, $reservationBStatus = New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $bodyB
     $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations'
     
-    $reservations.Count | Should -Be 1
+    $reservations.Count | Should -Be 2
+
     $reservations[0].Space -eq "TestSpaceA" | Should -Be $true
     $reservations[0].Block -eq "TestBlockA" | Should -Be $true
     $reservations[0].Desc -eq "Test Reservation A" | Should -Be $true
     $reservations[0].Cidr -eq "10.1.2.0/24" | Should -Be $true
     $reservations[0].SettledOn -eq $null | Should -Be $true
+
+    $reservations[1].Space -eq "TestSpaceA" | Should -Be $true
+    $reservations[1].Block -eq "TestBlockA" | Should -Be $true
+    $reservations[1].Desc -eq "Test Reservation B" | Should -Be $true
+    $reservations[1].Cidr -eq "10.1.3.0/24" | Should -Be $true
+    $reservations[1].SettledOn -eq $null | Should -Be $true
   }
 
+  # PUT /api/spaces/{space}/blocks/{block}/reservations
   It 'Import Virtual Network via Reservation ID' {
     $script:newNetC = New-AzVirtualNetwork `
       -Name 'TestVNet03' `
@@ -447,8 +498,32 @@ Context 'Reservations' {
 
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetA.Id | Should -Be $true
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetC.Id | Should -Be $true
+
     $reservations | Should -Not -Be $null
+
     $reservations[0].SettledOn -eq $null | Should -Be $false
     $reservations[0].Status -eq "fulfilled" | Should -Be $true
+    $reservations[1].SettledOn -eq $null | Should -Be $true
+    $reservations[1].Status -eq "wait" | Should -Be $true
+  }
+
+  # PATCH /api/spaces/{space}/blocks/{block}/reservations
+  It 'Delete A Reservation' {
+    $body = @(
+      $script:reservationB.Id
+    )
+
+    $query = @{
+      settled = $true
+    }
+
+    Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $body
+
+    $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $query
+
+    $reservations[0].SettledOn -eq $null | Should -Be $false
+    $reservations[0].Status -eq "fulfilled" | Should -Be $true
+    $reservations[1].SettledOn -eq $null | Should -Be $false
+    $reservations[1].Status -eq "cancelledByUser" | Should -Be $true
   }
 }

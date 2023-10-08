@@ -11,6 +11,8 @@ import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
 import '@inovua/reactdatagrid-community/theme/default-dark.css'
 
+import Draggable from 'react-draggable';
+
 import { useTheme } from '@mui/material/styles';
 
 import {
@@ -25,7 +27,8 @@ import {
   CircularProgress,
   Menu,
   MenuItem,
-  ListItemIcon
+  ListItemIcon,
+  Paper
 } from "@mui/material";
 
 import {
@@ -237,16 +240,32 @@ function HeaderMenu(props) {
   )
 }
 
+function DraggablePaper(props) {
+  const nodeRef = React.useRef(null);
+
+  return (
+    <Draggable
+      nodeRef={nodeRef}
+      handle="#draggable-dialog-title"
+      cancel={'[class*="MuiDialogContent-root"]'}
+      bounds="parent"
+    >
+      <Paper {...props} ref={nodeRef}/>
+    </Draggable>
+  );
+}
+
 export default function EditVnets(props) {
   const { open, handleClose, block, refresh, refreshingState } = props;
 
   const { enqueueSnackbar } = useSnackbar();
 
+  const [prevBlock, setPrevBlock] = React.useState({});
   const [saving, setSaving] = React.useState(false);
   const [sendResults, setSendResults] = React.useState(null);
   const [vNets, setVNets] = React.useState(null);
   const [gridData, setGridData] = React.useState(null);
-  const [selectionModel, setSelectionModel] = React.useState([]);
+  const [selectionModel, setSelectionModel] = React.useState(null);
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
@@ -405,23 +424,6 @@ export default function EditVnets(props) {
   }, []);
 
   React.useEffect(() => {
-    if(block && subscriptions) {
-      if(!refreshing) {
-        setVNets(null);
-        refreshData();
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [block, subscriptions]);
-
-  React.useEffect(() => {
-    if(block) {
-      // eslint-disable-next-line
-      !refreshingState && setSelectionModel(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}));
-    }
-  }, [block, refreshingState]);
-
-  React.useEffect(() => {
     if(!columnState && viewSetting) {
       if(columns && !isEmpty(viewSetting)) {
         loadConfig();
@@ -457,7 +459,7 @@ export default function EditVnets(props) {
     }
   }, [saveTimer, sendResults]);
 
-  function mockVNet(id) {
+  const mockVNet = React.useCallback((id) => {
     const nameRegex = "(?<=/virtualNetworks/).*";
     const rgRegex = "(?<=/resourceGroups/).*?(?=/)";
     const subRegex = "(?<=/subscriptions/).*?(?=/)";
@@ -480,30 +482,49 @@ export default function EditVnets(props) {
     };
   
     return mockNet
-  }
+  }, [subscriptions]);
 
-  function refreshData() {
+  const refreshData = React.useCallback(() => {
     (async () => {
-      setVNets([]);
-
       if(block) {
         try {
           setRefreshing(true);
-          setSelectionModel([]);
+
           var missing_data = [];
           var data = await fetchBlockAvailable(block.parent_space, block.name);
+
           data.forEach((item) => {
             item['type'] = item.id.includes(vNetPattern) ? "vNET" : item.id.includes(vHubPattern) ? "vHUB" : "Unknown";
             item['subscription_name'] = subscriptions.find(sub => sub.subscription_id === item.subscription_id)?.name || 'Unknown';
             item['active'] = true;
           });
+
           const missing = block['vnets'].map(vnet => vnet.id).filter(item => !data.map(a => a.id).includes(item));
+
           missing.forEach((item) => {
             missing_data.push(mockVNet(item));
           });
-          setVNets([...sortBy(missing_data, 'name'), ...sortBy(data, 'name')]);
-          //eslint-disable-next-line
-          setSelectionModel(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}));
+
+          const newVNetData = [...sortBy(missing_data, 'name'), ...sortBy(data, 'name')]
+
+          setVNets(newVNetData);
+
+          if(!selectionModel) {
+            //eslint-disable-next-line
+            setSelectionModel(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}));
+          } else {
+            setSelectionModel(prev => {
+              const newSelection = {};
+
+              Object.keys(prev).forEach(key => {
+                if(newVNetData.map(vnet => vnet.id).includes(key)) {
+                  newSelection[key] = prev[key];
+                }
+              });
+
+              return newSelection;
+            });
+          }
         } catch (e) {
           console.log("ERROR");
           console.log("------------------");
@@ -515,12 +536,13 @@ export default function EditVnets(props) {
         }
       }
     })();
-  }
+  }, [block, subscriptions, selectionModel, enqueueSnackbar, mockVNet]);
 
-  // function manualRefresh() {
-  //   refresh();
-  //   refreshData();
-  // }
+  function onClose() {
+    handleClose();
+    //eslint-disable-next-line
+    setSelectionModel(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}));
+  }
 
   function onSubmit() {
     (async () => {
@@ -550,11 +572,28 @@ export default function EditVnets(props) {
     enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
   }, [enqueueSnackbar]);
 
+  React.useEffect(() => {
+    if(block && subscriptions) {
+      const newBlock = {
+        id: block.id,
+        name: block.name,
+        cidr: block.cidr,
+        vnets: block.vnets
+      };
+
+      if(!isEqual(prevBlock, newBlock)) {
+        setPrevBlock(newBlock);
+        refreshData();
+      }
+    }
+  }, [block, subscriptions, prevBlock, refreshData]);
+
   return (
     <NetworkContext.Provider value={{ saving, sendResults, saveConfig, loadConfig, resetConfig }}>
       <Dialog
         open={open}
         onClose={handleClose}
+        PaperComponent={DraggablePaper}
         maxWidth="lg"
         fullWidth
         PaperProps={{
@@ -563,7 +602,7 @@ export default function EditVnets(props) {
           },
         }}
       >
-        <DialogTitle>
+        <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
           <Box sx={{ display: "flex", flexDirection: "row" }}>
             <Box>
               Network Association
@@ -583,8 +622,24 @@ export default function EditVnets(props) {
         <DialogContent
           sx={{ overflowY: "unset" }}
         >
-          <DialogContentText>
-            Select the Networks below which should be associated with the Block <Spotlight>'{block && block.name}'</Spotlight>
+          <DialogContentText component="span">
+            <Box sx={{ display: 'flex', flexDirection: 'row' }}>
+              <Box>
+                Select the Networks below which should be associated with the Block <Spotlight>'{block && block.name}'</Spotlight>
+              </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'row', ml: 'auto' }}>
+                <Box sx={{ mr: 1 }}>
+                  Selected:
+                </Box>
+                <Box>
+                  {
+                    (sending || !subscriptions || !vNets || refreshing || refreshingState) ?
+                    <span style={{ fontStyle: 'italic', userSelect: 'none' }}>(...)</span> :
+                    <span style={{ fontStyle: 'italic', userSelect: 'none' }}>({Object.keys(selectionModel).length}/{vNets ? vNets.length : '?'})</span>
+                  }
+                </Box>
+              </Box>
+            </Box>
           </DialogContentText>
           <Box
             sx={{
@@ -633,7 +688,7 @@ export default function EditVnets(props) {
               loading={sending || !subscriptions || !vNets || refreshing || refreshingState}
               loadingText={sending ? <Update>Updating</Update> : "Loading"}
               dataSource={gridData || []}
-              selected={selectionModel}
+              selected={selectionModel || []}
               onSelectionChange={({selected}) => setSelectionModel(selected)}
               rowClassName={({data}) => `ipam-block-vnet-${!data.active ? 'stale' : 'normal'}`}
               onCellDoubleClick={onCellDoubleClick}
@@ -646,7 +701,7 @@ export default function EditVnets(props) {
         </DialogContent>
         <DialogActions>
           <Button
-            onClick={handleClose}
+            onClick={onClose}
             sx={{ position: "unset" }}
           >
             Cancel

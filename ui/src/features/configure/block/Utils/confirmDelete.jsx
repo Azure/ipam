@@ -4,6 +4,8 @@ import { styled } from "@mui/material/styles";
 
 import { useSnackbar } from "notistack";
 
+import Draggable from 'react-draggable';
+
 import {
   Box,
   Button,
@@ -15,7 +17,7 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
-  // CircularProgress
+  Paper
 } from "@mui/material";
 
 import LoadingButton from '@mui/lab/LoadingButton';
@@ -26,6 +28,21 @@ const Spotlight = styled("span")(({ theme }) => ({
   fontWeight: 'bold',
   color: theme.palette.mode === 'dark' ? 'cornflowerblue' : 'mediumblue'
 }));
+
+function DraggablePaper(props) {
+  const nodeRef = React.useRef(null);
+
+  return (
+    <Draggable
+      nodeRef={nodeRef}
+      handle="#draggable-dialog-title"
+      cancel={'[class*="MuiDialogContent-root"]'}
+      bounds="parent"
+    >
+      <Paper {...props} ref={nodeRef}/>
+    </Draggable>
+  );
+}
 
 export default function ConfirmDelete(props) {
   const { open, handleClose, space, block } = props;
@@ -73,17 +90,15 @@ export default function ConfirmDelete(props) {
 
   return (
     <div>
-      <Dialog open={open} onClose={handleCancel}>
-        <DialogTitle>
+      <Dialog
+        open={open}
+        onClose={handleCancel}
+        PaperComponent={DraggablePaper}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
           Delete Block
-          {/* <Box sx={{ display: 'flex', flexDirection: 'row', height: '32px', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', marginRight: 'auto' }}>
-              Delete Block
-            </Box>
-            <Box sx={{ display: 'flex', visibility: sending ? 'visible' : 'hidden' }}>
-              <CircularProgress size={32} />
-            </Box>
-          </Box> */}
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
