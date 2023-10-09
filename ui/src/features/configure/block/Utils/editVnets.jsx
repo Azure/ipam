@@ -586,6 +586,11 @@ export default function EditVnets(props) {
         refreshData();
       }
     }
+
+    if(!block) {
+      setVNets(null);
+      setSelectionModel(null);
+    }
   }, [block, subscriptions, prevBlock, refreshData]);
 
   return (
