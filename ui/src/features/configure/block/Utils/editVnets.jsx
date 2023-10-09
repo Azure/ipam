@@ -509,11 +509,8 @@ export default function EditVnets(props) {
 
           setVNets(newVNetData);
 
-          if(!selectionModel) {
-            //eslint-disable-next-line
-            setSelectionModel(block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}));
-          } else {
-            setSelectionModel(prev => {
+          setSelectionModel(prev => {
+            if(prev) {
               const newSelection = {};
 
               Object.keys(prev).forEach(key => {
@@ -523,8 +520,11 @@ export default function EditVnets(props) {
               });
 
               return newSelection;
-            });
-          }
+            } else {
+              //eslint-disable-next-line
+              return block['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{});
+            }
+          });
         } catch (e) {
           console.log("ERROR");
           console.log("------------------");
@@ -536,7 +536,7 @@ export default function EditVnets(props) {
         }
       }
     })();
-  }, [block, subscriptions, selectionModel, enqueueSnackbar, mockVNet]);
+  }, [block, subscriptions, enqueueSnackbar, mockVNet]);
 
   function onClose() {
     handleClose();
@@ -575,21 +575,33 @@ export default function EditVnets(props) {
   React.useEffect(() => {
     if(block && subscriptions) {
       const newBlock = {
-        id: block.id,
-        name: block.name,
-        cidr: block.cidr,
-        vnets: block.vnets
+        identity: {
+          id: block.id,
+          name: block.name,
+          cidr: block.cidr
+        },
+        data: {
+          vnets: block.vnets
+        }
       };
 
-      if(!isEqual(prevBlock, newBlock)) {
-        setPrevBlock(newBlock);
+      if(isEqual(prevBlock.identity, newBlock.identity)) {
+        if(!isEqual(prevBlock.data, newBlock.data)) {
+          refreshData();
+          setPrevBlock(newBlock);
+        }
+      } else {
+        setSelectionModel(null);
+        setVNets(null);
         refreshData();
+        setPrevBlock(newBlock);
       }
     }
 
-    if(!block) {
-      setVNets(null);
+    if(!block && !isEmpty(prevBlock)) {
       setSelectionModel(null);
+      setVNets(null);
+      setPrevBlock({});
     }
   }, [block, subscriptions, prevBlock, refreshData]);
 
