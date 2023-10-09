@@ -1,7 +1,17 @@
-# syntax=docker/dockerfile:1
-FROM node:18-slim AS builder
+# registry.access.redhat.com/ubi8/nodejs-18
+# registry.access.redhat.com/ubi8/python-39
 
-# Set Working Directory
+ARG BUILD_IMAGE=node:18-slim
+ARG SERVE_IMAGE=python:3.9-slim
+
+FROM $BUILD_IMAGE AS builder
+
+ARG PORT=8080
+
+# Set Environment Variable
+ENV PORT=${PORT}
+
+# Set the Working Directory
 WORKDIR /app
 
 # Add `/app/node_modules/.bin` to $PATH
@@ -20,7 +30,7 @@ COPY ./ui/. ./
 # Build IPAM UI
 RUN npm run build
 
-FROM python:3.9-slim
+FROM $SERVE_IMAGE
 
 # Set Working Directory
 WORKDIR /tmp
@@ -39,15 +49,8 @@ COPY sshd_config /etc/ssh/
 RUN ssh-keygen -A
 RUN mkdir /var/run/sshd
 
-# Install NodeJS 16.x
-RUN apt install curl -y
-RUN curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh
-RUN bash ./nodesource_setup.sh
-RUN apt install nodejs
-RUN npm install -g react-inject-env
-
 # Set Working Directory
-WORKDIR /code
+WORKDIR /ipam
 
 # Install Engine Dependencies
 COPY ./engine/requirements.txt /code/requirements.txt
@@ -59,16 +62,17 @@ RUN pip install --upgrade pip --progress-bar off
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
 # Copy Engine Code
-COPY ./engine/app /code/app
-COPY --from=builder /app/build ./app/build
+COPY ./engine/app ./app
+COPY --from=builder /app/dist ./dist
 
 # Copy Init Script
-COPY ./init.sh /code
+COPY ./init.sh .
+
+# Set Script Execute Permissions
+RUN chmod +x init.sh
 
 # Expose Ports
-EXPOSE 80 2222
+EXPOSE $PORT 2222
 
-# Execute Init Script
-CMD ["bash", "./init.sh"]
-
-# CMD npx --yes react-inject-env set -d /code/app/build ; uvicorn "app.main:app" --reload --host "0.0.0.0" --port 80
+# Execute Startup Script
+ENTRYPOINT ./init.sh ${PORT}

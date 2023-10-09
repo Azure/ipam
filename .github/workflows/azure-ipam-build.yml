@@ -36,7 +36,7 @@ jobs:
             ui
             lb
 
-      - name: "Upload Azure IPAM Version"
+      - name: "Increment Azure IPAM Version"
         id: updateVersion
         shell: pwsh
         run: |

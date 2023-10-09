@@ -37,7 +37,7 @@ from app.routers.common.helper import (
     cosmos_replace
 )
 
-BUILD_DIR = os.path.join(os.getcwd(), "app", "build")
+BUILD_DIR = os.path.join(os.getcwd(), "dist")
 
 description = """
 Azure IPAM is a lightweight solution developed on top of the Azure platform designed to help Azure customers manage their enterprise IP Address space easily and effectively.
@@ -130,8 +130,8 @@ app.add_middleware(
 
 if os.path.isdir(BUILD_DIR):
     app.mount(
-        "/static/",
-        StaticFiles(directory = Path(BUILD_DIR) / "static"),
+        "/assets/",
+        StaticFiles(directory = Path(BUILD_DIR) / "assets"),
         name = "static"
     )
 
@@ -151,7 +151,7 @@ if os.path.isdir(BUILD_DIR):
     def read_index(request: Request, full_path: str):
         target_file = BUILD_DIR + "/" + full_path
 
-        # print('look for: ', full_path, target_file)
+        print('look for: ', full_path, target_file)
         if os.path.exists(target_file):
             return FileResponse(target_file)
 
