@@ -435,13 +435,13 @@ class Admin(BaseModel):
     name: str
     email: Optional[EmailStr] = None
     id: UUID
-        
+
     @model_validator(mode='before')
     @classmethod
     def check_email(cls, data: Any) -> Any:
         if isinstance(data, dict):
             if 'type' in data and 'email' in data:
-                if data['type'] == "Principal":
+                if data['type'] == "Principal" and data['email'] is not None:
                     raise ValueError("email should not be set for 'principal' type")
             if 'type' in data and 'email' not in data:
                 if data['type'] == "User":
