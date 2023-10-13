@@ -6,7 +6,7 @@
 		// Update 'VARIANT' to pick a Node version: 18, 16, 14.
 		// Append -bullseye or -buster to pin to an OS version.
 		// Use -bullseye variants on local arm64/Apple Silicon.
-		"args": { "VARIANT": "16-bullseye" },
+		"args": { "VARIANT": "18-bullseye" },
 	},
 
   // Remove container when terminated

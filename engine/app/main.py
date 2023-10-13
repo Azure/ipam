@@ -26,6 +26,8 @@ import os
 import re
 import uuid
 import copy
+import json
+import shutil
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -354,7 +356,35 @@ async def db_upgrade():
     await cosmos_client.close()
 
 @app.on_event("startup")
-async def set_globals():
+async def ipam_startup():
+    if os.path.exists('../dist'):
+        release_data = {}
+
+        path = '/etc/os-release' if os.path.exists('/etc/os-release') else '/usr/lib/os-release'
+
+        release_info = open(path, 'r')
+        release_values = release_info.readlines()
+
+        for value in release_values:
+            clean_value = value.strip()
+            value_parts = clean_value.split('=')
+            release_data[value_parts[0]] = value_parts[1].replace('"', '')
+
+        env_data = {
+            'VITE_AZURE_ENV': os.environ.get('AZURE_ENV'),
+            'VITE_UI_ID': os.environ.get('UI_APP_ID'),
+            'VITE_ENGINE_ID': os.environ.get('ENGINE_APP_ID'),
+            'VITE_TENANT_ID': os.environ.get('TENANT_ID'),
+            'VITE_OS_NAME': release_data['PRETTY_NAME']
+        }
+
+        env_data_js = "window.env = " + json.dumps(env_data, indent=4) + "\n"
+
+        with open("env.js", "w") as env_file:
+            env_file.write(env_data_js)
+
+        shutil.move('./env.js', '../dist/env.js')
+
     client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
