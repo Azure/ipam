@@ -23,7 +23,13 @@
     "deployAsFunc": {
       "value": false
     },
+    "deployAsContainer": {
+      "value": false
+    },
     "privateAcr": {
+      "value": false
+    },
+    "disableUi": {
       "value": false
     }
   }

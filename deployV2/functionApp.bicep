@@ -34,6 +34,12 @@ param storageAccountName string
 @description('Log Analytics Workspace ID')
 param workspaceId string
 
+@description('Flag to Deploy IPAM as a Container')
+param deployAsContainer bool = false
+
+@description('Flag to Disable the IPAM UI')
+param disableUi bool = false
+
 @description('Flag to Deploy Private Container Registry')
 param privateAcr bool
 
@@ -77,77 +83,88 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
     siteConfig: {
       acrUseManagedIdentityCreds: privateAcr ? true : false
       acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
-      linuxFxVersion: 'DOCKER|${acrUri}/ipam-func:latest'
-      appSettings: [
-        {
-          name: 'AZURE_ENV'
-          value: azureCloud
-        }
-        {
-          name: 'COSMOS_URL'
-          value: cosmosDbUri
-        }
-        {
-          name: 'COSMOS_KEY'
-          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/COSMOS-KEY/)'
-        }
-        {
-          name: 'DATABASE_NAME'
-          value: databaseName
-        }
-        {
-          name: 'CONTAINER_NAME'
-          value: containerName
-        }
-        {
-          name: 'CLIENT_ID'
-          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-ID/)'
-        }
-        {
-          name: 'CLIENT_SECRET'
-          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-SECRET/)'
-        }
-        {
-          name: 'TENANT_ID'
-          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/TENANT-ID/)'
-        }
-        {
-          name: 'KEYVAULT_URL'
-          value: keyVaultUri
-        }
-        {
-          name: 'DOCKER_ENABLE_CI'
-          value: 'true'
-        }
-        {
-          name: 'DOCKER_REGISTRY_SERVER_URL'
-          value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
-        }
-        {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTSHARE'
-          value: toLower(functionAppName)
-        }
-        {
-          name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
-          value: 'false'
-        }
-        {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: '~4'
-        }
-        {
-          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-          value: applicationInsights.properties.InstrumentationKey
-        }
-      ]
+      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:latest' : 'Python|3.9'
+      appSettings: concat(
+        [
+          {
+            name: 'AZURE_ENV'
+            value: azureCloud
+          }
+          {
+            name: 'COSMOS_URL'
+            value: cosmosDbUri
+          }
+          {
+            name: 'COSMOS_KEY'
+            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/COSMOS-KEY/)'
+          }
+          {
+            name: 'DATABASE_NAME'
+            value: databaseName
+          }
+          {
+            name: 'CONTAINER_NAME'
+            value: containerName
+          }
+          {
+            name: 'ENGINE_APP_ID'
+            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-ID/)'
+          }
+          {
+            name: 'ENGINE_APP_SECRET'
+            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-SECRET/)'
+          }
+          {
+            name: 'TENANT_ID'
+            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/TENANT-ID/)'
+          }
+          {
+            name: 'KEYVAULT_URL'
+            value: keyVaultUri
+          }
+          {
+            name: 'AzureWebJobsStorage'
+            value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+          }
+          {
+            name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
+            value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+          }
+          {
+            name: 'WEBSITE_CONTENTSHARE'
+            value: toLower(functionAppName)
+          }
+          {
+            name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+            value: 'false'
+          }
+          {
+            name: 'FUNCTIONS_EXTENSION_VERSION'
+            value: '~4'
+          }
+          {
+            name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+            value: applicationInsights.properties.InstrumentationKey
+          }
+        ],
+        !disableUi ? [
+          {
+            name: 'UI_APP_ID'
+            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/UI-ID/)'
+          }
+        ] : [],
+        deployAsContainer ? [
+          {
+            name: 'DOCKER_REGISTRY_SERVER_URL'
+            value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
+          }
+        ] : [
+          {
+            name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+            value: 'true'
+          }
+        ]
+      )
     }
   }
 }

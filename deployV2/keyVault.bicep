@@ -23,6 +23,9 @@ param engineAppSecret string
 @description('Log Analytics Worskpace ID')
 param workspaceId string
 
+@description('Flag to Disable the IPAM UI')
+param disableUi bool = false
+
 // KeyVault Secret Permissions Assigned to Managed Identity
 var secretsPermissions = [
   'get'
@@ -54,7 +57,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
   }
 }
 
-resource uiId 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
+resource uiId 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = if (!disableUi) {
   parent: keyVault
   name: 'UI-ID'
   properties: {

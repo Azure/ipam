@@ -28,6 +28,7 @@ import uuid
 import copy
 import json
 import shutil
+import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -357,7 +358,16 @@ async def db_upgrade():
 
 @app.on_event("startup")
 async def ipam_startup():
-    if os.path.exists('../dist'):
+    global BUILD_DIR
+
+    if os.path.exists(BUILD_DIR):
+        if(os.environ.get('FUNCTIONS_WORKER_RUNTIME')):
+            new_build_dir = os.path.join(tempfile.gettempdir(), "dist")
+
+            shutil.copytree(BUILD_DIR, new_build_dir)
+
+            BUILD_DIR = new_build_dir
+
         release_data = {}
 
         path = '/etc/os-release' if os.path.exists('/etc/os-release') else '/usr/lib/os-release'
@@ -380,10 +390,10 @@ async def ipam_startup():
 
         env_data_js = "window.env = " + json.dumps(env_data, indent=4) + "\n"
 
-        with open("env.js", "w") as env_file:
-            env_file.write(env_data_js)
+        env_file = os.path.join(BUILD_DIR, "env.js")
 
-        shutil.move('./env.js', '../dist/env.js')
+        with open(env_file, "w") as env_file:
+            env_file.write(env_data_js)
 
     client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
