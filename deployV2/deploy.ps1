@@ -6,7 +6,7 @@
 
 # Set minimum version requirements
 #Requires -Version 7.2
-#Requires -Modules @{ ModuleName="Az"; ModuleVersion="8.0.0"}
+#Requires -Modules @{ ModuleName="Az"; ModuleVersion="10.3.0"}
 #Requires -Modules @{ ModuleName="Microsoft.Graph"; ModuleVersion="2.0.0"}
 
 # Intake and set global parameters
@@ -1019,6 +1019,8 @@ process {
           Compress-Archive -Path ..\engine\app -DestinationPath TEMP:\ipam.zip -Force
           Compress-Archive -Path ..\engine\requirements.txt -DestinationPath TEMP:\ipam.zip -Update
           Compress-Archive -Path ..\engine\scripts\* -DestinationPath TEMP:\ipam.zip -Update
+          Compress-Archive -Path ..\engine\ipam-func -DestinationPath TEMP:\ipam.zip -Update
+          Compress-Archive -Path ..\engine\ipam-sentinel -DestinationPath TEMP:\ipam.zip -Update
           Compress-Archive -Path ..\ui\dist -DestinationPath TEMP:\ipam.zip -Update
         }
 
