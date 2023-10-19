@@ -135,10 +135,6 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
             value: toLower(functionAppName)
           }
           {
-            name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
-            value: 'false'
-          }
-          {
             name: 'FUNCTIONS_EXTENSION_VERSION'
             value: '~4'
           }
@@ -159,6 +155,10 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
             value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
           }
         ] : [
+          {
+            name: 'FUNCTIONS_WORKER_RUNTIME'
+            value: 'python'
+          }
           {
             name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
             value: 'true'

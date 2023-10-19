@@ -313,6 +313,7 @@ process {
   # Set preference variables
   $ErrorActionPreference = "Stop"
   $DebugPreference = 'SilentlyContinue'
+  $ProgressPreference = 'SilentlyContinue'
 
   # Hide Azure PowerShell SDK Warnings
   $Env:SuppressAzurePowerShellBreakingChangeWarnings = $true
@@ -1008,42 +1009,58 @@ process {
         WRITE-HOST "INFO: Running NPM Build..." -ForegroundColor Green
         Write-Verbose -Message "INFO: Running NPM Build..."
 
+        Push-Location -Path '..\ui'
+        
         $npmBuildErr = $(
-          npm run build
+          $npmBuild = npm run build
         ) 2>&1
 
-        WRITE-HOST "INFO: Creating ZIP Deploy archive..." -ForegroundColor Green
-        Write-Verbose -Message "INFO: Creating ZIP Deploy archive..."
+        Pop-Location
 
         if(-not $npmBuildErr) {
+          WRITE-HOST "INFO: Creating ZIP Deploy archive..." -ForegroundColor Green
+          Write-Verbose -Message "INFO: Creating ZIP Deploy archive..."
+
           Compress-Archive -Path ..\engine\app -DestinationPath TEMP:\ipam.zip -Force
           Compress-Archive -Path ..\engine\requirements.txt -DestinationPath TEMP:\ipam.zip -Update
           Compress-Archive -Path ..\engine\scripts\* -DestinationPath TEMP:\ipam.zip -Update
           Compress-Archive -Path ..\engine\ipam-func -DestinationPath TEMP:\ipam.zip -Update
           Compress-Archive -Path ..\engine\ipam-sentinel -DestinationPath TEMP:\ipam.zip -Update
+          Compress-Archive -Path ..\engine\host.json -DestinationPath TEMP:\ipam.zip -Update
           Compress-Archive -Path ..\ui\dist -DestinationPath TEMP:\ipam.zip -Update
+        } else {
+          Write-Host "ERROR: Cannot create ZIP Deploy archive!" -ForegroundColor red
+          throw $npmBuildErr
         }
-
-        $zipPath = Join-Path $(Get-PSDrive -Name Temp).Root -ChildPath "ipam.zip"
-
-        WRITE-HOST "INFO: Uploading ZIP Deploy archive..." -ForegroundColor Green
-        Write-Verbose -Message "INFO: Uploading ZIP Deploy archive..."
-
-        Publish-AzWebApp -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Name $deployment.Outputs["appServiceName"].Value -ArchivePath $zipPath -Restart -Force | Out-Null
       } else {
         WRITE-HOST "INFO: Fetching ZIP Deploy archive..." -ForegroundColor Green
         Write-Verbose -Message "INFO: Fetching ZIP Deploy archive..."
 
-        $ProgressPreference = 'SilentlyContinue' 
         Invoke-WebRequest $IPAM_APP_ZIP -OutFile TEMP:\ipam.zip
-
-        $zipPath = Join-Path $(Get-PSDrive -Name Temp).Root -ChildPath "ipam.zip"
-
-        WRITE-HOST "INFO: Uploading ZIP Deploy archive..." -ForegroundColor Green
-        Write-Verbose -Message "INFO: Uploading ZIP Deploy archive..."
-
-        Publish-AzWebApp -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Name $deployment.Outputs["appServiceName"].Value -ArchivePath $zipPath -Restart -Force | Out-Null
       }
+
+      WRITE-HOST "INFO: Uploading ZIP Deploy archive..." -ForegroundColor Green
+      Write-Verbose -Message "INFO: Uploading ZIP Deploy archive..."
+
+      $zipPath = Join-Path $(Get-PSDrive -Name Temp).Root -ChildPath "ipam.zip"
+
+      $publishRetries = 5
+      $publishSuccess = $False
+
+      do {
+        try {
+          Publish-AzWebApp -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Name $deployment.Outputs["appServiceName"].Value -ArchivePath $zipPath -Restart -Force | Out-Null
+          $publishSuccess = $True
+        } catch {
+          if($publishRetries -gt 0) {
+            Write-Host "WARNING: Problem while uploading ZIP Deploy archive! Retrying..." -ForegroundColor DarkYellow
+            $publishRetries--
+          } else {
+            Write-Host "ERROR: Unable to upload ZIP Deploy archive!" -ForegroundColor Red
+            throw $_
+          }
+        }
+      } while ($publishSuccess -eq $False -and $publishRetries -gt 0)
     }
 
     if ($PSCmdlet.ParameterSetName -in ('AppContainer', 'FunctionContainer') -and $PrivateAcr) {
