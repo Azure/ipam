@@ -53,6 +53,6 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "serve": "^14.2.1",
     "vite": "^4.5.0",
-    "vite-plugin-eslint2": "^4.2.0"
+    "vite-plugin-eslint2": "^4.3.0"
   }
 }
