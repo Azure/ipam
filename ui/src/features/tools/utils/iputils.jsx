@@ -107,12 +107,12 @@ function possibleSubnets(obj, index, existingSubnetCIDR) {
   var allowed = allowedOctets();
   var addressBytes = obj.address.split('.', 4).map(num => parseInt(num, 10));
 
-  if((obj.netmask % 8 === 0) && (index % 8 === 0)) {
+  if((obj.netmask % 8 === 0) && (index % 8 === 0) && (index === obj.netmask)) {
     filteredOctets.push(addressBytes[pos]);
   } else if((obj.netmask % 8) <= sliceTo && index <= 24) {
     filteredOctets = allowed.slice((obj.netmask % 8), sliceTo);
     filteredOctets.push(addressBytes[2]);
-  } else if((obj.netmask % 8) <= sliceTo && index >= 24 && addressBytes[3] === 0) {
+  } else if(index >= 24 && addressBytes[2] === 0) {
     filteredOctets = allowed.slice((obj.netmask % 8), sliceTo);
     filteredOctets.push(addressBytes[3]);
   } else if(index >= 24 && addressBytes[3] === 0) {

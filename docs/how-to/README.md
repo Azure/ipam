@@ -64,7 +64,7 @@ Place a checkmark next to the virtual networks you'd like to associate to the ta
 
 ## Reservations
 
-Currently, IP CIDR block reservations are not supported via the UI, but are supported programmatically via the API. Please the **Example API Calls** section for more information on how to create IP address block reservations.
+Currently, IP CIDR block reservations are not supported via the UI, but are supported programmatically via the API. Please see the **Example API Calls** section for more information on how to create IP address block reservations.
 
 ## vNETs, Subnets, and Endpoints
 
