@@ -107,7 +107,7 @@ function possibleSubnets(obj, index, existingSubnetCIDR) {
   var allowed = allowedOctets();
   var addressBytes = obj.address.split('.', 4).map(num => parseInt(num, 10));
 
-  if((obj.netmask % 8 === 0) && (index % 8 === 0)) {
+  if((obj.netmask % 8 === 0) && (index % 8 === 0) && (index === obj.netmask)) {
     filteredOctets.push(addressBytes[pos]);
   } else if((obj.netmask % 8) <= sliceTo && index <= 24) {
     filteredOctets = allowed.slice((obj.netmask % 8), sliceTo);
