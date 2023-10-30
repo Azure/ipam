@@ -687,6 +687,7 @@ export default function EditReservations(props) {
   function onClose() {
     handleClose();
     setFilterActive(true);
+    setSelectionModel([]);
   }
 
   function onSubmit() {
