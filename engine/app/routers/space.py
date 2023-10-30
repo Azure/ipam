@@ -1796,7 +1796,7 @@ async def create_block_reservation(
     Create a CIDR Reservation for the target Block with the following information:
 
     - **size**: Network mask bits
-    - **cidr**: Specific CIDR to reserve (optional)
+    - **cidr**: Specific CIDR to reserve (alternative to 'size')
     - **desc**: Description (optional)
     - **reverse_search**:
         - **true**: New networks will be created as close to the <u>end</u> of the block as possible
@@ -1816,7 +1816,7 @@ async def create_block_reservation(
     }
     ```
 
-    #### *Request a new /24 at the end of the block:*
+    #### *Request a new /24, searching from the end of the CIDR range:*
 
     ```json
     {
@@ -1826,7 +1826,7 @@ async def create_block_reservation(
     }
     ```
 
-    #### *Request a new /24 at the end of the block, using the smallest available block:*
+    #### *Request a new /24, searching from the end of the CIDR range, using the smallest available CIDR block from the available address space:*
 
     ```json
     {
