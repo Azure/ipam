@@ -1796,6 +1796,7 @@ async def create_block_reservation(
     Create a CIDR Reservation for the target Block with the following information:
 
     - **size**: Network mask bits
+    - **cidr**: Specific CIDR to reserve (optional)
     - **desc**: Description (optional)
     - **reverse_search**:
         - **true**: New networks will be created as close to the <u>end</u> of the block as possible
@@ -1803,6 +1804,47 @@ async def create_block_reservation(
     - **smallest_cidr**:
         - **true**: New networks will be created using the smallest possible available block (e.g. it will not break up large CIDR blocks when possible)
         - **false (default)**: New networks will be created using the first available block, regardless of size
+
+    ### <u>Usage Examples</u>
+
+    #### *Request a new /24:*
+
+    ```json
+    {
+        "size": 24
+        "desc": "New CIDR for Business Unit 1"
+    }
+    ```
+
+    #### *Request a new /24 at the end of the block:*
+
+    ```json
+    {
+        "size": 24,
+        "desc": "New CIDR for Business Unit 1",
+        "reverse_search": true
+    }
+    ```
+
+    #### *Request a new /24 at the end of the block, using the smallest available block:*
+
+    ```json
+    {
+        "size": 24,
+        "desc": "New CIDR for Business Unit 1",
+        "reverse_search": true,
+        "smallest_cidr": true
+    }
+    ```
+
+    #### *Request a specific /24:*
+
+    ```json
+    {
+        "cidr": "10.0.100.0/24",
+        "desc" "New CIDR for Business Unit 1"
+    }
+    ```
     """
 
     user_assertion = authorization.split(' ')[1]
@@ -1839,20 +1881,28 @@ async def create_block_reservation(
     reserved_set = IPSet(block_all_cidrs)
     available_set = block_set ^ reserved_set
 
-    available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
-    next_selector = -1 if req.reverse_search else 0
+    next_cidr = None
 
-    if req.smallest_cidr:
-        cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
-        min_mask = max(map(lambda x: x.prefixlen, cidr_list))
-        available_block = next((net for net in list(filter(lambda network: network.prefixlen == min_mask, cidr_list))), None)
+    if req.cidr is not None:
+        if IPNetwork(req.cidr) not in available_set:
+            raise HTTPException(status_code=409, detail="Requested CIDR overlaps existing network(s).")
+
+        next_cidr = IPNetwork(req.cidr)
     else:
-        available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
+        available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
+        next_selector = -1 if req.reverse_search else 0
 
-    if not available_block:
-        raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block.")
+        if req.smallest_cidr:
+            cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
+            min_mask = max(map(lambda x: x.prefixlen, cidr_list))
+            available_block = next((net for net in list(filter(lambda network: network.prefixlen == min_mask, cidr_list))), None)
+        else:
+            available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
 
-    next_cidr = list(available_block.subnet(req.size))[next_selector]
+        if not available_block:
+            raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block.")
+
+        next_cidr = list(available_block.subnet(req.size))[next_selector]
 
     if "preferred_username" in decoded:
         creator_id = decoded["preferred_username"]
