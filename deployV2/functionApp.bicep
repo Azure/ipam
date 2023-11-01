@@ -83,7 +83,7 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
     siteConfig: {
       acrUseManagedIdentityCreds: privateAcr ? true : false
       acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
-      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:latest' : 'Python|3.9'
+      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam-func:latest' : 'Python|3.9'
       appSettings: concat(
         [
           {

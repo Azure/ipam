@@ -1,0 +1,46 @@
+# To enable ssh & remote debugging on app service change the base image to the one below
+# FROM mcr.microsoft.com/azure-functions/python:3.0-python3.9-appservice
+ARG BUILD_IMAGE=mcr.microsoft.com/azure-functions/node:4-node18-appservice
+ARG SERVE_IMAGE=mcr.microsoft.com/azure-functions/python:4-python3.9-appservice
+
+FROM $BUILD_IMAGE AS builder
+
+# Set the Working Directory
+WORKDIR /app
+
+# Add `/app/node_modules/.bin` to $PATH
+ENV PATH /app/node_modules/.bin:$PATH
+
+# Install UI Dependencies
+COPY ./ui/package.json ./
+COPY ./ui/package-lock.json ./
+
+RUN npm install
+RUN chmod 777 node_modules
+
+# Copy UI Code
+COPY ./ui/. ./
+
+# Build IPAM UI
+RUN npm run build
+
+FROM $SERVE_IMAGE
+
+ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
+    AzureFunctionsJobHost__Logging__Console__IsEnabled=true
+
+# Set Working Directory
+WORKDIR /tmp
+
+# Copy Requirements File
+ADD ./engine/requirements.txt .
+
+# Upgrade PIP
+RUN pip install --upgrade pip --progress-bar off
+
+# Install Dependencies
+RUN pip install --no-cache-dir --upgrade -r ./requirements.txt --progress-bar off
+
+# Copy Application Code to Function App Root Directory
+COPY ./engine/. /home/site/wwwroot
+COPY --from=builder /app/dist /home/site/wwwroot/dist
