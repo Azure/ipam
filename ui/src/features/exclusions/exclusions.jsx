@@ -273,13 +273,17 @@ export default function ManageExclusions() {
     { name: "name", header: "Subscription Name", type: "string", flex: 1, visible: true },
     { name: "subscription_id", header: "Subscription ID", type: "string", flex: 1, visible: true },
     { name: "type", header: "Subscription Type", type: "string", flex: 0.75, visible: true },
+    { name: "mg_name", header: "Management Group Name", type: "string", flex: 0.75, visible: true },
+    { name: "mg_id", header: "Management Group ID", type: "string", flex: 0.75, visible: false },
     { name: "id", header: () => <HeaderMenu setting="exclusions"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => "", visible: true }
   ], []);
 
   const filterValue = [
     { name: "name", operator: "contains", type: "string", value: "" },
     { name: "subscription_id", operator: "contains", type: "string", value: "" },
-    { name: "type", operator: "contains", type: "string", value: "" }
+    { name: "type", operator: "contains", type: "string", value: "" },
+    { name: "mg_name", operator: "contains", type: "string", value: "" },
+    { name: "mg_id", operator: "contains", type: "string", value: "" }
   ];
 
   React.useEffect(() => {

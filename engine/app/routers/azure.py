@@ -298,17 +298,17 @@ async def subscription(
     Get a list of Azure subscriptions.
     """
 
-    # subscription_list = await arg_query(authorization, admin, argquery.SUBSCRIPTION)
+    subscription_list = await arg_query(authorization, admin, argquery.SUBSCRIPTION)
 
-    if admin:
-        creds = await get_client_credentials()
-    else:
-        user_assertion=authorization.split(' ')[1]
-        creds = await get_obo_credentials(user_assertion)
+    # if admin:
+    #     creds = await get_client_credentials()
+    # else:
+    #     user_assertion=authorization.split(' ')[1]
+    #     creds = await get_obo_credentials(user_assertion)
 
-    subscription_list = await get_subscriptions_sdk(creds)
+    # subscription_list = await get_subscriptions_sdk(creds)
 
-    await creds.close()
+    # await creds.close()
 
     return subscription_list
 

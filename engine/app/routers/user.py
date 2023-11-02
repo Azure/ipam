@@ -230,7 +230,7 @@ async def update_user(
     user_data = copy.deepcopy(user_query[0])
 
     try:
-        patch = jsonpatch.JsonPatch(updates)
+        patch = jsonpatch.JsonPatch([x.model_dump() for x in updates])
     except jsonpatch.InvalidJsonPatch:
         raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
 
