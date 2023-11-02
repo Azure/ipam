@@ -6,9 +6,25 @@ resources
 | project id, prefixes, resv = tags["ipam-res-id"]
 """
 
+# SUBSCRIPTION = """
+# resourcecontainers
+# | where type =~ 'microsoft.resources/subscriptions'
+# | extend quotaId = properties.subscriptionPolicies.quotaId
+# | extend type = case(
+#     quotaId startswith "EnterpriseAgreement", "Enterprise Agreement",
+#     quotaId startswith "MSDNDevTest", "Dev/Test",
+#     quotaId startswith "MSDN_2014-09-0", "PAYGO",
+#     quotaId startswith "Internal", "Microsoft Internal",
+#     "Unknown"
+# )
+# | project name, id, type, subscription_id = subscriptionId, tenant_id = tenantId
+# """
+
 SUBSCRIPTION = """
-ResourceContainers
-| where type =~ 'microsoft.resources/subscriptions'
+resourcecontainers
+| where type=~ 'microsoft.resources/subscriptions'
+| extend mgParent = properties.managementGroupAncestorsChain
+| extend mgName = tostring(mgParent[0].name)
 | extend quotaId = properties.subscriptionPolicies.quotaId
 | extend type = case(
     quotaId startswith "EnterpriseAgreement", "Enterprise Agreement",
@@ -17,7 +33,13 @@ ResourceContainers
     quotaId startswith "Internal", "Microsoft Internal",
     "Unknown"
 )
-| project name, id, type, subscription_id = subscriptionId, tenant_id = tenantId
+| join kind=leftouter (
+    resourcecontainers
+    | where type =~ 'microsoft.management/managementgroups'
+    | extend mgDisplayName = iff((tostring(name) == tostring(tenantId)), "Tenant Root Group", name)
+    | project mgId = id, mgName = name, mgDisplayName
+) on mgName
+| project name, id, type, subscription_id = subscriptionId, mg_id = mgId, mg_name = mgDisplayName, tenant_id = tenantId
 """
 
 SPACE = """
