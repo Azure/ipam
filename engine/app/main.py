@@ -209,6 +209,9 @@ async def db_upgrade():
         logger.info('No existing users to convert...')
         pass
 
+    # SPACE FIXUP
+    # SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks WHERE (c.type = 'space' AND NOT IS_DEFINED(block['desc']))
+
     try:
         admins_query = await container.read_item("admins", partition_key="admins")
 

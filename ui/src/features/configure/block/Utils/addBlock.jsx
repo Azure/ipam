@@ -23,6 +23,7 @@ import { createBlockAsync } from "../../../ipam/ipamSlice";
 
 import {
   BLOCK_NAME_REGEX,
+  BLOCK_DESC_REGEX,
   CIDR_REGEX
 } from "../../../../global/globals";
 
@@ -47,6 +48,7 @@ export default function AddBlock(props) {
   const { enqueueSnackbar } = useSnackbar();
 
   const [blockName, setBlockName] = React.useState({ value: "", error: false });
+  const [description, setDescription] = React.useState({ value: "", error: false });
   const [cidr, setCidr] = React.useState({ value: "", error: false });
   const [sending, setSending] = React.useState(false);
 
@@ -54,11 +56,14 @@ export default function AddBlock(props) {
 
   const invalidForm = blockName.value
                       && !blockName.error
+                      && description.value
+                      && !description.error
                       && cidr.value
                       && !cidr.error ? false : true;
 
   function onCancel() {
     setBlockName({ value: "", error: false });
+    setDescription({ value: "", error: false });
     setCidr({ value: "", error: false });
     handleClose();
   }
@@ -66,6 +71,7 @@ export default function AddBlock(props) {
   function onSubmit() {
     var body = {
       name: blockName.value,
+      desc: description.value,
       cidr: cidr.value
     };
 
@@ -103,6 +109,21 @@ export default function AddBlock(props) {
     const blockExists = blocks.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
 
     return invalidName || blockExists;
+  }
+
+  function onDescriptionChange(event) {
+    setDescription({
+      value: event.target.value,
+      error: validateDescription(event.target.value),
+    });
+  }
+
+  function validateDescription(description) {
+    const regex = new RegExp(
+      BLOCK_DESC_REGEX
+    );
+
+    return description ? !regex.test(description) : false;
   }
 
   function onCidrChange(event) {
@@ -161,6 +182,32 @@ export default function AddBlock(props) {
                 onChange={(event) => {
                   onNameChange(event);
                 }}
+              />
+            </Tooltip>
+            <Tooltip
+              arrow
+              disableFocusListener
+              placement="right"
+              title={
+                <>
+                  - Max of 128 characters
+                  <br />- Can contain alphnumerics
+                  <br />- Can contain spaces
+                  <br />- Can contain underscore, hypen, slash, and period
+                  <br />- Cannot start/end with underscore, hypen, slash, or period
+                </>
+              }
+            >
+              <TextField
+                error={description.error}
+                margin="dense"
+                id="name"
+                label="Block Description"
+                type="description"
+                variant="standard"
+                value={description.value}
+                onChange={(event) => onDescriptionChange(event)}
+                sx={{ width: "80%" }}
               />
             </Tooltip>
             <Tooltip

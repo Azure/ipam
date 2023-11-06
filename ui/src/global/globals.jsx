@@ -5,6 +5,8 @@ export const SPACE_DESC_REGEX = "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\
 
 //eslint-disable-next-line
 export const BLOCK_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9/\._-]){1,64}(?<![\._-])$";
+//eslint-disable-next-line
+export const BLOCK_DESC_REGEX = "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$";
 
 //eslint-disable-next-line
 export const EXTERNAL_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9\._-]){1,32}(?<![\._-])$";

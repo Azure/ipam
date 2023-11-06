@@ -23,8 +23,10 @@ import { updateBlockAsync } from "../../../ipam/ipamSlice";
 
 import {
   BLOCK_NAME_REGEX,
+  BLOCK_DESC_REGEX,
   CIDR_REGEX
 } from "../../../../global/globals";
+import { set } from "lodash";
 
 function DraggablePaper(props) {
   const nodeRef = React.useRef(null);
@@ -47,6 +49,7 @@ export default function EditBlock(props) {
   const { enqueueSnackbar } = useSnackbar();
 
   const [blockName, setBlockName] = React.useState({ value: "", error: false });
+  const [description, setDescription] = React.useState({ value: "", error: false });
   const [cidr, setCidr] = React.useState({ value: "", error: false });
   const [sending, setSending] = React.useState(false);
 
@@ -54,11 +57,13 @@ export default function EditBlock(props) {
 
   const invalidForm = blockName.value
                       && !blockName.error
+                      && description.value
+                      && !description.error
                       && cidr.value
                       && !cidr.error ? false : true;
 
   const unchanged = block
-                    ? (blockName.value === block.name && cidr.value === block.cidr)
+                    ? (blockName.value === block.name && description.value == block.desc && cidr.value === block.cidr)
                     ? true : false
                     : true;
 
@@ -66,6 +71,11 @@ export default function EditBlock(props) {
     if(block) {
       setBlockName({
         value: block.name,
+        error: false
+      });
+
+      setDescription({
+        value: block.desc,
         error: false
       });
 
@@ -79,6 +89,11 @@ export default function EditBlock(props) {
         error: false
       });
 
+      setDescription({
+        value: "",
+        error: false
+      });
+
       setCidr({
         value: "",
         error: false
@@ -88,6 +103,7 @@ export default function EditBlock(props) {
 
   function onCancel() {
     setBlockName({ value: block.name, error: false });
+    setDescription({ value: block.desc, error: false });
     setCidr({ value: block.cidr, error: false });
     handleClose();
   }
@@ -95,6 +111,7 @@ export default function EditBlock(props) {
   function onSubmit() {
     var body = [
       { "op": "replace", "path": "/name", "value": blockName.value },
+      { "op": "replace", "path": "/desc", "value": description.value },
       { "op": "replace", "path": "/cidr", "value": cidr.value }
     ];
 
@@ -133,6 +150,21 @@ export default function EditBlock(props) {
     const blockExists = otherBlocks.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
 
     return invalidName || blockExists;
+  }
+
+  function onDescriptionChange(event) {
+    setDescription({
+      value: event.target.value,
+      error: validateDescription(event.target.value),
+    });
+  }
+
+  function validateDescription(description) {
+    const regex = new RegExp(
+      BLOCK_DESC_REGEX
+    );
+
+    return description ? !regex.test(description) : false;
   }
 
   function onCidrChange(event) {
@@ -191,6 +223,32 @@ export default function EditBlock(props) {
                 onChange={(event) => {
                   onNameChange(event);
                 }}
+              />
+            </Tooltip>
+            <Tooltip
+              arrow
+              disableFocusListener
+              placement="right"
+              title={
+                <>
+                  - Max of 128 characters
+                  <br />- Can contain alphnumerics
+                  <br />- Can contain spaces
+                  <br />- Can contain underscore, hypen, slash, and period
+                  <br />- Cannot start/end with underscore, hypen, slash, or period
+                </>
+              }
+            >
+              <TextField
+                error={description.error}
+                margin="dense"
+                id="name"
+                label="Block Description"
+                type="description"
+                variant="standard"
+                value={description.value}
+                onChange={(event) => onDescriptionChange(event)}
+                sx={{ width: "80%" }}
               />
             </Tooltip>
             <Tooltip
