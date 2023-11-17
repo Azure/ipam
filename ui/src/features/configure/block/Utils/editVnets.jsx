@@ -499,7 +499,7 @@ export default function EditVnets(props) {
             item['active'] = true;
           });
 
-          const missing = block['vnets'].map(vnet => vnet.id).filter(item => !data.map(a => a.id).includes(item));
+          const missing = block['vnets'].map(vnet => vnet.id).filter(item => !data.map(a => a.id.toLowerCase()).includes(item.toLowerCase()));
 
           missing.forEach((item) => {
             missing_data.push(mockVNet(item));
@@ -585,6 +585,11 @@ export default function EditVnets(props) {
         }
       };
 
+      console.log("NEW BLOCK");
+      console.log("------------------");
+      console.log(newBlock);
+      console.log("------------------");
+      
       if(isEqual(prevBlock.identity, newBlock.identity)) {
         if(!isEqual(prevBlock.data, newBlock.data)) {
           refreshData();
