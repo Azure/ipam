@@ -585,11 +585,6 @@ export default function EditVnets(props) {
         }
       };
 
-      console.log("NEW BLOCK");
-      console.log("------------------");
-      console.log(newBlock);
-      console.log("------------------");
-      
       if(isEqual(prevBlock.identity, newBlock.identity)) {
         if(!isEqual(prevBlock.data, newBlock.data)) {
           refreshData();
