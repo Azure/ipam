@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from typing import Union, List
 
 from app.dependencies import (
-    check_token_expired,
+    api_auth_checks,
     get_admin,
     get_tenant_id
 )
@@ -39,7 +39,7 @@ from app.routers.common.helper import (
 router = APIRouter(
     prefix="/users",
     tags=["users"],
-    dependencies=[Depends(check_token_expired)]
+    dependencies=[Depends(api_auth_checks)]
 )
 
 async def new_user(user_id, tenant_id):

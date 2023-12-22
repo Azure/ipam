@@ -12,7 +12,7 @@ import copy
 from netaddr import IPSet, IPNetwork
 
 from app.dependencies import (
-    check_token_expired,
+    api_auth_checks,
     get_tenant_id
 )
 
@@ -33,7 +33,7 @@ from app.routers.azure import (
 router = APIRouter(
     prefix="/tools",
     tags=["tools"],
-    dependencies=[Depends(check_token_expired)]
+    dependencies=[Depends(api_auth_checks)]
 )
 
 @router.post(

@@ -8,7 +8,7 @@ import asyncio
 from netaddr import IPNetwork
 
 from app.dependencies import (
-    check_token_expired,
+    api_auth_checks,
     get_admin,
     get_tenant_id
 )
@@ -35,7 +35,7 @@ from app.routers.azure import (
 router = APIRouter(
     prefix="/internal",
     tags=["internal"],
-    dependencies=[Depends(check_token_expired)]
+    dependencies=[Depends(api_auth_checks)]
 )
 
 async def multi_helper(func, list, *args):
