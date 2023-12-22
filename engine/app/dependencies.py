@@ -96,6 +96,8 @@ async def validate_token(request: Request):
             raise HTTPException(status_code=401, detail="Token has expired.")
         except jwt.MissingRequiredClaimError:
             raise HTTPException(status_code=401, detail="Incorrect token claims, please check the audience and issuer.")
+        except jwt.InvalidSignatureError:
+            raise HTTPException(status_code=401, detail="Invalid token signature.")
         except Exception:
             raise HTTPException(status_code=401, detail="Unable to parse authorization token.")
     else:
