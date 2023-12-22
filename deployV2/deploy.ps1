@@ -1006,7 +1006,7 @@ process {
         Write-Host "INFO: Building application code and pushing via ZIP Deploy" -ForegroundColor Green
         Write-Verbose -Message "Building application code and pushing via ZIP Deploy"
 
-        WRITE-HOST "INFO: Running NPM Build..." -ForegroundColor Green
+        Write-Host "INFO: Running NPM Build..." -ForegroundColor Green
         Write-Verbose -Message "INFO: Running NPM Build..."
 
         Push-Location -Path '..\ui'
@@ -1018,7 +1018,7 @@ process {
         Pop-Location
 
         if(-not $npmBuildErr) {
-          WRITE-HOST "INFO: Creating ZIP Deploy archive..." -ForegroundColor Green
+          Write-Host "INFO: Creating ZIP Deploy archive..." -ForegroundColor Green
           Write-Verbose -Message "INFO: Creating ZIP Deploy archive..."
 
           Compress-Archive -Path ..\engine\app -DestinationPath TEMP:\ipam.zip -Force
@@ -1033,13 +1033,13 @@ process {
           throw $npmBuildErr
         }
       } else {
-        WRITE-HOST "INFO: Fetching ZIP Deploy archive..." -ForegroundColor Green
+        Write-Host "INFO: Fetching ZIP Deploy archive..." -ForegroundColor Green
         Write-Verbose -Message "INFO: Fetching ZIP Deploy archive..."
 
         Invoke-WebRequest $IPAM_APP_ZIP -OutFile TEMP:\ipam.zip
       }
 
-      WRITE-HOST "INFO: Uploading ZIP Deploy archive..." -ForegroundColor Green
+      Write-Host "INFO: Uploading ZIP Deploy archive..." -ForegroundColor Green
       Write-Verbose -Message "INFO: Uploading ZIP Deploy archive..."
 
       $zipPath = Join-Path $(Get-PSDrive -Name Temp).Root -ChildPath "ipam.zip"
@@ -1084,7 +1084,7 @@ process {
       $dockerFile = Join-Path -Path $dockerPath -ChildPath 'Dockerfile'
 
       if($AsFunction) {
-        # WRITE-HOST "INFO: Building Function container ($ContainerType)..." -ForegroundColor Green
+        # Write-Host "INFO: Building Function container ($ContainerType)..." -ForegroundColor Green
         # Write-Verbose -Message "INFO: Building Function container ($ContainerType)..."
 
         # $funcBuildOutput = $(
@@ -1095,7 +1095,7 @@ process {
         #     --build-arg BASE_IMAGE=$($containerMap[$ContainerType].Images.Engine)
         # ) *>&1
 
-        WRITE-HOST "INFO: Building Function container..." -ForegroundColor Green
+        Write-Host "INFO: Building Function container..." -ForegroundColor Green
         Write-Verbose -Message "INFO: Building Function container..."
 
         $funcBuildOutput = $(
@@ -1107,7 +1107,7 @@ process {
         if ($LASTEXITCODE -ne 0) {
           throw $funcBuildOutput
         } else {
-          WRITE-HOST "INFO: Function container image build and push completed successfully" -ForegroundColor Green
+          Write-Host "INFO: Function container image build and push completed successfully" -ForegroundColor Green
           Write-Verbose -Message "Function container image build and push completed successfully"
         }
 
@@ -1116,7 +1116,7 @@ process {
 
         Restart-AzFunctionApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Force | Out-Null
       } else {
-        WRITE-HOST "INFO: Building App container ($ContainerType)..." -ForegroundColor Green
+        Write-Host "INFO: Building App container ($ContainerType)..." -ForegroundColor Green
         Write-Verbose -Message "INFO: Building App container ($ContainerType)..."
 
         $appBuildOutput = $(
@@ -1130,7 +1130,7 @@ process {
         if ($LASTEXITCODE -ne 0) {
           throw $appBuildOutput
         } else {
-          WRITE-HOST "INFO: App container image build and push completed successfully" -ForegroundColor Green
+          Write-Host "INFO: App container image build and push completed successfully" -ForegroundColor Green
           Write-Verbose -Message "App container image build and push completed successfully"
         }
 

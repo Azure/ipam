@@ -81,6 +81,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
       alwaysOn: true
       linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:latest' : 'PYTHON|3.9'
       appCommandLine: !deployAsContainer ? 'startup.sh 8000' : null
+      healthCheckPath: '/api/docs'
       appSettings: concat(
         [
           {
@@ -122,6 +123,10 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
           {
             name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
             value: 'true'
+          }
+          {
+            name: 'WEBSITE_HEALTHCHECK_MAXPINGFAILURES'
+            value: '2'
           }
         ],
         !disableUi ? [

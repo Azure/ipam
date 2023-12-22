@@ -123,53 +123,6 @@ const gridStyle = {
   fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
 };
 
-// const UserAppSwitch = styled(Switch)(({ theme }) => ({
-//   width: 62,
-//   height: 34,
-//   padding: 7,
-//   '& .MuiSwitch-switchBase': {
-//     margin: 1,
-//     padding: 0,
-//     transform: 'translateX(6px)',
-//     '&.Mui-checked': {
-//       color: '#fff',
-//       transform: 'translateX(22px)',
-//       '& .MuiSwitch-thumb:before': {
-//         backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 20 20"><path fill="${encodeURIComponent(
-//           '#fff',
-//         )}" d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>')`,
-//       },
-//       '& + .MuiSwitch-track': {
-//         opacity: 0.5,
-//         backgroundColor: theme.palette.mode === 'dark' ? 'rgb(144, 202, 249)' : 'rgb(25, 118, 210)',
-//       },
-//     },
-//   },
-//   '& .MuiSwitch-thumb': {
-//     backgroundColor: theme.palette.mode === 'dark' ? 'rgb(144, 202, 249)' : 'rgb(25, 118, 210)',
-//     width: 32,
-//     height: 32,
-//     '&:before': {
-//       content: "''",
-//       position: 'absolute',
-//       width: '100%',
-//       height: '100%',
-//       left: -2,
-//       top: -2,
-//       backgroundRepeat: 'no-repeat',
-//       backgroundPosition: 'center',
-//       backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 20 20"><path fill="${encodeURIComponent(
-//         '#fff',
-//       )}" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>')`,
-//     },
-//   },
-//   '& .MuiSwitch-track': {
-//     opacity: 0.5,
-//     backgroundColor: theme.palette.mode === 'dark' ? 'rgb(144, 202, 249)' : 'rgb(25, 118, 210)',
-//     borderRadius: 20 / 2,
-//   },
-// }));
-
 function HeaderMenu(props) {
   const { setting } = props;
   const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.useContext(AdminContext);
@@ -779,7 +732,7 @@ export default function Administration() {
                 )}
               />
             </Box>
-            <HeaderTitle>IPAM Admins</HeaderTitle>
+            <HeaderTitle>Admin Users</HeaderTitle>
             <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ width: "35%", ml: 2, mr: 2 }}>
               <Tooltip title="Save" >
                 <IconButton

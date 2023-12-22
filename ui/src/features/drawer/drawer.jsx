@@ -38,6 +38,10 @@ import {
   MoreVert as MoreIcon,
   Token as TokenIcon,
   Logout as LogoutIcon,
+  Info as InfoIcon,
+  Close as CloseIcon,
+  AccountCircle as AccountCircleIcon,
+  CloudDownloadOutlined as CloudDownloadIcon
 } from "@mui/icons-material";
 
 // Imports for the Drawer
@@ -51,6 +55,7 @@ import {
   Divider,
   Collapse,
   Avatar,
+  Badge
 } from "@mui/material";
 
 import {
@@ -73,14 +78,16 @@ import Configure from "../../img/Configure";
 import Admin from "../../img/Admin";
 import Visualize from "../../img/Visualize";
 import Peering from "../../img/Peering";
-import Person from "../../img/Person";
+import Admins from "../../img/Admins";
 import Rule from "../../img/Rule";
 import Tools from "../../img/Tools";
 import Planner from "../../img/Planner";
+import Settings from "../../img/Settings";
 import Help from "../../img/Help";
 import VWan from "../../img/VWan";
 
 import UserSettings from "./userSettings";
+import About from "./about";
 
 import Welcome from "../welcome/Welcome";
 import DiscoverTabs from "../tabs/discoverTabs";
@@ -120,9 +127,49 @@ const Search = styled("div")(({ theme }) => ({
   },
 }));
 
+const Update = styled(Typography)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  width: '100vw',
+  fontSize: '12px',
+  color: theme.palette.mode == 'dark' ? 'black' : 'white',
+  backgroundColor: theme.palette.warning.light,
+  height: '100%'
+}));
+
+const StyledBadge = styled(Badge)(({ theme }) => ({
+  '& .MuiBadge-badge': {
+    backgroundColor: theme.palette.warning.light,
+    color: theme.palette.warning.light,
+    boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
+    '&::after': {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      borderRadius: '50%',
+      animation: 'ripple 1.2s infinite ease-in-out',
+      border: '1px solid currentColor',
+      content: '""',
+    },
+  },
+  '@keyframes ripple': {
+    '0%': {
+      transform: 'scale(.8)',
+      opacity: 1,
+    },
+    '100%': {
+      transform: 'scale(2.4)',
+      opacity: 0,
+    },
+  },
+}));
+
 export default function NavDrawer() {
   const { instance, accounts } = useMsal();
-  const { enqueueSnackbar } = useSnackbar();
+  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
 
   const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
   const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = React.useState(null);
@@ -131,6 +178,7 @@ export default function NavDrawer() {
   const [navChildOpen, setNavChildOpen] = React.useState({});
   const [drawerState, setDrawerState] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [aboutOpen, setAboutOpen] = React.useState(false);
   const [searchData, setSearchData] = React.useState([]);
   const [searchInput, setSearchInput] = React.useState('');
   const [searchValue, setSearchValue] = React.useState(null);
@@ -249,7 +297,7 @@ export default function NavDrawer() {
         children: [
           {
             title: "Admins",
-            icon: Person,
+            icon: Admins,
             link: "admin/admins",
             admin: true
           },
@@ -257,6 +305,12 @@ export default function NavDrawer() {
             title: "Subscriptions",
             icon: Rule,
             link: "admin/subscriptions",
+            admin: true
+          },
+          {
+            title: "Settings",
+            icon: Settings,
+            link: "admin/settings",
             admin: true
           }
         ]
@@ -308,6 +362,20 @@ export default function NavDrawer() {
 
     setDrawerState(open);
   };
+
+  React.useEffect(() => {
+    const action = snackbarId => (
+      <>
+        <IconButton onClick={() => { closeSnackbar(snackbarId) }}>
+          <CloseIcon sx={{ color: 'white' }} />
+        </IconButton>
+      </>
+    );
+
+    if(meLoaded && graphData) {
+      enqueueSnackbar("Update available! See menu for details.", { action, variant: "info", preventDuplicate: true, persist: true });
+    }
+  }, [meLoaded, graphData, enqueueSnackbar, closeSnackbar]);
 
   React.useEffect(() => {
     function getTitleCase(str) {
@@ -571,8 +639,18 @@ export default function NavDrawer() {
     handleMobileMenuClose();
   };
 
+  const handleAboutOpen = () => {
+    setAboutOpen(true);
+    handleMenuClose();
+    handleMobileMenuClose();
+  };
+
   const handleSettingsClose = () => {
     setSettingsOpen(false);
+  };
+
+  const handleAboutClose = () => {
+    setAboutOpen(false);
   };
 
   const menuId = "primary-search-account-menu";
@@ -623,22 +701,29 @@ export default function NavDrawer() {
     >
       <MenuItem key='settings' onClick={() => handleSettingsOpen()}>
         <ListItemIcon>
-          <SettingsIcon fontSize="small" />
+          <AccountCircleIcon fontSize="small" />
         </ListItemIcon>
-        Settings
+        <ListItemText>Profile</ListItemText>
       </MenuItem>
       <MenuItem key='token' onClick={() => RequestToken()}>
         <ListItemIcon>
           <TokenIcon fontSize="small" />
         </ListItemIcon>
-        Token
+        <ListItemText>Token</ListItemText>
+      </MenuItem>
+      <MenuItem key='about' onClick={() => handleAboutOpen()}>
+        <ListItemIcon>
+          <InfoIcon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>About</ListItemText>
+        <CloudDownloadIcon fontSize="small" color="warning" />
       </MenuItem>
       <Divider />
       <MenuItem key='logout' onClick={() => handleLogout()}>
         <ListItemIcon>
           <LogoutIcon fontSize="small" />
         </ListItemIcon>
-        Logout
+        <ListItemText>Logout</ListItemText>
       </MenuItem>
     </Menu>
   );
@@ -691,22 +776,29 @@ export default function NavDrawer() {
     >
       <MenuItem key='mobile-settings' onClick={() => handleSettingsOpen()}>
         <ListItemIcon>
-          <SettingsIcon fontSize="small" />
+          <AccountCircleIcon fontSize="small" />
         </ListItemIcon>
-        Settings
+        <ListItemText>Profile</ListItemText>
       </MenuItem>
       <MenuItem key='mobile-token' onClick={() => RequestToken()}>
         <ListItemIcon>
           <TokenIcon fontSize="small" />
         </ListItemIcon>
-        Token
+        <ListItemText>Token</ListItemText>
+      </MenuItem>
+      <MenuItem key='about' onClick={() => handleAboutOpen()}>
+        <ListItemIcon>
+          <InfoIcon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>About</ListItemText>
+        <CloudDownloadIcon fontSize="small" color="warning" />
       </MenuItem>
       <Divider />
       <MenuItem key='mobile-logout' onClick={() => handleLogout()}>
         <ListItemIcon>
           <LogoutIcon fontSize="small" />
         </ListItemIcon>
-        Logout
+        <ListItemText>Logout</ListItemText>
       </MenuItem>
     </Menu>
   );
@@ -795,12 +887,18 @@ export default function NavDrawer() {
                 onClick={handleProfileMenuOpen}
                 color="inherit"
               >
+                <StyledBadge
+                  overlap="circular"
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  variant="dot"
+                >
                 { graphData ? 
                   graphPhoto ?
                   <Avatar alt={graphData.displayName} src={graphPhoto} /> :
                   <Avatar {...stringAvatar(graphData.displayName)} /> :
                   <Avatar />
                 }
+                </StyledBadge>
               </IconButton>
             </Box>
             <Box sx={{ display: { xs: "flex", md: "none" } }}>
@@ -845,6 +943,10 @@ export default function NavDrawer() {
           open={settingsOpen}
           handleClose={handleSettingsClose}
         />
+        <About
+          open={aboutOpen}
+          handleClose={handleAboutClose}
+        />
         <Routes>
           <Route path="/" element={<Welcome />} />
           <Route path="discover/space" element={<DiscoverTabs />} />
@@ -859,8 +961,24 @@ export default function NavDrawer() {
           <Route path="configure" element={<ConfigureIPAM />} />
           <Route path="admin/admins" element={<AdminTabs />} />
           <Route path="admin/subscriptions" element={<AdminTabs />} />
+          <Route path="admin/settings" element={<AdminTabs />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        {/* <Box
+          sx={{
+            bottom: 0,
+            right: 0,
+            position: "absolute",
+            height: '20px'
+          }}
+        >
+          <Update
+            variant="subtitle2"
+            display="block"
+          >
+            Update Available (v3.0.0)
+          </Update>
+        </Box> */}
       </Box>
     </React.Fragment>
   );

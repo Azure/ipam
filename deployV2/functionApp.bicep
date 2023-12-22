@@ -84,6 +84,7 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
       acrUseManagedIdentityCreds: privateAcr ? true : false
       acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
       linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam-func:latest' : 'Python|3.9'
+      healthCheckPath: '/api/docs'
       appSettings: concat(
         [
           {
@@ -141,6 +142,10 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
           {
             name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
             value: applicationInsights.properties.InstrumentationKey
+          }
+          {
+            name: 'WEBSITE_HEALTHCHECK_MAXPINGFAILURES'
+            value: '2'
           }
         ],
         !disableUi ? [

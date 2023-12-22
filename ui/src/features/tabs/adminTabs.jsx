@@ -8,6 +8,7 @@ import Box from '@mui/material/Box';
 
 import Administration from '../admin/admin';
 import ManageExclusions from '../exclusions/exclusions';
+import AdminSettings from '../admin/settings';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -43,7 +44,7 @@ function a11yProps(index) {
 }
 
 export default function AdminTabs() {
-  const allTabs = ['/admin/admins', '/admin/subscriptions'];
+  const allTabs = ['/admin/admins', '/admin/subscriptions', '/admin/settings'];
 
   let location = useLocation();
 
@@ -54,10 +55,12 @@ export default function AdminTabs() {
           <Tabs value={allTabs.indexOf(location.pathname)}>
             <Tab label="Admins" component={Link} to={allTabs[0]} {...a11yProps(0)} />
             <Tab label="Subscriptions" component={Link} to={allTabs[1]} {...a11yProps(1)} />
+            <Tab label="Settings" component={Link} to={allTabs[2]} {...a11yProps(2)} />
           </Tabs>
         </Box>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={0}><Administration /></TabPanel>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={1}><ManageExclusions /></TabPanel>
+        <TabPanel value={allTabs.indexOf(location.pathname)} index={2}><AdminSettings /></TabPanel>
       </React.Fragment>
     </Box>
   );
