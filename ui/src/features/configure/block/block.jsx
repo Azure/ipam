@@ -118,8 +118,8 @@ export default function BlockDataGrid(props) {
   }, [selectionModel, setSelectedBlock]);
 
   React.useEffect(() => {
-    if(blocks && selectedBlock) {
-      const currentBlock = blocks.find(block => block.name === selectedBlock.name);
+    if(blocks && selectedBlock && selectedSpace) {
+      const currentBlock = blocks.find(block => (block.name === selectedBlock.name) && (block.parent_space === selectedSpace.name));
       
       if(!currentBlock) {
         setSelectionModel({});
@@ -127,7 +127,7 @@ export default function BlockDataGrid(props) {
         setSelectedBlock(currentBlock);
       }
     }
-  }, [blocks, selectedBlock, setSelectedBlock, setSelectionModel]);
+  }, [blocks, selectedSpace, selectedBlock, setSelectedBlock, setSelectionModel]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
