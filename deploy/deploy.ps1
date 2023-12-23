@@ -13,6 +13,21 @@
 [CmdletBinding(DefaultParameterSetName = 'Full')]
 param(
   [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'Full')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'AppsOnly')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'FuncAppsOnly')]
+  [string]
+  $ManagementGroupID,
+
+  [Parameter(ValueFromPipelineByPropertyName = $true,
     Mandatory = $true,
     ParameterSetName = 'Full')]
   [Parameter(ValueFromPipelineByPropertyName = $true,
@@ -263,7 +278,7 @@ process {
       [Parameter(Mandatory=$false)]
       [string]$UIAppName = 'ipam-ui-app',
       [Parameter(Mandatory=$true)]
-      [string]$TenantId,
+      [string]$ManagementGroupID,
       [Parameter(Mandatory=$true)]
       [string]$AzureCloud,
       [Parameter(Mandatory=$false)]
@@ -435,7 +450,7 @@ process {
       New-AzADServicePrincipal -ApplicationObject $uiObject | Out-Null
     }
 
-    $scope = "/providers/Microsoft.Management/managementGroups/$TenantId"
+    $scope = "/providers/Microsoft.Management/managementGroups/$ManagementGroupID"
 
     # Create IPAM Engine Service Principal
     Write-Host "INFO: Creating Azure IPAM Engine Service Principal" -ForegroundColor Green
@@ -797,11 +812,15 @@ process {
     }
 
     if ($PSCmdlet.ParameterSetName -in ('Full', 'AppsOnly', 'Function', 'FuncAppsOnly')) {
-      # Fetch Tenant ID
-      Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor Green
-      Write-Verbose -Message "Fetching Tenant ID from Azure PowerShell SDK"
-      $tenantId = (Get-AzContext).Tenant.Id
-
+      if( -not $ManagementGroupID) {
+        # If the user did not provide a Management Group ID, default to Tenant ID which is the ID for Tenant Root Group
+        # Fetch Tenant ID
+        Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor Green
+        Write-Verbose -Message "Fetching Tenant ID from Azure PowerShell SDK"
+        $ManagementGroupID = (Get-AzContext).Tenant.Id
+      }
+      
+      
       # Fetch Azure Cloud Type
       Write-Host "INFO: Fetching Azure Cloud type from Azure PowerShell SDK" -ForegroundColor Green
       Write-Verbose -Message "Fetching Azure Cloud type from Azure PowerShell SDK"
@@ -826,7 +845,7 @@ process {
       $appDetails = Deploy-IPAMApplications `
         -UIAppName $UIAppName `
         -EngineAppName $EngineAppName `
-        -TenantId $tenantId `
+        -ManagementGroupID $ManagementGroupID `
         -AzureCloud $azureCloud `
         -AsFunction $AsFunction
 
