@@ -17,7 +17,7 @@ import copy
 import uuid
 
 from app.dependencies import (
-    check_token_expired,
+    api_auth_checks,
     get_admin,
     get_tenant_id
 )
@@ -36,7 +36,7 @@ from app.routers.common.helper import (
 router = APIRouter(
     prefix="/admin",
     tags=["admin"],
-    dependencies=[Depends(check_token_expired)]
+    dependencies=[Depends(api_auth_checks)]
 )
 
 async def new_admin_db(admin_list, exclusion_list, tenant_id):

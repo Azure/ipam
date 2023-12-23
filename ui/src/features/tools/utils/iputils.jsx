@@ -31,7 +31,10 @@ function probabalCombinations(arr, addressBytes, position) {
 
   res = res.filter(n => n >= addressBytes[position]);
 
-  arr.indexOf(0) !== -1 ?? res.push(0);
+  if(arr.indexOf(0) !== -1) {
+    res.push(0);
+  }
+
   res = [...new Set(res)];
 
   return res;

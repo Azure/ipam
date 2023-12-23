@@ -19,7 +19,7 @@ import asyncio
 from netaddr import IPSet, IPNetwork
 
 from app.dependencies import (
-    check_token_expired,
+    api_auth_checks,
     get_admin,
     get_tenant_id
 )
@@ -45,7 +45,7 @@ from app.logs.logs import ipam_logger as logger
 router = APIRouter(
     prefix="/azure",
     tags=["azure"],
-    dependencies=[Depends(check_token_expired)]
+    dependencies=[Depends(api_auth_checks)]
 )
 
 def str_to_list(input):
