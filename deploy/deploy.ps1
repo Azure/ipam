@@ -256,6 +256,16 @@ process {
     return $validLocations.Contains($Location)
   }
 
+  # Create unique string to be used in naming for each deployment instance
+  Function New-UniqueIPAMDeployString {
+    $unique = (-join ((48..57) + (97..122) | Get-Random -Count 13 | % {[char]$_}))
+    
+    $script:UIAppName = $UIAppName + "-" + $unique
+    $script:EngineAppName = $EngineAppName + "-" + $unique
+
+    return $unique 
+  }
+
   Function Deploy-IPAMApplications {
     Param(
       [Parameter(Mandatory=$false)]
@@ -667,6 +677,8 @@ process {
       [string]$EngineAppId,
       [Parameter(Mandatory=$true)]
       [string]$EngineSecret,
+      [Parameter(Mandatory=$true)]
+      [string]$UniqueSuffix,
       [Parameter(Mandatory=$false)]
       [string]$NamePrefix,
       [Parameter(Mandatory=$false)]
@@ -689,6 +701,10 @@ process {
       engineAppId     = $EngineAppId
       engineAppSecret = $EngineSecret
       uiAppId         = $UiAppId
+    }
+
+    if($UniqueSuffix) {
+      $deploymentParameters.Add('uniqueSuffix', $UniqueSuffix)
     }
 
     if($NamePrefix) {
@@ -821,8 +837,11 @@ process {
         exit
       }
     }
+    
 
     if ($PSCmdlet.ParameterSetName -in ('Full', 'AppsOnly', 'Function', 'FuncAppsOnly')) {
+      $unique = New-UniqueIPAMDeployString
+
       $appDetails = Deploy-IPAMApplications `
         -UIAppName $UIAppName `
         -EngineAppName $EngineAppName `
@@ -853,6 +872,7 @@ process {
 
     if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly', 'Function', 'FuncTemplateOnly')) {
       $deployment = Deploy-Bicep @appDetails `
+        -UniqueSuffix $unique `
         -NamePrefix $NamePrefix `
         -AzureCloud $azureCloud `
         -PrivateAcr $PrivateAcr `

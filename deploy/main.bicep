@@ -1,8 +1,8 @@
 // Global parameters
 targetScope = 'subscription'
 
-@description('GUID for Resource Naming')
-param guid string = newGuid()
+@description('Unique String for Resource Naming')
+param uniqueSuffix string
 
 @description('Deployment Location')
 param location string = deployment().location
@@ -35,18 +35,18 @@ param tags object = {}
 
 @description('IPAM Resource Names')
 param resourceNames object = {
-  functionName: '${namePrefix}-${uniqueString(guid)}'
-  appServiceName: '${namePrefix}-${uniqueString(guid)}'
-  appServicePlanName: '${namePrefix}-asp-${uniqueString(guid)}'
-  cosmosAccountName: '${namePrefix}-dbacct-${uniqueString(guid)}'
+  functionName: '${namePrefix}-${uniqueSuffix}'
+  appServiceName: '${namePrefix}-${uniqueSuffix}'
+  appServicePlanName: '${namePrefix}-asp-${uniqueSuffix}'
+  cosmosAccountName: '${namePrefix}-dbacct-${uniqueSuffix}'
   cosmosContainerName: '${namePrefix}-ctr'
   cosmosDatabaseName: '${namePrefix}-db'
-  keyVaultName: '${namePrefix}-kv-${uniqueString(guid)}'
-  workspaceName: '${namePrefix}-law-${uniqueString(guid)}'
-  managedIdentityName: '${namePrefix}-mi-${uniqueString(guid)}'
-  resourceGroupName: '${namePrefix}-rg-${uniqueString(guid)}'
-  storageAccountName: '${namePrefix}stg${uniqueString(guid)}'
-  containerRegistryName: '${namePrefix}acr${uniqueString(guid)}'
+  keyVaultName: '${namePrefix}-kv-${uniqueSuffix}'
+  workspaceName: '${namePrefix}-law-${uniqueSuffix}'
+  managedIdentityName: '${namePrefix}-mi-${uniqueSuffix}'
+  resourceGroupName: '${namePrefix}-rg-${uniqueSuffix}'
+  storageAccountName: '${namePrefix}stg${uniqueSuffix}'
+  containerRegistryName: '${namePrefix}acr${uniqueSuffix}'
 }
 
 // Resource Group
