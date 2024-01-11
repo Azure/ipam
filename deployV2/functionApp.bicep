@@ -37,9 +37,6 @@ param workspaceId string
 @description('Flag to Deploy IPAM as a Container')
 param deployAsContainer bool = false
 
-@description('Flag to Disable the IPAM UI')
-param disableUi bool = false
-
 @description('Flag to Deploy Private Container Registry')
 param privateAcr bool
 
@@ -83,7 +80,7 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
     siteConfig: {
       acrUseManagedIdentityCreds: privateAcr ? true : false
       acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
-      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam-func:latest' : 'Python|3.9'
+      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipamfunc:latest' : 'Python|3.9'
       healthCheckPath: '/api/docs'
       appSettings: concat(
         [
@@ -106,6 +103,10 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
           {
             name: 'CONTAINER_NAME'
             value: containerName
+          }
+          {
+            name: 'UI_APP_ID'
+            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/UI-ID/)'
           }
           {
             name: 'ENGINE_APP_ID'
@@ -148,16 +149,14 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
             value: '2'
           }
         ],
-        !disableUi ? [
-          {
-            name: 'UI_APP_ID'
-            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/UI-ID/)'
-          }
-        ] : [],
         deployAsContainer ? [
           {
             name: 'DOCKER_REGISTRY_SERVER_URL'
             value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
+          }
+          {
+            name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+            value: 'false'
           }
         ] : [
           {
@@ -167,6 +166,10 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
           {
             name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
             value: 'true'
+          }
+          {
+            name: 'POST_BUILD_COMMAND'
+            value: 'postBuild.sh'
           }
         ]
       )

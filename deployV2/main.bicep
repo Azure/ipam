@@ -23,9 +23,6 @@ param deployAsFunc bool = false
 @description('Flag to Deploy IPAM as a Container')
 param deployAsContainer bool = false
 
-@description('Flag to Disable the IPAM UI')
-param disableUi bool = false
-
 @description('IPAM-UI App Registration Client/App ID')
 param uiAppId string = '00000000-0000-0000-0000-000000000000'
 
@@ -95,7 +92,6 @@ module keyVault 'keyVault.bicep' = {
     engineAppId: engineAppId
     engineAppSecret: engineAppSecret
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
-    disableUi: disableUi
   }
 }
 
@@ -155,7 +151,6 @@ module appService 'appService.bicep' = if (!deployAsFunc) {
     managedIdentityClientId: managedIdentity.outputs.clientId
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     deployAsContainer: deployAsContainer
-    disableUi: disableUi
     privateAcr: privateAcr
     privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
   }
@@ -179,7 +174,6 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
     storageAccountName: resourceNames.storageAccountName
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     deployAsContainer: deployAsContainer
-    disableUi: disableUi
     privateAcr: privateAcr
     privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
   }

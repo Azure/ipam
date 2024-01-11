@@ -34,9 +34,6 @@ param workspaceId string
 @description('Flag to Deploy IPAM as a Container')
 param deployAsContainer bool = false
 
-@description('Flag to Disable the IPAM UI')
-param disableUi bool = false
-
 @description('Flag to Deploy Private Container Registry')
 param privateAcr bool
 
@@ -105,6 +102,10 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
             value: containerName
           }
           {
+            name: 'UI_APP_ID'
+            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/UI-ID/)'
+          }
+          {
             name: 'ENGINE_APP_ID'
             value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-ID/)'
           }
@@ -121,21 +122,15 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
             value: keyVaultUri
           }
           {
-            name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
-            value: 'true'
-          }
-          {
             name: 'WEBSITE_HEALTHCHECK_MAXPINGFAILURES'
             value: '2'
           }
         ],
-        !disableUi ? [
-          {
-            name: 'UI_APP_ID'
-            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/UI-ID/)'
-          }
-        ] : [],
         deployAsContainer ? [
+          {
+            name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
+            value: 'true'
+          }
           {
             name: 'DOCKER_REGISTRY_SERVER_URL'
             value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
@@ -144,6 +139,10 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
           {
             name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
             value: 'true'
+          }
+          {
+            name: 'POST_BUILD_COMMAND'
+            value: 'postBuild.sh'
           }
         ]
       )

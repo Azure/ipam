@@ -42,6 +42,13 @@ from app.routers.common.helper import (
 
 BUILD_DIR = os.path.join(os.getcwd(), "dist")
 
+try:
+    UI_APP_ID = uuid.UUID(os.environ.get('UI_APP_ID'))
+    VALID_APP_ID = UI_APP_ID != uuid.UUID(int=0)
+except:
+    UI_APP_ID = None
+    VALID_APP_ID = False
+
 description = """
 Azure IPAM is a lightweight solution developed on top of the Azure platform designed to help Azure customers manage their enterprise IP Address space easily and effectively.
 """
@@ -131,7 +138,7 @@ app.add_middleware(
     minimum_size = 500
 )
 
-if os.path.isdir(BUILD_DIR):
+if os.path.isdir(BUILD_DIR) and UI_APP_ID and VALID_APP_ID:
     app.mount(
         "/assets/",
         StaticFiles(directory = Path(BUILD_DIR) / "assets"),

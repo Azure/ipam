@@ -31,7 +31,7 @@ ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
 WORKDIR /tmp
 
 # Copy Requirements File
-ADD ./engine/requirements.txt .
+COPY ./engine/requirements.txt .
 
 # Upgrade PIP
 RUN pip install --upgrade pip --progress-bar off

@@ -38,10 +38,10 @@ import {
   MoreVert as MoreIcon,
   Token as TokenIcon,
   Logout as LogoutIcon,
-  Info as InfoIcon,
-  Close as CloseIcon,
+  // Info as InfoIcon,
+  // Close as CloseIcon,
   AccountCircle as AccountCircleIcon,
-  CloudDownloadOutlined as CloudDownloadIcon
+  // CloudDownloadOutlined as CloudDownloadIcon
 } from "@mui/icons-material";
 
 // Imports for the Drawer
@@ -82,7 +82,7 @@ import Admins from "../../img/Admins";
 import Rule from "../../img/Rule";
 import Tools from "../../img/Tools";
 import Planner from "../../img/Planner";
-import Settings from "../../img/Settings";
+// import Settings from "../../img/Settings";
 import Help from "../../img/Help";
 import VWan from "../../img/VWan";
 
@@ -127,45 +127,45 @@ const Search = styled("div")(({ theme }) => ({
   },
 }));
 
-const Update = styled(Typography)(({ theme }) => ({
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  width: '100vw',
-  fontSize: '12px',
-  color: theme.palette.mode == 'dark' ? 'black' : 'white',
-  backgroundColor: theme.palette.warning.light,
-  height: '100%'
-}));
+// const Update = styled(Typography)(({ theme }) => ({
+//   display: 'flex',
+//   justifyContent: 'center',
+//   alignItems: 'center',
+//   width: '100vw',
+//   fontSize: '12px',
+//   color: theme.palette.mode == 'dark' ? 'black' : 'white',
+//   backgroundColor: theme.palette.warning.light,
+//   height: '100%'
+// }));
 
-const StyledBadge = styled(Badge)(({ theme }) => ({
-  '& .MuiBadge-badge': {
-    backgroundColor: theme.palette.warning.light,
-    color: theme.palette.warning.light,
-    boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
-    '&::after': {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      borderRadius: '50%',
-      animation: 'ripple 1.2s infinite ease-in-out',
-      border: '1px solid currentColor',
-      content: '""',
-    },
-  },
-  '@keyframes ripple': {
-    '0%': {
-      transform: 'scale(.8)',
-      opacity: 1,
-    },
-    '100%': {
-      transform: 'scale(2.4)',
-      opacity: 0,
-    },
-  },
-}));
+// const StyledBadge = styled(Badge)(({ theme }) => ({
+//   '& .MuiBadge-badge': {
+//     backgroundColor: theme.palette.warning.light,
+//     color: theme.palette.warning.light,
+//     boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
+//     '&::after': {
+//       position: 'absolute',
+//       top: 0,
+//       left: 0,
+//       width: '100%',
+//       height: '100%',
+//       borderRadius: '50%',
+//       animation: 'ripple 1.2s infinite ease-in-out',
+//       border: '1px solid currentColor',
+//       content: '""',
+//     },
+//   },
+//   '@keyframes ripple': {
+//     '0%': {
+//       transform: 'scale(.8)',
+//       opacity: 1,
+//     },
+//     '100%': {
+//       transform: 'scale(2.4)',
+//       opacity: 0,
+//     },
+//   },
+// }));
 
 export default function NavDrawer() {
   const { instance, accounts } = useMsal();
@@ -307,12 +307,12 @@ export default function NavDrawer() {
             link: "admin/subscriptions",
             admin: true
           },
-          {
-            title: "Settings",
-            icon: Settings,
-            link: "admin/settings",
-            admin: true
-          }
+          // {
+          //   title: "Settings",
+          //   icon: Settings,
+          //   link: "admin/settings",
+          //   admin: true
+          // }
         ]
       }
     ]
@@ -363,19 +363,19 @@ export default function NavDrawer() {
     setDrawerState(open);
   };
 
-  React.useEffect(() => {
-    const action = snackbarId => (
-      <>
-        <IconButton onClick={() => { closeSnackbar(snackbarId) }}>
-          <CloseIcon sx={{ color: 'white' }} />
-        </IconButton>
-      </>
-    );
+  // React.useEffect(() => {
+  //   const action = snackbarId => (
+  //     <>
+  //       <IconButton onClick={() => { closeSnackbar(snackbarId) }}>
+  //         <CloseIcon sx={{ color: 'white' }} />
+  //       </IconButton>
+  //     </>
+  //   );
 
-    if(meLoaded && graphData) {
-      enqueueSnackbar("Update available! See menu for details.", { action, variant: "info", preventDuplicate: true, persist: true });
-    }
-  }, [meLoaded, graphData, enqueueSnackbar, closeSnackbar]);
+  //   if(meLoaded && graphData) {
+  //     enqueueSnackbar("Update available! See menu for details.", { action, variant: "info", preventDuplicate: true, persist: true });
+  //   }
+  // }, [meLoaded, graphData, enqueueSnackbar, closeSnackbar]);
 
   React.useEffect(() => {
     function getTitleCase(str) {
@@ -711,13 +711,13 @@ export default function NavDrawer() {
         </ListItemIcon>
         <ListItemText>Token</ListItemText>
       </MenuItem>
-      <MenuItem key='about' onClick={() => handleAboutOpen()}>
+      {/* <MenuItem key='about' onClick={() => handleAboutOpen()}>
         <ListItemIcon>
           <InfoIcon fontSize="small" />
         </ListItemIcon>
         <ListItemText>About</ListItemText>
         <CloudDownloadIcon fontSize="small" color="warning" />
-      </MenuItem>
+      </MenuItem> */}
       <Divider />
       <MenuItem key='logout' onClick={() => handleLogout()}>
         <ListItemIcon>
@@ -786,13 +786,13 @@ export default function NavDrawer() {
         </ListItemIcon>
         <ListItemText>Token</ListItemText>
       </MenuItem>
-      <MenuItem key='about' onClick={() => handleAboutOpen()}>
+      {/* <MenuItem key='about' onClick={() => handleAboutOpen()}>
         <ListItemIcon>
           <InfoIcon fontSize="small" />
         </ListItemIcon>
         <ListItemText>About</ListItemText>
         <CloudDownloadIcon fontSize="small" color="warning" />
-      </MenuItem>
+      </MenuItem> */}
       <Divider />
       <MenuItem key='mobile-logout' onClick={() => handleLogout()}>
         <ListItemIcon>
@@ -887,18 +887,18 @@ export default function NavDrawer() {
                 onClick={handleProfileMenuOpen}
                 color="inherit"
               >
-                <StyledBadge
+                {/* <StyledBadge
                   overlap="circular"
                   anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                   variant="dot"
-                >
+                > */}
                 { graphData ? 
                   graphPhoto ?
                   <Avatar alt={graphData.displayName} src={graphPhoto} /> :
                   <Avatar {...stringAvatar(graphData.displayName)} /> :
                   <Avatar />
                 }
-                </StyledBadge>
+                {/* </StyledBadge> */}
               </IconButton>
             </Box>
             <Box sx={{ display: { xs: "flex", md: "none" } }}>
@@ -961,7 +961,7 @@ export default function NavDrawer() {
           <Route path="configure" element={<ConfigureIPAM />} />
           <Route path="admin/admins" element={<AdminTabs />} />
           <Route path="admin/subscriptions" element={<AdminTabs />} />
-          <Route path="admin/settings" element={<AdminTabs />} />
+          {/* <Route path="admin/settings" element={<AdminTabs />} /> */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         {/* <Box
