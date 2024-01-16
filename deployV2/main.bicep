@@ -87,7 +87,8 @@ module keyVault 'keyVault.bicep' = {
   params: {
     location: location
     keyVaultName: resourceNames.keyVaultName
-    principalId:  managedIdentity.outputs.principalId
+    identityPrincipalId:  managedIdentity.outputs.principalId
+    identityClientId:  managedIdentity.outputs.clientId
     uiAppId: uiAppId
     engineAppId: engineAppId
     engineAppSecret: engineAppSecret
@@ -106,6 +107,7 @@ module cosmos 'cosmos.bicep' = {
     cosmosDatabaseName: resourceNames.cosmosDatabaseName
     keyVaultName: keyVault.outputs.keyVaultName
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
+    principalId: managedIdentity.outputs.principalId
   }
 }
 

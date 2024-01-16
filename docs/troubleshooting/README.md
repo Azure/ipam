@@ -131,3 +131,5 @@ az cosmosdb update --resource-group <ResourceGroupName> --name <CosmosDBAccountN
 #### <u>Notes</u>
 
 This flag may have been set by [Azure Policy](https://learn.microsoft.com/en-us/azure/governance/policy/overview). You can find more details about this policy [here](https://learn.microsoft.com/en-us/azure/cosmos-db/policy-reference#azure-cosmos-db) under *Azure Cosmos DB key based metadata write access should be disabled*. You may need to contact your policy administrator to request an exception for Azure IPAM.
+
+Additionally this issue only applies to legacy deployments of Azure IPAM (prior to v3.0.0) as the latest versions use SQL [role-based access control](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-rbac) to read/write data from Cosmos DB.

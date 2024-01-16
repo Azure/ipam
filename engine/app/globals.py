@@ -35,6 +35,10 @@ class Globals:
         self.shared_transport = AioHttpTransport(session=session, session_owner=False)
 
     @property
+    def MANAGED_IDENTITY_ID(self):
+        return os.environ.get('MANAGED_IDENTITY_ID')
+
+    @property
     def CLIENT_ID(self):
         return os.environ.get('CLIENT_ID') or os.environ.get('ENGINE_APP_ID')
 

@@ -92,10 +92,10 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
             name: 'COSMOS_URL'
             value: cosmosDbUri
           }
-          {
-            name: 'COSMOS_KEY'
-            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/COSMOS-KEY/)'
-          }
+          // {
+          //   name: 'COSMOS_KEY'
+          //   value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/COSMOS-KEY/)'
+          // }
           {
             name: 'DATABASE_NAME'
             value: databaseName
@@ -103,6 +103,10 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
           {
             name: 'CONTAINER_NAME'
             value: containerName
+          }
+          {
+            name: 'MANAGED_IDENTITY_ID'
+            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/IDENTITY-ID/)'
           }
           {
             name: 'UI_APP_ID'
