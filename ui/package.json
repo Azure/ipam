@@ -52,7 +52,7 @@
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "serve": "^14.2.1",
-    "vite": "^5.0.10",
+    "vite": "^5.0.12",
     "vite-plugin-eslint2": "^4.3.1"
   }
 }
