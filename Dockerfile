@@ -59,7 +59,7 @@ COPY ./engine/requirements.txt /code/requirements.txt
 RUN pip install --upgrade pip --progress-bar off
 
 # Install Dependencies
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt --progress-bar off
 
 # Copy Engine Code
 COPY ./engine/app ./app

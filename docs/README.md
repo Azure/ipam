@@ -46,12 +46,14 @@ Here is a more specific breakdown of the components used:
     - Azure Tenant ID
 - **User Assigned Managed Identity**
   - Assigned to the App Service to retrieve secrets from KeyVault
+- **Container Registry** *(Optional)*
+  - Stores a private copy of the Azure IPAM containers
 
 ## How Azure IPAM Works
 
 Azure IPAM has been designed as such to radically simplify the often daunting task of IP address management within Azure and was built to accommodate use cases such as the following...
 
-- Discovery
+- Discover
   - Identify networks, subnets and endpoints holistically across your Azure tenant
   - Visualize misconfigurations such as orphaned endpoints and improperly configured virtual network peers
 - Organize
