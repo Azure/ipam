@@ -7,18 +7,20 @@ export VITE_UI_ID=$UI_APP_ID
 export VITE_ENGINE_ID=$ENGINE_APP_ID
 export VITE_TENANT_ID=$TENANT_ID
 
+# Set Container OS Image as Environment Variable
+test -e /etc/os-release && os_release='/etc/os-release' || os_release='/usr/lib/os-release'
+. "${os_release}"
+
+export VITE_CONTAINER_IMAGE_ID="$(echo "$ID")"
+export VITE_CONTAINER_IMAGE_VERSION="$(echo "$VERSION_ID")"
+export VITE_CONTAINER_IMAGE_CODENAME="$(echo "$VERSION_CODENAME")"
+export VITE_CONTAINER_IMAGE_PRETTY_NAME="$(echo "$PRETTY_NAME")"
+
 # Pull Environment Variables from Parent Shell
 eval $(printenv | sed -n "s/^\([^=]\+\)=\(.*\)$/export \1=\2/p" | sed 's/"/\\\"/g' | sed '/=/s//="/' | sed 's/$/"/' >> /etc/profile)
 
 # Start the SSH Service
 /usr/sbin/sshd
-
-# Set Container OS Image as Environment Variable
-test -e /etc/os-release && os_release='/etc/os-release' || os_release='/usr/lib/os-release'
-. "${os_release}"
-
-VITE_CONTAINER_IMAGE=${PRETTY_NAME}
-export VITE_CONTAINER_IMAGE
 
 # Create env.js File from Environment Variables
 printenv | grep REACT_APP_ > /tmp/react_app_

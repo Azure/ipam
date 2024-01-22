@@ -1,30 +1,36 @@
 import os
+import json
 import aiohttp
 
-from azure.identity import AzureAuthorityHosts
-
 from azure.core.pipeline.transport import AioHttpTransport
+
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 AZURE_ENV_MAP = {
     'AZURE_PUBLIC': {
         'AZURE_ARM': 'management.azure.com',
         'AZURE_MGMT': 'management.core.windows.net',
-        'AUTH_HOST': AzureAuthorityHosts.AZURE_PUBLIC_CLOUD
+        'AUTH_HOST': 'login.microsoftonline.com'
     },
     'AZURE_US_GOV': {
         'AZURE_ARM': 'management.usgovcloudapi.net',
         'AZURE_MGMT': 'management.core.usgovcloudapi.net',
-        'AUTH_HOST': AzureAuthorityHosts.AZURE_GOVERNMENT
+        'AUTH_HOST': 'login.microsoftonline.us'
+    },
+    'AZURE_US_GOV_SECRET': {
+        'AZURE_ARM': 'management.azure.microsoft.scloud',
+        'AZURE_MGMT': 'management.azure.microsoft.scloud',
+        'AUTH_HOST': 'login.microsoftonline.microsoft.scloud'
     },
     'AZURE_GERMANY': {
         'AZURE_ARM': 'management.microsoftazure.de',
         'AZURE_MGMT': 'management.core.cloudapi.de',
-        'AUTH_HOST': AzureAuthorityHosts.AZURE_GERMANY
+        'AUTH_HOST': 'login.microsoftonline.de'
     },
     'AZURE_CHINA': {
         'AZURE_ARM': 'management.chinacloudapi.cn',
         'AZURE_MGMT': 'management.core.chinacloudapi.cn',
-        'AUTH_HOST': AzureAuthorityHosts.AZURE_CHINA
+        'AUTH_HOST': 'login.chinacloudapi.cn'
     }
 }
 
@@ -33,6 +39,10 @@ class Globals:
         conn = aiohttp.TCPConnector(limit=100)
         session = aiohttp.ClientSession(connector=conn)
         self.shared_transport = AioHttpTransport(session=session, session_owner=False)
+
+    @property
+    def IPAM_VERSION(self):
+        return json.load(open(os.path.join(ROOT_DIR, "version.json")))['version']
 
     @property
     def MANAGED_IDENTITY_ID(self):

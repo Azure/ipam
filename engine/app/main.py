@@ -19,7 +19,8 @@ from app.routers import (
     admin,
     user,
     space,
-    tool
+    tool,
+    status
 )
 
 from app.logs.logs import ipam_logger as logger
@@ -44,7 +45,6 @@ from app.routers.common.helper import (
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 BUILD_DIR = os.path.join(os.getcwd(), "dist")
-IPAM_VERSION = json.load(open(os.path.join(ROOT_DIR, "version.json")))['version']
 
 try:
     UI_APP_ID = uuid.UUID(os.environ.get('UI_APP_ID'))
@@ -60,7 +60,7 @@ Azure IPAM is a lightweight solution developed on top of the Azure platform desi
 app = FastAPI(
     title = "Azure IPAM",
     description = description,
-    version = IPAM_VERSION,
+    version = globals.IPAM_VERSION,
     contact = {
         "name": "Azure IPAM Team",
         "url": "https://github.com/azure/ipam",
@@ -102,6 +102,11 @@ app.include_router(
 
 app.include_router(
     space.router,
+    prefix = "/api"
+)
+
+app.include_router(
+    status.router,
     prefix = "/api"
 )
 
@@ -393,12 +398,18 @@ async def ipam_startup():
         path = '/etc/os-release' if os.path.exists('/etc/os-release') else '/usr/lib/os-release'
 
         release_info = open(path, 'r')
-        release_values = release_info.readlines()
+        release_values = release_info.read().splitlines()
+        cleaned_values = [i for i in release_values if i]
 
-        for value in release_values:
+        for value in cleaned_values:
             clean_value = value.strip()
             value_parts = clean_value.split('=')
             release_data[value_parts[0]] = value_parts[1].replace('"', '')
+
+        os.environ['VITE_CONTAINER_IMAGE_ID'] = release_data['ID']
+        os.environ['VITE_CONTAINER_IMAGE_VERSION'] = release_data['VERSION_ID']
+        os.environ['VITE_CONTAINER_IMAGE_CODENAME'] = release_data['VERSION'].split(" ")[1][1:-1].lower()
+        os.environ['VITE_CONTAINER_IMAGE_PRETTY_NAME'] = release_data['PRETTY_NAME']
 
         env_data = {
             'VITE_AZURE_ENV': os.environ.get('AZURE_ENV'),

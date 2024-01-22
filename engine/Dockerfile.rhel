@@ -22,7 +22,7 @@ RUN pip install --upgrade pip --progress-bar off
 RUN pip install --no-cache-dir --upgrade -r ./requirements.txt --progress-bar off
 
 # Copy Application Scripts & Sources
-ADD ./app ./app
+ADD ./app ./appDockerfile
 ADD ./init.sh .
 
 # Set Script Execute Permissions

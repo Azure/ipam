@@ -291,6 +291,7 @@ process {
   $AZURE_ENV_MAP = @{
     AzureCloud        = "AZURE_PUBLIC"
     AzureUSGovernment = "AZURE_US_GOV"
+    AzureUSSecret     = "AZURE_US_GOV_SECRET"
     AzureGermanCloud  = "AZURE_GERMANY"
     AzureChinaCloud   = "AZURE_CHINA"
   }
@@ -311,6 +312,10 @@ process {
 
   # Hide Azure PowerShell SDK Warnings
   $Env:SuppressAzurePowerShellBreakingChangeWarnings = $true
+
+  # Hide Azure PowerShell SDK & Azure CLI Survey Prompts
+  $Env:AzSurveyMessage = $false
+  $Env:AZURE_CORE_SURVEY_MESSAGE = $false
 
   # Set Log File Location
   $logPath = Join-Path -Path $ROOT_DIR -ChildPath "logs"
@@ -404,6 +409,10 @@ process {
       "AZURE_US_GOV" = @{
         ResourceAppId    = "40a69793-8fe6-4db1-9591-dbc5c57b17d8" # Azure Service Management
         ResourceAccessIds = @("8eb49ffc-05ac-454c-9027-8648349217dd", "e59ee429-1fb1-4054-b99f-f542e8dc9b95") # user_impersonation
+      }
+      "AZURE_US_GOV_SECRET" = @{
+        ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013" # Azure Service Management
+        ResourceAccessIds = @("41094075-9dad-400e-a0bd-54e686782033") # user_impersonation
       }
       "AZURE_GERMANY" = @{
         ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013" # Azure Service Management
@@ -568,6 +577,10 @@ process {
       AZURE_US_GOV  = @{
         Endpoint    = "graph.microsoft.us"
         Environment = "USGov"
+      }
+      AZURE_US_GOV_SECRET  = @{
+        Endpoint    = "graph.cloudapi.microsoft.scloud"
+        Environment = "USSec"
       }
       AZURE_GERMANY = @{
         Endpoint    = "graph.microsoft.de"
@@ -860,7 +873,7 @@ process {
       $azureCliVer = [System.Version](az version | ConvertFrom-Json).'azure-cli'
 
       if($azureCliVer -lt $MIN_AZ_CLI_VER) {
-        Write-Host "ERROR: Azure CLI must be version $MIN_AZ_CLI_VER or greater!" -ForegroundColor red
+        Write-Host "ERROR: Azure CLI must be version $MIN_AZ_CLI_VER or greater!" -ForegroundColor Red
         exit
       }
 
@@ -870,7 +883,7 @@ process {
       $azureCliContext = $(az account show | ConvertFrom-Json) 2>$null
 
       if(-not $azureCliContext) {
-        Write-Host "ERROR: Azure CLI not logged in or no subscription has been selected!" -ForegroundColor red
+        Write-Host "ERROR: Azure CLI not logged in or no subscription has been selected!" -ForegroundColor Red
         exit
       }
 
@@ -878,7 +891,7 @@ process {
       $azurePowerShellSub = (Get-AzContext).Subscription.Id
 
       if($azurePowerShellSub -ne $azureCliSub) {
-        Write-Host "ERROR: Azure PowerShell and Azure CLI must be set to the same context!" -ForegroundColor red
+        Write-Host "ERROR: Azure PowerShell and Azure CLI must be set to the same context!" -ForegroundColor Red
         exit
       }
     }
@@ -893,6 +906,15 @@ process {
 
       # Fetch Azure Cloud Type
       $azureCloud = $AZURE_ENV_MAP[(Get-AzContext).Environment.Name]
+
+      # Verify Azure Cloud Type is Supported
+      if (-not [bool]$azureCloud) {
+        Write-Host "ERROR: Azure Cloud type is not currently supported!" -ForegroundColor Red
+        Write-Host
+        Write-Host "Azure Cloud type: " -ForegroundColor Yellow -NoNewline
+        Write-Host (Get-AzContext).Environment.Name -ForegroundColor Cyan
+        exit
+      }
     }
 
     if ($PSCmdlet.ParameterSetName -in ('App', 'AppContainer', 'Function', 'FunctionContainer')) {
@@ -902,7 +924,10 @@ process {
       if (Test-Location -Location $Location) {
         Write-Host "INFO: Azure Region validated successfully" -ForegroundColor Green
       } else {
-        Write-Host "ERROR: Location provided is not a valid Azure Region!" -ForegroundColor red
+        Write-Host "ERROR: Location provided is not a valid Azure Region!" -ForegroundColor Red
+        Write-Host
+        Write-Host "Azure Region: " -ForegroundColor Yellow -NoNewline
+        Write-Host $Location -ForegroundColor Cyan
         exit
       }
     }
@@ -999,7 +1024,8 @@ process {
         }
       }
 
-      $dockerFile = Join-Path -Path $ROOT_DIR -ChildPath 'Dockerfile'
+      $dockerFile = $ContainerType -eq 'Debian' ? 'Dockerfile' : 'Dockerfile.rhel'
+      $dockerFilePath = Join-Path -Path $ROOT_DIR -ChildPath $dockerFile
       $dockerFileFunc = Join-Path -Path $ROOT_DIR -ChildPath 'Dockerfile.func'
 
       if($Function) {
@@ -1026,7 +1052,7 @@ process {
         $appBuildOutput = $(
           az acr build -r $deployment.Outputs["acrName"].Value `
             -t ipam:latest `
-            -f $dockerFile $ROOT_DIR `
+            -f $dockerFilePath $ROOT_DIR `
             --build-arg PORT=$($containerMap[$ContainerType].Port) `
             --build-arg BUILD_IMAGE=$($containerMap[$ContainerType].Images.Build) `
             --build-arg SERVE_IMAGE=$($containerMap[$ContainerType].Images.Serve)
@@ -1069,7 +1095,7 @@ process {
   }
   catch {
     $_ | Out-File -FilePath $errorLog -Append
-    Write-Host "ERROR: Unable to deploy Azure IPAM solution due to an exception, see logs for detailed information!" -ForegroundColor red
+    Write-Host "ERROR: Unable to deploy Azure IPAM solution due to an exception, see logs for detailed information!" -ForegroundColor Red
     Write-Host "Run Log: $transcriptLog" -ForegroundColor Red
     Write-Host "Error Log: $errorLog" -ForegroundColor Red
 

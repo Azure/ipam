@@ -3,11 +3,14 @@ ARG SERVE_IMAGE=mcr.microsoft.com/azure-functions/python:4-python3.9-appservice
 
 FROM $BUILD_IMAGE AS builder
 
+# Disable NPM Update Notifications
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+
 # Set the Working Directory
-WORKDIR /app
+WORKDIR /tmp
 
 # Add `/app/node_modules/.bin` to $PATH
-ENV PATH /app/node_modules/.bin:$PATH
+ENV PATH /tmp/node_modules/.bin:$PATH
 
 # Install UI Dependencies
 COPY ./ui/package.json ./
@@ -27,6 +30,9 @@ FROM $SERVE_IMAGE
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     AzureFunctionsJobHost__Logging__Console__IsEnabled=true
 
+# Disable PIP Root Warnings
+ENV PIP_ROOT_USER_ACTION=ignore
+
 # Set Working Directory
 WORKDIR /tmp
 
@@ -41,4 +47,4 @@ RUN pip install --no-cache-dir --upgrade -r ./requirements.txt --progress-bar of
 
 # Copy Application Code to Function App Root Directory
 COPY ./engine/. /home/site/wwwroot
-COPY --from=builder /app/dist /home/site/wwwroot/dist
+COPY --from=builder /tmp/dist /home/site/wwwroot/dist

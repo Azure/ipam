@@ -13,6 +13,12 @@ const AZURE_ENV_MAP = {
     AZURE_PORTAL: "portal.azure.us",
     MS_GRAPH: "graph.microsoft.us"
   },
+  AZURE_US_GOV_SECRET: {
+    AZURE_AD: "login.microsoftonline.microsoft.scloud/",
+    AZURE_ARM: "management.azure.microsoft.scloud/",
+    AZURE_PORTAL: "portal.azure.microsoft.scloud/",
+    MS_GRAPH: "graph.cloudapi.microsoft.scloud/"
+  },
   AZURE_GERMANY: {
     AZURE_AD: "login.microsoftonline.de",
     AZURE_ARM: "management.microsoftazure.de",

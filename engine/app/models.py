@@ -577,3 +577,22 @@ class CIDRCheckRes(BaseModel):
     tenant_id: UUID
     prefixes: List[IPv4Network]
     containers: List[CIDRContainer]
+
+#####################
+#   STATUS MODELS   #
+#####################
+
+class ImageDetails(BaseModel):
+    """DOCSTRING"""
+
+    image_id: str
+    image_version: str
+    image_codename: str
+    image_pretty_name: str
+
+class Status(BaseModel):
+    """DOCSTRING"""
+
+    status: str
+    version: str
+    container: ImageDetails
