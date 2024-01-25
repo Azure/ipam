@@ -89,10 +89,6 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
             name: 'COSMOS_URL'
             value: cosmosDbUri
           }
-          // {
-          //   name: 'COSMOS_KEY'
-          //   value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/COSMOS-KEY/)'
-          // }
           {
             name: 'DATABASE_NAME'
             value: databaseName
@@ -144,10 +140,10 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
             name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
             value: 'true'
           }
-          {
-            name: 'POST_BUILD_COMMAND'
-            value: 'postBuild.sh'
-          }
+          // {
+          //   name: 'POST_BUILD_COMMAND'
+          //   value: 'postBuild.sh'
+          // }
         ]
       )
     }

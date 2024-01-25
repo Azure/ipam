@@ -44,7 +44,9 @@ Function Restart-IpamApp {
     [Parameter(Mandatory=$true)]
     [string]$AppName,
     [Parameter(Mandatory=$true)]
-    [string]$ResourceGroupName
+    [string]$ResourceGroupName,
+    [Parameter(Mandatory=$false)]
+    [switch]$Function
   )
 
   $restartRetries = 5
@@ -52,17 +54,32 @@ Function Restart-IpamApp {
 
   do {
     try {
-      Restart-AzWebApp  -Name $AppName -ResourceGroupName $ResourceGroupName -ErrorVariable restartErr *>$null
+      if ($Function) {
+        Restart-AzFunctionApp `
+          -Name $AppName `
+          -ResourceGroupName $ResourceGroupName `
+          -ErrorVariable restartErr `
+          -ErrorAction SilentlyContinue `
+          -Force `
+          | Out-Null
+      } else {
+        Restart-AzWebApp `
+          -Name $AppName `
+          -ResourceGroupName $ResourceGroupName `
+          -ErrorVariable restartErr `
+          -ErrorAction SilentlyContinue `
+          | Out-Null
+      }
 
-      if ($null -ne $restartErr) {
+      if ($restartErr) {
         throw $restartErr
       }
 
       $restartSuccess = $True
       Write-Host "INFO: Application successfuly restarted" -ForegroundColor Green
     } catch {
-      if($publishRetries -gt 0) {
-        Write-Host "WARNING: Problem while restarting application! Retrying..." -ForegroundColor DarkYellow
+      if($restartRetries -gt 0) {
+        Write-Host "WARNING: Problem while restarting application! Retrying..." -ForegroundColor Yellow
         $restartRetries--
       } else {
         Write-Host "ERROR: Unable to restart application!" -ForegroundColor Red
@@ -81,6 +98,7 @@ try {
   $appType = ""
   $isFunction = $false
   $privateAcr = $false
+  $acrName = ""
 
   $existingApp = Get-AzWebApp -ResourceGroupName $ResourceGroupName -Name $AppName -ErrorAction SilentlyContinue
 
@@ -109,12 +127,31 @@ try {
     if (-not $privateAcr) {
       Write-Host "INFO: Deployment is using the Azure IPAM public ACR, restarting to update..." -ForegroundColor Green
       Restart-IpamApp -AppName $AppName -ResourceGroupName $ResourceGroupName
-      Write-Host
       exit
     }
 
     if($privateAcr) {
-      Write-Host "INFO: Private ACR detected, verifying minimum Azure CLI version" -ForegroundColor Green
+      $acrName = $appAcr.Split('.')[0]
+
+      Write-Host "INFO: Deployment is using a private ACR (" -ForegroundColor Green -NoNewline
+      Write-Host "$acrName" -ForegroundColor Cyan -NoNewline
+      Write-Host ")" -ForegroundColor Green
+      Write-Host "INFO: Verifying ACR is in current Resource Group" -ForegroundColor Green
+
+      $acrDetails = Get-AzContainerRegistry `
+        -Name $acrName `
+        -ResourceGroupName $ResourceGroupName `
+        -ErrorVariable acrErr `
+        -ErrorAction SilentlyContinue
+
+      if ($acrErr) {
+        Write-Host "ERROR: Private ACR not found in current Resource Group!" -ForegroundColor Red
+        throw $acrErr
+      }
+
+      $acrName = $acrDetails.Name
+
+      Write-Host "INFO: Verifying minimum Azure CLI version" -ForegroundColor Green
 
       # Verify Minimum Azure CLI Version
       $azureCliVer = [System.Version](az version | ConvertFrom-Json).'azure-cli'
@@ -124,7 +161,7 @@ try {
         exit
       }
 
-      Write-Host "INFO: Private ACR detected, verifying Azure PowerShell and Azure CLI contexts match" -ForegroundColor Green
+      Write-Host "INFO: Verifying Azure PowerShell and Azure CLI contexts match" -ForegroundColor Green
 
       # Verify Azure PowerShell and Azure CLI Contexts Match
       $azureCliContext = $(az account show | ConvertFrom-Json) 2>$null
@@ -145,10 +182,25 @@ try {
   }
 
   if ($appContainer) {
+    if (-not $isFunction) {
+      Write-Host "INFO: Detecting container distro..." -ForegroundColor Green
+
+      $appUri = $existingApp.HostNames[0]
+      $statusUri = "https://${appUri}/api/status"
+      $status = Invoke-RestMethod -Method Get -Uri $statusUri -ErrorVariable statusErr -ErrorAction SilentlyContinue
+
+      if ($statusErr) {
+        Write-Host "ERROR: Unable to detect container distro!" -ForegroundColor Red
+        throw $statusErr
+      }
+
+      $containerType = $status.container.image_id
+    }
+
     Write-Host "INFO: Building and pushing container images to Azure Container Registry" -ForegroundColor Green
 
     $containerMap = @{
-      Debian = @{
+      debian = @{
         Extension = 'deb'
         Port = 80
         Images = @{
@@ -156,7 +208,7 @@ try {
           Serve = 'python:3.9-slim'
         }
       }
-      RHEL = @{
+      rhel = @{
         Extension = 'rhel'
         Port = 8080
         Images = @{
@@ -166,14 +218,15 @@ try {
       }
     }
 
-    $dockerFile = Join-Path -Path $ROOT_DIR -ChildPath 'Dockerfile'
+    $dockerFile = 'Dockerfile.' + $containerMap[$containerType].Extension
+    $dockerFilePath = Join-Path -Path $ROOT_DIR -ChildPath $dockerFile
     $dockerFileFunc = Join-Path -Path $ROOT_DIR -ChildPath 'Dockerfile.func'
 
     if($isFunction) {
       Write-Host "INFO: Building Function container..." -ForegroundColor Green
 
       $funcBuildOutput = $(
-        az acr build -r $deployment.Outputs["acrName"].Value `
+        az acr build -r $acrName `
         -t ipamfunc:latest `
         -f $dockerFileFunc $ROOT_DIR
       ) *>&1
@@ -186,17 +239,19 @@ try {
 
       Write-Host "INFO: Restarting Function App" -ForegroundColor Green
 
-      Restart-AzFunctionApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Force | Out-Null
+      Restart-IpamApp -AppName $AppName -ResourceGroupName $ResourceGroupName -Function
     } else {
-      Write-Host "INFO: Building App container ($ContainerType)..." -ForegroundColor Green
+      Write-Host "INFO: Building App container (" -ForegroundColor Green -NoNewline
+      Write-Host "$containerType" -ForegroundColor Cyan -NoNewline
+      Write-Host ")..." -ForegroundColor Green
 
       $appBuildOutput = $(
-        az acr build -r $deployment.Outputs["acrName"].Value `
+        az acr build -r $acrName `
           -t ipam:latest `
-          -f $dockerFile $ROOT_DIR `
+          -f $dockerFilePath $ROOT_DIR `
           --build-arg PORT=$($containerMap[$ContainerType].Port) `
-          --build-arg BUILD_IMAGE=$($containerMap[$ContainerType].Images.Build) `
-          --build-arg SERVE_IMAGE=$($containerMap[$ContainerType].Images.Serve)
+          --build-arg BUILD_IMAGE=$($containerMap[$containerType].Images.Build) `
+          --build-arg SERVE_IMAGE=$($containerMap[$containerType].Images.Serve)
       ) *>&1
 
       if ($LASTEXITCODE -ne 0) {
@@ -219,12 +274,19 @@ try {
 
     do {
       try {
-        Publish-AzWebApp -ResourceGroupName $ResourceGroupName -Name $AppName -ArchivePath $zipPath -Restart -Force | Out-Null
+        Publish-AzWebApp `
+          -Name $AppName `
+          -ResourceGroupName $ResourceGroupName `
+          -ArchivePath $zipPath `
+          -Restart `
+          -Force `
+          | Out-Null
+
         $publishSuccess = $True
         Write-Host "INFO: ZIP Deploy archive successfully uploaded" -ForegroundColor Green
       } catch {
         if($publishRetries -gt 0) {
-          Write-Host "WARNING: Problem while uploading ZIP Deploy archive! Retrying..." -ForegroundColor DarkYellow
+          Write-Host "WARNING: Problem while uploading ZIP Deploy archive! Retrying..." -ForegroundColor Yellow
           $publishRetries--
         } else {
           Write-Host "ERROR: Unable to upload ZIP Deploy archive!" -ForegroundColor Red
@@ -239,7 +301,7 @@ try {
 }
 catch {
   $_ | Out-File -FilePath $updateLog -Append
-  Write-Host "ERROR: Unable to push Azure IPAM ZIP Deploy update due to an exception, see log for detailed information!" -ForegroundColor red
+  Write-Host "ERROR: Unable to update Azure IPAM application, see log for detailed information!" -ForegroundColor red
   Write-Host "Update Log: $updateLog" -ForegroundColor Red
 }
 finally {

@@ -992,7 +992,7 @@ process {
           Write-Host "INFO: ZIP Deploy archive successfully uploaded" -ForegroundColor Green
         } catch {
           if($publishRetries -gt 0) {
-            Write-Host "WARNING: Problem while uploading ZIP Deploy archive! Retrying..." -ForegroundColor DarkYellow
+            Write-Host "WARNING: Problem while uploading ZIP Deploy archive! Retrying..." -ForegroundColor Yellow
             $publishRetries--
           } else {
             Write-Host "ERROR: Unable to upload ZIP Deploy archive!" -ForegroundColor Red
@@ -1024,7 +1024,7 @@ process {
         }
       }
 
-      $dockerFile = $ContainerType -eq 'Debian' ? 'Dockerfile' : 'Dockerfile.rhel'
+      $dockerFile = 'Dockerfile.' + $containerMap[$ContainerType].Extension
       $dockerFilePath = Join-Path -Path $ROOT_DIR -ChildPath $dockerFile
       $dockerFileFunc = Join-Path -Path $ROOT_DIR -ChildPath 'Dockerfile.func'
 
