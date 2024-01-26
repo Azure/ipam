@@ -20,6 +20,9 @@ param privateAcr bool = false
 @description('Flag to Deploy IPAM as a Function')
 param deployAsFunc bool = false
 
+@description('Flag to Deploy IPAM as a Container')
+param deployAsContainer bool = false
+
 @description('IPAM-UI App Registration Client/App ID')
 param uiAppId string = '00000000-0000-0000-0000-000000000000'
 
@@ -84,7 +87,8 @@ module keyVault 'keyVault.bicep' = {
   params: {
     location: location
     keyVaultName: resourceNames.keyVaultName
-    principalId:  managedIdentity.outputs.principalId
+    identityPrincipalId:  managedIdentity.outputs.principalId
+    identityClientId:  managedIdentity.outputs.clientId
     uiAppId: uiAppId
     engineAppId: engineAppId
     engineAppSecret: engineAppSecret
@@ -103,6 +107,7 @@ module cosmos 'cosmos.bicep' = {
     cosmosDatabaseName: resourceNames.cosmosDatabaseName
     keyVaultName: keyVault.outputs.keyVaultName
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
+    principalId: managedIdentity.outputs.principalId
   }
 }
 
@@ -147,6 +152,7 @@ module appService 'appService.bicep' = if (!deployAsFunc) {
     managedIdentityId: managedIdentity.outputs.id
     managedIdentityClientId: managedIdentity.outputs.clientId
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
+    deployAsContainer: deployAsContainer
     privateAcr: privateAcr
     privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
   }
@@ -169,6 +175,7 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
     managedIdentityClientId: managedIdentity.outputs.clientId
     storageAccountName: resourceNames.storageAccountName
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
+    deployAsContainer: deployAsContainer
     privateAcr: privateAcr
     privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
   }
