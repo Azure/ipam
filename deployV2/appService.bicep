@@ -77,7 +77,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
       acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
       alwaysOn: true
       linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:latest' : 'PYTHON|3.9'
-      appCommandLine: !deployAsContainer ? 'startup.sh 8000' : null
+      appCommandLine: !deployAsContainer ? 'init.sh 8000' : null
       healthCheckPath: '/api/docs'
       appSettings: concat(
         [

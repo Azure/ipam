@@ -114,12 +114,12 @@ try {
     $FilePath = Join-Path -Path $Path -ChildPath $FileName
 
     Compress-Archive -Path ..\engine\app -DestinationPath $FilePath -Force
-    Compress-Archive -Path ..\engine\requirements.txt -DestinationPath $FilePath -Update
-    Compress-Archive -Path ..\engine\scripts\* -DestinationPath $FilePath -Update
     Compress-Archive -Path ..\engine\ipam-func -DestinationPath $FilePath -Update
     Compress-Archive -Path ..\engine\ipam-sentinel -DestinationPath $FilePath -Update
+    Compress-Archive -Path ..\engine\requirements.txt -DestinationPath $FilePath -Update
     Compress-Archive -Path ..\engine\host.json -DestinationPath $FilePath -Update
     Compress-Archive -Path ..\ui\dist -DestinationPath $FilePath -Update
+    Compress-Archive -Path ..\init.sh -DestinationPath $FilePath -Update
   } else {
     Write-Host "ERROR: Cannot create ZIP Deploy archive!" -ForegroundColor red
     throw $npmBuildErr

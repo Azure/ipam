@@ -273,6 +273,10 @@ async def get_spaces(
                                 net['used'] += IPNetwork(subnet['prefix']).size
                                 subnet['size'] = IPNetwork(subnet['prefix']).size
 
+                for ext in block['externals']:
+                    space['used'] += IPNetwork(ext['cidr']).size
+                    block['used'] += IPNetwork(ext['cidr']).size
+
             if not is_admin:
                 user_name = get_username_from_jwt(user_assertion)
                 block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, block['resv']))
@@ -416,6 +420,10 @@ async def get_space(
                         for subnet in net['subnets']:
                             net['used'] += IPNetwork(subnet['prefix']).size
                             subnet['size'] = IPNetwork(subnet['prefix']).size
+
+            for ext in block['externals']:
+                space['used'] += IPNetwork(ext['cidr']).size
+                block['used'] += IPNetwork(ext['cidr']).size
 
         if not is_admin:
             user_name = get_username_from_jwt(user_assertion)
@@ -711,6 +719,9 @@ async def get_blocks(
                             net['used'] += IPNetwork(subnet['prefix']).size
                             subnet['size'] = IPNetwork(subnet['prefix']).size
 
+            for ext in block['externals']:
+                block['used'] += IPNetwork(ext['cidr']).size
+
         if not is_admin:
             user_name = get_username_from_jwt(user_assertion)
             block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, block['resv']))
@@ -867,6 +878,9 @@ async def get_block(
                     for subnet in net['subnets']:
                         net['used'] += IPNetwork(subnet['prefix']).size
                         subnet['size'] = IPNetwork(subnet['prefix']).size
+
+        for ext in target_block['externals']:
+            target_block['used'] += IPNetwork(ext['cidr']).size
 
     if not is_admin:
         user_name = get_username_from_jwt(user_assertion)
