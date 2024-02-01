@@ -193,6 +193,7 @@ DynamicParam {
   $validators = @{
     functionName = '^(?=^.{2,59}$)([^-][\w-]*[^-])$'
     appServiceName = '^(?=^.{2,59}$)([^-][\w-]*[^-])$'
+    functionPlanName = '^(?=^.{1,40}$)([\w-]*)$'
     appServicePlanName = '^(?=^.{1,40}$)([\w-]*)$'
     cosmosAccountName = '^(?=^.{3,44}$)([^-][a-z0-9-]*[^-])$'
     cosmosContainerName = '^(?=^.{1,255}$)([^/\\#?]*)$'
@@ -211,11 +212,13 @@ DynamicParam {
 
   if(-not $Function) {
     $validators.Remove('functionName')
+    $validators.Remove('functionPlanName')
     $validators.Remove('storageAccountName')
   }
 
   if($Function) {
     $validators.Remove('appServiceName')
+    $validators.Remove('appServicePlanName')
   }
 
   $attrApp = [System.Management.Automation.ParameterAttribute]::new()

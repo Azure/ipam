@@ -1,8 +1,8 @@
 @description('Function App Name')
 param functionAppName string
 
-@description('Function App Plan Name')
-param functionAppPlanName string
+@description('Function Plan Name')
+param functionPlanName string
 
 @description('CosmosDB URI')
 param cosmosDbUri string
@@ -50,8 +50,8 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-06-01' existing 
   name: storageAccountName
 }
 
-resource functionAppPlan 'Microsoft.Web/serverfarms@2021-02-01' = {
-  name: functionAppPlanName
+resource functionPlan 'Microsoft.Web/serverfarms@2021-02-01' = {
+  name: functionPlanName
   location: location
   sku: {
     name: 'EP1'
@@ -75,7 +75,7 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
   }
   properties: {
     httpsOnly: true
-    serverFarmId: functionAppPlan.id
+    serverFarmId: functionPlan.id
     keyVaultReferenceIdentity: managedIdentityId
     siteConfig: {
       acrUseManagedIdentityCreds: privateAcr ? true : false
@@ -210,7 +210,7 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
 
 resource diagnosticSettingsPlan 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'diagSettings'
-  scope: functionAppPlan
+  scope: functionPlan
   properties: {
     metrics: [
       {

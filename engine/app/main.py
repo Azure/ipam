@@ -32,6 +32,7 @@ import copy
 import json
 import shutil
 import tempfile
+import traceback
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -478,6 +479,8 @@ async def find_reservations() -> None:
             await azure.match_resv_to_vnets()
         except Exception as e:
             logger.error('Error running network check loop!')
+            tb = traceback.format_exc()
+            logger.debug(tb);
             raise e
 
 @app.exception_handler(StarletteHTTPException)

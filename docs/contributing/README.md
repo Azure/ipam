@@ -63,7 +63,7 @@ Next, use the following commands to update the Azure IPAM containers within your
 az acr build -r <ACR Name> -t ipam:latest -f ./Dockerfile .
 
 # Function Container
-az acr build -r <ACR Name> -t ipamfunc:latest -f .Dockerfile.func .
+az acr build -r <ACR Name> -t ipamfunc:latest -f ./Dockerfile.func .
 ```
 
 If you're using the legacy Azure IPAM multi-container deployment (prior to v3.0.0), please use the following commands to update your containers instead

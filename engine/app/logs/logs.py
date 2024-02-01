@@ -47,7 +47,7 @@ class IPAMLogger:
         logging_config = config.get('logger')
 
         logger = cls.customize_logging(
-            os.path.join(tempfile.gettempdir(), "logs", "access.log") if os.environ.get('FUNCTIONS_WORKER_RUNTIME') else logging_config.get('path'),
+            os.environ.get('IPAM_LOGFILE_LOCATION', os.path.join(tempfile.gettempdir(), "logs", "ipam.log")),
             level=logging_config.get('level'),
             retention=logging_config.get('retention'),
             rotation=logging_config.get('rotation'),
@@ -79,7 +79,7 @@ class IPAMLogger:
             retention=retention,
             enqueue=True,
             backtrace=True,
-            level=level.upper(),
+            level='DEBUG',
             format=format
         )
 

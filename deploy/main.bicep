@@ -40,6 +40,7 @@ param tags object = {}
 param resourceNames object = {
   functionName: '${namePrefix}-${uniqueString(guid)}'
   appServiceName: '${namePrefix}-${uniqueString(guid)}'
+  functionPlanName: '${namePrefix}-asp-${uniqueString(guid)}'
   appServicePlanName: '${namePrefix}-asp-${uniqueString(guid)}'
   cosmosAccountName: '${namePrefix}-dbacct-${uniqueString(guid)}'
   cosmosContainerName: '${namePrefix}-ctr'
@@ -143,8 +144,8 @@ module appService 'appService.bicep' = if (!deployAsFunc) {
   params: {
     location: location
     azureCloud: azureCloud
-    appServicePlanName: resourceNames.appServicePlanName
     appServiceName: resourceNames.appServiceName
+    appServicePlanName: resourceNames.appServicePlanName
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     databaseName: resourceNames.cosmosDatabaseName
@@ -165,8 +166,8 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
   params: {
     location: location
     azureCloud: azureCloud
-    functionAppPlanName: resourceNames.appServicePlanName
     functionAppName: resourceNames.functionName
+    functionPlanName: resourceNames.appServicePlanName
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     databaseName: resourceNames.cosmosDatabaseName

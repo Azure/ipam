@@ -234,7 +234,7 @@ $ResourceNames = @{
 ```powershell
 $ResourceNames = @{
   functionName = 'myfunction01'
-  appServicePlanName = 'myappserviceplan01'
+  functionPlanName = 'myfunctionplan01'
   cosmosAccountName = 'mycosmosaccount01'
   cosmosContainerName = 'mycontainer01'
   cosmosDatabaseName = 'mydatabase01'
