@@ -253,7 +253,8 @@ DynamicParam {
 
     if ($invalidFields -or $missingFields) {
       $deploymentType = $PrivateAcr ? "'$($PSCmdlet.ParameterSetName) w/ Private ACR'" : $PSCmdlet.ParameterSetName
-      Write-Host "ERROR: Missing or improperly formatted field(s) in 'ResourceNames' parameter for deploment type '$deploymentType'" -ForegroundColor Red
+      Write-Host
+      Write-Host "ERROR: Missing or improperly formatted field(s) in 'ResourceNames' parameter for deploment type $deploymentType" -ForegroundColor Red
 
       foreach ($field in $invalidFields) {
         Write-Host "ERROR: Invalid Field ->" $field -ForegroundColor Red
@@ -266,7 +267,7 @@ DynamicParam {
       Write-Host "ERROR: Please refer to the 'Naming Rules and Restrictions for Azure Resources'" -ForegroundColor Red
       Write-Host "ERROR: " -ForegroundColor Red -NoNewline
       Write-Host "https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules" -ForegroundColor Yellow
-      Write-Host ""
+      Write-Host
 
       throw [System.ArgumentException]::New("One of the required resource names is missing or invalid.")
     }
@@ -294,7 +295,7 @@ process {
   $AZURE_ENV_MAP = @{
     AzureCloud        = "AZURE_PUBLIC"
     AzureUSGovernment = "AZURE_US_GOV"
-    AzureUSSecret     = "AZURE_US_GOV_SECRET"
+    USSec             = "AZURE_US_GOV_SECRET"
     AzureGermanCloud  = "AZURE_GERMANY"
     AzureChinaCloud   = "AZURE_CHINA"
   }
@@ -613,7 +614,8 @@ process {
     $accesstoken = (Get-AzAccessToken -Resource "https://$($msGraphMap[$AzureCloud].Endpoint)/").Token
 
     # Switch Access Token to SecureString if Graph Version is 2.x
-    $graphVersion = [System.Version](Get-InstalledModule -Name Microsoft.Graph).Version
+    $graphVersion = [System.Version](Get-InstalledModule -Name Microsoft.Graph | Sort-Object -Property Version | Select-Object -Last 1).Version `
+      ?? (Get-Module -Name Microsoft.Graph | Sort-Object -Property Version | Select-Object -Last 1).Version
 
     if ($graphVersion.Major -gt 1) {
       $accesstoken = ConvertTo-SecureString $accesstoken -AsPlainText -Force
@@ -842,6 +844,72 @@ process {
     return $deployment
   }
 
+  Function Publish-ZipFile {
+    Param(
+      [Parameter(Mandatory=$true)]
+      [string]$AppName,
+      [Parameter(Mandatory=$true)]
+      [string]$ResourceGroupName,
+      [Parameter(Mandatory=$false)]
+      [switch]$UseAPI
+    )
+
+    if ($UseAPI) {
+      Write-Host "INFO: Using Kudu API for ZIP Deploy" -ForegroundColor Green
+    }
+
+    $zipPath = Join-Path -Path $ROOT_DIR -ChildPath 'assets' -AdditionalChildPath "ipam.zip"
+
+    $publishRetries = 3
+    $publishSuccess = $False
+
+    if ($UseAPI) {
+      $accessToken = (Get-AzAccessToken).Token
+      $zipContents = Get-Item -Path $zipPath
+
+      $publishProfile = Get-AzWebAppPublishingProfile -Name $AppName -ResourceGroupName $ResourceGroupName
+      $zipUrl = ([System.uri]($publishProfile | Select-Xml -XPath "//publishProfile[@publishMethod='ZipDeploy']" | Select-Object -ExpandProperty Node).publishUrl).Scheme
+    }
+
+    do {
+      try {
+        if (-not $UseAPI) {
+          Publish-AzWebApp `
+            -Name $AppName `
+            -ResourceGroupName $ResourceGroupName `
+            -ArchivePath $zipPath `
+            -Restart `
+            -Force `
+            | Out-Null
+        } else {
+          Invoke-RestMethod `
+            -Uri "https://${zipUrl}/api/zipdeploy" `
+            -Method Post `
+            -ContentType "multipart/form-data" `
+            -Headers @{ "Authorization" = "Bearer $accessToken" } `
+            -Form @{ file = $zipContents } `
+            -StatusCodeVariable statusCode `
+            | Out-Null
+
+            if ($statusCode -ne 200) {
+              throw [System.Exception]::New("Error while uploading ZIP Deploy via Kudu API! ($statusCode)")
+            }
+        }
+
+        $publishSuccess = $True
+        Write-Host "INFO: ZIP Deploy archive successfully uploaded" -ForegroundColor Green
+      } catch {
+        if($publishRetries -gt 0) {
+          Write-Host "WARNING: Problem while uploading ZIP Deploy archive! Retrying..." -ForegroundColor Yellow
+          $publishRetries--
+        } else {
+          Write-Host "ERROR: Unable to upload ZIP Deploy archive!" -ForegroundColor Red
+          throw $_
+        }
+      }
+    } while ($publishSuccess -eq $False -and $publishRetries -ge 0)
+  }
+
   Function Update-UIApplication {
     Param(
       [Parameter(Mandatory=$true)]
@@ -983,26 +1051,12 @@ process {
     if ($PSCmdlet.ParameterSetName -in ('App', 'Function')) {
       Write-Host "INFO: Uploading ZIP Deploy archive..." -ForegroundColor Green
 
-      $zipPath = Join-Path -Path $ROOT_DIR -ChildPath 'assets' -AdditionalChildPath "ipam.zip"
-
-      $publishRetries = 5
-      $publishSuccess = $False
-
-      do {
-        try {
-          Publish-AzWebApp -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Name $deployment.Outputs["appServiceName"].Value -ArchivePath $zipPath -Restart -Force | Out-Null
-          $publishSuccess = $True
-          Write-Host "INFO: ZIP Deploy archive successfully uploaded" -ForegroundColor Green
-        } catch {
-          if($publishRetries -gt 0) {
-            Write-Host "WARNING: Problem while uploading ZIP Deploy archive! Retrying..." -ForegroundColor Yellow
-            $publishRetries--
-          } else {
-            Write-Host "ERROR: Unable to upload ZIP Deploy archive!" -ForegroundColor Red
-            throw $_
-          }
-        }
-      } while ($publishSuccess -eq $False -and $publishRetries -gt 0)
+      try {
+        Publish-ZipFile -AppName $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value
+      } catch {
+        Write-Host "SWITCH: Retrying ZIP Deploy with Kudu API..." -ForegroundColor Blue
+        Publish-ZipFile -AppName $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -UseAPI
+      }
     }
 
     if ($PSCmdlet.ParameterSetName -in ('AppContainer', 'FunctionContainer') -and $PrivateAcr) {

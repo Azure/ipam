@@ -78,7 +78,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
       alwaysOn: true
       linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:latest' : 'PYTHON|3.9'
       appCommandLine: !deployAsContainer ? 'init.sh 8000' : null
-      healthCheckPath: '/api/docs'
+      healthCheckPath: '/api/status'
       appSettings: concat(
         [
           {

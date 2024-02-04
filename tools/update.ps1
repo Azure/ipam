@@ -89,6 +89,72 @@ Function Restart-IpamApp {
   } while ($restartSuccess -eq $False -and $restartRetries -gt 0)
 }
 
+Function Publish-ZipFile {
+  Param(
+    [Parameter(Mandatory=$true)]
+    [string]$AppName,
+    [Parameter(Mandatory=$true)]
+    [string]$ResourceGroupName,
+    [Parameter(Mandatory=$false)]
+    [switch]$UseAPI
+  )
+
+  if ($UseAPI) {
+    Write-Host "INFO: Using Kudu API for ZIP Deploy" -ForegroundColor Green
+  }
+
+  $zipPath = Join-Path -Path $ROOT_DIR -ChildPath 'assets' -AdditionalChildPath "ipam.zip"
+
+  $publishRetries = 3
+  $publishSuccess = $False
+
+  if ($UseAPI) {
+    $accessToken = (Get-AzAccessToken).Token
+    $zipContents = Get-Item -Path $zipPath
+
+    $publishProfile = Get-AzWebAppPublishingProfile -Name $AppName -ResourceGroupName $ResourceGroupName
+    $zipUrl = ([System.uri]($publishProfile | Select-Xml -XPath "//publishProfile[@publishMethod='ZipDeploy']" | Select-Object -ExpandProperty Node).publishUrl).Scheme
+  }
+
+  do {
+    try {
+      if (-not $UseAPI) {
+        Publish-AzWebApp `
+          -Name $AppName `
+          -ResourceGroupName $ResourceGroupName `
+          -ArchivePath $zipPath `
+          -Restart `
+          -Force `
+          | Out-Null
+      } else {
+        Invoke-RestMethod `
+          -Uri "https://${zipUrl}/api/zipdeploy" `
+          -Method Post `
+          -ContentType "multipart/form-data" `
+          -Headers @{ "Authorization" = "Bearer $accessToken" } `
+          -Form @{ file = $zipContents } `
+          -StatusCodeVariable statusCode `
+          | Out-Null
+
+          if ($statusCode -ne 200) {
+            throw [System.Exception]::New("Error while uploading ZIP Deploy via Kudu API! ($statusCode)")
+          }
+      }
+
+      $publishSuccess = $True
+      Write-Host "INFO: ZIP Deploy archive successfully uploaded" -ForegroundColor Green
+    } catch {
+      if($publishRetries -gt 0) {
+        Write-Host "WARNING: Problem while uploading ZIP Deploy archive! Retrying..." -ForegroundColor Yellow
+        $publishRetries--
+      } else {
+        Write-Host "ERROR: Unable to upload ZIP Deploy archive!" -ForegroundColor Red
+        throw $_
+      }
+    }
+  } while ($publishSuccess -eq $False -and $publishRetries -ge 0)
+}
+
 Start-Transcript -Path $updateLog | Out-Null
 
 try {
@@ -267,33 +333,12 @@ try {
   } else {
     Write-Host "INFO: Uploading ZIP Deploy archive..." -ForegroundColor Green
 
-    $zipPath = Join-Path -Path $ROOT_DIR -ChildPath 'assets' -AdditionalChildPath "ipam.zip"
-
-    $publishRetries = 5
-    $publishSuccess = $False
-
-    do {
-      try {
-        Publish-AzWebApp `
-          -Name $AppName `
-          -ResourceGroupName $ResourceGroupName `
-          -ArchivePath $zipPath `
-          -Restart `
-          -Force `
-          | Out-Null
-
-        $publishSuccess = $True
-        Write-Host "INFO: ZIP Deploy archive successfully uploaded" -ForegroundColor Green
-      } catch {
-        if($publishRetries -gt 0) {
-          Write-Host "WARNING: Problem while uploading ZIP Deploy archive! Retrying..." -ForegroundColor Yellow
-          $publishRetries--
-        } else {
-          Write-Host "ERROR: Unable to upload ZIP Deploy archive!" -ForegroundColor Red
-          throw $_
-        }
-      }
-    } while ($publishSuccess -eq $False -and $publishRetries -gt 0)
+    try {
+      Publish-ZipFile -AppName $AppName -ResourceGroupName $ResourceGroupName
+    } catch {
+      Write-Host "SWITCH: Retrying ZIP Deploy with Kudu API..." -ForegroundColor Blue
+      Publish-ZipFile -AppName $AppName -ResourceGroupName $ResourceGroupName -UseAPI
+    }
 
     Write-Host
     Write-Host "NOTE: Please allow ~5 minutes for the ZIP Deploy process to complete" -ForegroundColor Yellow

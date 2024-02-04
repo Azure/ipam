@@ -470,9 +470,8 @@ async def ipam_startup():
 
     await db_upgrade()
 
-# https://github.com/yuval9313/FastApi-RESTful/issues/138
 @app.on_event("startup")
-@repeat_every(seconds = 60, wait_first = True) # , wait_first=True
+@repeat_every(seconds = 60, wait_first = True)
 async def find_reservations() -> None:
     if not os.environ.get("FUNCTIONS_WORKER_RUNTIME"):
         try:
@@ -480,7 +479,7 @@ async def find_reservations() -> None:
         except Exception as e:
             logger.error('Error running network check loop!')
             tb = traceback.format_exc()
-            logger.debug(tb);
+            logger.debug(tb)
             raise e
 
 @app.exception_handler(StarletteHTTPException)

@@ -81,7 +81,7 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
       acrUseManagedIdentityCreds: privateAcr ? true : false
       acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
       linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipamfunc:latest' : 'Python|3.9'
-      healthCheckPath: '/api/docs'
+      healthCheckPath: '/api/status'
       appSettings: concat(
         [
           {

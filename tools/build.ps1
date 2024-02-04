@@ -114,8 +114,7 @@ try {
     $FilePath = Join-Path -Path $Path -ChildPath $FileName
 
     Compress-Archive -Path ..\engine\app -DestinationPath $FilePath -Force
-    Compress-Archive -Path ..\engine\ipam-func -DestinationPath $FilePath -Update
-    Compress-Archive -Path ..\engine\ipam-sentinel -DestinationPath $FilePath -Update
+    Compress-Archive -Path ..\engine\function_app.py -DestinationPath $FilePath -Update
     Compress-Archive -Path ..\engine\requirements.txt -DestinationPath $FilePath -Update
     Compress-Archive -Path ..\engine\host.json -DestinationPath $FilePath -Update
     Compress-Archive -Path ..\ui\dist -DestinationPath $FilePath -Update

@@ -14,6 +14,8 @@ from app.routers.common.helper import (
 
 from app.globals import globals
 
+from app.logs.logs import ipam_logger as logger
+
 _session = None
 
 async def fetch_jwks_keys():
@@ -76,6 +78,16 @@ async def validate_token(request: Request):
     except Exception:
         raise HTTPException(status_code=401, detail="Unable to parse authorization token.")
 
+    try:
+        token_version = int(jwt.decode(token, options={"verify_signature": False})["ver"].split(".")[0])
+    except Exception:
+        raise HTTPException(status_code=401, detail="Unable to decode token version.")
+
+    if token_version == 1:
+        logger.error("Microsoft Identity v1.0 access tokens are not supported!")
+        logger.error("https://learn.microsoft.com/en-us/entra/identity-platform/access-tokens#token-formats")
+        raise HTTPException(status_code=401, detail="Microsoft Identity v1.0 access tokens are not supported.")
+
     if rsa_key:
         rsa_pem_key = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(rsa_key))
         rsa_pem_key_bytes = rsa_pem_key.public_bytes(
@@ -99,10 +111,10 @@ async def validate_token(request: Request):
         except jwt.InvalidSignatureError:
             raise HTTPException(status_code=401, detail="Invalid token signature.")
         except Exception:
-            raise HTTPException(status_code=401, detail="Unable to parse authorization token.")
+            raise HTTPException(status_code=401, detail="Unable to decode authorization token.")
     else:
         raise HTTPException(status_code=401, detail="Unable to find appropriate signing key.")
-    
+
     request.state.tenant_id = payload['tid']
 
     return payload
