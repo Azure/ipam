@@ -48,6 +48,9 @@ jobs:
         env:
           IPAM_VERSION: ${{ steps.updateVersion.outputs.ipamVersion }}
         run: |
+          az acr build -r $ACR_NAME -t ipam:$IPAM_VERSION -f ./Dockerfile.deb .
+          az acr build -r $ACR_NAME -t ipamfunc:$IPAM_VERSION -f ./Dockerfile.func .
+
           az acr build -r $ACR_NAME -t ipam-engine:$IPAM_VERSION -f ./engine/Dockerfile.deb ./engine
           az acr build -r $ACR_NAME -t ipam-func:$IPAM_VERSION -f ./engine/Dockerfile.func ./engine
           az acr build -r $ACR_NAME -t ipam-ui:$IPAM_VERSION -f ./ui/Dockerfile.deb ./ui
