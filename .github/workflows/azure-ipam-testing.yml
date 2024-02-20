@@ -35,7 +35,7 @@ jobs:
           enable-AzPSSession: true
 
       - name: Checkout Azure IPAM Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           sparse-checkout: |
             deploy
@@ -133,7 +133,7 @@ jobs:
           enable-AzPSSession: true
 
       - name: Checkout Azure IPAM Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           sparse-checkout: |
             tests

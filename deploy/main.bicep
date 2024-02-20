@@ -62,7 +62,7 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 }
 
 // Log Analytics Workspace
-module logAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' ={
+module logAnalyticsWorkspace './modules/logAnalyticsWorkspace.bicep' ={
   name: 'logAnalyticsWorkspaceModule'
   scope: resourceGroup
   params: {
@@ -72,7 +72,7 @@ module logAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' ={
 }
 
 // Managed Identity for Secure Access to KeyVault
-module managedIdentity 'managedIdentity.bicep' = {
+module managedIdentity './modules/managedIdentity.bicep' = {
   name: 'managedIdentityModule'
   scope: resourceGroup
   params: {
@@ -82,7 +82,7 @@ module managedIdentity 'managedIdentity.bicep' = {
 }
 
 // KeyVault for Secure Values
-module keyVault 'keyVault.bicep' = {
+module keyVault './modules/keyVault.bicep' = {
   name: 'keyVaultModule'
   scope: resourceGroup
   params: {
@@ -98,7 +98,7 @@ module keyVault 'keyVault.bicep' = {
 }
 
 // Cosmos DB for IPAM Database
-module cosmos 'cosmos.bicep' = {
+module cosmos './modules/cosmos.bicep' = {
   name: 'cosmosModule'
   scope: resourceGroup
   params: {
@@ -113,7 +113,7 @@ module cosmos 'cosmos.bicep' = {
 }
 
 // Storage Account for Nginx Config/Function Metadata
-module storageAccount 'storageAccount.bicep' = if (deployAsFunc) {
+module storageAccount './modules/storageAccount.bicep' = if (deployAsFunc) {
   scope: resourceGroup
   name: 'storageAccountModule'
   params: {
@@ -127,7 +127,7 @@ module storageAccount 'storageAccount.bicep' = if (deployAsFunc) {
 }
 
 // Container Registry
-module containerRegistry 'containerRegistry.bicep' = if (privateAcr) {
+module containerRegistry './modules/containerRegistry.bicep' = if (privateAcr) {
   scope: resourceGroup
   name: 'containerRegistryModule'
   params: {
@@ -138,7 +138,7 @@ module containerRegistry 'containerRegistry.bicep' = if (privateAcr) {
 }
 
 // App Service w/ Docker Compose + CI
-module appService 'appService.bicep' = if (!deployAsFunc) {
+module appService './modules/appService.bicep' = if (!deployAsFunc) {
   scope: resourceGroup
   name: 'appServiceModule'
   params: {
@@ -160,7 +160,7 @@ module appService 'appService.bicep' = if (!deployAsFunc) {
 }
 
 // Function App
-module functionApp 'functionApp.bicep' = if (deployAsFunc) {
+module functionApp './modules/functionApp.bicep' = if (deployAsFunc) {
   scope: resourceGroup
   name: 'functionAppModule'
   params: {

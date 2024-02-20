@@ -1,8 +1,8 @@
-@description('App Service Name')
-param appServiceName string
+@description('Function App Name')
+param functionAppName string
 
-@description('App Service Plan Name')
-param appServicePlanName string
+@description('Function Plan Name')
+param functionPlanName string
 
 @description('CosmosDB URI')
 param cosmosDbUri string
@@ -28,7 +28,10 @@ param managedIdentityId string
 @description('Managed Identity ClientId')
 param managedIdentityClientId string
 
-@description('Log Analytics Worskpace ID')
+@description('Storage Account Name')
+param storageAccountName string
+
+@description('Log Analytics Workspace ID')
 param workspaceId string
 
 @description('Flag to Deploy IPAM as a Container')
@@ -43,25 +46,27 @@ param privateAcrUri string
 // ACR Uri Variable
 var acrUri = privateAcr ? privateAcrUri : 'azureipam.azurecr.io'
 
-resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
-  name: appServicePlanName
+resource storageAccount 'Microsoft.Storage/storageAccounts@2021-06-01' existing = {
+  name: storageAccountName
+}
+
+resource functionPlan 'Microsoft.Web/serverfarms@2021-02-01' = {
+  name: functionPlanName
   location: location
   sku: {
-    name: 'P1v3'
-    size: 'P1v3'
-    tier: 'PremiumV3'
-    capacity: 1
+    name: 'EP1'
+    tier: 'ElasticPremium'
   }
-  kind: 'linux'
+  kind: 'elastic'
   properties: {
     reserved: true
   }
 }
 
-resource appService 'Microsoft.Web/sites@2021-02-01' = {
-  name: appServiceName
+resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
+  name: functionAppName
   location: location
-  kind: deployAsContainer ? 'app,linux,container' : 'app,linux'
+  kind: 'functionapp,linux'
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
@@ -70,14 +75,12 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
   }
   properties: {
     httpsOnly: true
-    serverFarmId: appServicePlan.id
+    serverFarmId: functionPlan.id
     keyVaultReferenceIdentity: managedIdentityId
     siteConfig: {
       acrUseManagedIdentityCreds: privateAcr ? true : false
       acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
-      alwaysOn: true
-      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:latest' : 'PYTHON|3.9'
-      appCommandLine: !deployAsContainer ? 'init.sh 8000' : null
+      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipamfunc:latest' : 'Python|3.9'
       healthCheckPath: '/api/status'
       appSettings: concat(
         [
@@ -122,28 +125,48 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
             value: keyVaultUri
           }
           {
+            name: 'AzureWebJobsStorage'
+            value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+          }
+          {
+            name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
+            value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+          }
+          {
+            name: 'WEBSITE_CONTENTSHARE'
+            value: toLower(functionAppName)
+          }
+          {
+            name: 'FUNCTIONS_EXTENSION_VERSION'
+            value: '~4'
+          }
+          {
+            name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+            value: applicationInsights.properties.InstrumentationKey
+          }
+          {
             name: 'WEBSITE_HEALTHCHECK_MAXPINGFAILURES'
             value: '2'
           }
         ],
         deployAsContainer ? [
           {
-            name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
-            value: 'true'
-          }
-          {
             name: 'DOCKER_REGISTRY_SERVER_URL'
             value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
           }
+          {
+            name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+            value: 'false'
+          }
         ] : [
+          {
+            name: 'FUNCTIONS_WORKER_RUNTIME'
+            value: 'python'
+          }
           {
             name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
             value: 'true'
           }
-          // {
-          //   name: 'POST_BUILD_COMMAND'
-          //   value: 'postBuild.sh'
-          // }
         ]
       )
     }
@@ -152,7 +175,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
 
 resource appConfigLogs 'Microsoft.Web/sites/config@2021-02-01' = {
   name: 'logs'
-  parent: appService
+  parent: functionApp
   properties: {
     detailedErrorMessages: {
       enabled: true
@@ -170,9 +193,20 @@ resource appConfigLogs 'Microsoft.Web/sites/config@2021-02-01' = {
   }
 }
 
+resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: functionAppName
+  location: location
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    Request_Source: 'rest'
+    WorkspaceResourceId: workspaceId
+  }
+}
+
 resource diagnosticSettingsPlan 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'diagSettings'
-  scope: appServicePlan
+  scope: functionPlan
   properties: {
     metrics: [
       {
@@ -190,71 +224,15 @@ resource diagnosticSettingsPlan 'Microsoft.Insights/diagnosticSettings@2021-05-0
 
 resource diagnosticSettingsApp 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'diagSettings'
-  scope: appService
+  scope: functionApp
   properties: {
     logs: [
       {
-        category: 'AppServiceAntivirusScanAuditLogs'
+        category: 'FunctionAppLogs'
         enabled: true
         retentionPolicy: {
           days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceHTTPLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceConsoleLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceAppLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceFileAuditLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceAuditLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceIPSecAuditLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServicePlatformLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
+          enabled: false 
         }
       }
     ]
@@ -272,4 +250,4 @@ resource diagnosticSettingsApp 'Microsoft.Insights/diagnosticSettings@2021-05-01
   }
 }
 
-output appServiceHostName string = appService.properties.defaultHostName
+output functionAppHostName string = functionApp.properties.defaultHostName

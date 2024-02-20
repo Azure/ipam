@@ -47,6 +47,8 @@ New-Item -ItemType Directory -Path $logpath -Force | Out-Null
 
 $versionLog = Join-Path -Path $logPath -ChildPath "version_$(get-date -format `"yyyyMMddhhmmsstt`").log"
 
+$versionSuccess = $false
+
 Start-Transcript -Path $versionLog | Out-Null
 
 try {
@@ -144,6 +146,8 @@ try {
   Write-Host "INFO: Azure IPAM versions successfully updated" -ForegroundColor Green
   Write-Host
   Write-Host "Updated Version -> v$updatedVersion" -ForegroundColor Yellow
+
+  $script:versionSuccess = $true
 }
 catch {
   $_ | Out-File -FilePath $versionLog -Append
@@ -153,4 +157,8 @@ catch {
 finally {
   Write-Host
   Stop-Transcript | Out-Null
+
+  if ($script:versionSuccess) {
+    Write-Output "ipamVersion=$updatedVersion" >> $Env:GITHUB_OUTPUT
+  }
 }

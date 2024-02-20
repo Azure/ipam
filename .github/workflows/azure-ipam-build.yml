@@ -8,18 +8,101 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 env:
   ACR_NAME: ${{ vars.IPAM_PROD_ACR }}
 
 jobs:
-  deploy:
-    name: Update Azure IPAM Containers
+  version:
+    name: Update Azure IPAM Version
     runs-on: ubuntu-latest
+    outputs:
+      ipamVersion: ${{ steps.updateVersion.outputs.ipamVersion }}
     steps:
       - run: echo "Job triggered by a ${{ github.event_name }} event to main."
 
+      - name: Checkout Azure IPAM Code
+        uses: actions/checkout@v4
+
+      - name: "Increment Azure IPAM Version"
+        id: updateVersion
+        working-directory: tools
+        shell: pwsh
+        run: |
+          $commitMsg = "${{ github.event.head_commit.message }}"
+          $version = [regex]::matches($commitMsg, '(?<=\[version:).*(?=])').value
+          $major = $commitMsg -match '(?<=\[)major(?=])'
+          $minor = $commitMsg -match '(?<=\[)minor(?=])'
+          $build = $commitMsg -match '(?<=\[)build(?=])'
+
+          try {
+            $version = [System.Version]$version
+            $newVersion = "{0}.{1}.{2}" -f $version.Major, $version.Minor, $version.Build
+          } catch {
+            $newVersion = $null
+          }
+
+          if ($newVersion) {
+            ./version.ps1 -Version $newVersion
+          } else if ($major) {
+            ./version.ps1 -BumpMajor
+          } else if ($minor) {
+            ./version.ps1 -BumpMinor
+          } else {
+            ./version.ps1 -BumpBuild
+          }
+
+      - name: "Create Azure IPAM ZIP Asset"
+        id: buildZipAsset
+        working-directory: tools
+        shell: pwsh
+        run: |
+          ./build.ps1 -Path ../assets/ 
+  
+      - name: Commit Updated Azure IPAM Code
+        id: commitCode
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "ipams@users.noreply.github.com"
+          git commit -a -m "Updated Azure IPAM Version"
+          git push
+
+  release:
+    name: Create Azure IPAM Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Azure IPAM Code
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            assets
+
+      - name: Publish Azure IPAM Release
+        id: publishRelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: v${{ needs.version.outputs.ipamVersion }}
+          release_name: Release v${{ needs.version.outputs.ipamVersion }}
+        run: |
+          gh release create "$tag_name" \
+            --repo="$GITHUB_REPOSITORY" \
+            --title="$release_name" \
+            --notes "Azure IPAM Release"
+
+      - name: Upload Azure IPAM Release Asset
+        id: uploadReleaseAsset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: v${{ needs.version.outputs.ipamVersion }}
+          asset_path: ./assets/ipam.zip
+        run: |
+          gh release upload "$tag_name" "$asset_path"
+
+  update:
+    name: Update Azure IPAM Containers
+    runs-on: ubuntu-latest
+    steps:
       - name: Azure login
         uses: azure/login@v1
         with:
@@ -29,29 +112,21 @@ jobs:
           enable-AzPSSession: true
 
       - name: Checkout Azure IPAM Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           sparse-checkout: |
             engine
             ui
             lb
 
-      - name: "Increment Azure IPAM Version"
-        id: updateVersion
-        shell: pwsh
-        run: |
-          $newVersion = "latest"
-
-          Write-Output "ipamVersion=$newVersion" >> $Env:GITHUB_OUTPUT
-
       - name: Build Azure IPAM Containers
         env:
-          IPAM_VERSION: ${{ steps.updateVersion.outputs.ipamVersion }}
+          IPAM_VERSION: ${{ needs.version.outputs.ipamVersion }}
         run: |
-          az acr build -r $ACR_NAME -t ipam:$IPAM_VERSION -f ./Dockerfile.deb .
-          az acr build -r $ACR_NAME -t ipamfunc:$IPAM_VERSION -f ./Dockerfile.func .
+          az acr build -r $ACR_NAME -t ipam:$IPAM_VERSION -t ipam:latest -f ./Dockerfile.deb .
+          az acr build -r $ACR_NAME -t ipamfunc:$IPAM_VERSION -t ipamfunc:latest -f ./Dockerfile.func .
 
-          az acr build -r $ACR_NAME -t ipam-engine:$IPAM_VERSION -f ./engine/Dockerfile.deb ./engine
-          az acr build -r $ACR_NAME -t ipam-func:$IPAM_VERSION -f ./engine/Dockerfile.func ./engine
-          az acr build -r $ACR_NAME -t ipam-ui:$IPAM_VERSION -f ./ui/Dockerfile.deb ./ui
-          az acr build -r $ACR_NAME -t ipam-lb:$IPAM_VERSION -f ./lb/Dockerfile ./lb
+          az acr build -r $ACR_NAME -t ipam-engine:$IPAM_VERSION -t ipam-engine:latest -f ./engine/Dockerfile.deb ./engine
+          az acr build -r $ACR_NAME -t ipam-func:$IPAM_VERSION -t ipam-func:latest -f ./engine/Dockerfile.func ./engine
+          az acr build -r $ACR_NAME -t ipam-ui:$IPAM_VERSION -t ipam-ui:latest -f ./ui/Dockerfile.deb ./ui
+          az acr build -r $ACR_NAME -t ipam-lb:$IPAM_VERSION -t ipam-lb:latest -f ./lb/Dockerfile ./lb
