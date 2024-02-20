@@ -53,12 +53,12 @@ jobs:
           $acrName = "$env:ACR_NAME.azurecr.io"
           $containerName = "ipam:${{ github.run_id }}-${{ github.run_attempt }}"
 
-          $bicepFile = Get-Content -Path ./appService.bicep
+          $bicepFile = Get-Content -Path ./modules/appService.bicep
 
           $bicepFile = $bicepFile -replace "azureipam.azurecr.io", $acrName
           $bicepFile = $bicepFile -replace "ipam:latest", $containerName
 
-          $bicepFile | Out-File -FilePath ./appService.bicep -Force
+          $bicepFile | Out-File -FilePath ./modules/appService.bicep -Force
 
       - name: Deploy Azure IPAM
         working-directory: deploy
