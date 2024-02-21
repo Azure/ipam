@@ -115,6 +115,10 @@ jobs:
           Write-Host ($deployDetails | Format-Table | Out-String) -NoNewline
           Write-Host "-------------------"
 
+      - name: "Sleep for 5 Minutes"
+        shell: pwsh
+        run: Start-Sleep -s 30
+
   test:
     name: Test Azure IPAM
     runs-on: ubuntu-latest
