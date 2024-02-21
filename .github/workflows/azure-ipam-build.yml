@@ -83,11 +83,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           tag_name: v${{ needs.version.outputs.ipamVersion }}
-          release_name: Release v${{ needs.version.outputs.ipamVersion }}
         run: |
           gh release create "$tag_name" \
             --repo="$GITHUB_REPOSITORY" \
-            --title="$release_name" \
+            --title="$tag_name" \
             --notes "Azure IPAM Release"
 
       - name: Upload Azure IPAM Release Asset
