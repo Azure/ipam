@@ -25,25 +25,38 @@ jobs:
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v4
 
+      - uses: actions/github-script@v7
+        id: getPullRequestData
+        with:
+          script: |
+            return (
+              await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                commit_sha: context.sha,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              })
+            ).data[0];
+
       - name: "Increment Azure IPAM Version"
         id: updateVersion
         working-directory: tools
+        env:
+          prBody: ${{ fromJson(steps.getPullRequestData.outputs.result).body }}
         shell: pwsh
         run: |
-          $commitMsg = "${{ github.event.head_commit.message }}"
-          $version = [regex]::matches($commitMsg, '(?<=\[version:).*(?=])').value
-          $major = $commitMsg -match '(?<=\[)major(?=])'
-          $minor = $commitMsg -match '(?<=\[)minor(?=])'
-          $build = $commitMsg -match '(?<=\[)build(?=])'
+          $version = [regex]::matches($env:prBody, '(?<=\[version:).*(?=])').value
+          $major = $env:prBody -match '(?<=\[)major(?=])'
+          $minor = $env:prBody -match '(?<=\[)minor(?=])'
+          $build = $env:prBody -match '(?<=\[)build(?=])'
 
           try {
             $version = [System.Version]$version
             $newVersion = "{0}.{1}.{2}" -f $version.Major, $version.Minor, $version.Build
           } catch {
-            $newVersion = $null
+            $version = $null
           }
 
-          if ($newVersion) {
+          if ($version) {
             ./version.ps1 -Version $newVersion
           } else if ($major) {
             ./version.ps1 -BumpMajor
@@ -59,7 +72,7 @@ jobs:
         shell: pwsh
         run: |
           ./build.ps1 -Path ../assets/ 
-  
+
       - name: Commit Updated Azure IPAM Code
         id: commitCode
         run: |
@@ -82,21 +95,21 @@ jobs:
         id: publishRelease
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: v${{ needs.version.outputs.ipamVersion }}
+          tagName: v${{ needs.version.outputs.ipamVersion }}
         run: |
-          gh release create "$tag_name" \
+          gh release create "$tagName" \
             --repo="$GITHUB_REPOSITORY" \
-            --title="$tag_name" \
+            --title="$tagName" \
             --notes "Azure IPAM Release"
 
       - name: Upload Azure IPAM Release Asset
         id: uploadReleaseAsset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: v${{ needs.version.outputs.ipamVersion }}
-          asset_path: ./assets/ipam.zip
+          tagName: v${{ needs.version.outputs.ipamVersion }}
+          assetPath: ./assets/ipam.zip
         run: |
-          gh release upload "$tag_name" "$asset_path"
+          gh release upload "$tagName" "$assetPath"
 
   update:
     name: Update Azure IPAM Containers

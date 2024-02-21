@@ -112,10 +112,13 @@ try {
 
     if($BumpMajor) {
       $majorVersion += 1
+      $minorVersion = 0
+      $buildVersion = 0
     }
 
     if($BumpMinor) {
       $minorVersion += 1
+      $buildVersion = 0
     }
 
     if($BumpBuild) {
