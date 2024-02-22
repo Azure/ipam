@@ -28,6 +28,9 @@ jobs:
         with:
           node-version: 18
 
+      - name: Install NPM Packages
+        run: npm install
+
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v4
 
