@@ -24,12 +24,10 @@ jobs:
       - run: echo "Job triggered by a ${{ github.event_name }} event to main."
 
       - name: "Setup NodeJS v18"
+        id: setupNode
         uses: actions/setup-node@v4
         with:
           node-version: 18
-
-      - name: Install NPM Packages
-        run: npm install
 
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v4
@@ -74,6 +72,11 @@ jobs:
           } else {
             ./version.ps1 -BumpBuild
           }
+
+      - name: Install NPM Packages
+        id: installNpmPackages
+        working-directory: ui
+        run: npm install
 
       - name: "Create Azure IPAM ZIP Asset"
         id: buildZipAsset
