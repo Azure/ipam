@@ -31,6 +31,8 @@ jobs:
 
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/github-script@v7
         id: getPullRequestData
