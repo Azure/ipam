@@ -20,6 +20,9 @@ param privateAcr bool = false
 @description('Flag to Deploy IPAM as a Function')
 param deployAsFunc bool = false
 
+@description('Flag to Deploy IPAM as a Container')
+param deployAsContainer bool = false
+
 @description('IPAM-UI App Registration Client/App ID')
 param uiAppId string = '00000000-0000-0000-0000-000000000000'
 
@@ -37,6 +40,7 @@ param tags object = {}
 param resourceNames object = {
   functionName: '${namePrefix}-${uniqueString(guid)}'
   appServiceName: '${namePrefix}-${uniqueString(guid)}'
+  functionPlanName: '${namePrefix}-asp-${uniqueString(guid)}'
   appServicePlanName: '${namePrefix}-asp-${uniqueString(guid)}'
   cosmosAccountName: '${namePrefix}-dbacct-${uniqueString(guid)}'
   cosmosContainerName: '${namePrefix}-ctr'
@@ -58,7 +62,7 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 }
 
 // Log Analytics Workspace
-module logAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' ={
+module logAnalyticsWorkspace './modules/logAnalyticsWorkspace.bicep' ={
   name: 'logAnalyticsWorkspaceModule'
   scope: resourceGroup
   params: {
@@ -68,7 +72,7 @@ module logAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' ={
 }
 
 // Managed Identity for Secure Access to KeyVault
-module managedIdentity 'managedIdentity.bicep' = {
+module managedIdentity './modules/managedIdentity.bicep' = {
   name: 'managedIdentityModule'
   scope: resourceGroup
   params: {
@@ -78,13 +82,14 @@ module managedIdentity 'managedIdentity.bicep' = {
 }
 
 // KeyVault for Secure Values
-module keyVault 'keyVault.bicep' = {
+module keyVault './modules/keyVault.bicep' = {
   name: 'keyVaultModule'
   scope: resourceGroup
   params: {
     location: location
     keyVaultName: resourceNames.keyVaultName
-    principalId:  managedIdentity.outputs.principalId
+    identityPrincipalId:  managedIdentity.outputs.principalId
+    identityClientId:  managedIdentity.outputs.clientId
     uiAppId: uiAppId
     engineAppId: engineAppId
     engineAppSecret: engineAppSecret
@@ -93,7 +98,7 @@ module keyVault 'keyVault.bicep' = {
 }
 
 // Cosmos DB for IPAM Database
-module cosmos 'cosmos.bicep' = {
+module cosmos './modules/cosmos.bicep' = {
   name: 'cosmosModule'
   scope: resourceGroup
   params: {
@@ -103,25 +108,23 @@ module cosmos 'cosmos.bicep' = {
     cosmosDatabaseName: resourceNames.cosmosDatabaseName
     keyVaultName: keyVault.outputs.keyVaultName
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
+    principalId: managedIdentity.outputs.principalId
   }
 }
 
 // Storage Account for Nginx Config/Function Metadata
-module storageAccount 'storageAccount.bicep' = if (deployAsFunc) {
+module storageAccount './modules/storageAccount.bicep' = if (deployAsFunc) {
   scope: resourceGroup
   name: 'storageAccountModule'
   params: {
     location: location
     storageAccountName: resourceNames.storageAccountName
-    // principalId: managedIdentity.outputs.principalId
-    // managedIdentityId: managedIdentity.outputs.id
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
-    // deployAsFunc: deployAsFunc
   }
 }
 
 // Container Registry
-module containerRegistry 'containerRegistry.bicep' = if (privateAcr) {
+module containerRegistry './modules/containerRegistry.bicep' = if (privateAcr) {
   scope: resourceGroup
   name: 'containerRegistryModule'
   params: {
@@ -132,14 +135,14 @@ module containerRegistry 'containerRegistry.bicep' = if (privateAcr) {
 }
 
 // App Service w/ Docker Compose + CI
-module appService 'appService.bicep' = if (!deployAsFunc) {
+module appService './modules/appService.bicep' = if (!deployAsFunc) {
   scope: resourceGroup
   name: 'appServiceModule'
   params: {
     location: location
     azureCloud: azureCloud
-    appServicePlanName: resourceNames.appServicePlanName
     appServiceName: resourceNames.appServiceName
+    appServicePlanName: resourceNames.appServicePlanName
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     databaseName: resourceNames.cosmosDatabaseName
@@ -147,20 +150,21 @@ module appService 'appService.bicep' = if (!deployAsFunc) {
     managedIdentityId: managedIdentity.outputs.id
     managedIdentityClientId: managedIdentity.outputs.clientId
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
+    deployAsContainer: deployAsContainer
     privateAcr: privateAcr
     privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
   }
 }
 
 // Function App
-module functionApp 'functionApp.bicep' = if (deployAsFunc) {
+module functionApp './modules/functionApp.bicep' = if (deployAsFunc) {
   scope: resourceGroup
   name: 'functionAppModule'
   params: {
     location: location
     azureCloud: azureCloud
-    functionAppPlanName: resourceNames.appServicePlanName
     functionAppName: resourceNames.functionName
+    functionPlanName: resourceNames.appServicePlanName
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     databaseName: resourceNames.cosmosDatabaseName
@@ -169,6 +173,7 @@ module functionApp 'functionApp.bicep' = if (deployAsFunc) {
     managedIdentityClientId: managedIdentity.outputs.clientId
     storageAccountName: resourceNames.storageAccountName
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
+    deployAsContainer: deployAsContainer
     privateAcr: privateAcr
     privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
   }

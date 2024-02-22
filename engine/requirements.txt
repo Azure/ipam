@@ -20,6 +20,7 @@ azure-mgmt-network
 azure-mgmt-resource
 azure-mgmt-resourcegraph
 azure-mgmt-managementgroups
+azure-mgmt-datafactory
 azure-keyvault-secrets
 azure-cosmos
 azure-functions

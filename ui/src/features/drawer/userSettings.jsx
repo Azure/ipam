@@ -141,7 +141,7 @@ export default function UserSettings(props) {
         fullWidth
       >
         <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
-          Settings
+          Profile
         </DialogTitle>
         <DialogContent>
           <Box

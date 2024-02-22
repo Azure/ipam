@@ -1,0 +1,50 @@
+ARG BUILD_IMAGE=mcr.microsoft.com/azure-functions/node:4-node18-appservice
+ARG SERVE_IMAGE=mcr.microsoft.com/azure-functions/python:4-python3.9-appservice
+
+FROM $BUILD_IMAGE AS builder
+
+# Disable NPM Update Notifications
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+
+# Set the Working Directory
+WORKDIR /tmp
+
+# Add `/app/node_modules/.bin` to $PATH
+ENV PATH /tmp/node_modules/.bin:$PATH
+
+# Install UI Dependencies
+COPY ./ui/package.json ./
+COPY ./ui/package-lock.json ./
+
+RUN npm install
+RUN chmod 777 node_modules
+
+# Copy UI Code
+COPY ./ui/. ./
+
+# Build IPAM UI
+RUN npm run build
+
+FROM $SERVE_IMAGE
+
+ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
+    AzureFunctionsJobHost__Logging__Console__IsEnabled=true
+
+# Disable PIP Root Warnings
+ENV PIP_ROOT_USER_ACTION=ignore
+
+# Set Working Directory
+WORKDIR /tmp
+
+# Copy Requirements File
+COPY ./engine/requirements.txt .
+
+# Upgrade PIP
+RUN pip install --upgrade pip --progress-bar off
+
+# Install Dependencies
+RUN pip install --no-cache-dir --upgrade -r ./requirements.txt --progress-bar off
+
+# Copy Application Code to Function App Root Directory
+COPY ./engine/. /home/site/wwwroot
+COPY --from=builder /tmp/dist /home/site/wwwroot/dist

@@ -45,6 +45,9 @@ export default () => {
     define: {
       IPAM_VERSION: JSON.stringify(process.env.npm_package_version),
     },
+    build: {
+      chunkSizeWarningLimit: 5120
+    },
     logLevel: 'warn'
   })
 }

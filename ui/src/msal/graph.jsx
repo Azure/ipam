@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
+import { InteractionRequiredAuthError, BrowserAuthError } from "@azure/msal-browser";
 
 import { msalInstance } from '../index';
 import { graphConfig } from "./authConfig";
@@ -25,7 +25,7 @@ async function generateToken() {
 
     return response.accessToken;
   } catch (e) {
-    if (e instanceof InteractionRequiredAuthError) {
+    if (e instanceof InteractionRequiredAuthError || e instanceof BrowserAuthError) {
       const response = await msalInstance.acquireTokenRedirect(request);
       
       return response.accessToken;

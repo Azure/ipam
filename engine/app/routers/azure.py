@@ -8,7 +8,10 @@ from fastapi import (
 from azure.core.exceptions import ClientAuthenticationError, HttpResponseError
 from azure.mgmt.compute.aio import ComputeManagementClient
 from azure.mgmt.network.aio import NetworkManagementClient
+from azure.mgmt.datafactory.aio import DataFactoryManagementClient
+from azure.mgmt.resourcegraph.aio import ResourceGraphClient
 from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
+from azure.mgmt.resourcegraph.models import QueryRequest, QueryRequestOptions, ResultFormat
 
 from typing import  List
 
@@ -286,6 +289,51 @@ async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
 
     await network_client.close()
 
+async def get_factory_map_sdk(credentials):
+    SUB_QUERY = "Resources | where type =~ 'Microsoft.DataFactory/factories' | project id, name, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId"
+
+    data_factory_map = {}
+
+    resource_graph_client = ResourceGraphClient(credentials)
+
+    query = QueryRequest(
+        query=SUB_QUERY,
+        options=QueryRequestOptions(
+            result_format=ResultFormat.object_array
+        )
+    )
+
+    poll = await resource_graph_client.resources(query)
+
+    await resource_graph_client.close()
+
+    subscription_set = set([x['subscription_id'] for x in poll.data])
+
+    for subscription in subscription_set:
+        data_factory_map[subscription] = list(filter(lambda x: x['subscription_id'] == subscription, poll.data))
+
+    return data_factory_map
+
+async def get_factory_endpoints_sdk(credentials, factory_map):
+    factory_list = []
+
+    for subscription in factory_map.keys():
+        data_factory_client = DataFactoryManagementClient(credentials, subscription)
+
+        for factory in factory_map[subscription]:
+          async for poll in data_factory_client.private_end_point_connections.list_by_factory(factory['resource_group'], factory['name']):
+              factory_data = {
+                  "name": factory['name'],
+                  "id": factory['id'],
+                  "private_endpoint_id": poll.properties.private_endpoint.id,
+              }
+
+              factory_list.append(factory_data)
+
+        await data_factory_client.close()
+
+    return factory_list
+
 @router.get(
     "/subscription",
     summary = "Get All Subscriptions"
@@ -523,6 +571,64 @@ async def pe(
     return results
 
 @router.get(
+    "/df",
+    summary = "Get All Data Factories"
+)
+async def df(
+    authorization: str = Header(None),
+    admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Azure Data Factories.
+    """
+
+    if admin:
+        creds = await get_client_credentials()
+    else:
+        user_assertion=authorization.split(' ')[1]
+        creds = await get_obo_credentials(user_assertion)
+
+    data_factory_map = await get_factory_map_sdk(creds)
+    data_factory_list = await get_factory_endpoints_sdk(creds, data_factory_map)
+
+    await creds.close()
+
+    return data_factory_list
+
+@router.get(
+    "/endpoint",
+    summary = "Get All Azure Private Endpoints (PE's & Data Factories)"
+)
+async def endpoint(
+    authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
+    admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Azure Private Endpoints (PE's & Data Factories).
+    """
+
+    tasks = [
+        asyncio.create_task(pe(authorization, admin)),
+        asyncio.create_task(df(authorization, admin))
+    ]
+
+    endpoints = await asyncio.gather(*tasks)
+
+    private_endpoints = copy.deepcopy(endpoints[0])
+    data_factories = copy.deepcopy(endpoints[1])
+
+    for factory in data_factories:
+        df_pe = next((x for x in private_endpoints if x['metadata']['pe_id'] == factory['private_endpoint_id']), None)
+
+        if df_pe:
+            df_pe['id'] = factory['id']
+            df_pe['name'] = factory['name']
+            df_pe['metadata']['orphaned'] = False
+
+    return private_endpoints
+
+@router.get(
     "/vm",
     summary = "Get All Virtual Machines"
 )
@@ -706,7 +812,7 @@ async def multi(
     tasks = []
     result_list = []
 
-    tasks.append(asyncio.create_task(multi_helper(pe, result_list, authorization, admin)))
+    tasks.append(asyncio.create_task(multi_helper(endpoint, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(vm, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(vmss, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(fwvnet, result_list, authorization, admin)))

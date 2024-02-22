@@ -229,16 +229,18 @@ const Planner = () => {
 
   React.useEffect(() => {
     if (selectedVNet && selectedPrefix && selectedMask) {
-      let prefixParts = selectedPrefix.split("/");
-      let currentMask = parseInt(prefixParts[1], 10);
+      // let prefixParts = selectedPrefix.split("/");
+      // let currentMask = parseInt(prefixParts[1], 10);
 
-      let query = {
-        address: prefixParts[0],
-        netmask: currentMask,
-        netmaskRange: { max: selectedMask.value, min: currentMask || 16 },
-      };
+      // let query = {
+      //   address: prefixParts[0],
+      //   netmask: currentMask,
+      //   netmaskRange: { max: selectedMask.value, min: currentMask || 16 },
+      // };
 
-      let subnetsObj = availableSubnets(query, exclusions);
+      // let subnetsObj = availableSubnets(query, exclusions);
+
+      let subnetsObj = availableSubnets(selectedPrefix, selectedMask.value, exclusions);
 
       setSubnetData(subnetsObj);
     } else {
@@ -388,13 +390,13 @@ const Planner = () => {
         <Box sx={{ flexGrow: 1, pb: 3, pr: 3, pl: 3, overflowY: 'auto', overflowX: 'hidden' }}>
           {
             subnetData &&
-            [...new Set(subnetData.subnets.map((x) => x.mask))].map((mask) => {
+            [...new Set(subnetData.map((x) => x.mask))].map((mask) => {
             return (
               <React.Fragment key={`fragment-${mask}`}>
-                <Separator key={`sep-${mask}`} name={mask} total={subnetData.subnets.filter((x) => x.mask === mask).length} used={subnetData.subnets.filter((x) => x.mask === mask && x.overlap).length} />
+                <Separator key={`sep-${mask}`} name={mask} total={subnetData.filter((x) => x.mask === mask).length} used={subnetData.filter((x) => x.mask === mask && x.overlap).length} />
                 <Grid key={`grid-container-${mask}`} container spacing={2}>
                   {
-                    subnetData?.subnets.filter((x) => x.mask === mask).map((item) => {
+                    subnetData?.filter((x) => x.mask === mask).map((item) => {
                       return (
                         <Grid key={`grid-item-${item.network}-${mask}`} xs={5} sm={3} md={2} xxl={1}>
                           <Item

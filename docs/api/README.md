@@ -1,7 +1,7 @@
-## IPAM REST API Overview
-You can interface with the full set of capabilities of IPAM via a REST API. We use Swagger to define API documentation in OpenAPI v3 Specification format.
+## Azure IPAM REST API Overview
+You can interface with the full set of capabilities of Azure IPAM via a REST API. We use Swagger to define API documentation in OpenAPI v3 Specification format.
 
-API docs can be found at the `/api/docs` path of your IPAM website. Here you will find information on methods, parameters, and request body details for all available APIs.
+API docs can be found at the `/api/docs` path of your Azure IPAM website. Here you will find information on methods, parameters, and request body details for all available APIs.
 
 ![IPAM openapi specification](./images/openapispec.png)
 
@@ -9,7 +9,7 @@ API docs can be found at the `/api/docs` path of your IPAM website. Here you wil
 You can interface with the API like you would any other REST API. We'll be using [Postman](https://www.postman.com) and [Azure PowerShell](https://docs.microsoft.com/en-us/powershell/azure/what-is-azure-powershell) for our examples. 
 
 ## Obtaining an Azure AD Token
-First things first, you'll need to obtain an Azure AD token for authentication purposes. You can retrieve one via the IPAM UI at anytime by selecting **Token** from the menu presented when clicking on your user avatar in the upper righthand corner.
+First things first, you'll need to obtain an Azure AD token for authentication purposes. You can retrieve one via the Azure IPAM UI at anytime by selecting **Token** from the menu presented when clicking on your user avatar in the upper righthand corner.
 
 ![IPAM azure ad token](./images/token.png)
 
@@ -17,7 +17,7 @@ You'll then be presented with a message notifying you that your token has been s
 
 ![IPAM azure ad token clipboard](./images/token_clipboard.png)
 
-You can also retrieve an Azure AD token from IPAM via Azure PowerShell by using the [Get-AzAccessToken](https://docs.microsoft.com/en-us/powershell/module/az.accounts/get-azaccesstoken) commandlet. The token is retrieved from the API exposed via the backend engine application registration. This is the **ResourceUrl** you will be making the access token call against via Azure PowerShell.
+You can also retrieve an Azure AD token from Azure IPAM via Azure PowerShell by using the [Get-AzAccessToken](https://docs.microsoft.com/en-us/powershell/module/az.accounts/get-azaccesstoken) commandlet. The token is retrieved from the API exposed via the backend engine application registration. This is the **ResourceUrl** you will be making the access token call against via Azure PowerShell.
 
 ![IPAM api resource url](./images/ipam_api_resource_url.png)
 
@@ -90,10 +90,10 @@ $response
 
 id        : ABNsJjXXyTRDTRCdJEJThu
 cidr      : 10.1.5.0/24
-userId    : harvey@elnica6yahoo.onmicrosoft.com
+userId    : user@ipam.onmicrosoft.com
 createdOn : 1662514052.26623
 status    : wait
 tag       : @{X-IPAM-RES-ID=ABNsJjXXyTRDTRCdJEJThu}
 ````
 
-Take a look at our **Azure Landing Zone integration** example found under the `deploy` directory in the repository for a real work example of how to automate vNET creation by means of Bicep and leveraging the IPAM API.
+Take a look at our **Azure Landing Zone integration** example found under the `deploy` directory in the repository for a real work example of how to automate vNET creation by means of Bicep and leveraging the Azure IPAM API.

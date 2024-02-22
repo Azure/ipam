@@ -7,9 +7,11 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi_restful.tasks import repeat_every
 from fastapi.encoders import jsonable_encoder
 
+from azure.identity.aio import ManagedIdentityCredential
+
 from azure.cosmos.aio import CosmosClient
 from azure.cosmos import PartitionKey
-from azure.cosmos.exceptions import CosmosResourceExistsError, CosmosResourceNotFoundError
+from azure.cosmos.exceptions import CosmosResourceExistsError, CosmosResourceNotFoundError, CosmosHttpResponseError
 
 from app.routers import (
     azure,
@@ -17,7 +19,8 @@ from app.routers import (
     admin,
     user,
     space,
-    tool
+    tool,
+    status
 )
 
 from app.logs.logs import ipam_logger as logger
@@ -26,6 +29,10 @@ import os
 import re
 import uuid
 import copy
+import json
+import shutil
+import tempfile
+import traceback
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -37,7 +44,15 @@ from app.routers.common.helper import (
     cosmos_replace
 )
 
-BUILD_DIR = os.path.join(os.getcwd(), "app", "build")
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+BUILD_DIR = os.path.join(os.getcwd(), "dist")
+
+try:
+    UI_APP_ID = uuid.UUID(os.environ.get('UI_APP_ID'))
+    VALID_APP_ID = UI_APP_ID != uuid.UUID(int=0)
+except:
+    UI_APP_ID = None
+    VALID_APP_ID = False
 
 description = """
 Azure IPAM is a lightweight solution developed on top of the Azure platform designed to help Azure customers manage their enterprise IP Address space easily and effectively.
@@ -46,7 +61,7 @@ Azure IPAM is a lightweight solution developed on top of the Azure platform desi
 app = FastAPI(
     title = "Azure IPAM",
     description = description,
-    version = "2.1.0",
+    version = globals.IPAM_VERSION,
     contact = {
         "name": "Azure IPAM Team",
         "url": "https://github.com/azure/ipam",
@@ -91,6 +106,11 @@ app.include_router(
     prefix = "/api"
 )
 
+app.include_router(
+    status.router,
+    prefix = "/api"
+)
+
 @app.get(
     "/api/{full_path:path}",
     include_in_schema = False
@@ -128,10 +148,10 @@ app.add_middleware(
     minimum_size = 500
 )
 
-if os.path.isdir(BUILD_DIR):
+if os.path.isdir(BUILD_DIR) and UI_APP_ID and VALID_APP_ID:
     app.mount(
-        "/static/",
-        StaticFiles(directory = Path(BUILD_DIR) / "static"),
+        "/assets/",
+        StaticFiles(directory = Path(BUILD_DIR) / "assets"),
         name = "static"
     )
 
@@ -151,19 +171,27 @@ if os.path.isdir(BUILD_DIR):
     def read_index(request: Request, full_path: str):
         target_file = BUILD_DIR + "/" + full_path
 
-        # print('look for: ', full_path, target_file)
+        print('look for: ', full_path, target_file)
         if os.path.exists(target_file):
             return FileResponse(target_file)
 
         return FileResponse(BUILD_DIR + "/index.html")
 
 async def db_upgrade():
-    cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+    managed_identity_credential = ManagedIdentityCredential(
+        client_id = globals.MANAGED_IDENTITY_ID
+    )
 
-    database_name = "ipam-db"
+    cosmos_client = CosmosClient(
+        globals.COSMOS_URL,
+        credential=globals.COSMOS_KEY if globals.COSMOS_KEY else managed_identity_credential,
+        transport=globals.SHARED_TRANSPORT
+    )
+
+    database_name = globals.DATABASE_NAME
     database = cosmos_client.get_database_client(database_name)
 
-    container_name = "ipam-container"
+    container_name = globals.CONTAINER_NAME
     container = database.get_container_client(container_name)
 
     try:
@@ -352,47 +380,106 @@ async def db_upgrade():
     #     logger.info("No existing Virtual Hubs to patch...")
 
     await cosmos_client.close()
+    await managed_identity_credential.close()
 
 @app.on_event("startup")
-async def set_globals():
-    client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
+async def ipam_startup():
+    global BUILD_DIR
+
+    if os.path.exists(BUILD_DIR):
+        if(os.environ.get('FUNCTIONS_WORKER_RUNTIME')):
+            new_build_dir = os.path.join(tempfile.gettempdir(), "dist")
+
+            shutil.copytree(BUILD_DIR, new_build_dir)
+
+            BUILD_DIR = new_build_dir
+
+        release_data = {}
+
+        path = '/etc/os-release' if os.path.exists('/etc/os-release') else '/usr/lib/os-release'
+
+        release_info = open(path, 'r')
+        release_values = release_info.read().splitlines()
+        cleaned_values = [i for i in release_values if i]
+
+        for value in cleaned_values:
+            clean_value = value.strip()
+            value_parts = clean_value.split('=')
+            release_data[value_parts[0]] = value_parts[1].replace('"', '')
+
+        os.environ['VITE_CONTAINER_IMAGE_ID'] = release_data['ID']
+        os.environ['VITE_CONTAINER_IMAGE_VERSION'] = release_data['VERSION_ID']
+        os.environ['VITE_CONTAINER_IMAGE_CODENAME'] = release_data['VERSION'].split(" ")[1][1:-1].lower()
+        os.environ['VITE_CONTAINER_IMAGE_PRETTY_NAME'] = release_data['PRETTY_NAME']
+
+        env_data = {
+            'VITE_AZURE_ENV': os.environ.get('AZURE_ENV'),
+            'VITE_UI_ID': os.environ.get('UI_APP_ID'),
+            'VITE_ENGINE_ID': os.environ.get('ENGINE_APP_ID'),
+            'VITE_TENANT_ID': os.environ.get('TENANT_ID'),
+            'VITE_OS_NAME': release_data['PRETTY_NAME']
+        }
+
+        env_data_js = "window.env = " + json.dumps(env_data, indent=4) + "\n"
+
+        env_file = os.path.join(BUILD_DIR, "env.js")
+
+        with open(env_file, "w") as env_file:
+            env_file.write(env_data_js)
+
+    managed_identity_credential = ManagedIdentityCredential(
+        client_id = globals.MANAGED_IDENTITY_ID
+    )
+
+    cosmos_client = CosmosClient(
+        globals.COSMOS_URL,
+        credential=globals.COSMOS_KEY if globals.COSMOS_KEY else managed_identity_credential,
+        transport=globals.SHARED_TRANSPORT
+    )
 
     database_name = globals.DATABASE_NAME
 
     try:
-        logger.info('Creating Database...')
-        database = await client.create_database(
+        logger.info('Verifying Database Exists...')
+        database = await cosmos_client.create_database_if_not_exists(
             id = database_name
         )
-    except CosmosResourceExistsError:
-        logger.warning('Database exists! Using existing database...')
-        database = client.get_database_client(database_name)
+    except CosmosHttpResponseError as e:
+        logger.error('Cosmos database does not exist, error initializing Azure IPAM!')
+        raise e
+        
+    
+    database = cosmos_client.get_database_client(database_name)
 
     container_name = globals.CONTAINER_NAME
 
     try:
-        logger.info('Creating Container...')
-        container = await database.create_container(
+        logger.info('Verifying Container Exists...')
+        container = await database.create_container_if_not_exists(
             id = container_name,
             partition_key = PartitionKey(path = "/tenant_id")
         )
-    except CosmosResourceExistsError:
-        logger.warning('Container exists! Using existing container...')
-        container = database.get_container_client(container_name)
+    except CosmosHttpResponseError as e:
+        logger.error('Cosmos container does not exist, error initializing Azure IPAM!')
+        raise e
+    
+    container = database.get_container_client(container_name)
 
-    await client.close()
+    await cosmos_client.close()
+    await managed_identity_credential.close()
 
     await db_upgrade()
 
-# https://github.com/yuval9313/FastApi-RESTful/issues/138
 @app.on_event("startup")
-@repeat_every(seconds = 60, wait_first = True) # , wait_first=True
+@repeat_every(seconds = 60, wait_first = True)
 async def find_reservations() -> None:
     if not os.environ.get("FUNCTIONS_WORKER_RUNTIME"):
         try:
             await azure.match_resv_to_vnets()
         except Exception as e:
             logger.error('Error running network check loop!')
+            tb = traceback.format_exc()
+            logger.debug(tb)
             raise e
 
 @app.exception_handler(StarletteHTTPException)

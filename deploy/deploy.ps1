@@ -6,27 +6,39 @@
 
 # Set minimum version requirements
 #Requires -Version 7.2
-#Requires -Modules @{ ModuleName="Az"; ModuleVersion="8.0.0"}
-#Requires -Modules @{ ModuleName="Microsoft.Graph"; ModuleVersion="1.9.6"}
+#Requires -Modules @{ ModuleName="Az"; ModuleVersion="10.3.0"}
+#Requires -Modules @{ ModuleName="Microsoft.Graph"; ModuleVersion="2.0.0"}
 
 # Intake and set global parameters
-[CmdletBinding(DefaultParameterSetName = 'Full')]
+[CmdletBinding(DefaultParameterSetName = 'AppContainer')]
 param(
   [Parameter(ValueFromPipelineByPropertyName = $true,
     Mandatory = $true,
-    ParameterSetName = 'Full')]
+    ParameterSetName = 'App')]
   [Parameter(ValueFromPipelineByPropertyName = $true,
     Mandatory = $true,
-    ParameterSetName = 'TemplateOnly')]
+    ParameterSetName = 'AppContainer')]
   [Parameter(ValueFromPipelineByPropertyName = $true,
     Mandatory = $true,
     ParameterSetName = 'Function')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $true,
+    ParameterSetName = 'FunctionContainer')]
   [string]
   $Location,
 
   [Parameter(ValueFromPipelineByPropertyName = $true,
     Mandatory = $false,
-    ParameterSetName = 'Full')]
+    ParameterSetName = 'App')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'AppContainer')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'FunctionContainer')]
   [Parameter(ValueFromPipelineByPropertyName = $true,
     Mandatory = $false,
     ParameterSetName = 'AppsOnly')]
@@ -35,73 +47,132 @@ param(
 
   [Parameter(ValueFromPipelineByPropertyName = $true,
     Mandatory = $false,
-    ParameterSetName = 'Full')]
+    ParameterSetName = 'App')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'AppContainer')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'FunctionContainer')]
   [Parameter(ValueFromPipelineByPropertyName = $true,
     Mandatory = $false,
     ParameterSetName = 'AppsOnly')]
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false,
-    ParameterSetName = 'Function')]
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false,
-    ParameterSetName = 'FuncAppsOnly')]
   [string]
   $EngineAppName = 'ipam-engine-app',
 
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Full')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'TemplateOnly')]
-  [Parameter(Mandatory = $false,
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'App')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'AppContainer')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
     ParameterSetName = 'Function')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'FunctionContainer')]
   [ValidateLength(1,7)]
   [string]
   $NamePrefix,
 
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Full')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'TemplateOnly')]
-  [Parameter(Mandatory = $false,
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'App')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'AppContainer')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
     ParameterSetName = 'Function')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'FunctionContainer')]
   [hashtable]
   $Tags,
 
-  [Parameter(Mandatory = $true,
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $true,
     ParameterSetName = 'AppsOnly')]
-  [Parameter(Mandatory = $true,
-    ParameterSetName = 'FuncAppsOnly')]
   [switch]
   $AppsOnly,
 
-  [Parameter(Mandatory = $true,
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'App')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'AppContainer')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
     ParameterSetName = 'Function')]
-  [Parameter(Mandatory = $true,
-    ParameterSetName = 'FuncAppsOnly')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'FunctionContainer')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'AppsOnly')]
   [switch]
-  $AsFunction,
+  $DisableUI,
 
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Full')]
-  [Parameter(Mandatory = $false,
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $true,
     ParameterSetName = 'Function')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'TemplateOnly')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $true,
+    ParameterSetName = 'FunctionContainer')]
+  [switch]
+  $Function,
+
+  # [Parameter(ValueFromPipelineByPropertyName = $true,
+  #   Mandatory = $true,
+  #   ParameterSetName = 'AppContainer')]
+  # [Parameter(ValueFromPipelineByPropertyName = $true,
+  #   Mandatory = $true,
+  #   ParameterSetName = 'FunctionContainer')]
+  # [switch]
+  # $Container,
+
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $true,
+    ParameterSetName = 'App')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $true,
+    ParameterSetName = 'Function')]
+  [switch]
+  $Native,
+
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'AppContainer')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'FunctionContainer')]
   [switch]
   $PrivateACR,
 
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Full')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'Function')]
-  [Parameter(Mandatory = $false,
-    ParameterSetName = 'TemplateOnly')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'AppContainer')]
   [ValidateSet('Debian', 'RHEL')]
   [string]
   $ContainerType = 'Debian',
 
-  [Parameter(Mandatory = $true,
-    ParameterSetName = 'TemplateOnly')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'App')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'AppContainer')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'FunctionContainer')]
   [ValidateScript({
     if(-Not ($_ | Test-Path) ){
       throw [System.ArgumentException]::New("Target file or does not exist.")
@@ -122,6 +193,7 @@ DynamicParam {
   $validators = @{
     functionName = '^(?=^.{2,59}$)([^-][\w-]*[^-])$'
     appServiceName = '^(?=^.{2,59}$)([^-][\w-]*[^-])$'
+    functionPlanName = '^(?=^.{1,40}$)([\w-]*)$'
     appServicePlanName = '^(?=^.{1,40}$)([\w-]*)$'
     cosmosAccountName = '^(?=^.{3,44}$)([^-][a-z0-9-]*[^-])$'
     cosmosContainerName = '^(?=^.{1,255}$)([^/\\#?]*)$'
@@ -138,29 +210,32 @@ DynamicParam {
     $validators.Remove('containerRegistryName')
   }
 
-  if(-not $AsFunction) {
+  if(-not $Function) {
     $validators.Remove('functionName')
+    $validators.Remove('functionPlanName')
     $validators.Remove('storageAccountName')
   }
 
-  if($AsFunction) {
+  if($Function) {
     $validators.Remove('appServiceName')
+    $validators.Remove('appServicePlanName')
   }
 
-  $attrFull = [System.Management.Automation.ParameterAttribute]::new()
-  $attrFull.ParameterSetName = 'ResourceNames'
-  $attrFull.ParameterSetName = "Full"
-  $attrFull.Mandatory = $false
+  $attrApp = [System.Management.Automation.ParameterAttribute]::new()
+  $attrApp.ParameterSetName = "App"
+  $attrApp.Mandatory = $false
 
-  $attrTemplateOnly = [System.Management.Automation.ParameterAttribute]::new()
-  $attrTemplateOnly.ParameterSetName = 'ResourceNames'
-  $attrTemplateOnly.ParameterSetName = "TemplateOnly"
-  $attrTemplateOnly.Mandatory = $false
+  $attrAppContainer = [System.Management.Automation.ParameterAttribute]::new()
+  $attrAppContainer.ParameterSetName = "AppContainer"
+  $attrAppContainer.Mandatory = $false
 
   $attrFunction = [System.Management.Automation.ParameterAttribute]::new()
-  $attrFunction.ParameterSetName = 'ResourceNames'
   $attrFunction.ParameterSetName = "Function"
   $attrFunction.Mandatory = $false
+
+  $attrFunctionContainer = [System.Management.Automation.ParameterAttribute]::new()
+  $attrFunctionContainer.ParameterSetName = "FunctionContainer"
+  $attrFunctionContainer.Mandatory = $false
 
   $attrValidation = [System.Management.Automation.ValidateScriptAttribute]::new({
     $invalidFields = [System.Collections.ArrayList]@()
@@ -178,7 +253,8 @@ DynamicParam {
 
     if ($invalidFields -or $missingFields) {
       $deploymentType = $PrivateAcr ? "'$($PSCmdlet.ParameterSetName) w/ Private ACR'" : $PSCmdlet.ParameterSetName
-      Write-Host "ERROR: Missing or improperly formatted field(s) in 'ResourceNames' parameter for deploment type '$deploymentType'" -ForegroundColor Red
+      Write-Host
+      Write-Host "ERROR: Missing or improperly formatted field(s) in 'ResourceNames' parameter for deploment type $deploymentType" -ForegroundColor Red
 
       foreach ($field in $invalidFields) {
         Write-Host "ERROR: Invalid Field ->" $field -ForegroundColor Red
@@ -191,7 +267,7 @@ DynamicParam {
       Write-Host "ERROR: Please refer to the 'Naming Rules and Restrictions for Azure Resources'" -ForegroundColor Red
       Write-Host "ERROR: " -ForegroundColor Red -NoNewline
       Write-Host "https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules" -ForegroundColor Yellow
-      Write-Host ""
+      Write-Host
 
       throw [System.ArgumentException]::New("One of the required resource names is missing or invalid.")
     }
@@ -200,9 +276,10 @@ DynamicParam {
   })
 
   $attributeCollection = [System.Collections.ObjectModel.Collection[System.Attribute]]::new()
-  $attributeCollection.Add($attrFull)
-  $attributeCollection.Add($attrTemplateOnly)
+  $attributeCollection.Add($attrApp)
+  $attributeCollection.Add($attrAppContainer)
   $attributeCollection.Add($attrFunction)
+  $attributeCollection.Add($attrFunctionContainer)
   $attributeCollection.Add($attrValidation)
 
   $param = [System.Management.Automation.RuntimeDefinedParameter]::new('ResourceNames', [hashtable], $attributeCollection)
@@ -218,30 +295,43 @@ process {
   $AZURE_ENV_MAP = @{
     AzureCloud        = "AZURE_PUBLIC"
     AzureUSGovernment = "AZURE_US_GOV"
+    USSec             = "AZURE_US_GOV_SECRET"
     AzureGermanCloud  = "AZURE_GERMANY"
     AzureChinaCloud   = "AZURE_CHINA"
   }
 
+  # Root Directory
+  $ROOT_DIR = (Get-Item $($MyInvocation.MyCommand.Path)).Directory.Parent.FullName
+
+  # Minimum Required Azure CLI Version
   $MIN_AZ_CLI_VER = [System.Version]'2.35.0'
 
+  # Check for Debug Flag
   $DEBUG_MODE = [bool]$PSCmdlet.MyInvocation.BoundParameters[“Debug”].IsPresent
 
   # Set preference variables
   $ErrorActionPreference = "Stop"
   $DebugPreference = 'SilentlyContinue'
+  $ProgressPreference = 'SilentlyContinue'
 
   # Hide Azure PowerShell SDK Warnings
   $Env:SuppressAzurePowerShellBreakingChangeWarnings = $true
 
+  # Hide Azure PowerShell SDK & Azure CLI Survey Prompts
+  $Env:AzSurveyMessage = $false
+  $Env:AZURE_CORE_SURVEY_MESSAGE = $false
+
   # Set Log File Location
-  $logPath = [Io.Path]::Combine('..', 'logs')
-  New-Item -ItemType Directory -Force -Path $logpath | Out-Null
+  $logPath = Join-Path -Path $ROOT_DIR -ChildPath "logs"
+  New-Item -ItemType Directory -Path $logpath -Force| Out-Null
 
   $debugLog = Join-Path -Path $logPath -ChildPath "debug_$(get-date -format `"yyyyMMddhhmmsstt`").log"
   $errorLog = Join-Path -Path $logPath -ChildPath "error_$(get-date -format `"yyyyMMddhhmmsstt`").log"
   $transcriptLog = Join-Path -Path $logPath -ChildPath "deploy_$(get-date -format `"yyyyMMddhhmmsstt`").log"
 
   $debugSetting = $DEBUG_MODE ? 'Continue' : 'SilentlyContinue'
+
+  $deploymentSuccess = $false
 
   Start-Transcript -Path $transcriptLog | Out-Null
 
@@ -267,8 +357,8 @@ process {
       [Parameter(Mandatory=$true)]
       [string]$AzureCloud,
       [Parameter(Mandatory=$false)]
-      [bool]$AsFunction
-    ) 
+      [bool]$DisableUI = $false
+    )
 
     $uiResourceAccess = [System.Collections.ArrayList]@(
       @{
@@ -305,10 +395,10 @@ process {
       }
     }
 
-    # Create IPAM UI Application (If not deployed as a Function App)
-    if (-not $AsFunction) {
+    # Create IPAM UI Application (If -UI:$false not specified)
+    if (-not $DisableUI) {
       Write-Host "INFO: Creating Azure IPAM UI Application" -ForegroundColor Green
-      Write-Verbose -Message "Creating Azure IPAM UI Application"
+
       $uiApp = New-AzADApplication `
         -DisplayName $UiAppName `
         -SPARedirectUri "https://replace-this-value.azurewebsites.net" `
@@ -317,20 +407,24 @@ process {
 
     $engineResourceMap = @{
       "AZURE_PUBLIC" = @{
-        ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013"
-        ResourceAccessIds = @("41094075-9dad-400e-a0bd-54e686782033")
+        ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013" # Azure Service Management
+        ResourceAccessIds = @("41094075-9dad-400e-a0bd-54e686782033") # user_impersonation
       }
       "AZURE_US_GOV" = @{
-        ResourceAppId    = "40a69793-8fe6-4db1-9591-dbc5c57b17d8"
-        ResourceAccessIds = @("8eb49ffc-05ac-454c-9027-8648349217dd", "e59ee429-1fb1-4054-b99f-f542e8dc9b95")
+        ResourceAppId    = "40a69793-8fe6-4db1-9591-dbc5c57b17d8" # Azure Service Management
+        ResourceAccessIds = @("8eb49ffc-05ac-454c-9027-8648349217dd", "e59ee429-1fb1-4054-b99f-f542e8dc9b95") # user_impersonation
+      }
+      "AZURE_US_GOV_SECRET" = @{
+        ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013" # Azure Service Management
+        ResourceAccessIds = @("41094075-9dad-400e-a0bd-54e686782033") # user_impersonation
       }
       "AZURE_GERMANY" = @{
-        ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013"
-        ResourceAccessIds = @("41094075-9dad-400e-a0bd-54e686782033")
+        ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013" # Azure Service Management
+        ResourceAccessIds = @("41094075-9dad-400e-a0bd-54e686782033") # user_impersonation
       }
       "AZURE_CHINA" = @{
-        ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013"
-        ResourceAccessIds = @("41094075-9dad-400e-a0bd-54e686782033")
+        ResourceAppId    = "797f4846-ba00-4fd7-ba43-dac1f8f63013" # Azure Service Management
+        ResourceAccessIds = @("41094075-9dad-400e-a0bd-54e686782033") # user_impersonation
       }
     }
 
@@ -385,42 +479,40 @@ process {
       RequestedAccessTokenVersion = 2
     }
 
-    # Add the UI App as a Known Client App (If not deployed as Function App)
-    if (-not $AsFunction) {
+    # Add the UI App as a Known Client App (If -UI:$false not specified)
+    if (-not $DisableUI) {
       $engineApiSettings.Add("KnownClientApplication", $knownClientApplication)
     }
 
-    # Create IPAM Engine Application
     Write-Host "INFO: Creating Azure IPAM Engine Application" -ForegroundColor Green
-    Write-Verbose -Message "Creating Azure IPAM Engine Application"
+
+    # Create IPAM Engine Application
     $engineApp = New-AzADApplication `
       -DisplayName $EngineAppName `
       -Api $engineApiSettings `
       -RequiredResourceAccess $engineResourceAccessList
 
-    # Update IPAM Engine API Endpoint (If not deployed as Function App)
-    if (-not $AsFunction) {
-      Write-Host "INFO: Updating Azure IPAM Engine API Endpoint" -ForegroundColor Green
-      Write-Verbose -Message "Updating Azure IPAM UI Engine API Endpoint"
-      Update-AzADApplication -ApplicationId $engineApp.AppId -IdentifierUri "api://$($engineApp.AppId)"
+    Write-Host "INFO: Updating Azure IPAM Engine API Endpoint" -ForegroundColor Green
 
-      $uiEngineApiAccess =@{
-        ResourceAppId = $engineApp.AppId
-        ResourceAccess = @(
-          @{
-            Id = $engineApiGuid
-            Type = "Scope"
-          }
-        )
-      }
+    # Update IPAM Engine API Endpoint
+    Update-AzADApplication -ApplicationId $engineApp.AppId -IdentifierUri "api://$($engineApp.AppId)"
 
-      $uiResourceAccess.Add($uiEngineApiAccess) | Out-Null
+    $uiEngineApiAccess =@{
+      ResourceAppId = $engineApp.AppId
+      ResourceAccess = @(
+        @{
+          Id = $engineApiGuid
+          Type = "Scope"
+        }
+      )
     }
 
-    # Update IPAM UI Application Resource Access (If not deployed as Function App)
-    if (-not $AsFunction) {
+    $uiResourceAccess.Add($uiEngineApiAccess) | Out-Null
+
+    # Update IPAM UI Application Resource Access (If -UI:$false not specified)
+    if (-not $DisableUI) {
       Write-Host "INFO: Updating Azure IPAM UI Application Resource Access" -ForegroundColor Green
-      Write-Verbose -Message "Updating Azure IPAM UI Application Resource Access"
+
       Update-AzADApplication -ApplicationId $uiApp.AppId -RequiredResourceAccess $uiResourceAccess
 
       $uiObject = Get-AzADApplication -ApplicationId $uiApp.AppId
@@ -428,38 +520,41 @@ process {
     
     $engineObject = Get-AzADApplication -ApplicationId $engineApp.AppId
 
-    # Create IPAM UI Service Principal (If not deployed as Function App)
-    if (-not $AsFunction) {
+    # Create IPAM UI Service Principal (If -UI:$false not specified)
+    if (-not $DisableUI) {
       Write-Host "INFO: Creating Azure IPAM UI Service Principal" -ForegroundColor Green
-      Write-Verbose -Message "Creating Azure IPAM UI Service Principal"
+
       New-AzADServicePrincipal -ApplicationObject $uiObject | Out-Null
     }
 
     $scope = "/providers/Microsoft.Management/managementGroups/$TenantId"
 
-    # Create IPAM Engine Service Principal
     Write-Host "INFO: Creating Azure IPAM Engine Service Principal" -ForegroundColor Green
-    Write-Verbose -Message "Creating Azure IPAM Engine Service Principal"
+
+    # Create IPAM Engine Service Principal
     New-AzADServicePrincipal -ApplicationObject $engineObject `
                             -Role "Reader" `
                             -Scope $scope `
                             | Out-Null
 
-    # Create IPAM Engine Secret
     Write-Host "INFO: Creating Azure IPAM Engine Secret" -ForegroundColor Green
-    Write-Verbose -Message "Creating Azure IPAM Engine Secret"
+
+    # Create IPAM Engine Secret
     $engineSecret = New-AzADAppCredential -ApplicationObject $engineObject -StartDate (Get-Date) -EndDate (Get-Date).AddYears(2)
 
-    Write-Host "INFO: Azure IPAM Engine & UI Applications/Service Principals created successfully" -ForegroundColor Green
-    Write-Verbose -Message "Azure IPAM Engine & UI Applications/Service Principals created successfully"
+    if (-not $DisableUI) {
+      Write-Host "INFO: Azure IPAM Engine & UI Applications/Service Principals created successfully" -ForegroundColor Green
+    } else {
+      Write-Host "INFO: Azure IPAM Engine Application/Service Principal created successfully" -ForegroundColor Green
+    }
 
     $appDetails = @{
       EngineAppId  = $engineApp.AppId
       EngineSecret = $engineSecret.SecretText
     }
 
-    # Add UI AppID to AppDetails (If not deployed as Function App)
-    if (-not $AsFunction) {
+    # Add UI AppID to AppDetails (If -UI:$false not specified)
+    if (-not $DisableUI) {
       $appDetails.Add("UIAppId", $uiApp.AppId)
     }
 
@@ -469,13 +564,13 @@ process {
   Function Grant-AdminConsent {
     Param(
       [Parameter(Mandatory=$false)]
-      [string]$UIAppId,
+      [string]$UIAppId = [GUID]::Empty,
       [Parameter(Mandatory=$true)]
       [string]$EngineAppId,
-      [Parameter(Mandatory=$false)]
-      [bool]$AsFunction,
       [Parameter(Mandatory=$true)]
-      [string]$AzureCloud
+      [string]$AzureCloud,
+      [Parameter(Mandatory=$false)]
+      [bool]$DisableUI = $false
     )
 
     $msGraphMap = @{
@@ -486,6 +581,10 @@ process {
       AZURE_US_GOV  = @{
         Endpoint    = "graph.microsoft.us"
         Environment = "USGov"
+      }
+      AZURE_US_GOV_SECRET  = @{
+        Endpoint    = "graph.cloudapi.microsoft.scloud"
+        Environment = "USSec"
       }
       AZURE_GERMANY = @{
         Endpoint    = "graph.microsoft.de"
@@ -515,19 +614,20 @@ process {
     $accesstoken = (Get-AzAccessToken -Resource "https://$($msGraphMap[$AzureCloud].Endpoint)/").Token
 
     # Switch Access Token to SecureString if Graph Version is 2.x
-    $graphVersion = [System.Version](Get-InstalledModule -Name Microsoft.Graph).Version
+    $graphVersion = [System.Version](Get-InstalledModule -Name Microsoft.Graph | Sort-Object -Property Version | Select-Object -Last 1).Version `
+      ?? (Get-Module -Name Microsoft.Graph | Sort-Object -Property Version | Select-Object -Last 1).Version
 
     if ($graphVersion.Major -gt 1) {
       $accesstoken = ConvertTo-SecureString $accesstoken -AsPlainText -Force
     }
 
-    # Connect to Microsoft Graph
     Write-Host "INFO: Logging in to Microsoft Graph" -ForegroundColor Green
-    Write-Verbose -Message "Logging in to Microsoft Graph"
+
+    # Connect to Microsoft Graph
     Connect-MgGraph -Environment $msGraphMap[$AzureCloud].Environment -AccessToken $accesstoken | Out-Null
 
-    # Fetch Azure IPAM UI Service Principal (If not deployed as Function App)
-    if (-not $AsFunction) {
+    # Fetch Azure IPAM UI Service Principal (If -UI:$false not specified)
+    if (-not $DisableUI) {
       $uiSpn = Get-AzADServicePrincipal `
         -ApplicationId $UIAppId
     }
@@ -536,10 +636,10 @@ process {
     $engineSpn = Get-AzADServicePrincipal `
       -ApplicationId $EngineAppId
 
-    # Grant admin consent for Microsoft Graph API permissions assigned to IPAM UI application (If not deployed as Function App)
-    if (-not $AsFunction) {
+    # Grant admin consent for Microsoft Graph API permissions assigned to IPAM UI application (If -UI:$false not specified)
+    if (-not $DisableUI) {
       Write-Host "INFO: Granting admin consent for Microsoft Graph API permissions assigned to IPAM UI application" -ForegroundColor Green
-      Write-Verbose -Message "Granting admin consent for Microsoft Graph API permissions assigned to IPAM UI application"
+
       foreach($scope in $uiGraphScopes) {
         $msGraphId = Get-AzADServicePrincipal `
           -ApplicationId $scope.scopeId
@@ -553,13 +653,12 @@ process {
       }
 
       Write-Host "INFO: Admin consent for Microsoft Graph API permissions granted successfully" -ForegroundColor Green
-      Write-Verbose -Message "Admin consent for Microsoft Graph API permissions granted successfully"
     }
 
-    # Grant admin consent to the IPAM UI application for exposed API from the IPAM Engine application (If not deployed as a Function App)
-    if (-not $AsFunction) {
+    # Grant admin consent to the IPAM UI application for exposed API from the IPAM Engine application (If -UI:$false not specified)
+    if (-not $DisableUI) {
       Write-Host "INFO: Granting admin consent to the IPAM UI application for exposed API from the IPAM Engine application" -ForegroundColor Green
-      Write-Verbose -Message "Granting admin consent to the IPAM UI application for exposed API from the IPAM Engine application"
+
       New-MgOauth2PermissionGrant `
         -ResourceId $engineSpn.Id `
         -Scope "access_as_user" `
@@ -568,12 +667,11 @@ process {
         | Out-Null
 
       Write-Host "INFO: Admin consent for IPAM Engine exposed API granted successfully" -ForegroundColor Green
-      Write-Verbose -Message "Admin consent for IPAM Engine exposed API granted successfully"
     }
 
-    # Grant admin consent for Azure Service Management API permissions assigned to IPAM Engine application
     Write-Host "INFO: Granting admin consent for Azure Service Management API permissions assigned to IPAM Engine application" -ForegroundColor Green
-    Write-Verbose -Message "Granting admin consent for Azure Service Management API permissions assigned to IPAM Engine application"
+
+    # Grant admin consent for Azure Service Management API permissions assigned to IPAM Engine application
     foreach($scope in $engineGraphScopes) {
       $msGraphId = Get-AzADServicePrincipal `
         -ApplicationId $scope.scopeId
@@ -587,23 +685,21 @@ process {
     }
 
     Write-Host "INFO: Admin consent for Azure Service Management API permissions granted successfully" -ForegroundColor Green
-    Write-Verbose -Message "Admin consent for Azure Service Management API permissions granted successfully"
   }
 
   Function Save-Parameters {
     Param(
       [Parameter(Mandatory=$false)]
-      [string]$UIAppId = '00000000-0000-0000-000000000000',
+      [string]$UIAppId = [GUID]::Empty,
       [Parameter(Mandatory=$true)]
       [string]$EngineAppId,
       [Parameter(Mandatory=$true)]
       [string]$EngineSecret,
       [Parameter(Mandatory=$false)]
-      [bool]$AsFunction
+      [bool]$DisableUI = $false
     )
 
     Write-Host "INFO: Populating Bicep parameter file for infrastructure deployment" -ForegroundColor Green
-    Write-Verbose -Message "Populating Bicep parameter file for infrastructure deployment"
 
     # Retrieve JSON object from sample parameter file
     $parametersObject = Get-Content main.parameters.example.json | ConvertFrom-Json
@@ -611,20 +707,18 @@ process {
     # Update Parameter Values
     $parametersObject.parameters.engineAppId.value = $EngineAppId
     $parametersObject.parameters.engineAppSecret.value = $EngineSecret
-    $parametersObject.parameters.deployAsFunc.value = $AsFunction
 
-    if (-not $AsFunction) {
+    if (-not $DisableUI) {
       $parametersObject.parameters.uiAppId.value = $UIAppId
-      $parametersObject.parameters = $parametersObject.parameters | Select-Object * -ExcludeProperty namePrefix, tags
+      $parametersObject.parameters = $parametersObject.parameters | Select-Object -Property uiAppId, engineAppId, engineAppSecret
     } else {
-      $parametersObject.parameters = $parametersObject.parameters | Select-Object * -ExcludeProperty uiAppId, namePrefix, tags
+      $parametersObject.parameters = $parametersObject.parameters | Select-Object -Property engineAppId, engineAppSecret
     }
 
     # Output updated parameter file for Bicep deployment
     $parametersObject | ConvertTo-Json -Depth 4 | Out-File -FilePath main.parameters.json
 
     Write-Host "INFO: Bicep parameter file populated successfully" -ForegroundColor Green
-    Write-Verbose -Message "Bicep parameter file populated successfully"
   }
 
   Function Import-Parameters {
@@ -634,21 +728,32 @@ process {
     )
 
     Write-Host "INFO: Importing values from Bicep parameters file" -ForegroundColor Green
-    Write-Verbose -Message "Importing values from Bicep parameters file"
 
     # Retrieve JSON object from sample parameter file
     $parametersObject = Get-Content $ParameterFile | ConvertFrom-Json
 
     # Read Values from Parameters
-    $UIAppId = $parametersObject.parameters.uiAppId.value
+    $UIAppId = $parametersObject.parameters.uiAppId.value ?? [GUID]::Empty
     $EngineAppId = $parametersObject.parameters.engineAppId.value
     $EngineSecret = $parametersObject.parameters.engineAppSecret.value
-    $script:AsFunction = $parametersObject.parameters.deployAsFunc.value
+    $script:DisableUI = ($UIAppId -eq [GUID]::Empty) ? $true : $false
 
-    $deployType = $script:AsFunction ? 'Function' : 'Full'
+    if ((-not $EngineAppId) -or (-not $EngineSecret)) {
+      Write-Host "ERROR: Missing required parameters from Bicep parameter file" -ForegroundColor Red
+      Write-Host "ERROR: Please ensure the following parameters are present in the Bicep parameter file" -ForegroundColor Red
+      Write-Host "ERROR: Required: [engineAppId, engineAppSecret]" -ForegroundColor Red
+      Write-Host ""
+      Write-Host "ERROR: Please refer to the deployment documentation for more information" -ForegroundColor Red
+      Write-Host "ERROR: " -ForegroundColor Red -NoNewline
+      Write-Host "https://azure.github.io/ipam/#/deployment/README" -ForegroundColor Yellow
+      Write-Host ""
 
-    Write-Host "INFO: Successfully import Bicep parameter values for $deployType deployment" -ForegroundColor Green
-    Write-Verbose -Message "Successfully import Bicep parameter values for $deployType deployment"
+      throw [System.ArgumentException]::New("One of the required parameters are missing or invalid.")
+    }
+
+    # $deployType = $script:AsFunction ? 'Function' : 'Full'
+
+    Write-Host "INFO: Successfully import Bicep parameter values for deployment" -ForegroundColor Green
 
     $appDetails = @{
       UIAppId      = $UIAppId
@@ -662,7 +767,7 @@ process {
   Function Deploy-Bicep {
     Param(
       [Parameter(Mandatory=$false)]
-      [string]$UIAppId = '00000000-0000-0000-0000-000000000000',
+      [string]$UIAppId = [GUID]::Empty,
       [Parameter(Mandatory=$true)]
       [string]$EngineAppId,
       [Parameter(Mandatory=$true)]
@@ -672,7 +777,9 @@ process {
       [Parameter(Mandatory=$false)]
       [string]$AzureCloud,
       [Parameter(Mandatory=$false)]
-      [bool]$AsFunction,
+      [bool]$Function,
+      [Parameter(Mandatory=$false)]
+      [bool]$Native,
       [Parameter(Mandatory=$false)]
       [bool]$PrivateAcr,
       [Parameter(Mandatory=$false)]
@@ -682,7 +789,6 @@ process {
     )
 
     Write-Host "INFO: Deploying IPAM bicep templates" -ForegroundColor Green
-    Write-Verbose -Message "Deploying bicep templates"
 
     # Instantiate deployment parameter object
     $deploymentParameters = @{
@@ -699,8 +805,12 @@ process {
       $deploymentParameters.Add('azureCloud', $AzureCloud)
     }
 
-    if($AsFunction) {
-      $deploymentParameters.Add('deployAsFunc', $AsFunction)
+    if($Function) {
+      $deploymentParameters.Add('deployAsFunc', $Function)
+    }
+
+    if(-not $Native) {
+      $deploymentParameters.Add('deployAsContainer', !$Native)
     }
 
     if($PrivateAcr) {
@@ -730,9 +840,74 @@ process {
     $DebugPreference = 'SilentlyContinue'
 
     Write-Host "INFO: IPAM bicep templates deployed successfully" -ForegroundColor Green
-    Write-Verbose -Message "IPAM bicep template deployed successfully"
 
     return $deployment
+  }
+
+  Function Publish-ZipFile {
+    Param(
+      [Parameter(Mandatory=$true)]
+      [string]$AppName,
+      [Parameter(Mandatory=$true)]
+      [string]$ResourceGroupName,
+      [Parameter(Mandatory=$false)]
+      [switch]$UseAPI
+    )
+
+    if ($UseAPI) {
+      Write-Host "INFO: Using Kudu API for ZIP Deploy" -ForegroundColor Green
+    }
+
+    $zipPath = Join-Path -Path $ROOT_DIR -ChildPath 'assets' -AdditionalChildPath "ipam.zip"
+
+    $publishRetries = 3
+    $publishSuccess = $False
+
+    if ($UseAPI) {
+      $accessToken = (Get-AzAccessToken).Token
+      $zipContents = Get-Item -Path $zipPath
+
+      $publishProfile = Get-AzWebAppPublishingProfile -Name $AppName -ResourceGroupName $ResourceGroupName
+      $zipUrl = ([System.uri]($publishProfile | Select-Xml -XPath "//publishProfile[@publishMethod='ZipDeploy']" | Select-Object -ExpandProperty Node).publishUrl).Scheme
+    }
+
+    do {
+      try {
+        if (-not $UseAPI) {
+          Publish-AzWebApp `
+            -Name $AppName `
+            -ResourceGroupName $ResourceGroupName `
+            -ArchivePath $zipPath `
+            -Restart `
+            -Force `
+            | Out-Null
+        } else {
+          Invoke-RestMethod `
+            -Uri "https://${zipUrl}/api/zipdeploy" `
+            -Method Post `
+            -ContentType "multipart/form-data" `
+            -Headers @{ "Authorization" = "Bearer $accessToken" } `
+            -Form @{ file = $zipContents } `
+            -StatusCodeVariable statusCode `
+            | Out-Null
+
+            if ($statusCode -ne 200) {
+              throw [System.Exception]::New("Error while uploading ZIP Deploy via Kudu API! ($statusCode)")
+            }
+        }
+
+        $publishSuccess = $True
+        Write-Host "INFO: ZIP Deploy archive successfully uploaded" -ForegroundColor Green
+      } catch {
+        if($publishRetries -gt 0) {
+          Write-Host "WARNING: Problem while uploading ZIP Deploy archive! Retrying..." -ForegroundColor Yellow
+          $publishRetries--
+        } else {
+          Write-Host "ERROR: Unable to upload ZIP Deploy archive!" -ForegroundColor Red
+          throw $_
+        }
+      }
+    } while ($publishSuccess -eq $False -and $publishRetries -ge 0)
   }
 
   Function Update-UIApplication {
@@ -744,7 +919,6 @@ process {
     )
 
     Write-Host "INFO: Updating UI Application with SPA configuration" -ForegroundColor Green
-    Write-Verbose -Message "Updating UI Application with SPA configuration"
 
     $appServiceEndpoint = "https://$Endpoint"
 
@@ -752,7 +926,6 @@ process {
     Update-AzADApplication -ApplicationId $UIAppId -SPARedirectUri $appServiceEndpoint 
 
     Write-Host "INFO: UI Application SPA configuration update complete" -ForegroundColor Green
-    Write-Verbose -Message "UI Application SPA configuration update complete"
   }
 
   # Main Deployment Script Section
@@ -765,25 +938,23 @@ process {
 
   try {
     if($PrivateAcr) {
-      # Verify Minimum Azure CLI Version
       Write-Host "INFO: PrivateACR flag set, verifying minimum Azure CLI version" -ForegroundColor Green
-      Write-Verbose -Message "PrivateACR flag set, verifying minimum Azure CLI version"
 
+      # Verify Minimum Azure CLI Version
       $azureCliVer = [System.Version](az version | ConvertFrom-Json).'azure-cli'
 
       if($azureCliVer -lt $MIN_AZ_CLI_VER) {
-        Write-Host "ERROR: Azure CLI must be version $MIN_AZ_CLI_VER or greater!" -ForegroundColor red
+        Write-Host "ERROR: Azure CLI must be version $MIN_AZ_CLI_VER or greater!" -ForegroundColor Red
         exit
       }
 
-      # Verify Azure PowerShell and Azure CLI Contexts Match
       Write-Host "INFO: PrivateACR flag set, verifying Azure PowerShell and Azure CLI contexts match" -ForegroundColor Green
-      Write-Verbose -Message "PrivateACR flag set, verifying Azure PowerShell and Azure CLI contexts match"
 
+      # Verify Azure PowerShell and Azure CLI Contexts Match
       $azureCliContext = $(az account show | ConvertFrom-Json) 2>$null
 
       if(-not $azureCliContext) {
-        Write-Host "ERROR: Azure CLI not logged in or no subscription has been selected!" -ForegroundColor red
+        Write-Host "ERROR: Azure CLI not logged in or no subscription has been selected!" -ForegroundColor Red
         exit
       }
 
@@ -791,216 +962,174 @@ process {
       $azurePowerShellSub = (Get-AzContext).Subscription.Id
 
       if($azurePowerShellSub -ne $azureCliSub) {
-        Write-Host "ERROR: Azure PowerShell and Azure CLI must be set to the same context!" -ForegroundColor red
+        Write-Host "ERROR: Azure PowerShell and Azure CLI must be set to the same context!" -ForegroundColor Red
         exit
       }
     }
 
-    if ($PSCmdlet.ParameterSetName -in ('Full', 'AppsOnly', 'Function', 'FuncAppsOnly')) {
-      # Fetch Tenant ID
+    if ($PSCmdlet.ParameterSetName -in ('App', 'AppContainer', 'Function', 'FunctionContainer', 'AppsOnly')) {
       Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor Green
-      Write-Verbose -Message "Fetching Tenant ID from Azure PowerShell SDK"
+
+      # Fetch Tenant ID
       $tenantId = (Get-AzContext).Tenant.Id
 
-      # Fetch Azure Cloud Type
       Write-Host "INFO: Fetching Azure Cloud type from Azure PowerShell SDK" -ForegroundColor Green
-      Write-Verbose -Message "Fetching Azure Cloud type from Azure PowerShell SDK"
+
+      # Fetch Azure Cloud Type
       $azureCloud = $AZURE_ENV_MAP[(Get-AzContext).Environment.Name]
-    }
 
-    if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly', 'Function', 'FuncTemplateOnly')) {
-      # Validate Azure Region
-      Write-Host "INFO: Validating Azure Region selected for deployment" -ForegroundColor Green
-      Write-Verbose -Message "Validating Azure Region selected for deployment"
-
-      if (Test-Location -Location $Location) {
-        Write-Host "INFO: Azure Region validated successfully" -ForegroundColor Green
-        Write-Verbose -Message "Azure Region validated successfully"
-      } else {
-        Write-Host "ERROR: Location provided is not a valid Azure Region!" -ForegroundColor red
+      # Verify Azure Cloud Type is Supported
+      if (-not [bool]$azureCloud) {
+        Write-Host "ERROR: Azure Cloud type is not currently supported!" -ForegroundColor Red
+        Write-Host
+        Write-Host "Azure Cloud type: " -ForegroundColor Yellow -NoNewline
+        Write-Host (Get-AzContext).Environment.Name -ForegroundColor Cyan
         exit
       }
     }
 
-    if ($PSCmdlet.ParameterSetName -in ('Full', 'AppsOnly', 'Function', 'FuncAppsOnly')) {
+    if ($PSCmdlet.ParameterSetName -in ('App', 'AppContainer', 'Function', 'FunctionContainer')) {
+      Write-Host "INFO: Validating Azure Region selected for deployment" -ForegroundColor Green
+
+      # Validate Azure Region
+      if (Test-Location -Location $Location) {
+        Write-Host "INFO: Azure Region validated successfully" -ForegroundColor Green
+      } else {
+        Write-Host "ERROR: Location provided is not a valid Azure Region!" -ForegroundColor Red
+        Write-Host
+        Write-Host "Azure Region: " -ForegroundColor Yellow -NoNewline
+        Write-Host $Location -ForegroundColor Cyan
+        exit
+      }
+    }
+
+    if (-not $ParameterFile) {
       $appDetails = Deploy-IPAMApplications `
         -UIAppName $UIAppName `
         -EngineAppName $EngineAppName `
         -TenantId $tenantId `
         -AzureCloud $azureCloud `
-        -AsFunction $AsFunction
+        -DisableUI $DisableUI
 
       $consentDetails = @{
         EngineAppId = $appDetails.EngineAppId
-        AsFunction = $AsFunction
       }
 
-      if ($PSCmdlet.ParameterSetName -in ('Full', 'AppsOnly')) {
+      if (-not $DisableUI) {
         $consentDetails.Add("UIAppId", $appDetails.UIAppId)
       }
 
-      Grant-AdminConsent @consentDetails -AzureCloud $azureCloud
+      Grant-AdminConsent @consentDetails -AzureCloud $azureCloud -DisableUI $DisableUI
     }
 
-    if ($PSCmdlet.ParameterSetName -in ('AppsOnly', 'FuncAppsOnly')) {
-      Save-Parameters @appDetails -AsFunction $AsFunction
+    if ($PSCmdlet.ParameterSetName -in ('AppsOnly')) {
+      Save-Parameters @appDetails -DisableUI $DisableUI
     }
 
-    if ($PSCmdlet.ParameterSetName -in ('TemplateOnly', 'FuncTemplateOnly')) {
+    if ($ParameterFile) {
       $appDetails = Import-Parameters `
         -ParameterFile $ParameterFile
     }
 
-    if ($PSCmdlet.ParameterSetName -in ('Full', 'TemplateOnly', 'Function', 'FuncTemplateOnly')) {
+    if ($PSCmdlet.ParameterSetName -in ('App', 'AppContainer', 'Function', 'FunctionContainer')) {
       $deployment = Deploy-Bicep @appDetails `
         -NamePrefix $NamePrefix `
         -AzureCloud $azureCloud `
         -PrivateAcr $PrivateAcr `
-        -AsFunction $AsFunction `
+        -Function $Function `
+        -Native $Native `
         -Tags $Tags `
         -ResourceNames $ResourceNames
-
-      # Write-Output "ipamSuffix=$($deployment.Outputs["suffix"].Value)" >> $Env:GITHUB_OUTPUT
     }
 
-    if ($PSCmdlet.ParameterSetName -eq 'Full') {
+    if (($PSCmdlet.ParameterSetName -notin 'AppsOnly') -and (-not $DisableUI)) {
       Update-UIApplication `
         -UIAppId $appDetails.UIAppId `
         -Endpoint $deployment.Outputs["appServiceHostName"].Value
     }
 
-    if ($PSCmdlet.ParameterSetName -in ('Full', 'Function', 'TemplateOnly') -and $PrivateAcr) {
+    if ($PSCmdlet.ParameterSetName -in ('App', 'Function')) {
+      Write-Host "INFO: Uploading ZIP Deploy archive..." -ForegroundColor Green
+
+      try {
+        Publish-ZipFile -AppName $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value
+      } catch {
+        Write-Host "SWITCH: Retrying ZIP Deploy with Kudu API..." -ForegroundColor Blue
+        Publish-ZipFile -AppName $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -UseAPI
+      }
+    }
+
+    if ($PSCmdlet.ParameterSetName -in ('AppContainer', 'FunctionContainer') -and $PrivateAcr) {
       Write-Host "INFO: Building and pushing container images to Azure Container Registry" -ForegroundColor Green
-      Write-Verbose -Message "Building and pushing container images to Azure Container Registry"
 
       $containerMap = @{
         Debian = @{
-          Extension = "deb"
+          Extension = 'deb'
           Port = 80
           Images = @{
-            UI     = 'node:18-slim'
-            Engine = 'python:3.9-slim'
-            LB     = 'nginx:alpine'
+            Build = 'node:18-slim'
+            Serve = 'python:3.9-slim'
           }
         }
         RHEL = @{
-          Extension = "rhel"
+          Extension = 'rhel'
           Port = 8080
           Images = @{
-            UI     = 'registry.access.redhat.com/ubi8/nodejs-18'
-            Engine = 'registry.access.redhat.com/ubi8/python-39'
-            LB     = 'registry.access.redhat.com/ubi8/nginx-122'
+            Build = 'registry.access.redhat.com/ubi8/nodejs-18'
+            Serve = 'registry.access.redhat.com/ubi8/python-39'
           }
         }
       }
 
-      $enginePath = [Io.Path]::Combine('..', 'engine')
-      $engineDockerFile = Join-Path -Path $enginePath -ChildPath "Dockerfile.$($containerMap[$ContainerType].Extension)"
-      $functionDockerFile = Join-Path -Path $enginePath -ChildPath 'Dockerfile.func'
+      $dockerFile = 'Dockerfile.' + $containerMap[$ContainerType].Extension
+      $dockerFilePath = Join-Path -Path $ROOT_DIR -ChildPath $dockerFile
+      $dockerFileFunc = Join-Path -Path $ROOT_DIR -ChildPath 'Dockerfile.func'
 
-      $uiPath = [Io.Path]::Combine('..', 'ui')
-      $uiDockerFile = Join-Path -Path $uiPath -ChildPath "Dockerfile.$($containerMap[$ContainerType].Extension)"
-
-      $lbPath = [Io.Path]::Combine('..', 'lb')
-      $lbDockerFile = Join-Path -Path $lbPath -ChildPath "Dockerfile"
-
-      if($AsFunction) {
-        # WRITE-HOST "INFO: Building Function container ($ContainerType)..." -ForegroundColor Green
-        # Write-Verbose -Message "INFO: Building Function container ($ContainerType)..."
-
-        # $funcBuildOutput = $(
-        #   az acr build -r $deployment.Outputs["acrName"].Value `
-        #     -t ipam-func:latest `
-        #     -f $functionDockerFile $enginePath `
-        #     --build-arg PORT=$($containerMap[$ContainerType].Port) `
-        #     --build-arg BASE_IMAGE=$($containerMap[$ContainerType].Images.Engine)
-        # ) *>&1
-
-        WRITE-HOST "INFO: Building Function container..." -ForegroundColor Green
-        Write-Verbose -Message "INFO: Building Function container..."
+      if($Function) {
+        Write-Host "INFO: Building Function container..." -ForegroundColor Green
 
         $funcBuildOutput = $(
           az acr build -r $deployment.Outputs["acrName"].Value `
-          -t ipam-func:latest `
-          -f $functionDockerFile $enginePath
+          -t ipamfunc:latest `
+          -f $dockerFileFunc $ROOT_DIR
         ) *>&1
 
         if ($LASTEXITCODE -ne 0) {
           throw $funcBuildOutput
         } else {
-          WRITE-HOST "INFO: Function container image build and push completed successfully" -ForegroundColor Green
-          Write-Verbose -Message "Function container image build and push completed successfully"
+          Write-Host "INFO: Function container image build and push completed successfully" -ForegroundColor Green
         }
 
         Write-Host "INFO: Restarting Function App" -ForegroundColor Green
-        Write-Verbose -Message "Restarting Function App"
 
         Restart-AzFunctionApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Force | Out-Null
       } else {
-        WRITE-HOST "INFO: Building Engine container ($ContainerType)..." -ForegroundColor Green
-        Write-Verbose -Message "INFO: Building Engine container ($ContainerType)..."
+        Write-Host "INFO: Building App container ($ContainerType)..." -ForegroundColor Green
 
-        $engineBuildOutput = $(
+        $appBuildOutput = $(
           az acr build -r $deployment.Outputs["acrName"].Value `
-            -t ipam-engine:latest `
-            -f $engineDockerFile $enginePath `
+            -t ipam:latest `
+            -f $dockerFilePath $ROOT_DIR `
             --build-arg PORT=$($containerMap[$ContainerType].Port) `
-            --build-arg BASE_IMAGE=$($containerMap[$ContainerType].Images.Engine)
+            --build-arg BUILD_IMAGE=$($containerMap[$ContainerType].Images.Build) `
+            --build-arg SERVE_IMAGE=$($containerMap[$ContainerType].Images.Serve)
         ) *>&1
 
         if ($LASTEXITCODE -ne 0) {
-          throw $engineBuildOutput
+          throw $appBuildOutput
         } else {
-          WRITE-HOST "INFO: Engine container image build and push completed successfully" -ForegroundColor Green
-          Write-Verbose -Message "Engine container image build and push completed successfully"
-        }
-
-        WRITE-HOST "INFO: Building UI container ($ContainerType)..." -ForegroundColor Green
-        Write-Verbose -Message "INFO: Building UI container ($ContainerType)..."
-
-        $uiBuildOutput = $(
-          az acr build -r $deployment.Outputs["acrName"].Value `
-            -t ipam-ui:latest `
-            -f $uiDockerFile $uiPath `
-            --build-arg PORT=$($containerMap[$ContainerType].Port) `
-            --build-arg BASE_IMAGE=$($containerMap[$ContainerType].Images.UI)
-        ) *>&1
-
-        if ($LASTEXITCODE -ne 0) {
-          throw $uiBuildOutput
-        } else {
-          WRITE-HOST "INFO: UI container image build and push completed successfully" -ForegroundColor Green
-          Write-Verbose -Message "UI container image build and push completed successfully"
-        }
-
-        WRITE-HOST "INFO: Building Load Balancer container ($ContainerType)..." -ForegroundColor Green
-        Write-Verbose -Message "INFO: Building Load Balancer container ($ContainerType)..."
-
-        $lbBuildOutput = $(
-          az acr build -r $deployment.Outputs["acrName"].Value `
-            -t ipam-lb:latest `
-            -f $lbDockerFile $lbPath `
-            --build-arg BASE_IMAGE=$($containerMap[$ContainerType].Images.LB)
-        ) *>&1
-
-        if ($LASTEXITCODE -ne 0) {
-          throw $lbBuildOutput
-        } else {
-          WRITE-HOST "INFO: Load Balancer container image build and push completed successfully" -ForegroundColor Green
-          Write-Verbose -Message "Load Balancer container image build and push completed successfully"
+          Write-Host "INFO: App container image build and push completed successfully" -ForegroundColor Green
         }
 
         Write-Host "INFO: Restarting App Service" -ForegroundColor Green
-        Write-Verbose -Message "Restarting App Service"
 
         Restart-AzWebApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value | Out-Null
       }
     }
 
     Write-Host "INFO: Azure IPAM Solution deployed successfully" -ForegroundColor Green
-    Write-Verbose -Message "Azure IPAM Solution deployed successfully"
 
-    if ($($PSCmdlet.ParameterSetName -eq 'TemplateOnly') -and $(-not $AsFunction)) {
+    if ($($PSCmdlet.ParameterSetName -notin 'AppsOnly') -and (-not $DisableUI) -and $ParameterFile) {
       $updateUrl = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/$($appDetails.UIAppId)"
       $updateAddr = "https://$($deployment.Outputs["appServiceHostName"].Value)"
 
@@ -1013,10 +1142,17 @@ process {
       Write-Host $updateAddr -ForegroundColor White
       Write-Host "##############################################" -ForegroundColor Yellow
     }
+
+    if ($PSCmdlet.ParameterSetName -in ('App', 'Function')) {
+      Write-Host
+      Write-Host "NOTE: Please allow ~5 minutes for the Azure IPAM service to become available" -ForegroundColor Yellow
+    }
+
+    $script:deploymentSuccess = $true
   }
   catch {
     $_ | Out-File -FilePath $errorLog -Append
-    Write-Host "ERROR: Unable to deploy Azure IPAM solution due to an exception, see logs for detailed information!" -ForegroundColor red
+    Write-Host "ERROR: Unable to deploy Azure IPAM solution due to an exception, see logs for detailed information!" -ForegroundColor Red
     Write-Host "Run Log: $transcriptLog" -ForegroundColor Red
     Write-Host "Error Log: $errorLog" -ForegroundColor Red
 
@@ -1028,11 +1164,13 @@ process {
     Write-Host
     Stop-Transcript | Out-Null
 
-    Write-Output "ipamURL=https://$($deployment.Outputs["appServiceHostName"].Value)" >> $Env:GITHUB_OUTPUT
-    Write-Output "ipamUIAppId=$($appDetails.UIAppId)" >> $Env:GITHUB_OUTPUT
-    Write-Output "ipamEngineAppId=$($appDetails.EngineAppId)" >> $Env:GITHUB_OUTPUT
-    Write-Output "ipamSuffix=$($deployment.Outputs["suffix"].Value)" >> $Env:GITHUB_OUTPUT
-    Write-Output "ipamResourceGroup=$($deployment.Outputs["resourceGroupName"].Value)" >> $Env:GITHUB_OUTPUT
+    if ($script:deploymentSuccess) {
+      Write-Output "ipamURL=https://$($deployment.Outputs["appServiceHostName"].Value)" >> $Env:GITHUB_OUTPUT
+      Write-Output "ipamUIAppId=$($appDetails.UIAppId)" >> $Env:GITHUB_OUTPUT
+      Write-Output "ipamEngineAppId=$($appDetails.EngineAppId)" >> $Env:GITHUB_OUTPUT
+      Write-Output "ipamSuffix=$($deployment.Outputs["suffix"].Value)" >> $Env:GITHUB_OUTPUT
+      Write-Output "ipamResourceGroup=$($deployment.Outputs["resourceGroupName"].Value)" >> $Env:GITHUB_OUTPUT
+    }
 
     exit
   }

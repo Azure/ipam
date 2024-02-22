@@ -31,6 +31,9 @@ param managedIdentityClientId string
 @description('Log Analytics Worskpace ID')
 param workspaceId string
 
+@description('Flag to Deploy IPAM as a Container')
+param deployAsContainer bool = false
+
 @description('Flag to Deploy Private Container Registry')
 param privateAcr bool
 
@@ -39,14 +42,6 @@ param privateAcrUri string
 
 // ACR Uri Variable
 var acrUri = privateAcr ? privateAcrUri : 'azureipam.azurecr.io'
-
-// Docker Compose File as Base64 String
-// var dockerCompose = loadFileAsBase64('../docker-compose.prod.yml')
-
-// Load Docker Compose File & Replace ACR Uri (for Private ACR)
-var dockerCompose = loadTextContent('../docker-compose.prod.yml')
-var dockerComposeReplace = replace(dockerCompose, 'azureipam.azurecr.io', acrUri)
-var dockerComposeEncode = base64(dockerComposeReplace)
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
   name: appServicePlanName
@@ -66,7 +61,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
 resource appService 'Microsoft.Web/sites@2021-02-01' = {
   name: appServiceName
   location: location
-  kind: 'app,linux,container'
+  kind: deployAsContainer ? 'app,linux,container' : 'app,linux'
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
@@ -81,61 +76,72 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
       acrUseManagedIdentityCreds: privateAcr ? true : false
       acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
       alwaysOn: true
-      linuxFxVersion: 'COMPOSE|${dockerComposeEncode}'
-      appSettings: [
-        {
-          name: 'AZURE_ENV'
-          value: azureCloud
-        }
-        {
-          name: 'COSMOS_URL'
-          value: cosmosDbUri
-        }
-        {
-          name: 'COSMOS_KEY'
-          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/COSMOS-KEY/)'
-        }
-        {
-          name: 'DATABASE_NAME'
-          value: databaseName
-        }
-        {
-          name: 'CONTAINER_NAME'
-          value: containerName
-        }
-        {
-          name: 'UI_APP_ID'
-          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/UI-ID/)'
-        }
-        {
-          name: 'ENGINE_APP_ID'
-          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-ID/)'
-        }
-        {
-          name: 'ENGINE_APP_SECRET'
-          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-SECRET/)'
-        }
-        {
-          name: 'TENANT_ID'
-          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/TENANT-ID/)'
-        }
-        {
-          name: 'KEYVAULT_URL'
-          value: keyVaultUri
-        }
-        {
-          name: 'DOCKER_ENABLE_CI'
-          value: 'true'
-        }
-        {
-          name: 'DOCKER_REGISTRY_SERVER_URL'
-          value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
-        }
-        {
-          name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
-          value: 'true'
-        }
-      ]
+      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:latest' : 'PYTHON|3.9'
+      appCommandLine: !deployAsContainer ? 'init.sh 8000' : null
+      healthCheckPath: '/api/status'
+      appSettings: concat(
+        [
+          {
+            name: 'AZURE_ENV'
+            value: azureCloud
+          }
+          {
+            name: 'COSMOS_URL'
+            value: cosmosDbUri
+          }
+          {
+            name: 'DATABASE_NAME'
+            value: databaseName
+          }
+          {
+            name: 'CONTAINER_NAME'
+            value: containerName
+          }
+          {
+            name: 'MANAGED_IDENTITY_ID'
+            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/IDENTITY-ID/)'
+          }
+          {
+            name: 'UI_APP_ID'
+            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/UI-ID/)'
+          }
+          {
+            name: 'ENGINE_APP_ID'
+            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-ID/)'
+          }
+          {
+            name: 'ENGINE_APP_SECRET'
+            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-SECRET/)'
+          }
+          {
+            name: 'TENANT_ID'
+            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/TENANT-ID/)'
+          }
+          {
+            name: 'KEYVAULT_URL'
+            value: keyVaultUri
+          }
+          {
+            name: 'WEBSITE_HEALTHCHECK_MAXPINGFAILURES'
+            value: '2'
+          }
+        ],
+        deployAsContainer ? [
+          {
+            name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
+            value: 'true'
+          }
+          {
+            name: 'DOCKER_REGISTRY_SERVER_URL'
+            value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
+          }
+        ] : [
+          {
+            name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+            value: 'true'
+          }
+        ]
+      )
     }
   }
 }

@@ -1,4 +1,4 @@
-# IPAM Deployment Overview
+# Azure IPAM Deployment Overview
 
 ## Prerequisites
 
@@ -12,31 +12,38 @@ To successfully deploy the solution, the following prerequisites must be met:
     - [User Access Administrator](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#user-access-administrator)
     - [Custom Role](https://learn.microsoft.com/en-us/azure/role-based-access-control/custom-roles) with *allow* permissions of `Microsoft.Authorization/roleAssignments/write`
   - [Global Administrator](https://learn.microsoft.com/en-us/azure/active-directory/roles/permissions-reference#global-administrator) (needed to grant admin consent for the App Registration API permissions)
+- [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
+  - Required to clone the Azure IPAM GitHub repository
 - [PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
 - [Azure PowerShell](https://learn.microsoft.com/en-us/powershell/azure/install-az-ps) version 8.0.0 or later installed
-- [Microsoft Graph PowerShell SDK](https://learn.microsoft.com/en-us/powershell/microsoftgraph/installation) version 1.9.6 or later installed
+- [Microsoft Graph PowerShell SDK](https://learn.microsoft.com/en-us/powershell/microsoftgraph/installation) version 2.0.0 or later installed
   - Required for *Full* or *Apps Only* deployments to grant [Admin Consent](https://learn.microsoft.com/en-us/azure/active-directory/manage-apps/grant-admin-consent) to the App Registrations
-- [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) version 0.10.161 or later installed
+- [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) version 0.21.1 or later installed
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) version 2.35.0 or later installed (optional)
-  - Required only if you are building your own container images and pushing them to Azure Container Registry (Private ACR)
-- Docker (Linux) / Docker Desktop (Windows) installed (optional)
-  - Required only if you are building your own container images and running them locally for development/testing purposes
+  - Required only if you are building your own container image and pushing it to a private Azure Container Registry (Private ACR)
+- [Docker (Linux)](https://docs.docker.com/engine/install/) / [Docker Desktop (Windows)](https://docs.docker.com/desktop/install/windows-install/) installed (optional)
+  - Required only if you are building your own container image and running it locally for development/testing purposes
 
 ## Deployment Overview
 
 The Azure IPAM solution is deployed via a PowerShell deployment script, `deploy.ps1`,  found in the `deploy` directory of the project. The infrastructure stack is defined via Azure Bicep files. The deployment can be performed via your local machine or from the development container found in the project. You have the following options for deployment:
 
-- Two-part deployment
-  - Part 1: App Registrations only
+- Two-part deployment *(Azure Identities and Permissions Only)*
+  - Part 1: Azure Identities only
+    - App Registrations and Service Principals are created
+    - Required permissions are assigned to App Registrations and Service Principals
     - Configuration details are saved to a `parameters.json` file which will be shared with the infrastructure team
-  - Part 2: Infrastructure Stack only
-    - UI and Engine containers hosted in App Service or...
-    - Engine container hosted in an Azure Function
-- Deploy the entire solution (App Registrations + Azure Infrastructure)
-  - UI and Engine containers hosted in App Service or...
-  - Engine container hosted in an Azure Function
+  - Part 2: Azure Infrastructure only
+    - Parameters are read from supplied `parameters.json` file
+    - Azure infrastructure components are deployed
+    - Azure App Service is pointed to public or private Azure Container Registry
+- Single deployment *(Azure Identities, Permissions and Infrastructure)*
+  - App Registrations and Service Principals are created
+  - Required permissions are assigned to App Registrations and Service Principals
+  - Azure infrastructure components are deployed
+  - Azure App Service is pointed to public or private Azure Container Registry
 
-The two-part deployment option is provided in the event that a single team doesn't have the necessary permissions to deploy both the App Registrations in Azure AD, and the Azure infrastructure stack. In the event that you do have all of the the necessary permissions in Azure AD and on the Azure infrastructure side, then you have the option to deploy the entire solution all at once.
+The two-part deployment option is provided in the event that a single team within your organization doesn't have the necessary permissions to deploy both the Azure identities within Entra ID, and the Azure infrastructure stack. If a single group does have all of the the necessary permissions in Entra ID and on the Azure infrastructure side, then you have the option to deploy the complete solution all at once.
 
 ## Authenticate to Azure PowerShell
 
@@ -122,15 +129,16 @@ To deploy the full solution, run the following from within the `deploy` director
 
 You have the ability to pass optional flags to the deployment script:
 
-| Parameter                                       | Description                                                               |
-| :---------------------------------------------- | :------------------------------------------------------------------------ |
-| `-UIAppName <name>`                             | Changes the name of the UI app registration                               |
-| `-EngineAppName <name>`                         | Changes the name of the Engine app registration                           |
-| `-Tags @{​​​​​​<tag> = '​<value>'; ​<tag> = '​<value>'}` | Attaches the hashtable as tags on the deployed IPAM resource group        |
-| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **<sup>1,2</sup>** |
-| `-NamePrefix <prefix>`                          | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>3</sup>** |
-| `-AsFunction`                                   | Deploys the engine container only to an Azure Function                    |
-| `-PrivateACR`                                   | Deploys a private Azure Container Registry and builds the IPAM containers |
+| Parameter                                                          | Description                                                                                |
+| :----------------------------------------------------------------- | :----------------------------------------------------------------------------------------- |
+| `-UIAppName <name>`                                                | Changes the name of the UI app registration                                                |
+| `-EngineAppName <name>`                                            | Changes the name of the Engine app registration                                            |
+| `-Tags @{​​​​​​<tag> = '​<value>'; ​<tag> = '​<value>'}`                    | Attaches the hashtable as tags on the deployed IPAM resource group                         |
+| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **<sup>1,2</sup>**                      |
+| `-NamePrefix <prefix>`                                             | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>3</sup>** |
+| `-Function`                                                        | Deploys the engine container only to an Azure Function                                     |
+| `-PrivateACR`                                                      | Deploys a private Azure Container Registry and builds the IPAM containers                  |
+| `-DisableUI`                                                       | Solution will be deployed without a UI, no UI identities will be created                   |
 
 > **NOTE 1:** The required values will vary based on the deployment type.
 
@@ -168,7 +176,7 @@ You have the ability to pass optional flags to the deployment script:
 ```powershell
 ./deploy.ps1 `
   -Location "westus3" `
-  -AsFunction
+  -Function
 ```
 
 **Deploy IPAM solution with a private Container Registry:**
@@ -199,7 +207,7 @@ $ResourceNames = @{
   -ResourceNames $ResourceNames
 ```
 
-**Override default resource names with custom resource names and deploy as an Azure Function:**
+**Override default resource names with custom resource names and use a private Container Registry:**
 
 ```powershell
 $ResourceNames = @{
@@ -217,16 +225,16 @@ $ResourceNames = @{
 
 ./deploy.ps1 `
   -Location "westus3" `
-  -ResourceNames $ResourceNames
+  -ResourceNames $ResourceNames `
   -PrivateACR
 ```
 
-**Override default resource names with custom resource names and use a private Container Registry:**
+**Override default resource names with custom resource names and deploy as an Azure Function:**
 
 ```powershell
 $ResourceNames = @{
   functionName = 'myfunction01'
-  appServicePlanName = 'myappserviceplan01'
+  functionPlanName = 'myfunctionplan01'
   cosmosAccountName = 'mycosmosaccount01'
   cosmosContainerName = 'mycontainer01'
   cosmosDatabaseName = 'mydatabase01'
@@ -240,12 +248,12 @@ $ResourceNames = @{
 ./deploy.ps1 `
   -Location "westus3" `
   -ResourceNames $ResourceNames
-  -AsFunction
+  -Function
 ```
 
-## App Registration Only Deployment
+## Azure Identities (Only) Deployment
 
-To deploy App Registrations only, run the following from within the `deploy` directory:
+To deploy Azure Identities only, run the following from within the `deploy` directory:
 
 ```powershell
 ./deploy.ps1 -AppsOnly
@@ -253,11 +261,11 @@ To deploy App Registrations only, run the following from within the `deploy` dir
 
 You have the ability to pass optional flags to the deployment script:
 
-| Parameter               | Description                                                                                         |
-| :---------------------- | :-------------------------------------------------------------------------------------------------- |
-| `-UIAppName <name>`     | Changes the name of the UI app registration                                                         |
-| `-EngineAppName <name>` | Changes the name of the Engine app registration                                                     |
-| `-AsFunction`           | Indicates that this solution will be deployed as an Azure Function, no UI App Registration required |
+| Parameter               | Description                                                              |
+| :---------------------- | :----------------------------------------------------------------------- |
+| `-UIAppName <name>`     | Changes the name of the UI app registration                              |
+| `-EngineAppName <name>` | Changes the name of the Engine app registration                          |
+| `-DisableUI`            | Solution will be deployed without a UI, no UI identities will be created |
 
 **Customize the name of the App Registrations:**
 
@@ -268,15 +276,15 @@ You have the ability to pass optional flags to the deployment script:
   -EngineAppName "my-engine-app-reg"
 ```
 
-**Deploy IPAM solution as an Azure Function:**
+**Deploy IPAM solution without a UI (API-only):**
 
 ```powershell
 ./deploy.ps1 `
   -AppsOnly `
-  -AsFunction
+  -DisableUI
 ```
 
-As part of the app registration deployment, a `main.parameters.json` file is generated with pre-populated parameters for the app registration IDs as well as the engine app registration secret. This parameter file will then be used to perform the infrastructure deployment.
+As part of the app registration deployment, a `main.parameters.json` file is generated with pre-populated parameters for the app registration IDs as well as the engine app registration secret. This parameter file will then be used to perform the infrastructure only deployment.
 
 ## Infrastructure Stack (Only) Deployment
 
@@ -292,18 +300,28 @@ Once your parameters file is ready, run the following from within the `deploy` d
 
 You have the ability to pass optional flags to the deployment script:
 
-| Parameter                                       | Description                                                               |
-| :---------------------------------------------- | :------------------------------------------------------------------------ |
-| `-Tags @{​​​​​​<tag> = '​<value>'; ​<tag> = '​<value>'}`​ | Attaches the hashtable as tags on the deployed IPAM resource group        |
-| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **<sup>1,2</sup>** |
-| `-NamePrefix <prefix>`                          | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>3</sup>** |
-| `-PrivateACR`                                   | Deploys a private Azure Container Registry and builds the IPAM containers |
+| Parameter                                                          | Description                                                                                |
+| :----------------------------------------------------------------- | :----------------------------------------------------------------------------------------- |
+| `-Tags @{​​​​​​<tag> = '​<value>'; ​<tag> = '​<value>'}`​                    | Attaches the hashtable as tags on the deployed IPAM resource group                         |
+| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **<sup>1,2</sup>**                      |
+| `-NamePrefix <prefix>`                                             | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>3</sup>** |
+| `-PrivateACR`                                                      | Deploys a private Azure Container Registry and builds the IPAM containers                  |
+| `-Function`                                                        | Deploys the engine container only to an Azure Function                                     |
 
 > **NOTE 1:** The required values will vary based on the deployment type.
 
 > **NOTE 2:** This must include ALL required resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
 
 > **NOTE 3:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
+
+**Change the name prefix for the Azure resources:**
+
+```powershell
+./deploy.ps1 `
+  -Location "westus3" `
+  -ParameterFile ./main.parameters.json `
+  -NamePrefix "devipam"
+```
 
 **Add custom tags to the Azure resources:**
 
@@ -314,13 +332,13 @@ You have the ability to pass optional flags to the deployment script:
   -Tags @{owner = 'ipamadmin@example.com'; environment = 'development'}
 ```
 
-**Change the name prefix for the Azure resources:**
+**Deploy IPAM solution as an Azure Function:**
 
 ```powershell
 ./deploy.ps1 `
   -Location "westus3" `
   -ParameterFile ./main.parameters.json `
-  -NamePrefix "devipam"
+  -Function
 ```
 
 **Deploy IPAM solution with a private Container Registry:**
@@ -372,7 +390,7 @@ $ResourceNames = @{
 ./deploy.ps1 `
   -Location "westus3" `
   -ParameterFile ./main.parameters.json `
-  -ResourceNames $ResourceNames
+  -ResourceNames $ResourceNames `
   -PrivateACR
 ```
 
@@ -395,7 +413,6 @@ $ResourceNames = @{
 ./deploy.ps1 `
   -Location "westus3" `
   -ParameterFile ./main.parameters.json `
-  -ResourceNames $ResourceNames
+  -ResourceNames $ResourceNames `
+  -Function
 ```
-
-> **NOTE:** Use this format when the `-AsFunction` flag was used during the *App Registration Only* step above

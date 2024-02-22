@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 import json
+import tempfile
 
 from pathlib import Path
 
@@ -46,7 +47,7 @@ class IPAMLogger:
         logging_config = config.get('logger')
 
         logger = cls.customize_logging(
-            logging_config.get('path') ,
+            os.environ.get('IPAM_LOGFILE_LOCATION', os.path.join(tempfile.gettempdir(), "logs", "ipam.log")),
             level=logging_config.get('level'),
             retention=logging_config.get('retention'),
             rotation=logging_config.get('rotation'),
@@ -78,7 +79,7 @@ class IPAMLogger:
             retention=retention,
             enqueue=True,
             backtrace=True,
-            level=level.upper(),
+            level='DEBUG',
             format=format
         )
 

@@ -5,7 +5,10 @@ param keyVaultName string
 param location string = resourceGroup().location
 
 @description('Managed Identity PrincipalId')
-param principalId string
+param identityPrincipalId string
+
+@description('Managed Identity ClientId')
+param identityClientId string
 
 @description('AzureAD TenantId')
 param tenantId string = subscription().tenantId
@@ -23,26 +26,17 @@ param engineAppSecret string
 @description('Log Analytics Worskpace ID')
 param workspaceId string
 
-// KeyVault Secret Permissions Assigned to Managed Identity
-var secretsPermissions = [
-  'get'
-]
+var keyVaultUser = '4633458b-17de-408a-b874-0445c86b69e6'
+var keyVaultUserId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultUser)
+var keyVaultUserRoleAssignmentId = guid(keyVaultUser, identityPrincipalId, keyVault.id)
 
 resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
   name: keyVaultName
   location: location
   properties: {
     enablePurgeProtection: true
+    enableRbacAuthorization: true
     tenantId: tenantId
-    accessPolicies: [
-      {
-        objectId: principalId
-        tenantId: tenantId
-        permissions: {
-          secrets: secretsPermissions
-        }
-      }
-    ]
     sku: {
       name: 'standard'
       family: 'A'
@@ -51,6 +45,14 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
       defaultAction: 'Allow'
       bypass: 'AzureServices'
     }
+  }
+}
+
+resource identityId 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
+  parent: keyVault
+  name: 'IDENTITY-ID'
+  properties: {
+    value: identityClientId
   }
 }
 
@@ -111,6 +113,16 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
       }
     ]
     workspaceId: workspaceId
+  }
+}
+
+resource keyVaultUserAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  name: keyVaultUserRoleAssignmentId
+  scope: keyVault
+  properties: {
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: keyVaultUserId
+    principalId: identityPrincipalId
   }
 }
 

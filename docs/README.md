@@ -1,4 +1,4 @@
-# Welcome to IPAM!
+# Welcome to Azure IPAM!
 
 <!-- 
 Guidelines on README format: https://review.docs.microsoft.com/help/onboard/admin/samples/concepts/readme-template?branch=master
@@ -9,51 +9,62 @@ Taxonomies for products and languages: https://review.docs.microsoft.com/new-hop
 -->
 
 ## Overview and Architecture
-IPAM was developed to give customers a simple, straightforward way to manage their IP address space in Azure.  IPAM enables end-to-end planning, deploying, managing and monitoring of your IP address space, with an intuitive user experience. IPAM automatically discovers IP address utilization in your Azure tenant and enables you to manage it all from a centralized UI. You can also interface with IPAM programmatically via a RESTful API to facilitate IP address management at scale via Infrastructure as Code (IaC). IPAM is designed and architected based on the 5 pillars of the [Microsoft Azure Well Architected Framework](https://docs.microsoft.com/en-us/azure/architecture/framework/).
+Azure IPAM was developed to give customers a simple, straightforward way to manage their IP address space in Azure. It enables end-to-end planning, deploying, managing and monitoring of your IP address space, with an intuitive user experience. Additionally, it can automatically discover IP address utilization within your Azure tenant and enables you to manage it all from a centralized UI. You can also interface with the Azure IPAM service programmatically via a RESTful API to facilitate IP address management at scale via Infrastructure as Code (IaC) and CI/CD pipelines. Azure IPAM is designed and architected based on the 5 pillars of the [Microsoft Azure Well Architected Framework](https://docs.microsoft.com/en-us/azure/architecture/framework/).
 
-| Full (App Service)                                               | Function                                                                   |
+| App Service                                                      | Function                                                                   |
 :-----------------------------------------------------------------:|:---------------------------------------------------------------------------:
 | ![IPAM Architecture](./images/ipam_architecture_full.png ':size=70%') | ![IPAM Architecture](./images/ipam_architecture_function.png ':size=70%') |
 
-## IPAM Infrastructure
-The IPAM solution is comprised of containers running on Azure App Services. IPAM can also be deployed in an API-only fashion with an Azure Function if no UI is required (e.g. pure IaC model). The containers are built and published to a public Azure Container Registry (ACR), but you may also choose to build your own containers and host them in a Private Container Registry. More details on this can be found in the [Deployment](./deployment/README.md) section. All of the supporting infrastructure is deployed and runs within your Azure Tenant, none of the resources are shared with other IPAM users (outside of the publicly hosted ACR).
+## Azure IPAM Infrastructure
+The Azure IPAM solution is delivered via a container running in Azure App Services or as an Azure Function. It can also be deployed in an API-only fashion if no UI is required (e.g. pure IaC model). The container is built and published to a public Azure Container Registry (ACR), but you may also choose to build your own container and host it in a Private Container Registry. More details on this can be found in the [Deployment](./deployment/README.md) section. All of the supporting infrastructure is deployed and runs within your Azure Tenant and none of the resources are shared with other IPAM users (outside of the publicly hosted ACR).
 
 Here is a more specific breakdown of the components used:
 
 - **App Registrations**
   - 2x App Registrations
     - *Engine* App Registration
-      - Granted **reader** permission to the root management group to facilitate IPAM Admin operations (global visibility)
+      - Granted **reader** permission to the [Root Management Group](https://learn.microsoft.com/en-us/azure/governance/management-groups/overview#root-management-group-for-each-directory) to facilitate IPAM Admin operations (global visibility)
       - Authentication point for IPAM API operations ([on-behalf-of](https://learn.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow) flow)
-    - *UI* App Registration
+    - *UI* App Registration *(Optional if no UI is desired)*
       - Granted **read** permissions for Microsoft Graph API's
       - Added as a *known client application* for the *Engine* App Registration
       - Authentication point for the IPAM UI ([auth code](https://learn.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow) flow)
 - **Resource Group**
-  - House all Azure infrastructure related resources
-- **App Service Plan with App Service** *(Full Deployment only)*
-  - Run the IPAM Engine, UI, and Load Balancer containers as a multi-container App Service
-- **App Service Plan with Function App** *(Function Deployment only)*
-  - Run IPAM Engine as an Azure Function
-- **Storage Account with Blob Container** *(Function Deployment only)*
-  - This account stores the Function metadata
+  - Contains all Azure IPAM deployed resources
+- **App Service Plan with App Service** *(AppContainer Deployment only)*
+  - Runs the Azure IPAM solution as a container within App Services
+- **App Service Plan with Function App** *(FunctionContainer Deployment only)*
+  - Runs the Azure IPAM solution as a container within Azure Functions
+- **Storage Account with Blob Container** *(FunctionContainer Deployment only)*
+  - Storage for the Azure Function metadata
 - **Cosmos DB**
   - Backend NoSQL datastore for the IPAM application
 - **KeyVault**
   - Stores the following secrets:
     - App Registration application IDs and Secrets (Engine & UI)
-    - Cosmos DB read-write key
+    - Managed Identity ID
     - Azure Tenant ID
 - **User Assigned Managed Identity**
-  - Assigned to the App Service to retrieve secrets from KeyVault and NGINX configuration data from the Storage Account
+  - Assigned to the App Service to retrieve secrets from KeyVault
+- **Container Registry** *(Optional)*
+  - Stores a private copy of the Azure IPAM containers
 
-## How IPAM Works
+## How Azure IPAM Works
 
-As mentioned above, the IPAM application is made up of two containers, one that runs the front end user interface, and the other that runs the backend engine. For the *Full* deployment, there is also a Load Balancer container running [NGINX](https://www.nginx.com/) for path-based routing. IPAM has been designed as such to accommodate the following use cases...
+Azure IPAM has been designed as such to radically simplify the often daunting task of IP address management within Azure and was built to accommodate use cases such as the following...
 
-- A user interface is not needed or you plan on providing your own user interface (API-only)
-- You plan on interfacing with IPAM exclusively via the RESTful API
-- You plan on running the backend engine in a lightweight fashion, such as Azure Functions or Azure Container Instances
+- Discover
+  - Identify networks, subnets and endpoints holistically across your Azure tenant
+  - Visualize misconfigurations such as orphaned endpoints and improperly configured virtual network peers
+- Organize
+  - Group Azure networks into *Spaces* and *Blocks* aligned to internal lines of business and enterprise CIDR assignments
+  - Track IP and CIDR consumption
+  - Map external (non-Azure) networks to Azure CIDR ranges
+- Plan
+  - Explore "what if" cases such as how may subnets of a given mask are available within a given CIDR block
+- Self-Service
+  - Allow users to reserve CIDR blocks for new virtual network and subnet creation programatically
+  - Integration with Azure template deployments (ARM/Bicep), Terraform and CI/CD pipelines
 
 ## User Interface
 

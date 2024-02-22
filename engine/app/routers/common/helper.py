@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 
-from azure.identity.aio import OnBehalfOfCredential, ClientSecretCredential
+from azure.identity.aio import OnBehalfOfCredential, ManagedIdentityCredential, ClientSecretCredential
 
 from azure.core import MatchConditions
 from azure.core.exceptions import ClientAuthenticationError, HttpResponseError, ServiceRequestError
@@ -18,9 +18,13 @@ from functools import wraps
 
 from app.globals import globals
 
+managed_identity_credential = ManagedIdentityCredential(
+    client_id = globals.MANAGED_IDENTITY_ID
+)
+
 cosmos_client = CosmosClient(
     url=globals.COSMOS_URL,
-    credential=globals.COSMOS_KEY,
+    credential=(globals.COSMOS_KEY if globals.COSMOS_KEY else managed_identity_credential),
     transport=globals.SHARED_TRANSPORT
 )
 

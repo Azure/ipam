@@ -29,21 +29,26 @@ Azure IPAM is a lightweight solution developed on top of the Azure platform desi
 
 | File/folder          | Description                                                   |
 |----------------------|---------------------------------------------------------------|
-| `.github/`           | Bug Report & Issue Templates                                  |
+| `.github/`           | Bug Report, Issue Templates and GitHub Actions                |
 | `.vscode/`           | VSCode Configuration                                          |
 | `deploy/`            | Deployment Bicep Templates & PowerShell Deployment Scripts    |
+| `assets/`            | Compiled ZIP Archive                                          |
 | `docs/`              | Documentation Folder                                          |
 | `engine/`            | Engine Application Code                                       |
+| `examples/`          | Example Templates, Scripts and Code Snippets for Azure IPAM   |
 | `lb/`                | Load Balancer (NGINX) Configs                                 |
+| `tests/`             | Testing Scripts                                               |
+| `tools/`             | Lifecycle Scripts (Build/Version/Update)                      |
 | `ui/`                | UI Application Code                                           |
 | `.dockerignore`      | Untracked Docker Files to Ignore                              |
+| `.env.example`       | Example ENV File to be Used with Docker Compose               |
+| `.gitattributes`     | Git File and Path Attributes                                  |
 | `.gitignore`         | Untracked Git Files to Ignore                                 |
 | `CODE_OF_CONDUCT.md` | Microsoft Code of Conduct                                     |
-| `default.conf`       | NGINX Default Configuration File                              |
-| `default.dev.conf`   | NGINX Development Default Configuration File                  |
-| `docker-compose.prod.yml` | Production Docker Compose File                           |
 | `docker-compose.yml` | Development Docker Compose File                               |
-| `Dockerfile`         | Development Dockerfile                                        |
+| `Dockerfile.deb`     | Single Container Dockerfile (Debian)                          |
+| `Dockerfile.func`    | Single Container Dockerfile (Function)                        |
+| `Dockerfile.rhel`    | Single Container Dockerfile (Red Hat)                         |
 | `init.sh`            | Single Container Init Script                                  |
 | `LICENSE`            | Microsoft MIT License                                         |
 | `README.md`          | This README File                                              |
