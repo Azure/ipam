@@ -23,6 +23,11 @@ jobs:
     steps:
       - run: echo "Job triggered by a ${{ github.event_name }} event to main."
 
+      - name: "Setup NodeJS v18"
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v4
 
