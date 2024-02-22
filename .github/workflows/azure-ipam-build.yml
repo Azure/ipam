@@ -78,13 +78,14 @@ jobs:
         id: commitCode
         run: |
           git config --global user.name "GitHub Actions"
-          git config --global user.email "ipams@users.noreply.github.com"
+          git config --global user.email "ipam@users.noreply.github.com"
           git commit -a -m "Updated Azure IPAM Version"
           git push
 
   release:
     name: Create Azure IPAM Release
     runs-on: ubuntu-latest
+    needs: [ version ]
     steps:
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v4
@@ -115,6 +116,7 @@ jobs:
   update:
     name: Update Azure IPAM Containers
     runs-on: ubuntu-latest
+    needs: [ version, release ]
     steps:
       - name: Azure login
         uses: azure/login@v1
