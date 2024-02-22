@@ -59,9 +59,9 @@ jobs:
 
           if ($version) {
             ./version.ps1 -Version $newVersion
-          } else if ($major) {
+          } elseif ($major) {
             ./version.ps1 -BumpMajor
-          } else if ($minor) {
+          } elseif ($minor) {
             ./version.ps1 -BumpMinor
           } else {
             ./version.ps1 -BumpBuild
