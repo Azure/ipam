@@ -117,7 +117,7 @@ jobs:
 
       - name: "Sleep for 5 Minutes"
         shell: pwsh
-        run: Start-Sleep -s 30
+        run: Start-Sleep -s 300
 
   test:
     name: Test Azure IPAM
