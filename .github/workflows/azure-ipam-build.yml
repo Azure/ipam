@@ -9,6 +9,7 @@ on:
 permissions:
   id-token: write
   contents: write
+  pull-requests: read
 
 env:
   ACR_NAME: ${{ vars.IPAM_PROD_ACR }}
