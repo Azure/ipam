@@ -31,8 +31,6 @@ jobs:
 
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v4
-        with:
-          persist-credentials: false
 
       - uses: actions/github-script@v7
         id: getPullRequestData
@@ -45,6 +43,20 @@ jobs:
                 repo: context.repo.repo,
               })
             ).data[0];
+
+      - name: Configure Git
+        id: configureGit
+        run: |
+          git config --global user.name "IPAM GitHub Actions"
+          git config --global user.email "ipam-actions@users.noreply.github.com"
+
+      - name: Create Temporary Branch
+        id: createBranch
+        env:
+          branchSuffix: ${{ steps.getPullRequestData.outputs.result.number }}
+        run: |
+          git checkout -b ipam-version-${branchSuffix}
+          git push origin ipam-version-${branchSuffix}
 
       - name: "Increment Azure IPAM Version"
         id: updateVersion
@@ -78,7 +90,8 @@ jobs:
       - name: Install NPM Packages
         id: installNpmPackages
         working-directory: ui
-        run: npm install
+        run: |
+          npm install
 
       - name: "Create Azure IPAM ZIP Asset"
         id: buildZipAsset
@@ -89,11 +102,11 @@ jobs:
 
       - name: Commit Updated Azure IPAM Code
         id: commitCode
+        env:
+          branchSuffix: ${{ steps.getPullRequestData.outputs.result.number }}
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "ipam@users.noreply.github.com"
           git commit -a -m "Updated Azure IPAM Version"
-          git push
+          git push origin ipam-version-${branchSuffix}
 
   release:
     name: Create Azure IPAM Release
@@ -126,8 +139,8 @@ jobs:
         run: |
           gh release upload "$tagName" "$assetPath"
 
-  update:
-    name: Update Azure IPAM Containers
+  build:
+    name: Build Azure IPAM Containers
     runs-on: ubuntu-latest
     needs: [ version, release ]
     steps:
