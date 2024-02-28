@@ -4,7 +4,8 @@ run-name: Azure IPAM Production Container Build
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 permissions:
   id-token: write
@@ -127,7 +128,8 @@ jobs:
           prNumber: ${{ needs.version.outputs.prNumber }}
         run: |
           gh pr create --base main --head "ipam-version-${prNumber}" --title "Update Azure IPAM Version" --body "-Updated Version to v${{ needs.version.outputs.ipamVersion }}"
-          gh pr merge "ipam-version-${prNumber}" -t "Merge pull request from Azure/ipam-version-${prNumber} [skip ci]" -m
+          gh pr checks "ipam-version-${prNumber}" --watch
+          gh pr merge "ipam-version-${prNumber}" -t "Merge pull request from Azure/ipam-version-${prNumber} [skip ci]" -m -d
 
       - name: Pull Merged Code from Main Branch
         id: pullMainCode

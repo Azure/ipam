@@ -4,7 +4,9 @@ run-name: Azure IPAM Deployment & Testing
 
 on:
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+      - '!ipam-version-*'
 
 env:
   ACR_NAME: ${{ vars.IPAM_TEST_ACR }}
