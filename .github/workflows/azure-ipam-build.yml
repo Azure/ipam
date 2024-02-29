@@ -1,6 +1,6 @@
 name: Azure IPAM Build
 
-run-name: Azure IPAM Production Container Build
+run-name: Azure IPAM Production Build & Release
 
 on:
   push:
@@ -31,9 +31,6 @@ jobs:
         with:
           node-version: 18
 
-      - name: Checkout Azure IPAM Code
-        uses: actions/checkout@v4
-
       - uses: actions/github-script@v7
         id: getPullRequestData
         with:
@@ -46,19 +43,16 @@ jobs:
               })
             ).data[0];
 
+      - name: Checkout Azure IPAM Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+
       - name: Configure Git
         id: configureGit
         run: |
           git config --global user.name "IPAM GitHub Actions"
           git config --global user.email "ipam-actions@users.noreply.github.com"
-
-      - name: Create Temporary Branch
-        id: createBranch
-        env:
-          prNumber: ${{ fromJson(steps.getPullRequestData.outputs.result).number }}
-        run: |
-          git checkout -b ipam-version-${prNumber}
-          git push origin ipam-version-${prNumber}
 
       - name: "Increment Azure IPAM Version"
         id: updateVersion
@@ -107,8 +101,8 @@ jobs:
         env:
           prNumber: ${{ fromJson(steps.getPullRequestData.outputs.result).number }}
         run: |
-          git commit -a -m "Updated Azure IPAM Version"
-          git push origin ipam-version-${prNumber}
+          git commit -a -m "Updated Azure IPAM Version to v${{ steps.updateVersion.outputs.ipamVersion }}"
+          git push
 
   release:
     name: Create Azure IPAM Release
@@ -120,28 +114,6 @@ jobs:
         with:
           sparse-checkout: |
             assets
-
-      - name: Create and Merge Pull Reuest
-        id: pullRequest
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
-          prNumber: ${{ needs.version.outputs.prNumber }}
-        run: |
-          gh pr create --base main --head "ipam-version-${prNumber}" --title "Update Azure IPAM Version" --body "-Updated Version to v${{ needs.version.outputs.ipamVersion }}"
-          gh pr checks "ipam-version-${prNumber}" --watch
-          gh pr merge "ipam-version-${prNumber}" -t "Merge pull request from Azure/ipam-version-${prNumber} [skip ci]" -m -d
-
-      - name: Pull Merged Code from Main Branch
-        id: pullMainCode
-        run: |
-          git pull
-
-      - name: Delete Temporary Branch
-        id: deleteBranch
-        env:
-          prNumber: ${{ needs.version.outputs.prNumber }}
-        run: |
-          git push origin --delete "ipam-version-${prNumber}"
 
       - name: Publish Azure IPAM Release
         id: publishRelease
