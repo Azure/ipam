@@ -387,7 +387,7 @@ async def ipam_startup():
     global BUILD_DIR
 
     if os.path.exists(BUILD_DIR):
-        if(os.environ.get('FUNCTIONS_WORKER_RUNTIME')):
+        if(os.environ.get('FUNCTIONS_WORKER_RUNTIME') or (not os.access(BUILD_DIR, os.W_OK))):
             new_build_dir = os.path.join(tempfile.gettempdir(), "dist")
 
             shutil.copytree(BUILD_DIR, new_build_dir)
