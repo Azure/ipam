@@ -230,7 +230,7 @@ try {
     exit
   }
 
-  Write-Host "INFO: Cleaning up..." -ForegroundColor Green
+  Write-Host "INFO: Cleaning up temporary files..." -ForegroundColor Green
 
   # Cleanup temporary files
   Remove-Item -Path TEMP:\packages -Recurse -Force -ErrorAction SilentlyContinue
