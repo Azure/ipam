@@ -64,9 +64,15 @@ try {
   Write-Host "INFO: Verifying NodeJS is present and has the correct version" -ForegroundColor Green
 
   # Check for NodeJS and NPM and fetch their current versions
-  $npmErr = $(    
-    $npmDetails = npm version --json
-  ) 2>&1
+  try {
+    $npmErr = $(    
+      $npmDetails = npm version --json
+    ) 2>&1
+  } catch {
+    Write-Host "ERROR: NodeJS not detected!" -ForegroundColor red
+    Write-Host "ERROR: NodeJS is required to build the Azure IPAM code package!" -ForegroundColor red
+    exit
+  }
 
   # Extract NodeJs and NPM versions and exit if either is not detected
   if($null -eq $npmErr) {
