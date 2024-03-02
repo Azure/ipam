@@ -90,7 +90,7 @@ try {
   if($nodeVersion -lt $MIN_NODE_VERSION) {
     Write-Host "ERROR: NodeJS must be " -ForegroundColor red -NoNewline
     Write-Host "v$MIN_NODE_VERSION" -ForegroundColor cyan -NoNewline
-    Wrire-Host " or greater!" -ForegroundColor red
+    Write-Host " or greater!" -ForegroundColor red
   }
 
   # Check for required NPM version
