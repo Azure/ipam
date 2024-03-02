@@ -245,6 +245,7 @@ catch {
   Write-Host "Build Log: $buildLog" -ForegroundColor Red
 }
 finally {
+  Set-Location (Get-Item $($MyInvocation.MyCommand.Path)).Directory
   Write-Host
   Stop-Transcript | Out-Null
 }
