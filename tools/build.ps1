@@ -153,7 +153,7 @@ try {
 
   # Build Azure IPAM UI
   $npmInstallErr = $(
-    $npmInstall = npm install --no-progress
+    $npmInstall = npm install --no-progress --no-update-notifier
   ) 2>&1
 
   # Switch back to original dir
@@ -180,7 +180,7 @@ try {
 
   # Exit if NPM Build fails
   if($npmBuildErr) {
-    Write-Host "ERROR: NPM Build failed!" -ForegroundColor red
+    Write-Host "ERROR: NPM Install failed!" -ForegroundColor red
     throw $npmBuildErr
   }
 
