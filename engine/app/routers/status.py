@@ -29,7 +29,8 @@ async def get_status():
     status_message = {
         "status": "OK",
         "version": globals.IPAM_VERSION,
-        "stack": stack_type
+        "stack": stack_type,
+        "environment": globals.AZURE_ENV
     }
 
     if (is_container):
