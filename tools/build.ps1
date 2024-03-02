@@ -108,9 +108,17 @@ try {
   Write-Host "INFO: Verifying Python is present and has the correct version" -ForegroundColor Green
 
   # Check for PIP and fetch the associated Python version
-  $pipErr = $(    
-    $pipDetails = pip --version
-  ) 2>&1
+  try {
+    $pipErr = $(    
+      $pipDetails = pip --version
+    ) 2>&1
+  } catch {
+    Write-Host "ERROR: Python PIP not detected!" -ForegroundColor red
+    Write-Host "ERROR: Python " -ForegroundColor red -NoNewline
+    Write-Host "v$PYTHON_VERSION" -ForegroundColor cyan -NoNewline
+    Write-Host " and PIP are required to build the Azure IPAM code package!" -ForegroundColor red
+    exit
+  }
 
   # Extract Python version and exit if it doesn't match required version
   if($null -eq $pipErr) {
@@ -124,7 +132,7 @@ try {
   }
 
   # Check for required Python version
-  if($pythonVersion -ne $PYTHON) {
+  if($pythonVersion -ne $PYTHON_VERSION) {
     Write-Host "ERROR: Python must be " -ForegroundColor red -NoNewline
     Write-Host "v$PYTHON_VERSION" -ForegroundColor cyan -NoNewline
     Write-Host "! Python " -ForegroundColor red -NoNewline
