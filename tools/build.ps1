@@ -193,9 +193,7 @@ try {
   Write-Host "INFO: Running PIP install..." -ForegroundColor Green
 
   # Remove package directory if it exists
-  if(Test-Path -Path TEMP:\packages) {
-    Remove-Item -Path TEMP:\packages -Recurse -Force
-  }
+  Remove-Item -Path TEMP:\packages -Recurse -Force -ErrorAction SilentlyContinue
 
   # Create temporary directory for PIP packages
   $packageDir = New-Item -ItemType Directory -Path TEMP:\packages
@@ -231,6 +229,11 @@ try {
     Write-Host "ERROR: Cannot create ZIP Deploy archive!" -ForegroundColor red
     exit
   }
+
+  Write-Host "Cleaning up..." -ForegroundColor Green
+
+  # Cleanup temporary files
+  Remove-Item -Path TEMP:\packages -Recurse -Force -ErrorAction SilentlyContinue
 
   Write-Host "INFO: Azure IPAM Zip Deploy archive successfully created" -ForegroundColor Green
 
