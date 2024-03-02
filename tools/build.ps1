@@ -146,6 +146,25 @@ try {
   # Create path to UI dir from script file location
   $uiDir = Join-Path -Path $ROOT_DIR -ChildPath "ui"
 
+  # Switch to UI dir for package install process
+  Push-Location -Path $uiDir
+
+  Write-Host "INFO: Running NPM Install..." -ForegroundColor Green
+
+  # Build Azure IPAM UI
+  $npmInstallErr = $(
+    $npmInstall = npm install --no-progress
+  ) 2>&1
+
+  # Switch back to original dir
+  Pop-Location
+
+  # Exit if NPM Build fails
+  if($npmInstallErr) {
+    Write-Host "ERROR: NPM Build failed!" -ForegroundColor red
+    throw $npmInstallErr
+  }
+
   # Switch to UI dir for build process
   Push-Location -Path $uiDir
 
