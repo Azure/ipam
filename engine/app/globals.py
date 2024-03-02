@@ -42,7 +42,7 @@ class Globals:
 
     @property
     def IPAM_VERSION(self):
-        return json.load(open(os.path.join(ROOT_DIR, "version.json")))['version']
+        return json.load(open(os.path.join(ROOT_DIR, "version.json")))['app']
 
     @property
     def MANAGED_IDENTITY_ID(self):
