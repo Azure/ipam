@@ -47,8 +47,7 @@ param privateAcrUri string
 var acrUri = privateAcr ? privateAcrUri : 'azureipam.azurecr.io'
 
 // Disable Build Process Internet-Restricted Clouds
-// var runFromPackage = azureCloud == 'AZURE_US_GOV_SECRET' ? true : false
-var runFromPackage = true
+var runFromPackage = azureCloud == 'AZURE_US_GOV_SECRET' ? true : false
 
 // Current Python Version
 var engineVersion = loadJsonContent('../../engine/app/version.json')

@@ -48,6 +48,9 @@ $engineVersionFile = Join-Path -Path $engineAppDir -ChildPath "version.json"
 $engineVersionJson = Get-Content -Path $engineVersionFile | ConvertFrom-Json
 $PYTHON_VERSION = [version]$engineVersionJson.python
 
+# Create a temporary folder path
+$tempFolder = Join-Path -Path TEMP:\ -ChildPath $(New-Guid)
+
 # Set preference variables
 $ErrorActionPreference = "Stop"
 
@@ -184,6 +187,9 @@ try {
     throw $npmBuildErr
   }
 
+  # Create temporary directory
+  New-Item -ItemType Directory -Path $tempFolder -Force | Out-Null
+
   # Create path to Engine dir from script file location
   $engineDir = Join-Path -Path $ROOT_DIR -ChildPath "engine"
 
@@ -196,7 +202,7 @@ try {
   Remove-Item -Path TEMP:\packages -Recurse -Force -ErrorAction SilentlyContinue
 
   # Create temporary directory for PIP packages
-  $packageDir = New-Item -ItemType Directory -Path TEMP:\packages
+  $packageDir = New-Item -ItemType Directory -Path (Join-Path -Path $tempFolder -ChildPath "packages")
 
   # Fetch Azure IPAM Engine modules
   $pipInstallErr = $(
@@ -212,19 +218,23 @@ try {
     throw $pipInstallErr
   }
 
-  # Create the Azure IPAM ZIP Deploy archive if NPM Build was successful
+  # Create the Azure IPAM ZIP Deploy archive if NPM Build and PIP install were successful
   if((-not $npmBuildErr) -and (-not $pipInstallErr)) {
-    Write-Host "INFO: Creating ZIP Deploy archive..." -ForegroundColor Green
-
     $FilePath = Join-Path -Path $Path -ChildPath $FileName
 
-    Compress-Archive -Path $packageDir.FullName -DestinationPath $FilePath -Force
-    Compress-Archive -Path ..\engine\app -DestinationPath $FilePath -Update
-    Compress-Archive -Path ..\engine\function_app.py -DestinationPath $FilePath -Update
-    Compress-Archive -Path ..\engine\requirements.txt -DestinationPath $FilePath -Update
-    Compress-Archive -Path ..\engine\host.json -DestinationPath $FilePath -Update
-    Compress-Archive -Path ..\ui\dist -DestinationPath $FilePath -Update
-    Compress-Archive -Path ..\init.sh -DestinationPath $FilePath -Update
+    Write-Host "INFO: Collecting asset files..." -ForegroundColor Green
+
+    Copy-Item -Path ..\engine\app -Destination $tempFolder -Recurse
+    Copy-Item -Path ..\engine\function_app.py -Destination $tempFolder
+    Copy-Item -Path ..\engine\requirements.txt -Destination $tempFolder
+    Copy-Item -Path ..\ui\dist -Destination $tempFolder -Recurse
+    Copy-Item -Path ..\init.sh -Destination $tempFolder
+
+    Get-ChildItem -Path (Join-Path -Path $tempFolder -ChildPath "app") -Filter "__pycache__" -Recurse | Remove-Item -Recurse
+
+    Write-Host "INFO: Creating ZIP Deploy archive..." -ForegroundColor Green
+
+    Compress-Archive -Path (Join-Path -Path $tempFolder -ChildPath *) -DestinationPath $FilePath -Force
   } else {
     Write-Host "ERROR: Cannot create ZIP Deploy archive!" -ForegroundColor red
     exit
@@ -233,7 +243,7 @@ try {
   Write-Host "INFO: Cleaning up temporary files..." -ForegroundColor Green
 
   # Cleanup temporary files
-  Remove-Item -Path TEMP:\packages -Recurse -Force -ErrorAction SilentlyContinue
+  Remove-Item -Path $tempFolder -Recurse -Force -ErrorAction SilentlyContinue
 
   Write-Host "INFO: Azure IPAM Zip Deploy archive successfully created" -ForegroundColor Green
 
