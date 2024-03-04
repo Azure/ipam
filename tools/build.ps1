@@ -200,7 +200,7 @@ try {
 
   # Fetch Azure IPAM Engine modules
   $pipInstallErr = $(
-    $pipInstall = pip install -r requirements.txt --target $packageDir.FullName --progress-bar off
+    $pipInstall = pip install --upgrade -r requirements.txt --target $packageDir.FullName --progress-bar off
   ) 2>&1
 
   # Switch back to original dir
