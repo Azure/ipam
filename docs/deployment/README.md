@@ -6,20 +6,20 @@ To successfully deploy the solution, the following prerequisites must be met:
 
 - An Azure Subscription (to deploy the solution into)
 - The following Azure RBAC Roles:
-  - [Owner](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#owner) at the above mentioned Subscription scope
-  - One of the following roles at the [Root Management Group](https://learn.microsoft.com/en-us/azure/governance/management-groups/overview#root-management-group-for-each-directory) scope (needed to grant App Registrations and Managed Identity RBAC permissions):
-    - [Owner](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#owner)
-    - [User Access Administrator](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#user-access-administrator)
-    - [Custom Role](https://learn.microsoft.com/en-us/azure/role-based-access-control/custom-roles) with *allow* permissions of `Microsoft.Authorization/roleAssignments/write`
-  - [Global Administrator](https://learn.microsoft.com/en-us/azure/active-directory/roles/permissions-reference#global-administrator) (needed to grant admin consent for the App Registration API permissions)
+  - [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner) at the above mentioned Subscription scope
+  - One of the following roles at the [Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) scope (needed to grant App Registrations and Managed Identity RBAC permissions):
+    - [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner)
+    - [User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#user-access-administrator)
+    - [Custom Role](https://learn.microsoft.com/azure/role-based-access-control/custom-roles) with *allow* permissions of `Microsoft.Authorization/roleAssignments/write`
+  - [Global Administrator](https://learn.microsoft.com/azure/active-directory/roles/permissions-reference#global-administrator) (needed to grant admin consent for the App Registration API permissions)
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
   - Required to clone the Azure IPAM GitHub repository
-- [PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
-- [Azure PowerShell](https://learn.microsoft.com/en-us/powershell/azure/install-az-ps) version 8.0.0 or later installed
-- [Microsoft Graph PowerShell SDK](https://learn.microsoft.com/en-us/powershell/microsoftgraph/installation) version 2.0.0 or later installed
-  - Required for *Full* or *Apps Only* deployments to grant [Admin Consent](https://learn.microsoft.com/en-us/azure/active-directory/manage-apps/grant-admin-consent) to the App Registrations
-- [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) version 0.21.1 or later installed
-- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) version 2.35.0 or later installed (optional)
+- [PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
+- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 8.0.0 or later installed
+- [Microsoft Graph PowerShell SDK](https://learn.microsoft.com/powershell/microsoftgraph/installation) version 2.0.0 or later installed
+  - Required for *Full* or *Apps Only* deployments to grant [Admin Consent](https://learn.microsoft.com/azure/active-directory/manage-apps/grant-admin-consent) to the App Registrations
+- [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install) version 0.21.1 or later installed
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) version 2.35.0 or later installed (optional)
   - Required only if you are building your own container image and pushing it to a private Azure Container Registry (Private ACR)
 - [Docker (Linux)](https://docs.docker.com/engine/install/) / [Docker Desktop (Windows)](https://docs.docker.com/desktop/install/windows-install/) installed (optional)
   - Required only if you are building your own container image and running it locally for development/testing purposes
@@ -47,7 +47,7 @@ The two-part deployment option is provided in the event that a single team withi
 
 ## Authenticate to Azure PowerShell
 
-Before executing the Azure IPAM deployment script, you'll need to authenticate to [Azure PowerShell](https://learn.microsoft.com/en-us/powershell/azure/install-az-ps) and set the context to the target subscription in which you'd like to deploy the solution.
+Before executing the Azure IPAM deployment script, you'll need to authenticate to [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) and set the context to the target subscription in which you'd like to deploy the solution.
 
 ### Connect to Azure PowerShell
 
@@ -59,7 +59,7 @@ Connect-AzAccount
 Connect-AzAccount -UseDeviceAuthentication
 ```
 
-> **NOTE:** If you're connecting to an Azure Cloud besides Azure Public (such as Gov, China, etc.), you may need to specify the `-Environment` flag as described [here](https://learn.microsoft.com/en-us/powershell/azure/authenticate-azureps#sign-in-to-another-cloud) when using `Connect-AzAccount`
+> **NOTE:** If you're connecting to an Azure Cloud besides Azure Public (such as Gov, China, etc.), you may need to specify the `-Environment` flag as described [here](https://learn.microsoft.com/powershell/azure/authenticate-azureps#sign-in-to-another-cloud) when using `Connect-AzAccount`
 
 ### Set the Active Subscription for Azure PowerShell
 
@@ -74,11 +74,11 @@ Set-AzContext -Subscription "28b502e2-323f-4e57-98db-743459176557"
 Set-AzContext -Subscription "Contoso IPAM Subscription"
 ```
 
-For additional information on authenticating with Azure PowerShell, refer to the documentation [here](https://learn.microsoft.com/en-us/powershell/azure/authenticate-azureps)
+For additional information on authenticating with Azure PowerShell, refer to the documentation [here](https://learn.microsoft.com/powershell/azure/authenticate-azureps)
 
 ## Authenticate to Azure CLI (Optional)
 
-If you are using the `-PrivateACR` switch, you will need to be authenticated to the [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) *in addition to* Azure PowerShell. This is because the deployment script will use the `az acr build` feature to build the application containers and push them into the private Azure Container Registry and the equivalent commands are current not available via Azure PowerShell.
+If you are using the `-PrivateACR` switch, you will need to be authenticated to the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) *in addition to* Azure PowerShell. This is because the deployment script will use the `az acr build` feature to build the application containers and push them into the private Azure Container Registry and the equivalent commands are current not available via Azure PowerShell.
 
 ### Connect to Azure CLI
 
@@ -103,7 +103,7 @@ az account set --subscription "28b502e2-323f-4e57-98db-743459176557"
 az account set --subscription "Contoso IPAM Subscription"
 ```
 
-For additional information on authenticating with Azure CLI, refer to the documentation [here](https://learn.microsoft.com/en-us/cli/azure/authenticate-azure-cli)
+For additional information on authenticating with Azure CLI, refer to the documentation [here](https://learn.microsoft.com/cli/azure/authenticate-azure-cli)
 
 ## Clone the Github Repo
 
@@ -142,7 +142,7 @@ You have the ability to pass optional flags to the deployment script:
 
 > **NOTE 1:** The required values will vary based on the deployment type.
 
-> **NOTE 2:** This must include ALL required resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
+> **NOTE 2:** This must include ALL required resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
 
 > **NOTE 3:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
 
@@ -288,7 +288,7 @@ As part of the app registration deployment, a `main.parameters.json` file is gen
 
 ## Infrastructure Stack (Only) Deployment
 
-To deploy infrastructure only, ensure you have the auto-generated `main.parameters.json` file created by the [App Registration Only](#app-registration-only-deployment) deployment in your `deploy` directory. Alternatively, you can generate your own using `main.parameters.example.json` as an example template.
+To deploy infrastructure only, ensure you have the auto-generated `main.parameters.json` file created by the [App Registration Only](#azure-identities-only-deployment) deployment in your `deploy` directory. Alternatively, you can generate your own using `main.parameters.example.json` as an example template.
 
 Once your parameters file is ready, run the following from within the `deploy` directory:
 
@@ -310,7 +310,7 @@ You have the ability to pass optional flags to the deployment script:
 
 > **NOTE 1:** The required values will vary based on the deployment type.
 
-> **NOTE 2:** This must include ALL required resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
+> **NOTE 2:** This must include ALL required resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
 
 > **NOTE 3:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
 
