@@ -75,6 +75,10 @@ import Subnet from "../../img/Subnet";
 import Endpoint from "../../img/Endpoint";
 import Analysis from "../../img/Analysis";
 import Configure from "../../img/Configure";
+import Basics from "../../img/Basics";
+import Associate from "../../img/Associate";
+import External from "../../img/External";
+import Reservation from "../../img/Reservation";
 import Admin from "../../img/Admin";
 import Visualize from "../../img/Visualize";
 import Peering from "../../img/Peering";
@@ -94,6 +98,7 @@ import DiscoverTabs from "../tabs/discoverTabs";
 import AnalyzeTabs from "../tabs/analyzeTabs";
 import ToolsTabs from "../tabs/toolsTabs";
 import AdminTabs from "../tabs/adminTabs";
+import ConfigTabs from "../tabs/configTabs";
 import ConfigureIPAM from "../configure/configure";
 
 import Refresh from "./refresh";
@@ -287,8 +292,33 @@ export default function NavDrawer() {
       {
         title: "Configure",
         icon: Configure,
-        link: "configure",
-        admin: false
+        admin: false,
+        children: [
+          {
+            title: "Basics",
+            icon: Basics,
+            link: "configure/basics",
+            admin: false
+          },
+          {
+            title: "Associations",
+            icon: Associate,
+            link: "configure/associations",
+            admin: false
+          },
+          {
+            title: "Reservations",
+            icon: Reservation,
+            link: "configure/reservations",
+            admin: false
+          },
+          {
+            title: "Externals",
+            icon: External,
+            link: "configure/externals",
+            admin: false
+          }
+        ]
       },
       {
         title: "Admin",
@@ -515,7 +545,7 @@ export default function NavDrawer() {
                       key={item.title}
                       component="div"
                       sx={{ "&:hover": { cursor: "pointer" } }}
-                      onClick={() => { setNavChildOpen({...navChildOpen, [item.title]: !navChildOpen[item.title]}) }}
+                      onClick={() => { setNavChildOpen({[item.title]: !navChildOpen[item.title]}) }}
                     >
                       <ListItemIcon>
                         <SvgIcon>
@@ -958,7 +988,10 @@ export default function NavDrawer() {
           <Route path="analyze/visualize" element={<AnalyzeTabs />} />
           <Route path="analyze/peering" element={<AnalyzeTabs />} />
           <Route path="tools/planner" element={<ToolsTabs />} />
-          <Route path="configure" element={<ConfigureIPAM />} />
+          <Route path="configure/basics" element={<ConfigTabs />} />
+          <Route path="configure/associations" element={<ConfigTabs />} />
+          <Route path="configure/reservations" element={<ConfigTabs />} />
+          <Route path="configure/externals" element={<ConfigTabs />} />
           <Route path="admin/admins" element={<AdminTabs />} />
           <Route path="admin/subscriptions" element={<AdminTabs />} />
           {/* <Route path="admin/settings" element={<AdminTabs />} /> */}

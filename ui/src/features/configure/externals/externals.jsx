@@ -1,36 +1,31 @@
-import * as React from "react";
+import * as React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
+import { useTheme } from '@mui/material/styles';
 
-import { isEmpty, isEqual, pickBy, orderBy, cloneDeep } from 'lodash';
+import { isEmpty, isEqual, pickBy, orderBy, sortBy, cloneDeep } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
 import '@inovua/reactdatagrid-community/theme/default-dark.css'
-
-import Draggable from 'react-draggable';
-
-import { useTheme } from '@mui/material/styles';
+import SelectFilter from '@inovua/reactdatagrid-community/SelectFilter'
 
 import {
   Box,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
   IconButton,
-  CircularProgress,
   Menu,
   MenuItem,
   ListItemIcon,
-  OutlinedInput,
+  TextField,
+  Autocomplete,
+  Typography,
   Tooltip,
-  Paper
-} from "@mui/material";
+  OutlinedInput,
+  CircularProgress
+} from '@mui/material';
 
 import {
   Refresh,
@@ -42,40 +37,37 @@ import {
   CancelOutlined,
   PlaylistAddOutlined,
   HighlightOff,
-  InfoOutlined
+  InfoOutlined,
+  SaveAlt,
+  Check,
+  Close
 } from "@mui/icons-material";
-
-import LoadingButton from '@mui/lab/LoadingButton';
 
 import {
   replaceBlockExternals
-} from "../../../ipam/ipamAPI";
+} from "../../ipam/ipamAPI";
 
 import {
+  selectSpaces,
+  fetchSpacesAsync,
   fetchNetworksAsync,
-  selectSubscriptions,
   selectNetworks,
   selectViewSetting,
   updateMeAsync
-} from "../../../ipam/ipamSlice";
+} from "../../ipam/ipamSlice";
 
 import {
   isSubnetOf,
   isSubnetOverlap
-} from "../../../tools/utils/iputils";
+} from "../../tools/utils/iputils";
 
 import {
   EXTERNAL_NAME_REGEX,
   EXTERNAL_DESC_REGEX,
   CIDR_REGEX
-} from "../../../../global/globals";
+} from "../../../global/globals";
 
 const ExternalContext = React.createContext({});
-
-const Spotlight = styled("span")(({ theme }) => ({
-  fontWeight: 'bold',
-  color: theme.palette.mode === 'dark' ? 'cornflowerblue' : 'mediumblue'
-}));
 
 const Update = styled("span")(({ theme }) => ({
   fontWeight: 'bold',
@@ -256,25 +248,16 @@ function HeaderMenu(props) {
   )
 }
 
-function DraggablePaper(props) {
-  const nodeRef = React.useRef(null);
-
-  return (
-    <Draggable
-      nodeRef={nodeRef}
-      handle="#draggable-dialog-title"
-      cancel={'[class*="MuiDialogContent-root"]'}
-      bounds="parent"
-    >
-      <Paper {...props} ref={nodeRef}/>
-    </Draggable>
-  );
-}
-
-export default function EditExternals(props) {
-  const { open, handleClose, space, block, refresh, refreshing, refreshingState } = props;
-
+const Externals = () => {
   const { enqueueSnackbar } = useSnackbar();
+
+  const [spaceInput, setSpaceInput] = React.useState('');
+  const [blockInput, setBlockInput] = React.useState('');
+
+  const [selectedSpace, setSelectedSpace] = React.useState(null);
+  const [selectedBlock, setSelectedBlock] = React.useState(null);
+
+  const [blocks, setBlocks] = React.useState(null);
 
   const [saving, setSaving] = React.useState(false);
   const [sendResults, setSendResults] = React.useState(null);
@@ -283,6 +266,7 @@ export default function EditExternals(props) {
   const [deleted, setDeleted] = React.useState([]);
   const [gridData, setGridData] = React.useState(null);
   const [sending, setSending] = React.useState(false);
+  const [refreshing, setRefreshing] = React.useState(false);
   const [refreshingData, setRefreshingData] = React.useState(false);
   const [selectionModel, setSelectionModel] = React.useState({});
 
@@ -294,21 +278,34 @@ export default function EditExternals(props) {
   const [extDesc, setExtDesc] = React.useState({ value: "", error: true });
   const [extCidr, setExtCidr] = React.useState({ value: "", error: true });
 
-  const subscriptions = useSelector(selectSubscriptions);
+  const [unchanged, setUnchanged] = React.useState(true);
+
+  const spaces = useSelector(selectSpaces);
   const networks = useSelector(selectNetworks);
   const viewSetting = useSelector(state => selectViewSetting(state, 'externals'));
-  const dispatch = useDispatch();
 
   const saveTimer = React.useRef();
 
+  const dispatch = useDispatch();
   const theme = useTheme();
-
-  //eslint-disable-next-line
-  const unchanged = (block && externals) ? isEqual(block['externals'], externals.map(({id, ...rest}) => rest)) : false;
 
   const columns = React.useMemo(() => [
     { name: "name", header: "Name", type: "string", flex: 0.5, draggable: false, visible: true },
     { name: "desc", header: "Description", type: "string", flex: 1, draggable: false, visible: true },
+    {
+      name: "managed",
+      header: "Managed",
+      type: "boolean",
+      width: 130,
+      draggable: false,
+      visible: true,
+      filterEditor: SelectFilter,
+      filterEditorProps: {
+        placeholder: 'Any',
+        dataSource: [ { id: true, label: 'True' }, { id: false, label : 'False' } ]
+      },
+      render: ({ value })=> <Box sx={{ display: 'flex', flexGrow: 1, justifyContent: 'center' }}><Check color="success" /></Box>
+    },
     { name: "cidr", header: "CIDR", type: "string", flex: 0.30, draggable: false, visible: true },
     { name: "id", header: () => <HeaderMenu setting="externals"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => <RenderDelete value={data} />, visible: true }
   ], []);
@@ -316,21 +313,9 @@ export default function EditExternals(props) {
   const filterValue = [
     { name: "name", operator: "contains", type: "string", value: "" },
     { name: "desc", operator: "contains", type: "string", value: "" },
+    { name: "managed", operator: "eq", type: "boolean" },
     { name: "cidr", operator: "contains", type: "string", value: "" }
   ];
-
-  function onClick(data) {
-    var id = data.id;
-    var newSelectionModel = {};
-
-    setSelectionModel(prevState => {
-      if(!prevState.hasOwnProperty(id)) {
-        newSelectionModel[id] = data;
-      }
-      
-      return newSelectionModel;
-    });
-  }
 
   const onBatchColumnResize = (batchColumnInfo) => {
     const colsMap = batchColumnInfo.reduce((acc, colInfo) => {
@@ -473,6 +458,65 @@ export default function EditExternals(props) {
     }
   }, [saveTimer, sendResults]);
 
+  React.useEffect(() => {
+    if(selectedSpace) {
+      setBlocks(selectedSpace.blocks);
+    }
+  }, [selectedSpace]);
+
+  React.useEffect(() => {
+    setSelectedBlock(null);
+  }, [selectedSpace]);
+
+  React.useEffect(() => {
+    if(!selectedBlock) {
+      setExternals(null);
+
+      setExtName({ value: "", error: true });
+      setExtDesc({ value: "", error: true });
+      setExtCidr({ value: "", error: true });
+    }
+  }, [selectedBlock]);
+
+  React.useEffect(() => {
+    if(selectedBlock && externals) {
+      //eslint-disable-next-line
+      setUnchanged(isEqual(selectedBlock['externals'], externals.map(({id, ...rest}) => rest)));
+    } else {
+      setUnchanged(true);
+    }
+  }, [selectedBlock, externals]);
+
+  function onClick(data) {
+    var id = data.id;
+    var newSelectionModel = {};
+
+    setSelectionModel(prevState => {
+      if(!prevState.hasOwnProperty(id)) {
+        newSelectionModel[id] = data;
+      }
+      
+      return newSelectionModel;
+    });
+  }
+
+  const refresh = React.useCallback(() => {
+    (async() => {
+      try {
+        setRefreshing(true);
+        await dispatch(fetchSpacesAsync());
+      } catch (e) {
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.message, { variant: "error" });
+      } finally {
+        setRefreshing(false);
+      }
+    })();
+  }, [dispatch, enqueueSnackbar]);
+
   function refreshData() {
     (async() => {
       try {
@@ -517,8 +561,7 @@ export default function EditExternals(props) {
       try {
         setSending(true);
         const bodyData = externals.map(({id, ...rest}) => rest);
-        await replaceBlockExternals(block.parent_space, block.name, bodyData);
-        handleClose();
+        await replaceBlockExternals(selectedBlock.parent_space, selectedBlock.name, bodyData);
         setAdded([]);
         setDeleted([]);
         setExtName({ value: "", error: true });
@@ -537,24 +580,6 @@ export default function EditExternals(props) {
       }
     })();
   }
-
-  function onCancel() {
-    setAdded([]);
-    setDeleted([]);
-
-    setExtName({ value: "", error: true });
-    setExtDesc({ value: "", error: true });
-    setExtCidr({ value: "", error: true });
-
-    handleClose();
-  }
-
-  const onCellDoubleClick = React.useCallback((event, cellProps) => {
-    const { value } = cellProps
-
-    navigator.clipboard.writeText(value);
-    enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
-  }, [enqueueSnackbar]);
 
   function onNameChange(event) {
     const newName = event.target.value;
@@ -587,7 +612,7 @@ export default function EditExternals(props) {
     });
   }
 
-  function onCidrChnage(event) {
+  function onCidrChange(event) {
     const newCidr = event.target.value;
 
     const regex = new RegExp(
@@ -605,9 +630,9 @@ export default function EditExternals(props) {
     var extOverlap = true;
 
     if(!cidrError && newCidr.length > 0) {
-      cidrInBlock = isSubnetOf(newCidr, block.cidr);
+      cidrInBlock = isSubnetOf(newCidr, selectedBlock.cidr);
 
-      const openResv = block?.resv.reduce((acc, curr) => {
+      const openResv = selectedBlock?.resv.reduce((acc, curr) => {
         if(!curr['settledOn']) {
           acc.push(curr['cidr']);
         }
@@ -615,10 +640,10 @@ export default function EditExternals(props) {
         return acc;
       }, []);
 
-      if(space && block && networks) {
+      if(selectedSpace && selectedBlock && networks) {
         blockNetworks = networks?.reduce((acc, curr) => {
           if(curr['parent_space'] && curr['parent_block']) {
-            if(curr['parent_space'] === space && curr['parent_block'].includes(block.name)) {
+            if(curr['parent_space'] === selectedSpace && curr['parent_block'].includes(selectedBlock.name)) {
               acc = acc.concat(curr['prefixes']);
             }
           }
@@ -654,14 +679,14 @@ export default function EditExternals(props) {
   }, [extName, extDesc, extCidr]);
 
   React.useEffect(() => {
-    if(block) {
-      var newExternals = cloneDeep(block['externals']);
+    if(selectedBlock) {
+      var newExternals = cloneDeep(selectedBlock['externals']);
 
       newExternals = newExternals.filter(e => !deleted.includes(e.name));
       newExternals = newExternals.concat(added);
 
       const newData = newExternals.reduce((acc, curr) => {
-        curr['id'] = `${space}@${block.name}@${curr.name}}`
+        curr['id'] = `${selectedSpace}@${selectedBlock.name}@${curr.name}}`
 
         acc.push(curr);
 
@@ -670,52 +695,154 @@ export default function EditExternals(props) {
 
       setExternals(newData);
     }
-  }, [space, block, added, deleted]);
+  }, [selectedSpace, selectedBlock, added, deleted]);
+
+  const onCellDoubleClick = React.useCallback((event, cellProps) => {
+    const { value } = cellProps
+
+    navigator.clipboard.writeText(value);
+    enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
+  }, [enqueueSnackbar]);
+
+  function NoRowsOverlay() {
+    return (
+      <React.Fragment>
+        { selectedBlock
+          ? <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+              No External Networks Found for Selected Block
+            </Typography>
+          : <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+              Please Select a Space & Block
+            </Typography>
+        }
+      </React.Fragment>
+    );
+  }
 
   return (
     <ExternalContext.Provider value={{ externals, setAdded, deleted, setDeleted, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
-      <Dialog
-        open={open}
-        onClose={onCancel}
-        PaperComponent={DraggablePaper}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          style: {
-            overflowY: "unset"
-          },
-        }}
-      >
-        <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
-          <Box sx={{ display: "flex", flexDirection: "row" }}>
-            <Box>
-            External Network Association
-            </Box>
-            <Box sx={{ ml: "auto" }}>
-              <IconButton
-                color="primary"
-                size="small"
-                onClick={refreshAll}
-                disabled={refreshing || refreshingData || sending}
-              >
-                <Refresh />
-              </IconButton>
-            </Box>
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
+        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
+            <Autocomplete
+              forcePopupIcon={false}
+              id="grouped-demo"
+              size="small"
+              options={sortBy(spaces, 'name')}
+              getOptionLabel={(option) => option.name}
+              inputValue={spaceInput}
+              onInputChange={(event, newInputValue) => setSpaceInput(newInputValue)}
+              value={selectedSpace}
+              onChange={(event, newValue) => setSelectedSpace(newValue)}
+              isOptionEqualToValue={(option, value) => isEqual(option, value)}
+              noOptionsText={ !spaces ? "Loading..." : "No Spaces" }
+              sx={{ width: 300 }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Space"
+                  placeholder="Please Select Space..."
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <React.Fragment>
+                        {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.InputProps.endAdornment}
+                      </React.Fragment>
+                    ),
+                  }}
+                />
+              )}
+              renderOption={(props, option) => {
+                return (
+                  <li {...props} key={option.name}>
+                    {option.name}
+                  </li>
+                );
+              }}
+              componentsProps={{
+                paper: {
+                  sx: {
+                    width: 'fit-content'
+                  }
+                }
+              }}
+            />
+            <Autocomplete
+              disabled={selectedSpace === null}
+              forcePopupIcon={false}
+              id="grouped-demo"
+              size="small"
+              options={(blocks && selectedSpace) ? sortBy(blocks.filter((x) => x.parent_space === selectedSpace.name), 'name') : []}
+              getOptionLabel={(option) => option.name}
+              inputValue={blockInput}
+              onInputChange={(event, newInputValue) => setBlockInput(newInputValue)}
+              value={selectedBlock}
+              onChange={(event, newValue) => setSelectedBlock(newValue)}
+              isOptionEqualToValue={(option, value) => isEqual(option, value)}
+              sx={{ width: 300 }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Block"
+                  placeholder="Please Select Block..."
+                  InputProps={{
+                    ...params.InputProps
+                  }}
+                />
+              )}
+              renderOption={(props, option) => {
+                return (
+                  <li {...props} key={option.id}>
+                    {option.name}
+                  </li>
+                );
+              }}
+              componentsProps={{
+                paper: {
+                  sx: {
+                    width: 'fit-content'
+                  }
+                }
+              }}
+            />
           </Box>
-        </DialogTitle>
-        <DialogContent
-          sx={{ overflowY: "unset" }}
-        >
-          <DialogContentText>
-            Define the External Networks below which should be associated with the Block <Spotlight>'{block && block.name}'</Spotlight>
-          </DialogContentText>
-          <Box
-            sx={{
-              pt: 4,
-              height: "335px"
-            }}
-          >
-            <ReactDataGrid
+          <Box sx={{ display: 'flex', ml: 'auto' }}>
+            <Tooltip title="Save" placement="top" >
+              <span>
+                <IconButton
+                  color="success"
+                  aria-label="save externals"
+                  component="span"
+                  style={{
+                    visibility: (unchanged || refreshing) ? 'hidden' : 'visible'
+                  }}
+                  disabled={sending}
+                  onClick={onSubmit}
+                >
+                  <SaveAlt />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Box>
+          <Box sx={{ display: 'flex' }}>
+            <Tooltip title="Refresh" placement="top" >
+              <span>
+                <IconButton
+                  color="primary"
+                  size="small"
+                  onClick={refreshData}
+                  disabled={sending || refreshing || !selectedSpace || !selectedBlock }
+                >
+                  <Refresh />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Box>
+        </Box>
+        <Box sx={{ flexGrow: 1, pb: 3, pr: 3, pl: 3, overflowY: 'auto', overflowX: 'hidden' }}>
+          <Box sx={{ pt: 4, height: "100%" }}>
+          <ReactDataGrid
               theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
               idProperty="id"
               showCellBorders="horizontal"
@@ -735,7 +862,7 @@ export default function EditExternals(props) {
               reservedViewportWidth={0}
               columns={columnState || []}
               columnOrder={columnOrderState}
-              loading={sending || !subscriptions || !externals || refreshing || refreshingData || refreshingState}
+              loading={sending || refreshing || refreshingData }
               loadingText={sending ? <Update>Updating</Update> : "Loading"}
               dataSource={gridData || []}
               sortInfo={columnSortState}
@@ -743,10 +870,11 @@ export default function EditExternals(props) {
               onRowClick={(rowData) => onClick(rowData.data)}
               onCellDoubleClick={onCellDoubleClick}
               selected={selectionModel}
+              emptyText={NoRowsOverlay}
               style={gridStyle}
             />
           </Box>
-          <Box
+          {/* <Box
             sx={{
               display: 'flex',
               flexDirection: 'row',
@@ -806,6 +934,7 @@ export default function EditExternals(props) {
                 placeholder="Name"
                 value={extName.value}
                 onChange={onNameChange}
+                disabled={!selectedBlock}
                 inputProps={{
                   spellCheck: 'false',
                   style: {
@@ -868,6 +997,7 @@ export default function EditExternals(props) {
                 placeholder="Description"
                 value={extDesc.value}
                 onChange={onDescChange}
+                disabled={!selectedBlock}
                 inputProps={{
                   spellCheck: 'false',
                   style: {
@@ -928,7 +1058,8 @@ export default function EditExternals(props) {
                 fullWidth
                 placeholder="CIDR"
                 value={extCidr.value}
-                onChange={onCidrChnage}
+                onChange={onCidrChange}
+                disabled={!selectedBlock}
                 inputProps={{
                   spellCheck: 'false',
                   style: {
@@ -1007,25 +1138,11 @@ export default function EditExternals(props) {
                 </span>
               </Tooltip>
             </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={onCancel}
-            sx={{ position: "unset" }}
-          >
-            Cancel
-          </Button>
-          <LoadingButton
-            onClick={onSubmit}
-            loading={sending}
-            disabled={unchanged || sending || refreshing || refreshingData || refreshingState}
-            // sx={{ position: "unset" }}
-          >
-            Apply
-          </LoadingButton>
-        </DialogActions>
-      </Dialog>
+          </Box> */}
+        </Box>
+      </Box>
     </ExternalContext.Provider>
   );
 }
+
+export default Externals;

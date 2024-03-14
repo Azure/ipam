@@ -18,7 +18,7 @@ import {
 } from "../ipam/ipamSlice";
 
 const Wrapper = styled("div")(({ theme }) => ({
-  height: "calc(100vh - 64px)",
+  height: "calc(100vh - 110px)",
   display: "flex",
   flexDirection: "column",
   justifyContent: "flex-start",
@@ -115,9 +115,6 @@ export default function ConfigureIPAM() {
   return (
     <ConfigureContext.Provider value={{ configureRef, spaces, blocks, refreshing, refresh }}>
       <Wrapper ref={configureRef}>
-        <Header>
-          Configure Azure IPAM
-        </Header>
         <MainBody>
           <TopSection>
             <SpaceDataGrid
