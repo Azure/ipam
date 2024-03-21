@@ -53,6 +53,7 @@ import {
 } from "../../ipam/ipamSlice";
 
 import Networks from "./networks/networks";
+import Subnets from "./subnets/subnets";
 
 const Wrapper = styled("div")(({ theme }) => ({
   height: "100%",
@@ -91,8 +92,6 @@ const BottomSection = styled("div")(({ theme }) => ({
   flexDirection: "column",
   height: "50%",
   width: "100%",
-  border: "1px solid rgba(224, 224, 224, 1)",
-  borderRadius: "4px",
   marginTop: theme.spacing(1.5)
 }));
 
@@ -104,10 +103,12 @@ export default function Externals() {
 
   const [blocks, setBlocks] = React.useState(null);
   const [externals, setExternals] = React.useState(null);
+  const [subnets, setSubnets] = React.useState(null);
 
   const [selectedSpace, setSelectedSpace] = React.useState(null);
   const [selectedBlock, setSelectedBlock] = React.useState(null);
   const [selectedExternal, setSelectedExternal] = React.useState(null);
+  const [selectedSubnet, setSelectedSubnet] = React.useState(null);
 
   const [refreshing, setRefreshing] = React.useState(false);
 
@@ -138,22 +139,110 @@ export default function Externals() {
     })();
   }, [dispatch, enqueueSnackbar]);
 
-  React.useEffect(() => {
-    if(!externalLoadedRef.current) {
-      refresh();
-      externalLoadedRef.current = true;
-    }
-  }, [refresh]);
+  // React.useEffect(() => {
+  //   if(!externalLoadedRef.current) {
+  //     refresh();
+  //     externalLoadedRef.current = true;
+  //   }
+  // }, [refresh]);
+
+  // React.useEffect(() => {
+  //   if(selectedSpace) {
+  //     setBlocks(selectedSpace.blocks);
+  //   }
+  // }, [selectedSpace]);
+
+  // React.useEffect(() => {
+  //   setSelectedBlock(null);
+  // }, [selectedSpace]);
 
   React.useEffect(() => {
-    if(selectedSpace) {
-      setBlocks(selectedSpace.blocks);
+    if (!spaces) {
+      console.log("CLEARING SPACES!");
+      setSelectedSpace(null);
+    }
+  }, [spaces]);
+
+  React.useEffect(() => {
+    if (!selectedSpace) {
+      console.log("CLEARING BLOCKS!");
+      setBlocks(null);
     }
   }, [selectedSpace]);
 
   React.useEffect(() => {
-    setSelectedBlock(null);
-  }, [selectedSpace]);
+    if (!blocks) {
+      console.log("CLEARING SELECTED BLOCK!");
+      setSelectedBlock(null);
+    }
+  }, [blocks]);
+
+  React.useEffect(() => {
+    if (spaces && selectedSpace) {
+      const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
+
+      if (spaceIndex >= -1) {
+        if (!isEqual(spaces[spaceIndex], selectedSpace)) {
+          console.log("SPACE UPDATED!");
+          setSelectedSpace(spaces[spaceIndex]);
+          setBlocks(spaces[spaceIndex].blocks);
+        } else if (!blocks) {
+          setBlocks(spaces[spaceIndex].blocks);
+        }
+      } else {
+        console.log("SPACE NOT FOUND!");
+        setSelectedSpace(null);
+      }
+    }
+  }, [spaces, selectedSpace, blocks]);
+
+  React.useEffect(() => {
+    if (blocks && selectedBlock) {
+      const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
+
+      if (blockIndex >= -1) {
+        if (!isEqual(blocks[blockIndex], selectedBlock)) {
+          console.log("BLOCK UPDATED!");
+          setSelectedBlock(blocks[blockIndex]);
+        }
+      } else {
+        console.log("BLOCK NOT FOUND!");
+        setSelectedBlock(null);
+      }
+    }
+  }, [blocks, selectedBlock]);
+
+  React.useEffect(() => {
+    if (externals && selectedExternal) {
+      const externalIndex = externals.findIndex((x) => x.id === selectedExternal.id);
+
+      if (externalIndex >= -1) {
+        if (!isEqual(externals[externalIndex], selectedExternal)) {
+          console.log("EXTERNAL UPDATED!");
+          setSelectedExternal(externals[externalIndex]);
+        }
+      } else {
+        console.log("EXTERNAL NOT FOUND!");
+        setSelectedExternal(null);
+      }
+    }
+  }, [externals, selectedExternal]);
+
+  React.useEffect(() => {
+    if (subnets && selectedSubnet) {
+      const subnetIndex = subnets.findIndex((x) => x.id === selectedSubnet.id);
+
+      if (subnetIndex >= -1) {
+        if (!isEqual(subnets[subnetIndex], selectedSubnet)) {
+          console.log("SUBNET UPDATED!");
+          setSelectedSubnet(subnets[subnetIndex]);
+        }
+      } else {
+        console.log("SUBNET NOT FOUND!");
+        setSelectedSubnet(null);
+      }
+    }
+  }, [subnets, selectedSubnet]);
 
   return (
     <ExternalContext.Provider value={{ externalRef, refreshing, refresh }}>
@@ -170,7 +259,7 @@ export default function Externals() {
                 onInputChange={(event, newInputValue) => setSpaceInput(newInputValue)}
                 value={selectedSpace}
                 onChange={(event, newValue) => setSelectedSpace(newValue)}
-                isOptionEqualToValue={(option, value) => isEqual(option, value)}
+                isOptionEqualToValue={(option, value) => isEqual(option.name, value.name)}
                 noOptionsText={ !spaces ? "Loading..." : "No Spaces" }
                 sx={{ width: 300 }}
                 renderInput={(params) => (
@@ -215,7 +304,7 @@ export default function Externals() {
                 onInputChange={(event, newInputValue) => setBlockInput(newInputValue)}
                 value={selectedBlock}
                 onChange={(event, newValue) => setSelectedBlock(newValue)}
-                isOptionEqualToValue={(option, value) => isEqual(option, value)}
+                isOptionEqualToValue={(option, value) => isEqual(option.name, value.name)}
                 sx={{ width: 300 }}
                 renderInput={(params) => (
                   <TextField
@@ -249,18 +338,22 @@ export default function Externals() {
             <Networks
               selectedSpace={selectedSpace}
               selectedBlock={selectedBlock}
+              selectedExternal={selectedExternal}
               externals={externals}
               setExternals={setExternals}
               setSelectedExternal={setSelectedExternal}
             />
           </TopSection>
           <BottomSection>
-            {/* <BlockDataGrid
+            <Subnets
               selectedSpace={selectedSpace}
               selectedBlock={selectedBlock}
-              setSelectedBlock={setSelectedBlock}
-            /> */}
-            <div>{ JSON.stringify(selectedExternal) }</div>
+              selectedExternal={selectedExternal}
+              selectedSubnet={selectedSubnet}
+              subnets={subnets}
+              setSubnets={setSubnets}
+              setSelectedSubnet={setSelectedSubnet}
+            />
           </BottomSection>
         </MainBody>
       </Wrapper>

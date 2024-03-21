@@ -50,6 +50,8 @@ SPACE_DESC_REGEX = "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$"
 BLOCK_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9/\._-]){1,64}(?<![\._-])$"
 EXTERNAL_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9\._-]){1,32}(?<![\._-])$"
 EXTERNAL_DESC_REGEX = "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,64}(?<![ /\._-])$"
+EXTSUBNET_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9\._-]){1,32}(?<![\._-])$"
+EXTSUBNET_DESC_REGEX = "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,64}(?<![ /\._-])$"
 
 router = APIRouter(
     prefix="/spaces",
@@ -1372,11 +1374,11 @@ async def delete_block_nets(
 
 @router.get(
     "/{space}/blocks/{block}/externals",
-    summary = "List Block External Networks",
+    summary = "List External Networks",
     response_model = List[ExtNet],
     status_code = 200
 )
-async def get_block_external_nets(
+async def get_external_networks(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     authorization: str = Header(None, description="Azure Bearer token"),
@@ -1384,7 +1386,7 @@ async def get_block_external_nets(
     is_admin: str = Depends(get_admin)
 ):
     """
-    Get a list of external networks which are currently associated to the target Block.
+    Get a list of External Networks which are currently associated to the target Block.
     """
 
     if not is_admin:
@@ -1406,16 +1408,16 @@ async def get_block_external_nets(
 
 @router.post(
     "/{space}/blocks/{block}/externals",
-    summary = "Add Block External Network",
-    response_model = List[ExtNet],
+    summary = "Create External Network",
+    response_model = ExtNet,
     status_code = 201
 )
 @cosmos_retry(
     max_retry = 5,
     error_msg = "Error adding external network to block, please try again."
 )
-async def create_block_external_net(
-    external: ExtNet,
+async def create_external_network(
+    external: ExtNetReq,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     authorization: str = Header(None, description="Azure Bearer token"),
@@ -1423,7 +1425,7 @@ async def create_block_external_net(
     is_admin: str = Depends(get_admin)
 ):
     """
-    Associate an external network to the target Block with the following information:
+    Create an External Network within the target Block with the following information:
 
     - **name**: Name of the external network
     - **desc**: Description of the external network
@@ -1481,23 +1483,30 @@ async def create_block_external_net(
     if IPSet([external.cidr]) & IPSet(block_net_cidrs):
         raise HTTPException(status_code=400, detail="Block contains a virtual network(s) or hub(s) which overlap the target external network.")
 
-    target_block['externals'].append(jsonable_encoder(external))
+    new_external = {
+        "name": external.name,
+        "desc": external.desc,
+        "cidr": external.cidr,
+        "subnets": []
+    }
+
+    target_block['externals'].append(jsonable_encoder(new_external))
 
     await cosmos_replace(space_query[0], target_space)
 
-    return target_block['externals']
+    return new_external
 
 @router.put(
     "/{space}/blocks/{block}/externals",
-    summary = "Replace Block External Networks",
+    summary = "Replace External Networks",
     response_model = List[ExtNet],
     status_code = 200
 )
 @cosmos_retry(
     max_retry = 5,
-    error_msg = "Error updating block external networks, please try again."
+    error_msg = "Error updating external networks, please try again."
 )
-async def update_block_external_net(
+async def update_external_networks(
     externals: ExtNetsUpdate,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
@@ -1506,7 +1515,7 @@ async def update_block_external_net(
     is_admin: str = Depends(get_admin)
 ):
     """
-    Replace the list of external network currently associated to the target Block with the following information:
+    Replace the list of External Networks currently associated to the target Block with the following information:
 
     - **[&lt;External Network&gt;]**: Array of External Networks
 
@@ -1597,14 +1606,14 @@ async def update_block_external_net(
 
 @router.delete(
     "/{space}/blocks/{block}/externals",
-    summary = "Remove Block External Networks",
+    summary = "Remove External Networks",
     status_code = 200
 )
 @cosmos_retry(
     max_retry = 5,
-    error_msg = "Error removing block external network(s), please try again."
+    error_msg = "Error removing external network(s), please try again."
 )
-async def delete_block_external_nets(
+async def delete_external_networks(
     req: DeleteExtNetReq,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
@@ -1613,7 +1622,7 @@ async def delete_block_external_nets(
     is_admin: str = Depends(get_admin)
 ):
     """
-    Remove one or more external networks currently associated to the target Block with the following information:
+    Remove one or more External Networks currently associated to the target Block with the following information:
 
     - **[&lt;str&gt;]**: Array of External Network Names
     """
@@ -1657,11 +1666,11 @@ async def delete_block_external_nets(
 
 @router.get(
     "/{space}/blocks/{block}/externals/{external}",
-    summary = "List Block External Networks",
+    summary = "Get External Network",
     response_model = ExtNet,
     status_code = 200
 )
-async def get_block_external_net(
+async def get_external_network(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target external network"),
@@ -1670,7 +1679,7 @@ async def get_block_external_net(
     is_admin: str = Depends(get_admin)
 ):
     """
-    Get a list of external networks which are currently associated to the target Block.
+    Get the details of a specific External Network.
     """
 
     if not is_admin:
@@ -1697,23 +1706,24 @@ async def get_block_external_net(
 
 @router.delete(
     "/{space}/blocks/{block}/externals/{external}",
-    summary = "Remove Block External Network",
+    summary = "Remove External Network",
     status_code = 200
 )
 @cosmos_retry(
     max_retry = 5,
-    error_msg = "Error removing block external network, please try again."
+    error_msg = "Error removing external network, please try again."
 )
-async def delete_block_external_net(
+async def delete_external_network(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target external network"),
+    force: Optional[bool] = Query(False, description="Forcefully delete an External Network with existing Subnets"),
     authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
     """
-    Remove an external networks currently associated to the target Block with the following information:
+    Remove an External Network currently associated to the target Block with the following information:
     """
 
     if not is_admin:
@@ -1734,9 +1744,256 @@ async def delete_block_external_net(
     index = next((i for i, item in enumerate(target_block['externals']) if item['name'] == external), None)
 
     if index is not None:
+        if not force:
+            if len(target_block['externals'][index]['subnets']) > 0:
+                raise HTTPException(status_code=400, detail="Cannot delete external network while it contains subnets.")
+
         del target_block['externals'][index]
     else:
         raise HTTPException(status_code=400, detail="Invalid external network name.")
+
+    await cosmos_replace(space_query[0], target_space)
+
+    return PlainTextResponse(status_code=status.HTTP_200_OK)
+
+@router.get(
+    "/{space}/blocks/{block}/externals/{external}/subnets",
+    summary = "List External Network Subnets",
+    response_model = List[ExtSubnet],
+    status_code = 200
+)
+async def get_external_subnets(
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    external: str = Path(..., description="Name of the target External Network"),
+    authorization: str = Header(None, description="Azure Bearer token"),
+    tenant_id: str = Depends(get_tenant_id),
+    is_admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Subnets which are currently associated to the target External Network.
+    """
+
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="API restricted to admins.")
+
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
+
+    target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
+
+    if not target_block:
+        raise HTTPException(status_code=400, detail="Invalid block name.")
+    
+    target_external = next((x for x in target_block['externals'] if x['name'].lower() == external.lower()), None)
+
+    if not target_external:
+        raise HTTPException(status_code=400, detail="Invalid external network name.")
+
+    return target_external['subnets']
+
+@router.post(
+    "/{space}/blocks/{block}/externals/{external}/subnets",
+    summary = "Create External Network Subnet",
+    response_model = ExtSubnetExpand,
+    status_code = 201
+)
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error adding subnet to external network, please try again."
+)
+async def create_external_subnet(
+    req: ExtSubnetReq,
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    external: str = Path(..., description="Name of the target External Network"),
+    authorization: str = Header(None, description="Azure Bearer token"),
+    tenant_id: str = Depends(get_tenant_id),
+    is_admin: str = Depends(get_admin)
+):
+    """
+    Create a Subnet within the target External Network with the following information:
+
+    - **name**: Name of the subnet
+    - **desc**: Description (optional)
+      **size**: Network mask bits
+      **cidr**: Specific CIDR of the subnet (alternative to size)
+    """
+
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="API restricted to admins.")
+
+    if not re.match(EXTSUBNET_NAME_REGEX, req.name, re.IGNORECASE):
+        raise HTTPException(status_code=400, detail="External subnet name can be a maximum of 32 characters and may contain alphanumerics, underscores, hypens, and periods.")
+
+    if not re.match(EXTSUBNET_DESC_REGEX, req.desc, re.IGNORECASE):
+        raise HTTPException(status_code=400, detail="External subnet description can be a maximum of 64 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
+
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
+
+    target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
+
+    if not target_block:
+        raise HTTPException(status_code=400, detail="Invalid block name.")
+
+    target_external = next((x for x in target_block['externals'] if x['name'].lower() == external.lower()), None)
+
+    if not target_external:
+        raise HTTPException(status_code=400, detail="Invalid external network name.")
+
+    if req.name in [x['name'] for x in target_external['subnets']]:
+        raise HTTPException(status_code=400, detail="Subnet name already exists in external network.")
+
+    subnet_cidrs = []
+
+    for s in (s for s in target_external['subnets']):
+        subnet_cidrs.append(s['cidr'])
+
+    external_set = IPSet([target_external['cidr']])
+    subnet_set = IPSet(subnet_cidrs)
+    available_set = external_set ^ subnet_set
+
+    if req.cidr is not None:
+        try:
+            next_cidr = IPNetwork(req.cidr)
+        except:
+            raise HTTPException(status_code=400, detail="Invalid network CIDR format.")
+
+        if next_cidr not in available_set:
+            raise HTTPException(status_code=409, detail="Requested subnet CIDR overlaps existing subnet(s).")
+    else:
+        available_subnet = next((net for net in list(available_set.iter_cidrs()) if net.prefixlen <= req.size), None)
+
+        if not available_subnet:
+            raise HTTPException(status_code=500, detail="Subnet of requested size unavailable in target external network.")
+
+        next_cidr = list(available_subnet.subnet(req.size))[0]
+
+    new_subnet = {
+        "name": req.name,
+        "desc": req.desc,
+        "cidr": str(next_cidr),
+        "endpoints": []
+    }
+
+    target_external['subnets'].append(jsonable_encoder(new_subnet))
+
+    await cosmos_replace(space_query[0], target_space)
+
+    new_subnet['space'] = target_space['name']
+    new_subnet['block'] = target_block['name']
+    new_subnet['external'] = target_external['name']
+
+    return new_subnet
+
+@router.get(
+    "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}",
+    summary = "Get External Network Subnet",
+    response_model = ExtSubnet,
+    status_code = 200
+)
+async def get_external_subnet(
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    external: str = Path(..., description="Name of the target external network"),
+    subnet: str = Path(..., description="Name of the target external subnet"),
+    authorization: str = Header(None, description="Azure Bearer token"),
+    tenant_id: str = Depends(get_tenant_id),
+    is_admin: str = Depends(get_admin)
+):
+    """
+    Get the details of a specific External Subnet.
+    """
+
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="API restricted to admins.")
+
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
+
+    target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
+
+    if not target_block:
+        raise HTTPException(status_code=400, detail="Invalid block name.")
+
+    target_ext_net = next((x for x in target_block['externals'] if x['name'].lower() == external.lower()), None)
+
+    if not target_ext_net:
+        raise HTTPException(status_code=400, detail="Invalid external network name.")
+
+    target_ext_subnet = next((x for x in target_ext_net['subnets'] if x['name'].lower() == subnet.lower()), None)
+
+    if not target_ext_subnet:
+        raise HTTPException(status_code=400, detail="Invalid external subnet name.")
+
+    return target_ext_subnet
+
+@router.delete(
+    "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}",
+    summary = "Remove External Subnet",
+    status_code = 200
+)
+@cosmos_retry(
+    max_retry = 5,
+    error_msg = "Error removing external subnet, please try again."
+)
+async def delete_external_subnet(
+    space: str = Path(..., description="Name of the target Space"),
+    block: str = Path(..., description="Name of the target Block"),
+    external: str = Path(..., description="Name of the target external network"),
+    subnet: str = Path(..., description="Name of the target external subnet"),
+    force: Optional[bool] = Query(False, description="Forcefully delete an External Network with existing Subnets"),
+    authorization: str = Header(None, description="Azure Bearer token"),
+    tenant_id: str = Depends(get_tenant_id),
+    is_admin: str = Depends(get_admin)
+):
+    """
+    Remove an Subnet currently associated to the target External Network with the following information:
+    """
+
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="API restricted to admins.")
+
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
+
+    target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
+
+    if not target_block:
+        raise HTTPException(status_code=400, detail="Invalid block name.")
+
+    target_ext_net = next((x for x in target_block['externals'] if x['name'].lower() == external.lower()), None)
+
+    if not target_ext_net:
+        raise HTTPException(status_code=400, detail="Invalid external network name.")
+
+    index = next((i for i, item in enumerate(target_ext_net['subnets']) if item['name'] == subnet), None)
+
+    if index is not None:
+        if not force:
+            if len(target_ext_net['subnets'][index]['endpoints']) > 0:
+                raise HTTPException(status_code=400, detail="Cannot delete external subnet while it contains endpoints.")
+
+        del target_ext_net['subnets'][index]
+    else:
+        raise HTTPException(status_code=400, detail="Invalid external subnet name.")
 
     await cosmos_replace(space_query[0], target_space)
 
@@ -1898,10 +2155,13 @@ async def create_block_reservation(
     next_cidr = None
 
     if req.cidr is not None:
+        try:
+            next_cidr = IPNetwork(req.cidr)
+        except:
+            raise HTTPException(status_code=400, detail="Invalid network CIDR format.")
+
         if IPNetwork(req.cidr) not in available_set:
             raise HTTPException(status_code=409, detail="Requested CIDR overlaps existing network(s).")
-
-        next_cidr = IPNetwork(req.cidr)
     else:
         available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
         next_selector = -1 if req.reverse_search else 0

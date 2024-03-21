@@ -115,12 +115,39 @@ class Network(BaseModel):
     id: str
     active: Optional[bool] = None
 
+class ExtEndpoint(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    desc: str
+    ip: str
+
+class ExtSubnet(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    desc: str
+    cidr: str
+    endpoints: List[ExtEndpoint]
+
+class ExtSubnetExpand(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    desc: str
+    space: str
+    block: str
+    external: str
+    cidr: str
+    endpoints: List[ExtEndpoint]
+
 class ExtNet(BaseModel):
     """DOCSTRING"""
 
     name: str
     desc: str
     cidr: IPv4Network
+    subnets: List[ExtSubnet]
 
 class VNets(BaseModel):
     """DOCSTRING"""
@@ -360,6 +387,33 @@ class BlockCIDRReq(BaseModel):
             if 'cidr' in data and any(x in data for x in ['reverse_search', 'smallest_cidr']):
                 if data['cidr'] is not None:
                     raise AssertionError("the 'cidr' parameter can only be used in conjuction with 'desc'")
+            if 'cidr' in data and 'size' in data:
+                if data['cidr'] is not None:
+                    raise AssertionError("the 'cidr' and 'size' parameters can only be used alternatively")
+            if 'cidr' not in data and 'size' not in data:
+                raise AssertionError("it is required to provide either the 'cidr' or 'size' parameter")
+
+        return data
+
+class ExtNetReq(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    desc: str
+    cidr: IPv4Network
+
+class ExtSubnetReq(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    desc: Optional[str] = None
+    cidr: Optional[str] = None
+    size: Optional[int] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def validate_request(cls, data: Any) -> Any:
+        if isinstance(data, dict):
             if 'cidr' in data and 'size' in data:
                 if data['cidr'] is not None:
                     raise AssertionError("the 'cidr' and 'size' parameters can only be used alternatively")

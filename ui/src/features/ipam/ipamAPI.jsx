@@ -143,6 +143,27 @@ export function replaceBlockNetworks(space, block, body) {
   return api.put(url, body);
 }
 
+export function createBlockExternal(space, block, body) {
+  const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals`);
+
+  return api.post(url, body);
+}
+
+export function deleteBlockExternal(space, block, external, force) {
+  const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals/${external}`);
+  var urlParams = url.searchParams;
+
+  force && urlParams.append('force', true);
+
+  return api.delete(url);
+}
+
+export function createBlockExtSubnet(space, block, external, body) {
+  const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals/${external}/subnets`);
+
+  return api.post(url, body);
+}
+
 export function replaceBlockExternals(space, block, body) {
   const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals`);
 

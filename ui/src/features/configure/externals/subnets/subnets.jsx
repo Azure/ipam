@@ -3,14 +3,13 @@ import { useSelector, useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
 import { useTheme } from '@mui/material/styles';
 
-import { isEmpty, isEqual, pickBy, orderBy, cloneDeep } from 'lodash';
+import { isEmpty, pickBy, orderBy, cloneDeep } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
 import '@inovua/reactdatagrid-community/theme/default-dark.css'
-// import SelectFilter from '@inovua/reactdatagrid-community/SelectFilter'
 
 import {
   Box,
@@ -19,7 +18,6 @@ import {
   MenuItem,
   ListItemIcon,
   Typography,
-  Tooltip,
   CircularProgress,
   Divider
 } from '@mui/material';
@@ -31,12 +29,10 @@ import {
   ReplayOutlined,
   TaskAltOutlined,
   CancelOutlined,
-  HighlightOff,
-  MapOutlined,
   AddOutlined,
   EditOutlined,
-  DeleteOutline
-  // Check
+  DeleteOutline,
+  EditNoteOutlined
 } from "@mui/icons-material";
 
 import {
@@ -44,12 +40,11 @@ import {
   updateMeAsync
 } from "../../../ipam/ipamSlice";
 
-import AddExtNetwork from './utils/addNetwork';
-import DeleteExtNetwork from './utils/deleteNetwork';
+import AddExtSubnet from './utils/addSubnet';
 
 import { ExternalContext } from "../externalContext";
 
-const ExtNetworkContext = React.createContext({});
+const ExtSubnetContext = React.createContext({});
 
 const Update = styled("span")(({ theme }) => ({
   fontWeight: 'bold',
@@ -66,17 +61,16 @@ const gridStyle = {
 function HeaderMenu(props) {
   const { setting } = props;
   const {
-    selectedSpace,
-    selectedBlock,
     selectedExternal,
-    setAddExtOpen,
-    setDelExtOpen,
+    selectedSubnet,
+    setAddExtSubOpen,
+    setDelExtSubOpen,
     saving,
     sendResults,
     saveConfig,
     loadConfig,
     resetConfig
-  } = React.useContext(ExtNetworkContext);
+  } = React.useContext(ExtSubnetContext);
 
   const [menuOpen, setMenuOpen] = React.useState(false);
 
@@ -88,13 +82,8 @@ function HeaderMenu(props) {
     setMenuOpen(prev => !prev);
   }
 
-  const onAddExt = () => {
-    setAddExtOpen(true);
-    setMenuOpen(false);
-  }
-
-  const onDelExt = () => {
-    setDelExtOpen(true);
+  const onAddExtSub = () => {
+    setAddExtSubOpen(true);
     setMenuOpen(false);
   }
 
@@ -187,13 +176,13 @@ function HeaderMenu(props) {
             }}
           >
             <MenuItem
-              onClick={onAddExt}
-              disabled={ !selectedSpace || !selectedBlock }
+              onClick={onAddExtSub}
+              disabled={ !selectedExternal }
             >
               <ListItemIcon>
                 <AddOutlined fontSize="small" />
               </ListItemIcon>
-              Add Network
+              Add Subnet
             </MenuItem>
             <MenuItem
               onClick={() => console.log("EDIT!")}
@@ -202,21 +191,30 @@ function HeaderMenu(props) {
               <ListItemIcon>
                 <EditOutlined fontSize="small" />
               </ListItemIcon>
-              Edit Network
+              Edit Subnet
             </MenuItem>
             <MenuItem
-              onClick={onDelExt}
-              disabled={ !selectedExternal }
+              onClick={() => console.log("DELETE!")}
+              disabled={ !selectedSubnet }
             >
               <ListItemIcon>
                 <DeleteOutline fontSize="small" />
               </ListItemIcon>
-              Delete Network
+              Remove Subnet
+            </MenuItem>
+            <MenuItem
+              onClick={() => console.log("REMOVE!")}
+              disabled={ !selectedSubnet }
+            >
+              <ListItemIcon>
+                <EditNoteOutlined fontSize="small" />
+              </ListItemIcon>
+              Manage Endpoints
             </MenuItem>
             <Divider />
             <MenuItem
-              onClick={onLoad}
-              disabled={ !viewSetting || isEmpty(viewSetting) }
+              onClick={() => console.log("MANAGE!")}
+              disabled={ !selectedSubnet }
             >
               <ListItemIcon>
                 <FileDownloadOutlined fontSize="small" />
@@ -242,18 +240,21 @@ function HeaderMenu(props) {
   )
 }
 
-const Networks = (props) => {
+const Subnets = (props) => {
   const {
     selectedSpace,
     selectedBlock,
     selectedExternal,
-    externals,
-    setExternals,
-    setSelectedExternal
+    selectedSubnet,
+    subnets,
+    setSubnets,
+    setSelectedSubnet
   } = props;
   const { refreshing, refresh } = React.useContext(ExternalContext);
 
   const { enqueueSnackbar } = useSnackbar();
+
+  // const [subnets, setSubnets] = React.useState(null);
 
   const [saving, setSaving] = React.useState(false);
   const [sendResults, setSendResults] = React.useState(null);
@@ -266,10 +267,10 @@ const Networks = (props) => {
   const [columnOrderState, setColumnOrderState] = React.useState([]);
   const [columnSortState, setColumnSortState] = React.useState({});
 
-  const [addExtOpen, setAddExtOpen] = React.useState(false);
-  const [delExtOpen, setDelExtOpen] = React.useState(false);
+  const [addExtSubOpen, setAddExtSubOpen] = React.useState(false);
+  const [delExtSubOpen, setDelExtSubOpen] = React.useState(false);
 
-  const viewSetting = useSelector(state => selectViewSetting(state, 'externals'));
+  const viewSetting = useSelector(state => selectViewSetting(state, 'subnetsx'));
 
   const saveTimer = React.useRef();
 
@@ -279,28 +280,13 @@ const Networks = (props) => {
   const columns = React.useMemo(() => [
     { name: "name", header: "Name", type: "string", flex: 0.5, draggable: false, visible: true },
     { name: "desc", header: "Description", type: "string", flex: 1, draggable: false, visible: true },
-    // {
-    //   name: "managed",
-    //   header: "Managed",
-    //   type: "boolean",
-    //   width: 130,
-    //   draggable: false,
-    //   visible: true,
-    //   filterEditor: SelectFilter,
-    //   filterEditorProps: {
-    //     placeholder: 'Any',
-    //     dataSource: [ { id: true, label: 'True' }, { id: false, label : 'False' } ]
-    //   },
-    //   render: ({ value })=> <Box sx={{ display: 'flex', flexGrow: 1, justifyContent: 'center' }}><Check color="success" /></Box>
-    // },
-    { name: "cidr", header: "CIDR", type: "string", flex: 0.30, draggable: false, visible: true },
-    { name: "id", header: () => <HeaderMenu setting="externals"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => "", visible: true }
+    { name: "cidr", header: "Address Range", type: "string", flex: 0.30, draggable: false, visible: true },
+    { name: "id", header: () => <HeaderMenu setting="subnetsx"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => "", visible: true }
   ], []);
 
   const filterValue = [
     { name: "name", operator: "contains", type: "string", value: "" },
     { name: "desc", operator: "contains", type: "string", value: "" },
-    // { name: "managed", operator: "eq", type: "boolean" },
     { name: "cidr", operator: "contains", type: "string", value: "" }
   ];
 
@@ -354,7 +340,7 @@ const Networks = (props) => {
     }
 
     var body = [
-      { "op": "add", "path": `/views/externals`, "value": saveData }
+      { "op": "add", "path": `/views/subnetsx`, "value": saveData }
     ];
 
     (async () => {
@@ -423,15 +409,15 @@ const Networks = (props) => {
     if(columnSortState) {
       setGridData(
         orderBy(
-          externals,
+          subnets,
           [columnSortState.name],
           [columnSortState.dir === -1 ? 'desc' : 'asc']
         )
       );
     } else {
-      setGridData(externals);
+      setGridData(subnets);
     }
-  },[externals, columnSortState]);
+  },[subnets, columnSortState]);
 
   React.useEffect(() => {
     if(sendResults !== null) {
@@ -448,47 +434,37 @@ const Networks = (props) => {
   function onClick(data) {
     var id = data.id;
     var newSelectionModel = {};
-    var newSelectedExternal = null;
+    var newSelectedSubnet = null;
 
     setSelectionModel(prevState => {
       if(!prevState.hasOwnProperty(id)) {
         newSelectionModel[id] = data;
-        newSelectedExternal = data;
+        newSelectedSubnet = data;
       }
-      
-      setSelectedExternal(newSelectedExternal);
+
+      setSelectedSubnet(newSelectedSubnet);
 
       return newSelectionModel;
     });
   }
 
-  const handleAddExt = () => {
-    // handleMenuClose();
-    setAddExtOpen(true);
-  };
-
-  const handleDelExt = () => {
-    // handleMenuClose();
-    setDelExtOpen(true);
-  };
-
   React.useEffect(() => {
-    if(selectedBlock) {
-      var newExternals = cloneDeep(selectedBlock['externals']);
+    if(selectedExternal) {
+      var newSubnets = cloneDeep(selectedExternal['subnets']);
 
-      const newData = newExternals.reduce((acc, curr) => {
-        curr['id'] = `${selectedSpace}@${selectedBlock.name}@${curr.name}}`
+      const newData = newSubnets.reduce((acc, curr) => {
+        curr['id'] = `${selectedExternal.name}@${curr.name}}`
 
         acc.push(curr);
 
         return acc;
       }, []);
 
-      setExternals(newData);
+      setSubnets(newData);
     } else {
-      setExternals(null);
+      setSubnets(null)
     }
-  }, [selectedSpace, selectedBlock, setExternals]);
+  }, [selectedExternal, setSubnets]);
 
   const onCellDoubleClick = React.useCallback((event, cellProps) => {
     const { value } = cellProps
@@ -500,12 +476,12 @@ const Networks = (props) => {
   function NoRowsOverlay() {
     return (
       <React.Fragment>
-        { selectedBlock
+        { selectedExternal
           ? <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-              No External Networks Found for Selected Block
+              No Subnets Found for Selected External Network
             </Typography>
           : <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-              Please Select a Space & Block
+              Please Select an External Network
             </Typography>
         }
       </React.Fragment>
@@ -514,27 +490,21 @@ const Networks = (props) => {
 
   return (
     <React.Fragment>
-      <AddExtNetwork
-        open={addExtOpen}
-        handleClose={() => setAddExtOpen(false)}
+      <AddExtSubnet
+        open={addExtSubOpen}
+        handleClose={() => setAddExtSubOpen(false)}
         space={selectedSpace ? selectedSpace.name : null}
-        block={selectedBlock ? selectedBlock : null}
-        externals={externals}
+        block={selectedBlock ? selectedBlock.name : null}
+        external={selectedExternal ? selectedExternal : null}
+        subnets={subnets}
         refresh={refresh}
         refreshingState={refreshing}
       />
-      <DeleteExtNetwork
-        open={delExtOpen}
-        handleClose={() => setDelExtOpen(false)}
-        space={selectedSpace ? selectedSpace.name : null}
-        block={selectedBlock ? selectedBlock.name : null}
-        external={selectedExternal ? selectedExternal.name : null}
-      />
-      <ExtNetworkContext.Provider value={{ selectedSpace, selectedBlock, selectedExternal, setAddExtOpen, setDelExtOpen, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+      <ExtSubnetContext.Provider value={{ selectedExternal, selectedSubnet, setAddExtSubOpen, setDelExtSubOpen, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
           <Box sx={{ display: 'flex', height: '35px', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(224, 224, 224, 1)', borderBottom: 'none' }}>
             <Typography variant='button'>
-              External Networks
+              External Subnets
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', height: '100%' }}>
@@ -571,9 +541,9 @@ const Networks = (props) => {
             />
           </Box>
         </Box>
-      </ExtNetworkContext.Provider>
+      </ExtSubnetContext.Provider>
     </React.Fragment>
   );
 }
 
-export default Networks;
+export default Subnets;

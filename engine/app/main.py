@@ -344,9 +344,37 @@ async def db_upgrade():
 
             await cosmos_replace(space, space_data)
 
-        logger.warning('External CIDR patching complete!')
+        logger.warning('External networks patching complete!')
     else:
-        logger.info("No existing External CIDRs to patch...")
+        logger.info("No existing external networks to patch...")
+
+    subnet_fixup_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN ext in block.externals WHERE (c.type = 'space' AND NOT IS_DEFINED(ext.subnets))", globals.TENANT_ID)
+
+    if subnet_fixup_query:
+        for space in subnet_fixup_query:
+            space_data = copy.deepcopy(space)
+
+            for block in space_data['blocks']:
+                new_externals = []
+
+                for external in block['externals']:
+
+                    new_external = {
+                        "name": external['name'],
+                        "desc": external['desc'],
+                        "cidr": external['cidr'],
+                        "subnets": []
+                    }
+
+                    new_externals.append(new_external)
+
+                block['externals'] = new_externals
+
+            await cosmos_replace(space, space_data)
+
+        logger.warning('External subnet patching complete!')
+    else:
+        logger.info("No existing external subnets to patch...")
 
     # vhub_fixup_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN vnet in block.vnets WHERE (c.type = 'space' AND RegexMatch (vnet.id, '/Microsoft.Network/virtualHubs/', ''))", globals.TENANT_ID)
 
