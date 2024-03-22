@@ -22,7 +22,7 @@ import {
 
 import LoadingButton from '@mui/lab/LoadingButton';
 
-import { deleteBlockExternalAsync } from '../../../../ipam/ipamSlice';
+import { deleteBlockExtSubnetAsync } from '../../../../ipam/ipamSlice';
 
 const Spotlight = styled("span")(({ theme }) => ({
   fontWeight: 'bold',
@@ -44,8 +44,8 @@ function DraggablePaper(props) {
   );
 }
 
-export default function DeleteExtNetwork(props) {
-  const { open, handleClose, space, block, external } = props;
+export default function DeleteExtSubnet(props) {
+  const { open, handleClose, space, block, external, subnet } = props;
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -66,8 +66,8 @@ export default function DeleteExtNetwork(props) {
       (async () => {
         try {
           setSending(true);
-          await dispatch(deleteBlockExternalAsync({ space: space, block: block, external: external, force: force }));
-          enqueueSnackbar("Successfully removed External Network", { variant: "success" });
+          await dispatch(deleteBlockExtSubnetAsync({ space: space, block: block, external: external, subnet: subnet, force: force }));
+          enqueueSnackbar("Successfully removed External Subnet", { variant: "success" });
           handleCancel();
         } catch (e) {
           console.log("ERROR");
@@ -98,11 +98,11 @@ export default function DeleteExtNetwork(props) {
         fullWidth
       >
         <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
-          Delete External Network
+          Delete External Subnet
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Please confirm you want to delete External Network <Spotlight>'{external}'</Spotlight>
+            Please confirm you want to delete External Subnet <Spotlight>'{subnet}'</Spotlight>
           </DialogContentText>
           <Box sx={{ display: "flex", justifyContent: "center", width: "100%", pt: 3 }}>
             <FormGroup sx={{ pl: 2.5, pr: 1, border: "1px solid rgba(224, 224, 224, 1)", borderRadius: "4px" }}>

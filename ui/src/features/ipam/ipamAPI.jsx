@@ -164,6 +164,15 @@ export function createBlockExtSubnet(space, block, external, body) {
   return api.post(url, body);
 }
 
+export function deleteBlockExtSubnet(space, block, external, subnet, force) {
+  const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals/${external}/subnets/${subnet}`);
+  var urlParams = url.searchParams;
+
+  force && urlParams.append('force', true);
+
+  return api.delete(url);
+}
+
 export function replaceBlockExternals(space, block, body) {
   const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals`);
 

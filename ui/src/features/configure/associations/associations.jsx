@@ -455,7 +455,7 @@ const Associations = () => {
     } else {
       setUnchanged(true);
     }
-  }, [selectedBlock, selectionModel]);
+  }, [selectedBlock, selectionModel, vNets]);
 
   const mockVNet = React.useCallback((id) => {
     const nameRegex = "(?<=/virtualNetworks/).*";

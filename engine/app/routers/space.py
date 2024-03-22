@@ -1943,7 +1943,7 @@ async def get_external_subnet(
 
 @router.delete(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}",
-    summary = "Remove External Subnet",
+    summary = "Remove External Network Subnet",
     status_code = 200
 )
 @cosmos_retry(

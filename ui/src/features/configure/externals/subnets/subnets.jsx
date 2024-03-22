@@ -41,6 +41,7 @@ import {
 } from "../../../ipam/ipamSlice";
 
 import AddExtSubnet from './utils/addSubnet';
+import DeleteExtSubnet from './utils/deleteSubnet';
 
 import { ExternalContext } from "../externalContext";
 
@@ -84,6 +85,11 @@ function HeaderMenu(props) {
 
   const onAddExtSub = () => {
     setAddExtSubOpen(true);
+    setMenuOpen(false);
+  }
+
+  const onDelExtSub = () => {
+    setDelExtSubOpen(true);
     setMenuOpen(false);
   }
 
@@ -194,7 +200,7 @@ function HeaderMenu(props) {
               Edit Subnet
             </MenuItem>
             <MenuItem
-              onClick={() => console.log("DELETE!")}
+              onClick={onDelExtSub}
               disabled={ !selectedSubnet }
             >
               <ListItemIcon>
@@ -499,6 +505,14 @@ const Subnets = (props) => {
         subnets={subnets}
         refresh={refresh}
         refreshingState={refreshing}
+      />
+      <DeleteExtSubnet
+        open={delExtSubOpen}
+        handleClose={() => setDelExtSubOpen(false)}
+        space={selectedSpace ? selectedSpace.name : null}
+        block={selectedBlock ? selectedBlock.name : null}
+        external={selectedExternal ? selectedExternal.name : null}
+        subnet={selectedSubnet ? selectedSubnet.name : null}
       />
       <ExtSubnetContext.Provider value={{ selectedExternal, selectedSubnet, setAddExtSubOpen, setDelExtSubOpen, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
