@@ -101,7 +101,7 @@ jobs:
         env:
           prNumber: ${{ fromJson(steps.getPullRequestData.outputs.result).number }}
         run: |
-          git commit -a -m "Updated Azure IPAM Version to v${{ steps.updateVersion.outputs.ipamVersion }}"
+          git commit -a -m "Updated Azure IPAM Version to v${{ steps.updateVersion.outputs.ipamVersion }} [skip ci]"
           git push
 
   release:
