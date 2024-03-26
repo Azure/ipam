@@ -22,7 +22,7 @@ import {
 
 import LoadingButton from '@mui/lab/LoadingButton';
 
-import { deleteSpaceAsync } from "../../../ipam/ipamSlice";
+import { deleteBlockAsync } from '../../../../ipam/ipamSlice';
 
 const Spotlight = styled("span")(({ theme }) => ({
   fontWeight: 'bold',
@@ -45,7 +45,7 @@ function DraggablePaper(props) {
 }
 
 export default function ConfirmDelete(props) {
-  const { open, handleClose, space } = props;
+  const { open, handleClose, space, block } = props;
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -66,10 +66,9 @@ export default function ConfirmDelete(props) {
       (async () => {
         try {
           setSending(true);
-          await dispatch(deleteSpaceAsync({ space: space, force: force }));
-          enqueueSnackbar("Successfully removed Space", { variant: "success" });
+          await dispatch(deleteBlockAsync({ space: space, block: block, force: force }));
+          enqueueSnackbar("Successfully removed Block", { variant: "success" });
           handleCancel();
-          // refresh();
         } catch (e) {
           console.log("ERROR");
           console.log("------------------");
@@ -99,11 +98,11 @@ export default function ConfirmDelete(props) {
         fullWidth
       >
         <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
-          Delete Space
+          Delete Block
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Please confirm you want to delete Space <Spotlight>'{space}'</Spotlight>
+            Please confirm you want to delete Block <Spotlight>'{block}'</Spotlight>
           </DialogContentText>
           <Box sx={{ display: "flex", justifyContent: "center", width: "100%", pt: 3 }}>
             <FormGroup sx={{ pl: 2.5, pr: 1, border: "1px solid rgba(224, 224, 224, 1)", borderRadius: "4px" }}>

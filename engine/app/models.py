@@ -422,6 +422,13 @@ class ExtSubnetReq(BaseModel):
 
         return data
 
+class ExtEndpointUpdate(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    desc: str
+    ip: Union[IPv4Address, None]
+
 class JSONPatch(BaseModel):
     """DOCSTRING"""
 
@@ -437,7 +444,7 @@ VNetsUpdate = Annotated[List[str], None]
 
 ExtNetsUpdate = Annotated[List[ExtNet], None]
 
-DeleteExtNetReq = Annotated[List[str], None]
+DeleteExtEndpointsReq = Annotated[List[str], None]
 
 DeleteResvReq = Annotated[List[str], None]
 

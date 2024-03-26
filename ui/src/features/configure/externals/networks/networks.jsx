@@ -1,16 +1,14 @@
 import * as React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { styled } from "@mui/material/styles";
 import { useTheme } from '@mui/material/styles';
 
-import { isEmpty, isEqual, pickBy, orderBy, cloneDeep } from 'lodash';
+import { isEmpty, pickBy, orderBy, cloneDeep } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
 import '@inovua/reactdatagrid-community/theme/default-dark.css'
-// import SelectFilter from '@inovua/reactdatagrid-community/SelectFilter'
 
 import {
   Box,
@@ -19,7 +17,6 @@ import {
   MenuItem,
   ListItemIcon,
   Typography,
-  Tooltip,
   CircularProgress,
   Divider
 } from '@mui/material';
@@ -31,12 +28,9 @@ import {
   ReplayOutlined,
   TaskAltOutlined,
   CancelOutlined,
-  HighlightOff,
-  MapOutlined,
   AddOutlined,
-  EditOutlined,
+  // EditOutlined,
   DeleteOutline
-  // Check
 } from "@mui/icons-material";
 
 import {
@@ -50,12 +44,6 @@ import DeleteExtNetwork from './utils/deleteNetwork';
 import { ExternalContext } from "../externalContext";
 
 const ExtNetworkContext = React.createContext({});
-
-const Update = styled("span")(({ theme }) => ({
-  fontWeight: 'bold',
-  color: theme.palette.error.light,
-  textShadow: '-1px 0 white, 0 1px white, 1px 0 white, 0 -1px white'
-}));
 
 const gridStyle = {
   height: '100%',
@@ -195,7 +183,7 @@ function HeaderMenu(props) {
               </ListItemIcon>
               Add Network
             </MenuItem>
-            <MenuItem
+            {/* <MenuItem
               onClick={() => console.log("EDIT!")}
               disabled={ true }
             >
@@ -203,7 +191,7 @@ function HeaderMenu(props) {
                 <EditOutlined fontSize="small" />
               </ListItemIcon>
               Edit Network
-            </MenuItem>
+            </MenuItem> */}
             <MenuItem
               onClick={onDelExt}
               disabled={ !selectedExternal }
@@ -251,15 +239,13 @@ const Networks = (props) => {
     setExternals,
     setSelectedExternal
   } = props;
-  const { refreshing, refresh } = React.useContext(ExternalContext);
+  const { refreshing } = React.useContext(ExternalContext);
 
   const { enqueueSnackbar } = useSnackbar();
 
   const [saving, setSaving] = React.useState(false);
   const [sendResults, setSendResults] = React.useState(null);
   const [gridData, setGridData] = React.useState(null);
-  const [sending, setSending] = React.useState(false);
-  const [refreshingData, setRefreshingData] = React.useState(false);
   const [selectionModel, setSelectionModel] = React.useState({});
 
   const [columnState, setColumnState] = React.useState(null);
@@ -269,7 +255,7 @@ const Networks = (props) => {
   const [addExtOpen, setAddExtOpen] = React.useState(false);
   const [delExtOpen, setDelExtOpen] = React.useState(false);
 
-  const viewSetting = useSelector(state => selectViewSetting(state, 'externals'));
+  const viewSetting = useSelector(state => selectViewSetting(state, 'extnetworks'));
 
   const saveTimer = React.useRef();
 
@@ -279,28 +265,13 @@ const Networks = (props) => {
   const columns = React.useMemo(() => [
     { name: "name", header: "Name", type: "string", flex: 0.5, draggable: false, visible: true },
     { name: "desc", header: "Description", type: "string", flex: 1, draggable: false, visible: true },
-    // {
-    //   name: "managed",
-    //   header: "Managed",
-    //   type: "boolean",
-    //   width: 130,
-    //   draggable: false,
-    //   visible: true,
-    //   filterEditor: SelectFilter,
-    //   filterEditorProps: {
-    //     placeholder: 'Any',
-    //     dataSource: [ { id: true, label: 'True' }, { id: false, label : 'False' } ]
-    //   },
-    //   render: ({ value })=> <Box sx={{ display: 'flex', flexGrow: 1, justifyContent: 'center' }}><Check color="success" /></Box>
-    // },
     { name: "cidr", header: "CIDR", type: "string", flex: 0.30, draggable: false, visible: true },
-    { name: "id", header: () => <HeaderMenu setting="externals"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => "", visible: true }
+    { name: "id", header: () => <HeaderMenu setting="extnetworks"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => "", visible: true }
   ], []);
 
   const filterValue = [
     { name: "name", operator: "contains", type: "string", value: "" },
     { name: "desc", operator: "contains", type: "string", value: "" },
-    // { name: "managed", operator: "eq", type: "boolean" },
     { name: "cidr", operator: "contains", type: "string", value: "" }
   ];
 
@@ -354,7 +325,7 @@ const Networks = (props) => {
     }
 
     var body = [
-      { "op": "add", "path": `/views/externals`, "value": saveData }
+      { "op": "add", "path": `/views/extnetworks`, "value": saveData }
     ];
 
     (async () => {
@@ -462,16 +433,6 @@ const Networks = (props) => {
     });
   }
 
-  const handleAddExt = () => {
-    // handleMenuClose();
-    setAddExtOpen(true);
-  };
-
-  const handleDelExt = () => {
-    // handleMenuClose();
-    setDelExtOpen(true);
-  };
-
   React.useEffect(() => {
     if(selectedBlock) {
       var newExternals = cloneDeep(selectedBlock['externals']);
@@ -520,8 +481,6 @@ const Networks = (props) => {
         space={selectedSpace ? selectedSpace.name : null}
         block={selectedBlock ? selectedBlock : null}
         externals={externals}
-        refresh={refresh}
-        refreshingState={refreshing}
       />
       <DeleteExtNetwork
         open={delExtOpen}
@@ -558,8 +517,8 @@ const Networks = (props) => {
               reservedViewportWidth={0}
               columns={columnState || []}
               columnOrder={columnOrderState}
-              loading={sending || refreshing || refreshingData }
-              loadingText={sending ? <Update>Updating</Update> : "Loading"}
+              loading={refreshing}
+              loadingText={"Loading"}
               dataSource={gridData || []}
               sortInfo={columnSortState}
               defaultFilterValue={filterValue}

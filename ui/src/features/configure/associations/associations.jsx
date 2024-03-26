@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useLocation } from "react-router-dom";
 import { styled } from "@mui/material/styles";
 import { useTheme } from '@mui/material/styles';
 
@@ -231,11 +232,13 @@ function HeaderMenu(props) {
 const Associations = () => {
   const { enqueueSnackbar } = useSnackbar();
 
+  const location = useLocation();
+
   const [spaceInput, setSpaceInput] = React.useState('');
   const [blockInput, setBlockInput] = React.useState('');
 
-  const [selectedSpace, setSelectedSpace] = React.useState(null);
-  const [selectedBlock, setSelectedBlock] = React.useState(null);
+  const [selectedSpace, setSelectedSpace] = React.useState(location.state?.space || null);
+  const [selectedBlock, setSelectedBlock] = React.useState(location.state?.block || null);
 
   const [blocks, setBlocks] = React.useState(null);
 
@@ -439,14 +442,54 @@ const Associations = () => {
   }, [saveTimer, sendResults]);
 
   React.useEffect(() => {
-    if(selectedSpace) {
-      setBlocks(selectedSpace.blocks);
+    if (!spaces) {
+      setSelectedSpace(null);
+    }
+  }, [spaces]);
+
+  React.useEffect(() => {
+    if (!selectedSpace) {
+      setSelectedBlock(null);
     }
   }, [selectedSpace]);
 
   React.useEffect(() => {
-    setSelectedBlock(null);
-  }, [selectedSpace]);
+    if (!selectedBlock) {
+      setSelectionModel(null);
+      setBlocks(null);
+    }
+  }, [selectedBlock]);
+
+  React.useEffect(() => {
+    if (spaces && selectedSpace) {
+      const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
+
+      if (spaceIndex >= -1) {
+        if (!isEqual(spaces[spaceIndex], selectedSpace)) {
+          setSelectedSpace(spaces[spaceIndex]);
+          setBlocks(spaces[spaceIndex].blocks);
+        } else if (!blocks) {
+          setBlocks(spaces[spaceIndex].blocks);
+        }
+      } else {
+        setSelectedSpace(null);
+      }
+    }
+  }, [spaces, selectedSpace, blocks]);
+
+  React.useEffect(() => {
+    if (blocks && selectedBlock) {
+      const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
+
+      if (blockIndex >= -1) {
+        if (!isEqual(blocks[blockIndex], selectedBlock)) {
+          setSelectedBlock(blocks[blockIndex]);
+        }
+      } else {
+        setSelectedBlock(null);
+      }
+    }
+  }, [blocks, selectedBlock]);
 
   React.useEffect(() => {
     if(selectedBlock && vNets) {
@@ -455,7 +498,7 @@ const Associations = () => {
     } else {
       setUnchanged(true);
     }
-  }, [selectedBlock, selectionModel, vNets]);
+  }, [vNets, selectedBlock, selectionModel]);
 
   const mockVNet = React.useCallback((id) => {
     const nameRegex = "(?<=/virtualNetworks/).*";
@@ -631,6 +674,7 @@ const Associations = () => {
         <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
           <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
             <Autocomplete
+              disabled={refreshing}
               forcePopupIcon={false}
               id="grouped-demo"
               size="small"
@@ -675,7 +719,7 @@ const Associations = () => {
               }}
             />
             <Autocomplete
-              disabled={selectedSpace === null}
+              disabled={selectedSpace === null || refreshing}
               forcePopupIcon={false}
               id="grouped-demo"
               size="small"
@@ -710,6 +754,16 @@ const Associations = () => {
                     width: 'fit-content'
                   }
                 }
+              }}
+            />
+            <TextField
+              disabled
+              id="block-cidr-read-only"
+              label="Network"
+              size="small"
+              value={ selectedBlock ? selectedBlock.cidr : "" }
+              sx={{
+                width: '11ch'
               }}
             />
           </Box>

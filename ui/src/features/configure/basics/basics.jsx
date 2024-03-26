@@ -2,20 +2,18 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
-// import { isEqual } from 'lodash';
-
 import { useSnackbar } from "notistack";
 
 import SpaceDataGrid from "./space/space";
 import BlockDataGrid from "./block/block";
 
-import { ConfigureContext } from "./configureContext";
+import { BasicContext } from "./basicContext";
 
 import {
   selectSpaces,
   selectBlocks,
   fetchSpacesAsync
-} from "../ipam/ipamSlice";
+} from "../../ipam/ipamSlice";
 
 const Wrapper = styled("div")(({ theme }) => ({
   height: "calc(100vh - 110px)",
@@ -23,14 +21,6 @@ const Wrapper = styled("div")(({ theme }) => ({
   flexDirection: "column",
   justifyContent: "flex-start",
   padding: theme.spacing(3),
-}));
-
-const Header = styled("div")(({ theme }) => ({
-  ...theme.typography.h5,
-  width: "100%",
-  padding: theme.spacing(1),
-  paddingBottom: theme.spacing(3),
-  textAlign: "center",
 }));
 
 const MainBody = styled("div")({
@@ -60,7 +50,7 @@ const BottomSection = styled("div")(({ theme }) => ({
   marginTop: theme.spacing(1.5)
 }));
 
-export default function ConfigureIPAM() {
+export default function Basics() {
   const { enqueueSnackbar } = useSnackbar();
 
   const [refreshing, setRefreshing] = React.useState(false);
@@ -113,7 +103,7 @@ export default function ConfigureIPAM() {
   // }, [blocks, selectedBlock]);
 
   return (
-    <ConfigureContext.Provider value={{ configureRef, spaces, blocks, refreshing, refresh }}>
+    <BasicContext.Provider value={{ configureRef, spaces, blocks, refreshing, refresh }}>
       <Wrapper ref={configureRef}>
         <MainBody>
           <TopSection>
@@ -132,6 +122,6 @@ export default function ConfigureIPAM() {
           </BottomSection>
         </MainBody>
       </Wrapper>
-    </ConfigureContext.Provider>
+    </BasicContext.Provider>
   );
 }

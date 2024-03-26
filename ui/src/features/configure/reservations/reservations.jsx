@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useLocation } from "react-router-dom";
 import { styled } from "@mui/material/styles";
 import { useTheme } from '@mui/material/styles';
 
@@ -374,11 +375,13 @@ function ReservationId(props) {
 const Reservations = () => {
   const { enqueueSnackbar } = useSnackbar();
 
+  const location = useLocation();
+
   const [spaceInput, setSpaceInput] = React.useState('');
   const [blockInput, setBlockInput] = React.useState('');
 
-  const [selectedSpace, setSelectedSpace] = React.useState(null);
-  const [selectedBlock, setSelectedBlock] = React.useState(null);
+  const [selectedSpace, setSelectedSpace] = React.useState(location.state?.space || null);
+  const [selectedBlock, setSelectedBlock] = React.useState(location.state?.block || null);
 
   const [blocks, setBlocks] = React.useState(null);
 
@@ -656,18 +659,56 @@ const Reservations = () => {
   }, [saveTimer, sendResults]);
 
   React.useEffect(() => {
-    if(selectedSpace) {
-      setBlocks(selectedSpace.blocks);
+    if (!spaces) {
+      setSelectedSpace(null);
+    }
+  }, [spaces]);
+
+  React.useEffect(() => {
+    if (!selectedSpace) {
+      setSelectedBlock(null);
     }
   }, [selectedSpace]);
 
   React.useEffect(() => {
-    setSelectedBlock(null);
-  }, [selectedSpace]);
+    if (!selectedBlock) {
+      setReservations([]);
+      setBlocks(null);
+    } else {
+      setReservations(selectedBlock.resv || []);
+    }
+  }, [selectedBlock]);
 
   React.useEffect(() => {
-    setReservations(selectedBlock?.resv || []);
-  }, [selectedBlock]);
+    if (spaces && selectedSpace) {
+      const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
+
+      if (spaceIndex >= -1) {
+        if (!isEqual(spaces[spaceIndex], selectedSpace)) {
+          setSelectedSpace(spaces[spaceIndex]);
+          setBlocks(spaces[spaceIndex].blocks);
+        } else if (!blocks) {
+          setBlocks(spaces[spaceIndex].blocks);
+        }
+      } else {
+        setSelectedSpace(null);
+      }
+    }
+  }, [spaces, selectedSpace, blocks]);
+
+  React.useEffect(() => {
+    if (blocks && selectedBlock) {
+      const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
+
+      if (blockIndex >= -1) {
+        if (!isEqual(blocks[blockIndex], selectedBlock)) {
+          setSelectedBlock(blocks[blockIndex]);
+        }
+      } else {
+        setSelectedBlock(null);
+      }
+    }
+  }, [blocks, selectedBlock]);
 
   const refresh = React.useCallback(() => {
     (async() => {
@@ -817,6 +858,16 @@ const Reservations = () => {
                     width: 'fit-content'
                   }
                 }
+              }}
+            />
+            <TextField
+              disabled
+              id="block-cidr-read-only"
+              label="Network"
+              size="small"
+              value={ selectedBlock ? selectedBlock.cidr : "" }
+              sx={{
+                width: '11ch'
               }}
             />
           </Box>

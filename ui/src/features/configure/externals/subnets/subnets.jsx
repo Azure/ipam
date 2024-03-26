@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { styled } from "@mui/material/styles";
 import { useTheme } from '@mui/material/styles';
 
 import { isEmpty, pickBy, orderBy, cloneDeep } from 'lodash';
@@ -30,7 +29,7 @@ import {
   TaskAltOutlined,
   CancelOutlined,
   AddOutlined,
-  EditOutlined,
+  // EditOutlined,
   DeleteOutline,
   EditNoteOutlined
 } from "@mui/icons-material";
@@ -42,16 +41,11 @@ import {
 
 import AddExtSubnet from './utils/addSubnet';
 import DeleteExtSubnet from './utils/deleteSubnet';
+import ManageExtEndpoints from './utils/manageEndpoints';
 
 import { ExternalContext } from "../externalContext";
 
 const ExtSubnetContext = React.createContext({});
-
-const Update = styled("span")(({ theme }) => ({
-  fontWeight: 'bold',
-  color: theme.palette.error.light,
-  textShadow: '-1px 0 white, 0 1px white, 1px 0 white, 0 -1px white'
-}));
 
 const gridStyle = {
   height: '100%',
@@ -66,6 +60,7 @@ function HeaderMenu(props) {
     selectedSubnet,
     setAddExtSubOpen,
     setDelExtSubOpen,
+    setManExtEndOpen,
     saving,
     sendResults,
     saveConfig,
@@ -90,6 +85,11 @@ function HeaderMenu(props) {
 
   const onDelExtSub = () => {
     setDelExtSubOpen(true);
+    setMenuOpen(false);
+  }
+
+  const onManExtEnd = () => {
+    setManExtEndOpen(true);
     setMenuOpen(false);
   }
 
@@ -190,7 +190,7 @@ function HeaderMenu(props) {
               </ListItemIcon>
               Add Subnet
             </MenuItem>
-            <MenuItem
+            {/* <MenuItem
               onClick={() => console.log("EDIT!")}
               disabled={ true }
             >
@@ -198,7 +198,7 @@ function HeaderMenu(props) {
                 <EditOutlined fontSize="small" />
               </ListItemIcon>
               Edit Subnet
-            </MenuItem>
+            </MenuItem> */}
             <MenuItem
               onClick={onDelExtSub}
               disabled={ !selectedSubnet }
@@ -209,7 +209,7 @@ function HeaderMenu(props) {
               Remove Subnet
             </MenuItem>
             <MenuItem
-              onClick={() => console.log("REMOVE!")}
+              onClick={onManExtEnd}
               disabled={ !selectedSubnet }
             >
               <ListItemIcon>
@@ -219,8 +219,8 @@ function HeaderMenu(props) {
             </MenuItem>
             <Divider />
             <MenuItem
-              onClick={() => console.log("MANAGE!")}
-              disabled={ !selectedSubnet }
+              onClick={onLoad}
+              disabled={ !viewSetting || isEmpty(viewSetting) }
             >
               <ListItemIcon>
                 <FileDownloadOutlined fontSize="small" />
@@ -256,17 +256,13 @@ const Subnets = (props) => {
     setSubnets,
     setSelectedSubnet
   } = props;
-  const { refreshing, refresh } = React.useContext(ExternalContext);
+  const { refreshing } = React.useContext(ExternalContext);
 
   const { enqueueSnackbar } = useSnackbar();
-
-  // const [subnets, setSubnets] = React.useState(null);
 
   const [saving, setSaving] = React.useState(false);
   const [sendResults, setSendResults] = React.useState(null);
   const [gridData, setGridData] = React.useState(null);
-  const [sending, setSending] = React.useState(false);
-  const [refreshingData, setRefreshingData] = React.useState(false);
   const [selectionModel, setSelectionModel] = React.useState({});
 
   const [columnState, setColumnState] = React.useState(null);
@@ -275,8 +271,9 @@ const Subnets = (props) => {
 
   const [addExtSubOpen, setAddExtSubOpen] = React.useState(false);
   const [delExtSubOpen, setDelExtSubOpen] = React.useState(false);
+  const [manExtEndOpen, setManExtEndOpen] = React.useState(false);
 
-  const viewSetting = useSelector(state => selectViewSetting(state, 'subnetsx'));
+  const viewSetting = useSelector(state => selectViewSetting(state, 'extsubnets'));
 
   const saveTimer = React.useRef();
 
@@ -287,7 +284,7 @@ const Subnets = (props) => {
     { name: "name", header: "Name", type: "string", flex: 0.5, draggable: false, visible: true },
     { name: "desc", header: "Description", type: "string", flex: 1, draggable: false, visible: true },
     { name: "cidr", header: "Address Range", type: "string", flex: 0.30, draggable: false, visible: true },
-    { name: "id", header: () => <HeaderMenu setting="subnetsx"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => "", visible: true }
+    { name: "id", header: () => <HeaderMenu setting="extsubnets"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => "", visible: true }
   ], []);
 
   const filterValue = [
@@ -346,7 +343,7 @@ const Subnets = (props) => {
     }
 
     var body = [
-      { "op": "add", "path": `/views/subnetsx`, "value": saveData }
+      { "op": "add", "path": `/views/extsubnets`, "value": saveData }
     ];
 
     (async () => {
@@ -503,8 +500,6 @@ const Subnets = (props) => {
         block={selectedBlock ? selectedBlock.name : null}
         external={selectedExternal ? selectedExternal : null}
         subnets={subnets}
-        refresh={refresh}
-        refreshingState={refreshing}
       />
       <DeleteExtSubnet
         open={delExtSubOpen}
@@ -514,7 +509,15 @@ const Subnets = (props) => {
         external={selectedExternal ? selectedExternal.name : null}
         subnet={selectedSubnet ? selectedSubnet.name : null}
       />
-      <ExtSubnetContext.Provider value={{ selectedExternal, selectedSubnet, setAddExtSubOpen, setDelExtSubOpen, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+      <ManageExtEndpoints
+        open={manExtEndOpen}
+        handleClose={() => setManExtEndOpen(false)}
+        space={selectedSpace ? selectedSpace.name : null}
+        block={selectedBlock ? selectedBlock.name : null}
+        external={selectedExternal ? selectedExternal.name : null}
+        subnet={selectedSubnet ? selectedSubnet : null}
+      />
+      <ExtSubnetContext.Provider value={{ selectedExternal, selectedSubnet, setAddExtSubOpen, setDelExtSubOpen, setManExtEndOpen,  saving, sendResults, saveConfig, loadConfig, resetConfig }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
           <Box sx={{ display: 'flex', height: '35px', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(224, 224, 224, 1)', borderBottom: 'none' }}>
             <Typography variant='button'>
@@ -542,8 +545,8 @@ const Subnets = (props) => {
               reservedViewportWidth={0}
               columns={columnState || []}
               columnOrder={columnOrderState}
-              loading={sending || refreshing || refreshingData }
-              loadingText={sending ? <Update>Updating</Update> : "Loading"}
+              loading={(selectedExternal && refreshing)}
+              loadingText={"Loading"}
               dataSource={gridData || []}
               sortInfo={columnSortState}
               defaultFilterValue={filterValue}

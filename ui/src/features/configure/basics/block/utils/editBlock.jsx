@@ -19,12 +19,12 @@ import {
 
 import LoadingButton from '@mui/lab/LoadingButton';
 
-import { createBlockAsync } from "../../../ipam/ipamSlice";
+import { updateBlockAsync } from "../../../../ipam/ipamSlice";
 
 import {
   BLOCK_NAME_REGEX,
   CIDR_REGEX
-} from "../../../../global/globals";
+} from "../../../../../global/globals";
 
 function DraggablePaper(props) {
   const nodeRef = React.useRef(null);
@@ -41,8 +41,8 @@ function DraggablePaper(props) {
   );
 }
 
-export default function AddBlock(props) {
-  const { open, handleClose, space, blocks } = props;
+export default function EditBlock(props) {
+  const { open, handleClose, space, blocks, block } = props;
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -57,23 +57,52 @@ export default function AddBlock(props) {
                       && cidr.value
                       && !cidr.error ? false : true;
 
+  const unchanged = block
+                    ? (blockName.value === block.name && cidr.value === block.cidr)
+                    ? true : false
+                    : true;
+
+  React.useEffect(() => {
+    if(block) {
+      setBlockName({
+        value: block.name,
+        error: false
+      });
+
+      setCidr({
+        value: block.cidr,
+        error: false
+      });
+    } else {
+      setBlockName({
+        value: "",
+        error: false
+      });
+
+      setCidr({
+        value: "",
+        error: false
+      });
+    }
+  }, [block]);
+
   function onCancel() {
-    setBlockName({ value: "", error: false });
-    setCidr({ value: "", error: false });
+    setBlockName({ value: block.name, error: false });
+    setCidr({ value: block.cidr, error: false });
     handleClose();
   }
 
   function onSubmit() {
-    var body = {
-      name: blockName.value,
-      cidr: cidr.value
-    };
+    var body = [
+      { "op": "replace", "path": "/name", "value": blockName.value },
+      { "op": "replace", "path": "/cidr", "value": cidr.value }
+    ];
 
     (async () => {
       try {
         setSending(true);
-        await dispatch(createBlockAsync({ space: space, body: body }));
-        enqueueSnackbar("Successfully created new Block", { variant: "success" });
+        await dispatch(updateBlockAsync({ space: space, block: block.name, body: body }));
+        enqueueSnackbar("Successfully updated Block", { variant: "success" });
         onCancel();
       } catch (e) {
         console.log("ERROR");
@@ -100,7 +129,8 @@ export default function AddBlock(props) {
     );
 
     const invalidName = name ? !regex.test(name) : false;
-    const blockExists = blocks.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
+    const otherBlocks = blocks.filter((e) => e.name.toLowerCase() !== block.name.toLowerCase());
+    const blockExists = otherBlocks.some((e) => e.name.toLowerCase() === name.toLowerCase()) ? true : false;
 
     return invalidName || blockExists;
   }
@@ -130,7 +160,7 @@ export default function AddBlock(props) {
         fullWidth
       >
         <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
-          Add Block
+          Edit Block
         </DialogTitle>
         <DialogContent>
           <Box display="flex" flexDirection="column" alignItems="center">
@@ -193,9 +223,9 @@ export default function AddBlock(props) {
           <LoadingButton
             onClick={onSubmit}
             loading={sending}
-            disabled={invalidForm}
+            disabled={invalidForm || unchanged}
           >
-            Create
+            Update
           </LoadingButton>
         </DialogActions>
       </Dialog>

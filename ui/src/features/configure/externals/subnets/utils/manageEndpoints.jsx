@@ -29,7 +29,9 @@ import {
   ListItemIcon,
   OutlinedInput,
   Tooltip,
-  Paper
+  Paper,
+  Autocomplete,
+  TextField
 } from "@mui/material";
 
 import {
@@ -48,29 +50,23 @@ import {
 import LoadingButton from '@mui/lab/LoadingButton';
 
 import {
-  replaceBlockExternals
-} from "../../../ipam/ipamAPI";
-
-import {
-  fetchNetworksAsync,
-  selectSubscriptions,
-  selectNetworks,
+  replaceBlockExtSubnetEndpointsAsync,
   selectViewSetting,
   updateMeAsync
-} from "../../../ipam/ipamSlice";
+} from "../../../../ipam/ipamSlice";
 
 import {
-  isSubnetOf,
-  isSubnetOverlap
-} from "../../../tools/utils/iputils";
+  expandCIDR
+} from "../../../../tools/utils/iputils";
 
 import {
   EXTERNAL_NAME_REGEX,
-  EXTERNAL_DESC_REGEX,
-  CIDR_REGEX
-} from "../../../../global/globals";
+  EXTERNAL_DESC_REGEX
+} from "../../../../../global/globals";
 
-const ExternalContext = React.createContext({});
+import { ExternalContext } from "../../externalContext";
+
+const EndpointContext = React.createContext({});
 
 const Spotlight = styled("span")(({ theme }) => ({
   fontWeight: 'bold',
@@ -91,7 +87,7 @@ const gridStyle = {
 
 function RenderDelete(props) {
   const { value } = props;
-  const { externals, setAdded, deleted, setDeleted, selectionModel } = React.useContext(ExternalContext);
+  const { endpoints, setAdded, deleted, setDeleted, selectionModel } = React.useContext(EndpointContext);
 
   const flexCenter = {
     display: "flex",
@@ -112,7 +108,7 @@ function RenderDelete(props) {
           disableTouchRipple
           disableRipple
           onClick={() => {
-            if(externals.find(e => e.name === value.name) && !deleted.includes(value.name)) {
+            if(endpoints.find(e => e.name === value.name) && !deleted.includes(value.name)) {
               setDeleted(prev => [...prev, value.name]);
             } else {
               setAdded(prev => prev.filter(e => e.name !== value.name));
@@ -128,7 +124,7 @@ function RenderDelete(props) {
 
 function HeaderMenu(props) {
   const { setting } = props;
-  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.useContext(ExternalContext);
+  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.useContext(EndpointContext);
 
   const [menuOpen, setMenuOpen] = React.useState(false);
 
@@ -271,32 +267,41 @@ function DraggablePaper(props) {
   );
 }
 
-export default function EditExternals(props) {
-  const { open, handleClose, space, block, refresh, refreshing, refreshingState } = props;
+export default function ManageExtEndpoints(props) {
+  const {
+    open,
+    handleClose,
+    space,
+    block,
+    external,
+    subnet
+  } = props;
+  const { refreshing, refresh } = React.useContext(ExternalContext);
 
   const { enqueueSnackbar } = useSnackbar();
 
   const [saving, setSaving] = React.useState(false);
   const [sendResults, setSendResults] = React.useState(null);
-  const [externals, setExternals] = React.useState(null);
+  const [endpoints, setEndpoints] = React.useState(null);
+  const [addressOptions, setAddressOptions] = React.useState([]);
   const [added, setAdded] = React.useState([]);
   const [deleted, setDeleted] = React.useState([]);
   const [gridData, setGridData] = React.useState(null);
   const [sending, setSending] = React.useState(false);
-  const [refreshingData, setRefreshingData] = React.useState(false);
   const [selectionModel, setSelectionModel] = React.useState({});
 
   const [columnState, setColumnState] = React.useState(null);
   const [columnOrderState, setColumnOrderState] = React.useState([]);
   const [columnSortState, setColumnSortState] = React.useState({});
 
-  const [extName, setExtName] = React.useState({ value: "", error: true });
-  const [extDesc, setExtDesc] = React.useState({ value: "", error: true });
-  const [extCidr, setExtCidr] = React.useState({ value: "", error: true });
+  const [endName, setEndName] = React.useState({ value: "", error: true });
+  const [endDesc, setEndDesc] = React.useState({ value: "", error: true });
 
-  const subscriptions = useSelector(selectSubscriptions);
-  const networks = useSelector(selectNetworks);
-  const viewSetting = useSelector(state => selectViewSetting(state, 'externals'));
+  const [endAddrInput, setEndAddrInput] = React.useState("");
+  const [endAddr, setEndAddr] = React.useState(null);
+
+  const viewSetting = useSelector(state => selectViewSetting(state, 'extendpoints'));
+
   const dispatch = useDispatch();
 
   const saveTimer = React.useRef();
@@ -304,19 +309,19 @@ export default function EditExternals(props) {
   const theme = useTheme();
 
   //eslint-disable-next-line
-  const unchanged = (block && externals) ? isEqual(block['externals'], externals.map(({id, ...rest}) => rest)) : false;
+  const unchanged = (subnet && endpoints) ? isEqual(subnet['endpoints'], endpoints.map(({id, ...rest}) => rest)) : false;
 
   const columns = React.useMemo(() => [
     { name: "name", header: "Name", type: "string", flex: 0.5, draggable: false, visible: true },
     { name: "desc", header: "Description", type: "string", flex: 1, draggable: false, visible: true },
-    { name: "cidr", header: "CIDR", type: "string", flex: 0.30, draggable: false, visible: true },
-    { name: "id", header: () => <HeaderMenu setting="externals"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => <RenderDelete value={data} />, visible: true }
+    { name: "ip", header: "IP Address", type: "string", flex: 0.30, draggable: false, visible: true },
+    { name: "id", header: () => <HeaderMenu setting="extendpoints"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => <RenderDelete value={data} />, visible: true }
   ], []);
 
   const filterValue = [
     { name: "name", operator: "contains", type: "string", value: "" },
     { name: "desc", operator: "contains", type: "string", value: "" },
-    { name: "cidr", operator: "contains", type: "string", value: "" }
+    { name: "ip", operator: "contains", type: "string", value: "" }
   ];
 
   function onClick(data) {
@@ -342,6 +347,8 @@ export default function EditExternals(props) {
     const newColumns = columnState.map(c => {
       return Object.assign({}, c, colsMap[c.name]);
     })
+
+    console.log(batchColumnInfo);
 
     setColumnState(newColumns);
   }
@@ -382,7 +389,7 @@ export default function EditExternals(props) {
     }
 
     var body = [
-      { "op": "add", "path": `/views/externals`, "value": saveData }
+      { "op": "add", "path": `/views/extendpoints`, "value": saveData }
     ];
 
     (async () => {
@@ -451,15 +458,15 @@ export default function EditExternals(props) {
     if(columnSortState) {
       setGridData(
         orderBy(
-          externals,
+          endpoints,
           [columnSortState.name],
           [columnSortState.dir === -1 ? 'desc' : 'asc']
         )
       );
     } else {
-      setGridData(externals);
+      setGridData(endpoints);
     }
-  },[externals, columnSortState]);
+  },[endpoints, columnSortState]);
 
   React.useEffect(() => {
     if(sendResults !== null) {
@@ -473,42 +480,21 @@ export default function EditExternals(props) {
     }
   }, [saveTimer, sendResults]);
 
-  function refreshData() {
-    (async() => {
-      try {
-        setRefreshingData(true);
-        await dispatch(fetchNetworksAsync());
-      } catch (e) {
-        console.log("ERROR");
-        console.log("------------------");
-        console.log(e);
-        console.log("------------------");
-        enqueueSnackbar(e.message, { variant: "error" });
-      } finally {
-        setRefreshingData(false);
-      }
-    })();
-  }
-
-  function refreshAll() {
-    refresh();
-    refreshData();
-  }
-
   function onAddExternal() {
     if(!hasError) {
       setAdded(prev => [
         ...prev,
         {
-          name: extName.value,
-          desc: extDesc.value,
-          cidr: extCidr.value
+          name: endName.value,
+          desc: endDesc.value,
+          ip: endAddr
         }
       ]);
 
-      setExtName({ value: "", error: true });
-      setExtDesc({ value: "", error: true });
-      setExtCidr({ value: "", error: true });
+      setEndName({ value: "", error: true });
+      setEndDesc({ value: "", error: true });
+      setEndAddrInput("");
+      setEndAddr(null);
     }
   }
 
@@ -516,16 +502,23 @@ export default function EditExternals(props) {
     (async () => {
       try {
         setSending(true);
-        const bodyData = externals.map(({id, ...rest}) => rest);
-        await replaceBlockExternals(block.parent_space, block.name, bodyData);
-        handleClose();
-        setAdded([]);
-        setDeleted([]);
-        setExtName({ value: "", error: true });
-        setExtDesc({ value: "", error: true });
-        setExtCidr({ value: "", error: true });
-        enqueueSnackbar("Successfully updated Block External Networks", { variant: "success" });
-        refresh();
+
+        const bodyData = endpoints.reduce((acc, curr) => {
+          const newEndpoint = {
+            name: curr.name,
+            desc: curr.desc,
+            ip: curr.ip === "<auto>" ? null : curr.ip
+          };
+
+          acc.push(newEndpoint);
+
+          return acc;
+        }, []);
+
+        await dispatch(replaceBlockExtSubnetEndpointsAsync({ space: space, block: block, external: external, subnet: subnet.name, body: bodyData }));
+        onCancel();
+        enqueueSnackbar("Successfully updated External Subnet Endpoints", { variant: "success" });
+        // refresh();
       } catch (e) {
         console.log("ERROR");
         console.log("------------------");
@@ -542,9 +535,10 @@ export default function EditExternals(props) {
     setAdded([]);
     setDeleted([]);
 
-    setExtName({ value: "", error: true });
-    setExtDesc({ value: "", error: true });
-    setExtCidr({ value: "", error: true });
+    setEndName({ value: "", error: true });
+    setEndDesc({ value: "", error: true });
+    setEndAddrInput("");
+    setEndAddr(null);
 
     handleClose();
   }
@@ -559,15 +553,15 @@ export default function EditExternals(props) {
   function onNameChange(event) {
     const newName = event.target.value;
 
-    if(externals) {
+    if(endpoints) {
       const regex = new RegExp(
         EXTERNAL_NAME_REGEX
       );
 
       const nameError = newName ? !regex.test(newName) : false;
-      const nameExists = externals.map(e => e.name.toLowerCase()).includes(newName.toLowerCase());
+      const nameExists = endpoints.map(e => e.name.toLowerCase()).includes(newName.toLowerCase());
 
-      setExtName({
+      setEndName({
           value: newName,
           error: (nameError || nameExists)
       });
@@ -581,99 +575,46 @@ export default function EditExternals(props) {
       EXTERNAL_DESC_REGEX
     );
 
-    setExtDesc({
+    setEndDesc({
       value: newDesc,
       error: (newDesc ? !regex.test(newDesc) : false)
     });
   }
 
-  function onCidrChnage(event) {
-    const newCidr = event.target.value;
-
-    const regex = new RegExp(
-      CIDR_REGEX
-    );
-
-    const cidrError = newCidr ? !regex.test(newCidr) : false;
-
-    var blockNetworks= [];
-    var extNetworks = [];
-
-    var cidrInBlock = false;
-    var resvOverlap = true;
-    var vnetOverlap = true;
-    var extOverlap = true;
-
-    if(!cidrError && newCidr.length > 0) {
-      cidrInBlock = isSubnetOf(newCidr, block.cidr);
-
-      const openResv = block?.resv.reduce((acc, curr) => {
-        if(!curr['settledOn']) {
-          acc.push(curr['cidr']);
-        }
-
-        return acc;
-      }, []);
-
-      if(space && block && networks) {
-        blockNetworks = networks?.reduce((acc, curr) => {
-          if(curr['parent_space'] && curr['parent_block']) {
-            if(curr['parent_space'] === space && curr['parent_block'].includes(block.name)) {
-              acc = acc.concat(curr['prefixes']);
-            }
-          }
-
-          return acc;
-        }, []);
-      }
-
-      if(externals) {
-        extNetworks = externals?.reduce((acc, curr) => {
-          acc.push(curr['cidr']);
-
-          return acc;
-        }, []);
-      }
-
-      resvOverlap = isSubnetOverlap(newCidr, openResv);
-      vnetOverlap = isSubnetOverlap(newCidr, blockNetworks);
-      extOverlap = isSubnetOverlap(newCidr, extNetworks);
-    }
-
-    setExtCidr({
-      value: newCidr,
-      error: (cidrError || !cidrInBlock || resvOverlap || vnetOverlap || extOverlap)
-    });
-  }
-
   const hasError = React.useMemo(() => {
-    const errorCheck = (extName.error || extDesc.error || extCidr.error);
-    const emptyCheck = (extName.value.length === 0 || extDesc.value.length === 0 || extCidr.value.length === 0);
+    const errorCheck = (endName.error || endDesc.error);
+    const emptyCheck = (endName.value.length === 0 || endDesc.value.length === 0 || endAddr === null);
 
     return (errorCheck || emptyCheck);
-  }, [extName, extDesc, extCidr]);
+  }, [endName, endDesc, endAddr]);
 
   React.useEffect(() => {
-    if(block) {
-      var newExternals = cloneDeep(block['externals']);
+    if(subnet) {
+      var newEndpoints = cloneDeep(subnet['endpoints']);
 
-      newExternals = newExternals.filter(e => !deleted.includes(e.name));
-      newExternals = newExternals.concat(added);
+      newEndpoints = newEndpoints.filter(e => !deleted.includes(e.name));
+      newEndpoints = newEndpoints.concat(added);
 
-      const newData = newExternals.reduce((acc, curr) => {
-        curr['id'] = `${space}@${block.name}@${curr.name}}`
+      const newData = newEndpoints.reduce((acc, curr) => {
+        curr['id'] = `${subnet}@${curr.name}}`
 
         acc.push(curr);
 
         return acc;
       }, []);
 
-      setExternals(newData);
+      const endpointAddresses = newData.map(e => e.ip);
+      const newAddressOptions = expandCIDR(subnet.cidr).slice(1,-1).filter(addr => !endpointAddresses.includes(addr));
+
+      setEndpoints(newData);
+      setAddressOptions(["<auto>", ...newAddressOptions]);
+    } else if (open) {
+      onCancel();
     }
-  }, [space, block, added, deleted]);
+  }, [subnet, added, deleted]);
 
   return (
-    <ExternalContext.Provider value={{ externals, setAdded, deleted, setDeleted, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+    <EndpointContext.Provider value={{ endpoints, setAdded, deleted, setDeleted, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
       <Dialog
         open={open}
         onClose={onCancel}
@@ -689,14 +630,14 @@ export default function EditExternals(props) {
         <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
           <Box sx={{ display: "flex", flexDirection: "row" }}>
             <Box>
-            External Network Association
+              Manage External Subnet Endpoints
             </Box>
             <Box sx={{ ml: "auto" }}>
               <IconButton
                 color="primary"
                 size="small"
-                onClick={refreshAll}
-                disabled={refreshing || refreshingData || sending}
+                onClick={refresh}
+                disabled={refreshing || sending}
               >
                 <Refresh />
               </IconButton>
@@ -707,53 +648,17 @@ export default function EditExternals(props) {
           sx={{ overflowY: "unset" }}
         >
           <DialogContentText>
-            Define the External Networks below which should be associated with the Block <Spotlight>'{block && block.name}'</Spotlight>
+            Define the Endpoints below which should be associated with the Subnet <Spotlight>'{subnet && subnet.name}'</Spotlight>
           </DialogContentText>
           <Box
             sx={{
-              pt: 4,
-              height: "335px"
-            }}
-          >
-            <ReactDataGrid
-              theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
-              idProperty="id"
-              showCellBorders="horizontal"
-              showZebraRows={false}
-              multiSelect={true}
-              click
-              showActiveRowIndicator={false}
-              enableColumnAutosize={false}
-              showColumnMenuGroupOptions={false}
-              showColumnMenuLockOptions={false}
-              updateMenuPositionOnColumnsChange={false}
-              renderColumnContextMenu={renderColumnContextMenu}
-              onBatchColumnResize={onBatchColumnResize}
-              onSortInfoChange={onSortInfoChange}
-              onColumnOrderChange={onColumnOrderChange}
-              onColumnVisibleChange={onColumnVisibleChange}
-              reservedViewportWidth={0}
-              columns={columnState || []}
-              columnOrder={columnOrderState}
-              loading={sending || !subscriptions || !externals || refreshing || refreshingData || refreshingState}
-              loadingText={sending ? <Update>Updating</Update> : "Loading"}
-              dataSource={gridData || []}
-              sortInfo={columnSortState}
-              defaultFilterValue={filterValue}
-              onRowClick={(rowData) => onClick(rowData.data)}
-              onCellDoubleClick={onCellDoubleClick}
-              selected={selectionModel}
-              style={gridStyle}
-            />
-          </Box>
-          <Box
-            sx={{
+              mt: 4,
               display: 'flex',
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
               height: '25px',
-              borderWidth: '0px 1px 1px 1px',
+              borderWidth: '1px 1px 1px 1px',
               borderStyle: 'solid',
               borderColor: 'rgb(224, 224, 224)',
               backgroundColor: theme.palette.mode === 'dark' ? 'rgb(80, 80, 80)' : 'rgb(240, 240, 240)'
@@ -767,7 +672,7 @@ export default function EditExternals(props) {
                 color: theme.palette.mode === 'dark' ? '#9ba7b4' : '#555e68'
               }}
             >
-              Add New External Network
+              Add New Endpoint
             </span>
           </Box>
           <Box
@@ -793,10 +698,10 @@ export default function EditExternals(props) {
               }}
               style={
                 theme.palette.mode === 'dark'
-                ? (extName.error && extName.value.length > 0)
+                ? (endName.error && endName.value.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.5)' }
                   : { backgroundColor: 'rgb(49, 57, 67)' }
-                : (extName.error && extName.value.length > 0)
+                : (endName.error && endName.value.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.1)' }
                   : { backgroundColor: 'unset' }
               }
@@ -804,7 +709,7 @@ export default function EditExternals(props) {
               <OutlinedInput
                 fullWidth
                 placeholder="Name"
-                value={extName.value}
+                value={endName.value}
                 onChange={onNameChange}
                 inputProps={{
                   spellCheck: 'false',
@@ -855,10 +760,10 @@ export default function EditExternals(props) {
               }}
               style={
                 theme.palette.mode === 'dark'
-                ? (extDesc.error && extDesc.value.length > 0)
+                ? (endDesc.error && endDesc.value.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.5)' }
                   : { backgroundColor: 'rgb(49, 57, 67)' }
-                : (extDesc.error && extDesc.value.length > 0)
+                : (endDesc.error && endDesc.value.length > 0)
                   ? { backgroundColor: 'rgba(255, 0, 0, 0.1)' }
                   : { backgroundColor: 'unset' }
               }
@@ -866,7 +771,7 @@ export default function EditExternals(props) {
               <OutlinedInput
                 fullWidth
                 placeholder="Description"
-                value={extDesc.value}
+                value={endDesc.value}
                 onChange={onDescChange}
                 inputProps={{
                   spellCheck: 'false',
@@ -916,57 +821,42 @@ export default function EditExternals(props) {
               }}
               style={
                 theme.palette.mode === 'dark'
-                ? (extCidr.error && extCidr.value.length > 0)
-                  ? { backgroundColor: 'rgba(255, 0, 0, 0.5)' }
-                  : { backgroundColor: 'rgb(49, 57, 67)' }
-                : (extCidr.error && extCidr.value.length > 0)
-                  ? { backgroundColor: 'rgba(255, 0, 0, 0.1)' }
-                  : { backgroundColor: 'unset' }
+                ? { backgroundColor: 'rgb(49, 57, 67)' }
+                : { backgroundColor: 'unset' }
               }
             >
-              <OutlinedInput
-                fullWidth
-                placeholder="CIDR"
-                value={extCidr.value}
-                onChange={onCidrChnage}
-                inputProps={{
-                  spellCheck: 'false',
-                  style: {
-                    fontSize: '14px',
-                    fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
-                    padding: '4px 0px 5px'
-                  }
-                }}
-                endAdornment={
-                  <Tooltip
-                    arrow
-                    placement="top"
-                    title={
-                      <>
-                        - Must be in valid CIDR notation format
-                        <br />&nbsp;&nbsp;&nbsp;&nbsp;• Example: 1.2.3.4/5
-                        <br />- Must be a subset of the containing Block CIDR
-                        <br />- Cannot overlap any associated Networks
-                        <br />&nbsp;&nbsp;&nbsp;&nbsp;• Virtual Networks
-                        <br />&nbsp;&nbsp;&nbsp;&nbsp;• Virtual Hubs
-                        <br />- Cannot overlap any unfulfilled Reservations
-                      </>
-                    }
-                  >
-                    <InfoOutlined
-                      fontSize="small"
-                      sx={{
-                        pl: 0.5,
-                        color: 'lightgrey',
-                        cursor: 'default'
-                      }}
-                    />
-                  </Tooltip>
-                }
-                sx={{
-                  pr: 1,
-                  "& fieldset": { border: 'none' },
-                }}
+              <Autocomplete
+                disabled={false}
+                openOnFocus={true}
+                forcePopupIcon={false}
+                id="grouped-demo"
+                size="small"
+                options={addressOptions}
+                // getOptionLabel={(option) => option.name}
+                inputValue={endAddrInput}
+                onInputChange={(event, newInputValue) => setEndAddrInput(newInputValue)}
+                value={endAddr}
+                onChange={(event, newValue) => setEndAddr(newValue)}
+                isOptionEqualToValue={(option, value) => isEqual(option, value)}
+                sx={{ width: 300 }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    variant="standard"
+                    // label="IP Address"
+                    placeholder="IP Address"
+                    InputProps={{
+                      ...params.InputProps,
+                      disableUnderline: true,
+                      spellCheck: 'false',
+                      style: {
+                        fontSize: '14px',
+                        fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+                        padding: '4px 0px 5px'
+                      }
+                    }}
+                  />
+                )}
               />
             </Box>
             <Box
@@ -989,16 +879,16 @@ export default function EditExternals(props) {
                 <span>
                   <IconButton
                     disableRipple
-                    disabled={(hasError || sending || refreshing || refreshingData)}
+                    disabled={(hasError || sending || refreshing)}
                     onClick={onAddExternal}
                   >
                     <PlaylistAddOutlined
                       style={
                         theme.palette.mode === 'dark'
-                        ? (hasError || sending || refreshing || refreshingData)
+                        ? (hasError || sending || refreshing)
                           ? { color: "lightgrey", opacity: 0.25 }
                           : { color: "forestgreen", opacity: 1 }
-                        : (hasError || sending || refreshing || refreshingData)
+                        : (hasError || sending || refreshing)
                           ? { color: "black", opacity: 0.25 }
                           : { color: "limegreen", opacity: 1 }
                       }
@@ -1007,6 +897,68 @@ export default function EditExternals(props) {
                 </span>
               </Tooltip>
             </Box>
+          </Box>
+          <Box
+            sx={{
+              mt: 4,
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '25px',
+              borderWidth: '1px 1px 0px 1px',
+              borderStyle: 'solid',
+              borderColor: 'rgb(224, 224, 224)',
+              backgroundColor: theme.palette.mode === 'dark' ? 'rgb(80, 80, 80)' : 'rgb(240, 240, 240)'
+              
+            }}
+          >
+            <span
+              style={{
+                fontSize: '14px',
+                fontWeight: 700,
+                color: theme.palette.mode === 'dark' ? '#9ba7b4' : '#555e68'
+              }}
+            >
+              Existing Endpoints
+            </span>
+          </Box>
+          <Box
+            sx={{
+              // mt: 4,
+              height: "335px"
+            }}
+          >
+            <ReactDataGrid
+              theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
+              idProperty="id"
+              showCellBorders="horizontal"
+              showZebraRows={false}
+              multiSelect={true}
+              click
+              showActiveRowIndicator={false}
+              enableColumnAutosize={false}
+              showColumnMenuGroupOptions={false}
+              showColumnMenuLockOptions={false}
+              updateMenuPositionOnColumnsChange={false}
+              renderColumnContextMenu={renderColumnContextMenu}
+              onBatchColumnResize={onBatchColumnResize}
+              onSortInfoChange={onSortInfoChange}
+              onColumnOrderChange={onColumnOrderChange}
+              onColumnVisibleChange={onColumnVisibleChange}
+              reservedViewportWidth={0}
+              columns={columnState || []}
+              columnOrder={columnOrderState}
+              loading={sending || !endpoints || refreshing}
+              loadingText={sending ? <Update>Updating</Update> : "Loading"}
+              dataSource={gridData || []}
+              sortInfo={columnSortState}
+              defaultFilterValue={filterValue}
+              onRowClick={(rowData) => onClick(rowData.data)}
+              onCellDoubleClick={onCellDoubleClick}
+              selected={selectionModel}
+              style={gridStyle}
+            />
           </Box>
         </DialogContent>
         <DialogActions>
@@ -1019,13 +971,13 @@ export default function EditExternals(props) {
           <LoadingButton
             onClick={onSubmit}
             loading={sending}
-            disabled={unchanged || sending || refreshing || refreshingData || refreshingState}
+            disabled={unchanged || sending || refreshing}
             // sx={{ position: "unset" }}
           >
             Apply
           </LoadingButton>
         </DialogActions>
       </Dialog>
-    </ExternalContext.Provider>
+    </EndpointContext.Provider>
   );
 }

@@ -28,15 +28,15 @@ import {
   MoreVert as MoreVertIcon
 } from "@mui/icons-material";
 
-import Space from "../../../img/Space";
+import Space from "../../../../img/Space";
 
-import AddSpace from "./Utils/addSpace";
-import EditSpace from "./Utils/editSpace";
-import ConfirmDelete from "./Utils/confirmDelete";
+import AddSpace from "./utils/addSpace";
+import EditSpace from "./utils/editSpace";
+import ConfirmDelete from "./utils/confirmDelete";
 
-import { ConfigureContext } from "../configureContext";
+import { BasicContext } from "../basicContext";
 
-import { getAdminStatus } from "../../ipam/ipamSlice";
+import { getAdminStatus } from "../../../ipam/ipamSlice";
 
 const GridHeader = styled("div")({
   height: "50px",
@@ -70,7 +70,7 @@ const columns = [
 
 export default function SpaceDataGrid(props) {
   const { selectedSpace, setSelectedSpace, setSelectedBlock } = props;
-  const { spaces, refresh } = React.useContext(ConfigureContext);
+  const { spaces, refresh } = React.useContext(BasicContext);
 
   const [selectionModel, setSelectionModel] = React.useState({});
 

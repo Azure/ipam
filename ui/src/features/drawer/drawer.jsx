@@ -99,7 +99,6 @@ import AnalyzeTabs from "../tabs/analyzeTabs";
 import ToolsTabs from "../tabs/toolsTabs";
 import AdminTabs from "../tabs/adminTabs";
 import ConfigTabs from "../tabs/configTabs";
-import ConfigureIPAM from "../configure/configure";
 
 import Refresh from "./refresh";
 

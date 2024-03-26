@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useSelector, useDispatch } from 'react-redux';
+import { useDispatch } from 'react-redux';
 
 import { useSnackbar } from "notistack";
 
@@ -20,7 +20,6 @@ import {
 import LoadingButton from '@mui/lab/LoadingButton';
 
 import {
-  selectNetworks,
   createBlockExtSubnetAsync
 } from "../../../../ipam/ipamSlice"
 
@@ -62,8 +61,6 @@ export default function AddExtSubnet(props) {
   const [sending, setSending] = React.useState(false);
 
   const dispatch = useDispatch();
-
-  const networks = useSelector(selectNetworks);
 
   function onCancel() {
     setSubName({ value: "", error: false });
@@ -190,7 +187,7 @@ export default function AddExtSubnet(props) {
               placement="right"
               title={
                 <>
-                  - Network name must be unique
+                  - Subnet name must be unique
                   <br />- Max of 64 characters
                   <br />- Can contain alphnumerics
                   <br />- Can contain underscore, hypen, slash, and period

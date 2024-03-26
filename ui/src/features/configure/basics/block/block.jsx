@@ -2,6 +2,8 @@ import * as React from "react";
 import { useSelector } from 'react-redux';
 import { styled } from "@mui/material/styles";
 
+import { useNavigate } from "react-router-dom";
+
 import { isEmpty} from 'lodash';
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
@@ -31,16 +33,13 @@ import {
   MapOutlined as MapOutlinedIcon
 } from "@mui/icons-material";
 
-import AddBlock from "./Utils/addBlock";
-import EditBlock from "./Utils/editBlock";
-import EditVnets from "./Utils/editVnets";
-import EditReservations from "./Utils/editReservations";
-import EditExternals from "./Utils/editExternal";
-import ConfirmDelete from "./Utils/confirmDelete";
+import AddBlock from "./utils/addBlock";
+import EditBlock from "./utils/editBlock";
+import ConfirmDelete from "./utils/confirmDelete";
 
-import { ConfigureContext } from "../configureContext";
+import { BasicContext } from "../basicContext";
 
-import { getAdminStatus } from "../../ipam/ipamSlice";
+import { getAdminStatus } from "../../../ipam/ipamSlice";
 
 const GridHeader = styled("div")({
   height: "50px",
@@ -75,21 +74,21 @@ const columns = [
 
 export default function BlockDataGrid(props) {
   const { selectedSpace, selectedBlock, setSelectedBlock } = props;
-  const { blocks, refreshing, refresh } = React.useContext(ConfigureContext);
+  const { blocks, refreshing, refresh } = React.useContext(BasicContext);
 
   const [previousSpace, setPreviousSpace] = React.useState(null);
   const [selectionModel, setSelectionModel] = React.useState({});
 
   const [addBlockOpen, setAddBlockOpen] = React.useState(false);
   const [editBlockOpen, setEditBlockOpen] = React.useState(false);
-  const [editVNetsOpen, setEditVNetsOpen] = React.useState(false);
-  const [editResvOpen, setEditResvOpen] = React.useState(false);
-  const [editExtOpen, setEditExtOpen] = React.useState(false);
+
   const [deleteBlockOpen, setDeleteBlockOpen] = React.useState(false);
 
   const [anchorEl, setAnchorEl] = React.useState(null);
 
   const isAdmin = useSelector(getAdminStatus);
+
+  const navigate = useNavigate();
 
   const theme = useTheme();
 
@@ -147,21 +146,6 @@ export default function BlockDataGrid(props) {
     setEditBlockOpen(true);
   };
 
-  const handleEditVNets = () => {
-    handleMenuClose();
-    setEditVNetsOpen(true);
-  };
-
-  const handleEditResv = () => {
-    handleMenuClose();
-    setEditResvOpen(true);
-  };
-
-  const handleEditExt = () => {
-    handleMenuClose();
-    setEditExtOpen(true);
-  };
-
   const handleDeleteBlock = () => {
     handleMenuClose();
     setDeleteBlockOpen(true);
@@ -214,22 +198,6 @@ export default function BlockDataGrid(props) {
             blocks={selectedSpace ? selectedSpace.blocks : null}
             refresh={refresh}
           />
-          <EditVnets
-            open={editVNetsOpen}
-            handleClose={() => setEditVNetsOpen(false)}
-            space={selectedSpace ? selectedSpace.name : null}
-            block={selectedBlock ? selectedBlock : null}
-            refresh={refresh}
-            refreshingState={refreshing}
-          />
-          <EditExternals
-            open={editExtOpen}
-            handleClose={() => setEditExtOpen(false)}
-            space={selectedSpace ? selectedSpace.name : null}
-            block={selectedBlock ? selectedBlock : null}
-            refresh={refresh}
-            refreshingState={refreshing}
-          />
           <ConfirmDelete
             open={deleteBlockOpen}
             handleClose={() => setDeleteBlockOpen(false)}
@@ -239,12 +207,6 @@ export default function BlockDataGrid(props) {
           />
         </React.Fragment>
       }
-      <EditReservations
-        open={editResvOpen}
-        handleClose={() => setEditResvOpen(false)}
-        space={selectedSpace ? selectedSpace.name : null}
-        block={selectedBlock ? selectedBlock : null}
-      />
       <GridHeader
         style={{
           borderBottom: "1px solid rgba(224, 224, 224, 1)",
@@ -333,7 +295,7 @@ export default function BlockDataGrid(props) {
               }
               { isAdmin &&
                 <MenuItem
-                  onClick={handleEditVNets}
+                  onClick={() =>navigate('/configure/associations', {state: { space: selectedSpace, block: selectedBlock }})}
                   disabled={!selectedBlock}
                 >
                   <ListItemIcon>
@@ -342,9 +304,18 @@ export default function BlockDataGrid(props) {
                   Block Networks
                 </MenuItem>
               }
+              <MenuItem
+                onClick={() =>navigate('/configure/reservations', {state: { space: selectedSpace, block: selectedBlock }})}
+                disabled={!selectedBlock}
+              >
+                <ListItemIcon>
+                  <PieChartOutlineIcon fontSize="small" />
+                </ListItemIcon>
+                Reservations
+              </MenuItem>
               { isAdmin &&
                 <MenuItem
-                  onClick={handleEditExt}
+                  onClick={() =>navigate('/configure/externals', {state: { space: selectedSpace, block: selectedBlock }})}
                   disabled={!selectedBlock}
                 >
                   <ListItemIcon>
@@ -353,15 +324,6 @@ export default function BlockDataGrid(props) {
                   External Networks
                 </MenuItem>
               }
-              <MenuItem
-                onClick={handleEditResv}
-                disabled={!selectedBlock}
-              >
-                <ListItemIcon>
-                  <PieChartOutlineIcon fontSize="small" />
-                </ListItemIcon>
-                Reservations
-              </MenuItem>
               { isAdmin &&
                 <Divider />
               }

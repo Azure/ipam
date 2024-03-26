@@ -173,6 +173,12 @@ export function deleteBlockExtSubnet(space, block, external, subnet, force) {
   return api.delete(url);
 }
 
+export function replaceBlockExtSubnetEndpoints(space, block, external, subnet, body) {
+  const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals/${external}/subnets/${subnet}/endpoints`);
+
+  return api.put(url, body);
+}
+
 export function replaceBlockExternals(space, block, body) {
   const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals`);
 

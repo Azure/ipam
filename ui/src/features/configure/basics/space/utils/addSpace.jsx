@@ -19,12 +19,12 @@ import {
 
 import LoadingButton from '@mui/lab/LoadingButton';
 
-import { createSpaceAsync } from "../../../ipam/ipamSlice";
+import { createSpaceAsync } from "../../../../ipam/ipamSlice";
 
 import {
   SPACE_NAME_REGEX,
   SPACE_DESC_REGEX
-} from "../../../../global/globals";
+} from "../../../../../global/globals";
 
 function DraggablePaper(props) {
   const nodeRef = React.useRef(null);

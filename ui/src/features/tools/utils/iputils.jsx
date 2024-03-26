@@ -39,6 +39,18 @@ export function isSubnetOverlap(subnetCIDR, existingSubnetCIDR) {
   return isOverlap;
 }
 
+export function expandCIDR(cidr) {
+  var ipList = [];
+
+  const {start, end} = getIpRangeForSubnet(cidr);
+
+  for (let ipNum = ip2int(start); ipNum <= ip2int(end); ipNum++) {
+    ipList.push(int2ip(ipNum));
+  }
+
+  return ipList;
+}
+
 export function isSubnetOf(childCIDR, parentCIDR) {
   const parentRange = getIpRangeForSubnet(parentCIDR);
   const childRange = getIpRangeForSubnet(childCIDR);

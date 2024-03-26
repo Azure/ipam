@@ -6,10 +6,10 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 
-import ConfigureIPAM from '../configure/configure';
+import Basics from '../configure/basics/basics';
 import Associations from '../configure/associations/associations';
 import Reservations from '../configure/reservations/reservations';
-import Externals from '../configure/externals/externalsx';
+import Externals from '../configure/externals/externals';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -60,7 +60,7 @@ export default function ConfigTabs() {
             <Tab label="Externals" component={Link} to={allTabs[3]} {...a11yProps(3)} />
           </Tabs>
         </Box>
-        <TabPanel value={allTabs.indexOf(location.pathname)} index={0}><ConfigureIPAM /></TabPanel>
+        <TabPanel value={allTabs.indexOf(location.pathname)} index={0}><Basics /></TabPanel>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={1}><Associations /></TabPanel>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={2}><Reservations /></TabPanel>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={3}><Externals /></TabPanel>
