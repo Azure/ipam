@@ -665,15 +665,8 @@ const Reservations = () => {
   }, [spaces]);
 
   React.useEffect(() => {
-    if (!selectedSpace) {
-      setSelectedBlock(null);
-    }
-  }, [selectedSpace]);
-
-  React.useEffect(() => {
     if (!selectedBlock) {
       setReservations([]);
-      setBlocks(null);
     } else {
       setReservations(selectedBlock.resv || []);
     }
@@ -683,7 +676,7 @@ const Reservations = () => {
     if (spaces && selectedSpace) {
       const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
 
-      if (spaceIndex >= -1) {
+      if (spaceIndex > -1) {
         if (!isEqual(spaces[spaceIndex], selectedSpace)) {
           setSelectedSpace(spaces[spaceIndex]);
           setBlocks(spaces[spaceIndex].blocks);
@@ -693,6 +686,9 @@ const Reservations = () => {
       } else {
         setSelectedSpace(null);
       }
+    } else if (!selectedSpace) {
+      setSelectedBlock(null);
+      setBlocks(null);
     }
   }, [spaces, selectedSpace, blocks]);
 
@@ -700,7 +696,7 @@ const Reservations = () => {
     if (blocks && selectedBlock) {
       const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
 
-      if (blockIndex >= -1) {
+      if (blockIndex > -1) {
         if (!isEqual(blocks[blockIndex], selectedBlock)) {
           setSelectedBlock(blocks[blockIndex]);
         }
@@ -872,15 +868,18 @@ const Reservations = () => {
             />
           </Box>
           <Box sx={{ display: 'flex', ml: 'auto' }}>
-            <Tooltip title="Remove" placement="top" >
+            <Tooltip
+              title="Remove"
+              placement="top"
+              style={{
+                visibility: (isEmpty(selectionModel) || refreshing) ? 'hidden' : 'visible'
+              }}
+            >
               <span>
                 <IconButton
                   color="error"
                   aria-label="save associations"
                   component="span"
-                  style={{
-                    visibility: (isEmpty(selectionModel) || refreshing) ? 'hidden' : 'visible'
-                  }}
                   disabled={sending}
                   onClick={onSubmit}
                 >

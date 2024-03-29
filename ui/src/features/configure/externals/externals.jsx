@@ -113,28 +113,10 @@ export default function Externals() {
   }, [spaces]);
 
   React.useEffect(() => {
-    if (!selectedSpace) {
-      setSelectedBlock(null);
-    }
-  }, [selectedSpace]);
-
-  React.useEffect(() => {
-    if (!selectedBlock) {
-      setBlocks(null);
-    }
-  }, [selectedBlock]);
-
-  // React.useEffect(() => {
-  //   if (!blocks) {
-  //     setSelectedBlock(null);
-  //   }
-  // }, [blocks]);
-
-  React.useEffect(() => {
     if (spaces && selectedSpace) {
       const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
 
-      if (spaceIndex >= -1) {
+      if (spaceIndex > -1) {
         if (!isEqual(spaces[spaceIndex], selectedSpace)) {
           setSelectedSpace(spaces[spaceIndex]);
           setBlocks(spaces[spaceIndex].blocks);
@@ -144,6 +126,9 @@ export default function Externals() {
       } else {
         setSelectedSpace(null);
       }
+    } else if (!selectedSpace) {
+      setSelectedBlock(null);
+      setBlocks(null);
     }
   }, [spaces, selectedSpace, blocks]);
 
@@ -151,9 +136,10 @@ export default function Externals() {
     if (blocks && selectedBlock) {
       const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
 
-      if (blockIndex >= -1) {
+      if (blockIndex > -1) {
         if (!isEqual(blocks[blockIndex], selectedBlock)) {
           setSelectedBlock(blocks[blockIndex]);
+          setExternals(blocks[blockIndex].externals);
         }
       } else {
         setSelectedBlock(null);
@@ -165,9 +151,10 @@ export default function Externals() {
     if (externals && selectedExternal) {
       const externalIndex = externals.findIndex((x) => x.id === selectedExternal.id);
 
-      if (externalIndex >= -1) {
+      if (externalIndex > -1) {
         if (!isEqual(externals[externalIndex], selectedExternal)) {
           setSelectedExternal(externals[externalIndex]);
+          setSubnets(externals[externalIndex].subnets);
         }
       } else {
         setSelectedExternal(null);
@@ -179,7 +166,7 @@ export default function Externals() {
     if (subnets && selectedSubnet) {
       const subnetIndex = subnets.findIndex((x) => x.id === selectedSubnet.id);
 
-      if (subnetIndex >= -1) {
+      if (subnetIndex > -1) {
         if (!isEqual(subnets[subnetIndex], selectedSubnet)) {
           setSelectedSubnet(subnets[subnetIndex]);
         }

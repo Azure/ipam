@@ -239,6 +239,8 @@ const Associations = () => {
 
   const [selectedSpace, setSelectedSpace] = React.useState(location.state?.space || null);
   const [selectedBlock, setSelectedBlock] = React.useState(location.state?.block || null);
+  // const [prevSpace, setPrevSpace] = React.useState(null);
+  // const [prevBlock, setPrevBlock] = React.useState(null);
 
   const [blocks, setBlocks] = React.useState(null);
 
@@ -448,15 +450,8 @@ const Associations = () => {
   }, [spaces]);
 
   React.useEffect(() => {
-    if (!selectedSpace) {
-      setSelectedBlock(null);
-    }
-  }, [selectedSpace]);
-
-  React.useEffect(() => {
     if (!selectedBlock) {
       setSelectionModel(null);
-      setBlocks(null);
     }
   }, [selectedBlock]);
 
@@ -464,7 +459,7 @@ const Associations = () => {
     if (spaces && selectedSpace) {
       const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
 
-      if (spaceIndex >= -1) {
+      if (spaceIndex > -1) {
         if (!isEqual(spaces[spaceIndex], selectedSpace)) {
           setSelectedSpace(spaces[spaceIndex]);
           setBlocks(spaces[spaceIndex].blocks);
@@ -474,6 +469,9 @@ const Associations = () => {
       } else {
         setSelectedSpace(null);
       }
+    } else if (!selectedSpace) {
+      setSelectedBlock(null);
+      setBlocks(null);
     }
   }, [spaces, selectedSpace, blocks]);
 
@@ -481,7 +479,7 @@ const Associations = () => {
     if (blocks && selectedBlock) {
       const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
 
-      if (blockIndex >= -1) {
+      if (blockIndex > -1) {
         if (!isEqual(blocks[blockIndex], selectedBlock)) {
           setSelectedBlock(blocks[blockIndex]);
         }
@@ -784,15 +782,18 @@ const Associations = () => {
             </Box>
           </Box>
           <Box sx={{ display: 'flex', ml: 'auto' }}>
-            <Tooltip title="Save" placement="top" >
+            <Tooltip
+              title="Save"
+              placement="top"
+              style={{
+                visibility: (unchanged || refreshing) ? 'hidden' : 'visible'
+              }}
+            >
               <span>
                 <IconButton
                   color="success"
                   aria-label="save associations"
                   component="span"
-                  style={{
-                    visibility: (unchanged || refreshing) ? 'hidden' : 'visible'
-                  }}
                   disabled={sending}
                   onClick={onSubmit}
                 >
