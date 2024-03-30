@@ -149,12 +149,11 @@ export default function Externals() {
 
   React.useEffect(() => {
     if (externals && selectedExternal) {
-      const externalIndex = externals.findIndex((x) => x.id === selectedExternal.id);
+      const externalIndex = externals.findIndex((x) => x.name === selectedExternal.name);
 
       if (externalIndex > -1) {
         if (!isEqual(externals[externalIndex], selectedExternal)) {
           setSelectedExternal(externals[externalIndex]);
-          setSubnets(externals[externalIndex].subnets);
         }
       } else {
         setSelectedExternal(null);
@@ -164,7 +163,7 @@ export default function Externals() {
 
   React.useEffect(() => {
     if (subnets && selectedSubnet) {
-      const subnetIndex = subnets.findIndex((x) => x.id === selectedSubnet.id);
+      const subnetIndex = subnets.findIndex((x) => x.name === selectedSubnet.name);
 
       if (subnetIndex > -1) {
         if (!isEqual(subnets[subnetIndex], selectedSubnet)) {
