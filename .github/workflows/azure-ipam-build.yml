@@ -22,6 +22,7 @@ jobs:
     outputs:
       ipamVersion: ${{ steps.updateVersion.outputs.ipamVersion }}
       prNumber: ${{ fromJson(steps.getPullRequestData.outputs.result).number }}
+      commitHash: ${{ steps.commitCode.outputs.commitHash }}
     steps:
       - run: echo "Job triggered by a ${{ github.event_name }} event to main."
 
@@ -103,6 +104,7 @@ jobs:
         run: |
           git commit -a -m "Updated Azure IPAM Version to v${{ steps.updateVersion.outputs.ipamVersion }} [skip ci]"
           git push
+          echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
   release:
     name: Create Azure IPAM Release
@@ -112,6 +114,7 @@ jobs:
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v4
         with:
+          ref: ${{ needs.version.outputs.commitHash }}
           sparse-checkout: |
             assets
 
@@ -141,7 +144,7 @@ jobs:
     needs: [ version, release ]
     steps:
       - name: Azure login
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
