@@ -154,6 +154,7 @@ jobs:
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v4
         with:
+          ref: ${{ needs.version.outputs.commitHash }}
           sparse-checkout: |
             engine
             ui
