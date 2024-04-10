@@ -195,7 +195,9 @@ async def validate_token(request: Request):
                     "n": key["n"],
                     "e": key["e"]
                 }
-    except Exception:
+    except Exception as e:
+        logger.error("Unable to parse authorization token.");
+        logger.error(e);
         raise HTTPException(status_code=401, detail="Unable to parse authorization token.")
 
     try:
