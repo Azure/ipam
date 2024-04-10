@@ -309,7 +309,7 @@ export default function Administration() {
   const { enqueueSnackbar } = useSnackbar();
 
   const [admins, setAdmins] = React.useState(null);
-  const [loadedAdmins, setLoadedAdmins] = React.useState([]);
+  const [loadedAdmins, setLoadedAdmins] = React.useState(null);
   const [gridData, setGridData] = React.useState(null);
   const [selectionModel, setSelectionModel] = React.useState({});
   const [loading, setLoading] = React.useState(true);

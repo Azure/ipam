@@ -542,7 +542,7 @@ export default function ManageExclusions() {
                   aria-label="upload picture"
                   component="span"
                   style={{
-                    visibility: (unchanged || loading) ? 'hidden' : 'visible'
+                    visibility: (unchanged || !loadedExclusions) ? 'hidden' : 'visible'
                   }}
                   disabled={sending}
                   onClick={onSave}

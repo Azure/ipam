@@ -361,7 +361,7 @@ const Planner = () => {
                 <TextField
                   {...params}
                   label="Mask"
-                  placeholder="Max"
+                  placeholder="Mask"
                 />
               )}
             />

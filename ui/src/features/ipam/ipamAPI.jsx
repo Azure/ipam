@@ -288,3 +288,15 @@ export function updateMe(body) {
 
   return api.patch(url, body);
 }
+
+export function fetchNextAvailableVNet(body) {
+  const url = new URL(`${ENGINE_URL}/api/tools/nextAvailableVNet`);
+
+  return api.post(url, body);
+}
+
+export function fetchNextAvailableSubnet(body) {
+  const url = new URL(`${ENGINE_URL}/api/tools/nextAvailableSubnet`);
+
+  return api.post(url, body);
+}

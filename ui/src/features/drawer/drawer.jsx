@@ -86,6 +86,7 @@ import Admins from "../../img/Admins";
 import Rule from "../../img/Rule";
 import Tools from "../../img/Tools";
 import Planner from "../../img/Planner";
+import Generator from "../../img/Generator";
 // import Settings from "../../img/Settings";
 import Help from "../../img/Help";
 import VWan from "../../img/VWan";
@@ -282,6 +283,12 @@ export default function NavDrawer() {
             title: "Planner",
             icon: Planner,
             link: "tools/planner",
+            admin: false
+          },
+          {
+            title: "Generator",
+            icon: Generator,
+            link: "tools/generator",
             admin: false
           }
         ]
@@ -987,6 +994,7 @@ export default function NavDrawer() {
           <Route path="analyze/visualize" element={<AnalyzeTabs />} />
           <Route path="analyze/peering" element={<AnalyzeTabs />} />
           <Route path="tools/planner" element={<ToolsTabs />} />
+          <Route path="tools/generator" element={<ToolsTabs />} />
           <Route path="configure/basics" element={<ConfigTabs />} />
           <Route path="configure/associations" element={<ConfigTabs />} />
           <Route path="configure/reservations" element={<ConfigTabs />} />
