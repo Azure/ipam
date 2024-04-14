@@ -13,7 +13,10 @@ import {
   // FormControl,
   // InputLabel,
   // Select,
-  // MenuItem,
+  Menu,
+  MenuItem,
+  ListItemText,
+  ListItemIcon,
   Switch,
   // Button,
   IconButton,
@@ -33,22 +36,23 @@ import LoadingButton from '@mui/lab/LoadingButton';
 
 import {
   ArrowDropDownOutlined,
-  // ContentCopyOutlined
+  ContentCopyOutlined,
+  PieChartOutlined
 } from '@mui/icons-material';
 
 import {
   selectSubscriptions,
   selectSpaces,
   selectUpdatedVNets
-} from "../ipam/ipamSlice";
+} from "../../ipam/ipamSlice";
 
 import {
   fetchNextAvailableVNet,
   fetchNextAvailableSubnet
-} from "../ipam/ipamAPI";
+} from "../../ipam/ipamAPI";
 
-import VNet from '../../img/VNet';
-import Subnet from '../../img/Subnet';
+import VNet from '../../../img/VNet';
+import Subnet from '../../../img/Subnet';
 
 const plannerTheme = (theme) => createTheme({
   ...theme,
@@ -134,9 +138,13 @@ const Generator = () => {
 
   const [sending, setSending] = React.useState(false);
 
+  const [anchorEl, setAnchorEl] = React.useState(null);
+
   const subscriptions = useSelector(selectSubscriptions);
   const spaces = useSelector(selectSpaces);
   const vNets = useSelector(selectUpdatedVNets);
+
+  const open = Boolean(anchorEl);
 
   React.useEffect(() => {
     setSelectedSpace(null);
@@ -267,6 +275,21 @@ const Generator = () => {
   React.useEffect(() => {
     setNextAvailable(null);
   }, [selectedMask, reverseSearch, smallestCIDR]);
+
+  const handleClick = (event) => {
+    setAnchorEl(event.target);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleCopy = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(nextAvailable);
+    handleClose();
+    enqueueSnackbar("Network copied to clipboard!", { variant: "success" });
+  };
 
   function onSubmit() {
     console.log("Fetching Next Available...");
@@ -618,8 +641,38 @@ const Generator = () => {
                     border: 'solid 1px rgba(0, 0, 0, 0.12)'
                   }}
                 >
+                  <Menu
+                    id="context-menu"
+                    anchorEl={anchorEl}
+                    open={open}
+                    onClose={handleClose}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'center',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'left',
+                    }}
+                    MenuListProps={{
+                      'aria-labelledby': 'basic-button',
+                    }}
+                  >
+                    <MenuItem onClick={handleCopy}>
+                      <ListItemIcon>
+                        <ContentCopyOutlined fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Copy</ListItemText>
+                    </MenuItem>
+                    <MenuItem onClick={handleClose}>
+                      <ListItemIcon>
+                        <PieChartOutlined fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Reservation</ListItemText>
+                    </MenuItem>
+                  </Menu>
                   <TextField
-                    disabled
+                    disabled={ !nextAvailable }
                     size="small"
                     id="next-available-vnet"
                     label="Next Available"
@@ -628,9 +681,9 @@ const Generator = () => {
                     InputProps={{
                       endAdornment:
                         <IconButton
-                          disabled
+                          disabled={ !nextAvailable }
                           disableRipple
-                          onClick={() => console.log("COPY!")}
+                          onClick={handleClick}
                         >
                           <ArrowDropDownOutlined />
                         </IconButton>

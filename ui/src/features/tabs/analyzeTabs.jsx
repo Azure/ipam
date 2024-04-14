@@ -6,8 +6,8 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 
-import Visualize from '../analysis/visualize';
-import Peering from '../analysis/peering';
+import Visualize from '../analysis/visualize/visualize';
+import Peering from '../analysis/peering/peering';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;

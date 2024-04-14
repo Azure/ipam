@@ -22,9 +22,9 @@ import {
   SaveAlt
 } from "@mui/icons-material";
 
-import {} from "../ipam/ipamAPI";
+import {} from "../../ipam/ipamAPI";
 
-import {} from '../ipam/ipamSlice';
+import {} from '../../ipam/ipamSlice';
 
 const ExclusionContext = React.createContext({});
 

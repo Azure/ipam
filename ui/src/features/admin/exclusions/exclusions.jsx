@@ -1,10 +1,10 @@
-import * as React from "react";
+import * as React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { styled } from '@mui/material/styles';
 
 import { useSnackbar } from 'notistack';
 
-import { isEqual, isEmpty, pickBy, orderBy, throttle } from 'lodash';
+import { isEqual, isEmpty, pickBy, orderBy } from 'lodash';
 
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
@@ -16,25 +16,15 @@ import {
   Box,
   Tooltip,
   IconButton,
-  Autocomplete,
-  TextField,
-  CircularProgress,
-  Popper,
   Typography,
   Menu,
   MenuItem,
   ListItemIcon,
-  Button
-  // Switch
-}  from "@mui/material";
+  CircularProgress
+} from "@mui/material";
 
 import {
-  Person,
-  Apps,
-  QuestionMark,
-  PersonSearch,
   SaveAlt,
-  HighlightOff,
   ExpandCircleDownOutlined,
   FileDownloadOutlined,
   FileUploadOutlined,
@@ -43,24 +33,21 @@ import {
   CancelOutlined
 } from "@mui/icons-material";
 
-import Shrug from "../../img/pam/Shrug";
+import Shrug from "../../../img/pam/Shrug";
 
 import {
-  getAdmins,
-  replaceAdmins
-} from "../ipam/ipamAPI";
+  getExclusions,
+  replaceExclusions
+} from "../../ipam/ipamAPI";
 
 import {
+  selectSubscriptions,
+  refreshAllAsync,
   selectViewSetting,
   updateMeAsync
-} from "../ipam/ipamSlice";
+} from '../../ipam/ipamSlice';
 
-import {
-  callMsGraphUsersFilter,
-  callMsGraphPrincipalsFilter
-} from "../../msal/graph";
-
-const AdminContext = React.createContext({});
+const ExclusionContext = React.createContext({});
 
 // Page Styles
 
@@ -90,7 +77,7 @@ const FloatingHeader = styled("div")(({ theme }) => ({
 
 const HeaderTitle = styled("div")(({ theme }) => ({
   ...theme.typography.h6,
-  width: "30%",
+  width: "80%",
   textAlign: "center",
   alignSelf: "center",
 }));
@@ -104,13 +91,6 @@ const DataSection = styled("div")(({ theme }) => ({
   // marginBottom: theme.spacing(1.5)
 }));
 
-// Grid Styles
-
-const GridBody = styled("div")({
-  height: "100%",
-  width: "100%"
-});
-
 const Update = styled("span")(({ theme }) => ({
   fontWeight: 'bold',
   color: theme.palette.error.light,
@@ -123,9 +103,25 @@ const gridStyle = {
   fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
 };
 
+// Grid Style(s)
+const GridBody = styled("div")(({ theme }) => ({
+  height: "100%",
+  width: "100%",
+  '& .ipam-subscription-exclusions': {
+    '.InovuaReactDataGrid__row--selected': {
+        background: theme.palette.mode === 'dark' ? 'rgb(220, 20, 20) !important' : 'rgb(255, 230, 230) !important',
+      '.InovuaReactDataGrid__row-hover-target': {
+        '&:hover': {
+          background: theme.palette.mode === 'dark' ? 'rgb(220, 100, 100) !important' : 'rgb(255, 220, 220) !important',
+        }
+      }
+    }
+  }
+}));
+
 function HeaderMenu(props) {
   const { setting } = props;
-  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.useContext(AdminContext);
+  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.useContext(ExclusionContext);
 
   const [menuOpen, setMenuOpen] = React.useState(false);
 
@@ -245,179 +241,99 @@ function HeaderMenu(props) {
   )
 }
 
-function RenderDelete(props) {
-  const { value } = props;
-  const { admins, setAdmins, selectionModel } = React.useContext(AdminContext);
-
-  const flexCenter = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center"
-  }
-
-  return (
-    <Tooltip title="Delete">
-      <span style={{...flexCenter}}>
-        <IconButton
-          color="error"
-          sx={{
-            padding: 0,
-            display: (isEqual([value.id], Object.keys(selectionModel))) ? "flex" : "none"
-          }}
-          disableFocusRipple
-          disableTouchRipple
-          disableRipple
-          onClick={() => setAdmins(admins.filter(x => x.id !== value.id))}
-        >
-          <HighlightOff />
-        </IconButton>
-      </span>
-    </Tooltip>
-  );
-}
-
-function RenderType(props) {
-  const { value } = props;
-
-  const flexCenter = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center"
-  }
-
-  const typeMap = {
-    "User": {
-      title: "User",
-      icon: <Person />
-    },
-    "Principal" : {
-      title: "Principal",
-      icon: <Apps />
-    }
-  };
-
-  return (
-    <Tooltip title={ typeMap[value]?.title || "Unknown" }>
-      <span style={{...flexCenter}}>
-        { typeMap[value]?.icon || <QuestionMark />}
-      </span>
-    </Tooltip>
-  );
-}
-
-export default function Administration() {
+export default function ManageExclusions() {
   const { enqueueSnackbar } = useSnackbar();
 
-  const [admins, setAdmins] = React.useState(null);
-  const [loadedAdmins, setLoadedAdmins] = React.useState(null);
-  const [gridData, setGridData] = React.useState(null);
-  const [selectionModel, setSelectionModel] = React.useState({});
-  const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [sendResults, setSendResults] = React.useState(null);
-
-  const [open, setOpen] = React.useState(false);
-  const [options, setOptions] = React.useState(null);
-  const [input, setInput] = React.useState("");
-  const [selected, setSelected] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
   const [sending, setSending] = React.useState(false);
+  const [selected, setSelected] = React.useState({});
+  const [loadedExclusions, setLoadedExclusions] = React.useState(null);
+  const [gridData, setGridData] = React.useState(null);
 
   const [columnState, setColumnState] = React.useState(null);
   const [columnOrderState, setColumnOrderState] = React.useState([]);
   const [columnSortState, setColumnSortState] = React.useState({});
 
-  const [appSearch, setAppSearch] = React.useState(false);
-
-  const viewSetting = useSelector(state => selectViewSetting(state, 'admins'));
+  const subscriptions = useSelector(selectSubscriptions);
+  const viewSetting = useSelector(state => selectViewSetting(state, 'exclusions'));
   const dispatch = useDispatch();
 
   const saveTimer = React.useRef();
-  const adminLoadedRef = React.useRef(false);
+  const dataLoadedRef = React.useRef(false);
 
   const theme = useTheme();
 
+  const unchanged = isEqual(selected, loadedExclusions);
+
+  // const message = `Click to Include/Exclude`;
+
   const columns = React.useMemo(() => [
-    { name: "type", header: () => <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}><PersonSearch /></span> , width: 40, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({value}) => <RenderType value={value} />, visible: true },
-    { name: "name", header: "Name", type: "string", flex: 0.5, visible: true },
-    { name: "email", header: "Email", type: "string", flex: 1, visible: true, render: ({value}) => value ? value : "N/A" },
-    { name: "id", header: "Object ID", type: "string", flex: 0.75, visible: true },
-    { name: "delete", header: () => <HeaderMenu setting="admins"/> , width: 50, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => <RenderDelete value={data} />, visible: true }
+    { name: "name", header: "Subscription Name", type: "string", flex: 1, visible: true },
+    { name: "subscription_id", header: "Subscription ID", type: "string", flex: 1, visible: true },
+    { name: "type", header: "Subscription Type", type: "string", flex: 0.75, visible: true },
+    { name: "mg_name", header: "Management Group Name", type: "string", flex: 0.75, visible: true },
+    { name: "mg_id", header: "Management Group ID", type: "string", flex: 0.75, visible: false },
+    { name: "id", header: () => <HeaderMenu setting="exclusions"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => "", visible: true }
   ], []);
 
   const filterValue = [
     { name: "name", operator: "contains", type: "string", value: "" },
-    { name: "email", operator: "contains", type: "string", value: "" },
-    { name: "id", operator: "contains", type: "string", value: "" }
+    { name: "subscription_id", operator: "contains", type: "string", value: "" },
+    { name: "type", operator: "contains", type: "string", value: "" },
+    { name: "mg_name", operator: "contains", type: "string", value: "" },
+    { name: "mg_id", operator: "contains", type: "string", value: "" }
   ];
 
-  const usersLoading = open && !options;
-  const unchanged = isEqual(admins, loadedAdmins);
+  React.useEffect(() => {
+    (subscriptions && selected) && setLoading(false);
+  }, [subscriptions, selected]);
 
-  const SearchUsers = React.useCallback((nameFilter) => {
+  const loadData = React.useCallback(() => {
     (async () => {
       try {
-        setOptions(null);
-        const userData = appSearch ? await callMsGraphPrincipalsFilter(nameFilter) : await callMsGraphUsersFilter(nameFilter);
-        setOptions(userData.value);
+        if(subscriptions) {
+          // setLoading(true);
+          var excluded = {};
+
+          const exclusions = await getExclusions();
+            
+          exclusions.forEach(exclusion => {
+            var targetSub = subscriptions.find((sub) => sub.subscription_id === exclusion);
+
+            if(targetSub) {
+              excluded[targetSub.id] = targetSub;
+            }
+          });
+
+          setSelected(prevState => {
+            return {
+              ...prevState,
+              ...excluded
+            }
+          });
+
+          setLoadedExclusions(excluded);
+        }
       } catch (e) {
         console.log("ERROR");
         console.log("------------------");
         console.log(e);
         console.log("------------------");
-        enqueueSnackbar(e.message, { variant: "error" });
+        enqueueSnackbar("Error fetching subscriptions/exclusions", { variant: "error" });
+      } finally {
+        // setLoading(false);
       }
     })();
-  }, [appSearch, enqueueSnackbar]);
-
-  const fetchUsers = React.useMemo(() => throttle((input) => SearchUsers(input), 500), [SearchUsers]);
-
-  const refreshData = React.useCallback(() => {
-    (async () => {
-      try {
-        const data = await getAdmins();
-        setAdmins(data);
-        setLoadedAdmins(data);
-      } catch (e) {
-        console.log("ERROR");
-        console.log("------------------");
-        console.log(e);
-        console.log("------------------");
-        enqueueSnackbar("Error fetching admins", { variant: "error" });
-      }
-    })();
-  }, [enqueueSnackbar]);
+  }, [subscriptions, enqueueSnackbar]);
 
   React.useEffect(() => {
-    if(!adminLoadedRef.current) {
-      adminLoadedRef.current = true;
-
-      refreshData();
+    if(!dataLoadedRef.current && subscriptions) {
+      dataLoadedRef.current = true;
+      loadData();
     }
-  }, [refreshData]);
-
-  React.useEffect(() => {
-    if(open) {
-      let active = true;
-
-      if (active) {
-        fetchUsers(input);
-      }
-
-      return () => {
-        active = false;
-      };
-    }
-  }, [open, input, fetchUsers]);
-
-  React.useEffect(() => {
-    if (!open) {
-      setOptions(null);
-    }
-  }, [input, open]);
-
-  React.useEffect(() => {
-    admins && setLoading(false);
-  }, [admins]);
+  }, [loadData, subscriptions]);
 
   React.useEffect(() => {
     if(sendResults !== null) {
@@ -435,9 +351,12 @@ export default function Administration() {
     (async () => {
       try {
         setSending(true);
-        await replaceAdmins(admins);
-        enqueueSnackbar("Successfully updated admins", { variant: "success" });
-        refreshData();
+        let selectedValues = Object.values(selected);
+        let update = selectedValues.map(item => item.subscription_id);
+        await replaceExclusions(update);
+        enqueueSnackbar("Successfully updated exclusions", { variant: "success" });
+        setLoadedExclusions(selected);
+        dispatch(refreshAllAsync())
       } catch (e) {
         console.log("ERROR");
         console.log("------------------");
@@ -450,48 +369,15 @@ export default function Administration() {
     })();
   }
 
-  function handleAdd(user) {
-    let newAdmin = {
-      type: appSearch ? "Principal" : "User",
-      name: user.displayName,
-      id: user.id,
-      email: appSearch ? null : user.userPrincipalName,
-    };
+  function onClick(elem) {
+    var id = elem.id;
 
-    if(!admins.find(obj => { return obj.id === user.id })) {
-      setAdmins((admins) => [...admins, newAdmin]);
-    } else {
-      console.log("Admin already added!");
-      enqueueSnackbar('Admin already added!', { variant: 'error' });
-    }
-    
-    setSelected(null);
-  }
+    setSelected(prevState => {
+      let newState = {...prevState};
 
-  const toggleAppSearch = () => {
-    setAppSearch((current) => !current);
-  };
+      newState.hasOwnProperty(id) ? delete newState[id] : newState[id] = elem;
 
-  const popperStyle = {
-    popper: {
-      width: "fit-content"
-    }
-  };
-
-  const MyPopper = function (props) {
-    return <Popper {...props} style={{ popperStyle }} placement="bottom-start" />;
-  };
-
-  function onClick(data) {
-    var id = data.id;
-    var newSelectionModel = {};
-
-    setSelectionModel(prevState => {
-      if(!prevState.hasOwnProperty(id)) {
-        newSelectionModel[id] = data;
-      }
-      
-      return newSelectionModel;
+      return newState;
     });
   }
 
@@ -545,13 +431,13 @@ export default function Administration() {
     }
 
     var body = [
-      { "op": "add", "path": `/views/admins`, "value": saveData }
+      { "op": "add", "path": `/views/exclusions`, "value": saveData }
     ];
 
     (async () => {
       try {
         setSaving(true);
-        await dispatch(updateMeAsync({ body: body }));
+        await dispatch(updateMeAsync({ body: body}));
         setSendResults(true);
       } catch (e) {
         console.log("ERROR");
@@ -595,7 +481,7 @@ export default function Administration() {
 
   const renderColumnContextMenu = React.useCallback((menuProps) => {
     const columnIndex = menuProps.items.findIndex((item) => item.itemId === 'columns');
-    const idIndex = menuProps.items[columnIndex].items.findIndex((item) => item.value === 'delete');
+    const idIndex = menuProps.items[columnIndex].items.findIndex((item) => item.value === 'id');
 
     menuProps.items[columnIndex].items.splice(idIndex, 1);
   }, []);
@@ -614,15 +500,15 @@ export default function Administration() {
     if(columnSortState) {
       setGridData(
         orderBy(
-          admins,
+          subscriptions,
           [columnSortState.name],
           [columnSortState.dir === -1 ? 'desc' : 'asc']
         )
       );
     } else {
-      setGridData(admins);
+      setGridData(subscriptions);
     }
-  },[admins, columnSortState]);
+  },[subscriptions, columnSortState]);
 
   const onCellDoubleClick = React.useCallback((event, cellProps) => {
     const { value } = cellProps
@@ -635,7 +521,7 @@ export default function Administration() {
     return (
       <React.Fragment>
         <Shrug />
-        <Typography variant="overline" display="block"  sx={{ mt: 1 }}>
+        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
           Nothing yet...
         </Typography>
       </React.Fragment>
@@ -643,104 +529,20 @@ export default function Administration() {
   }
 
   return (
-    <AdminContext.Provider value={{ admins, setAdmins, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+    <ExclusionContext.Provider value={{ saving, sendResults, saveConfig, loadConfig, resetConfig }}>
       <Wrapper>
         <MainBody>
           <FloatingHeader>
-            <Box sx={{ display: "flex", alignItems: "center", width: "35%", p: 0.5 }}>
-              <Tooltip
-                title={ appSearch ? "Service Principals" : "Users" }
-                arrow
-                PopperProps={{
-                  sx: {
-                      "& .MuiTooltip-tooltip": {
-                        left: appSearch ? "32px" : "8px"
-                      },
-                      "& .MuiTooltip-arrow": {
-                        left: appSearch ? "-32px !important" : "-8px !important"
-                      }
-                  }
-                }}
-              >
-                {/* <IconButton onClick={toggleAppSearch} color="primary">
-                  { appSearch ? <Apps /> : <Person /> }
-                </IconButton> */}
-                <Button 
-                  variant="outlined"
-                  size="large"
-                  startIcon={ appSearch ? <Apps /> : <Person /> }
-                  onClick={toggleAppSearch}
-                  sx={{
-                    borderRight: "unset",
-                    borderRadius: "4px 0px 0px 4px",
-                    borderColor: "rgba(0, 0, 0, 0.23)",
-                    padding: "8px",
-                    left: "1px",
-                    minWidth: "unset",
-                    "& .MuiButton-startIcon": { margin: "unset" }
-                  }}
-                />
-              </Tooltip>
-              <Autocomplete
-                PopperComponent={MyPopper}
-                key="12345"
-                id="asynchronous-demo"
-                size="small"
-                autoHighlight
-                blurOnSelect={true}
-                forcePopupIcon={false}
-                sx={{
-                  // ml: 2,
-                  width: 300
-                }}
-                open={open}
-                value={selected}
-                onOpen={() => {
-                  setOpen(true);
-                }}
-                onClose={() => {
-                  setOpen(false);
-                }}
-                onInputChange={(event, newInput) => {
-                  setInput(newInput);
-                }}
-                onChange={(event, newValue) => {
-                  newValue ? handleAdd(newValue) : setSelected(null);
-                }}
-                isOptionEqualToValue={(option, value) => option.displayName === value.displayName}
-                getOptionLabel={(option) => appSearch ? `${option.displayName} (${option.appId})` : `${option.displayName} (${option.userPrincipalName})`}
-                options={options || []}
-                loading={usersLoading}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label={ appSearch ? "Principal Search" : "User Search" }
-                    // variant="standard"
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <React.Fragment>
-                          {usersLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </React.Fragment>
-                      ),
-                      style: {
-                        borderRadius: "0px 4px 4px 0px"
-                      }
-                    }}
-                  />
-                )}
-              />
-            </Box>
-            <HeaderTitle>Admin Users</HeaderTitle>
-            <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ width: "35%", ml: 2, mr: 2 }}>
+            <Box sx={{ width: "20%" }}></Box>
+            <HeaderTitle>Subscription Exclusions</HeaderTitle>
+            <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ width: "20%", ml: 2, mr: 2 }}>
               <Tooltip title="Save" >
                 <IconButton
                   color="primary"
                   aria-label="upload picture"
                   component="span"
                   style={{
-                    visibility: unchanged ? 'hidden' : 'visible'
+                    visibility: (unchanged || !loadedExclusions) ? 'hidden' : 'visible'
                   }}
                   disabled={sending}
                   onClick={onSave}
@@ -772,21 +574,23 @@ export default function Administration() {
                 reservedViewportWidth={0}
                 columns={columnState || []}
                 columnOrder={columnOrderState}
-                loading={loading || sending}
+                toggleRowSelectOnClick={true}
+                loading={loading || sending || !subscriptions || !loadedExclusions}
                 loadingText={sending ? <Update>Updating</Update> : "Loading"}
                 dataSource={gridData || []}
                 defaultFilterValue={filterValue}
                 onRowClick={(rowData) => onClick(rowData.data)}
                 onCellDoubleClick={onCellDoubleClick}
-                selected={selectionModel}
+                selected={selected || {}}
                 sortInfo={columnSortState}
                 emptyText={NoRowsOverlay}
                 style={gridStyle}
+                className="ipam-subscription-exclusions"
               />
             </GridBody>
           </DataSection>
         </MainBody>
       </Wrapper>
-    </AdminContext.Provider>
+    </ExclusionContext.Provider>
   );
 }

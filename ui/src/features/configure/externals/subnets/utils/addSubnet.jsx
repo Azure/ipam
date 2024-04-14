@@ -26,11 +26,11 @@ import {
 import {
   isSubnetOf,
   isSubnetOverlap
-} from "../../../../tools/utils/iputils"
+} from "../../../../tools/planner/utils/iputils"
 
 import {
-  EXTERNAL_NAME_REGEX,
-  EXTERNAL_DESC_REGEX,
+  EXTSUBNET_NAME_REGEX,
+  EXTSUBNET_DESC_REGEX,
   CIDR_REGEX
 } from "../../../../../global/globals";
 
@@ -100,7 +100,7 @@ export default function AddExtSubnet(props) {
 
     if(subnets) {
       const regex = new RegExp(
-        EXTERNAL_NAME_REGEX
+        EXTSUBNET_NAME_REGEX
       );
 
       const nameError = newName ? !regex.test(newName) : false;
@@ -117,7 +117,7 @@ export default function AddExtSubnet(props) {
     const newDesc = event.target.value;
 
     const regex = new RegExp(
-      EXTERNAL_DESC_REGEX
+      EXTSUBNET_DESC_REGEX
     );
 
     setSubDesc({

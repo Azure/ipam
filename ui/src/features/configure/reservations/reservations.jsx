@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 import { styled } from "@mui/material/styles";
 import { useTheme } from '@mui/material/styles';
 
-import { isEmpty, isEqual, pickBy, orderBy, sortBy } from 'lodash';
+import { isEmpty, isEqual, pickBy, orderBy, sortBy, cloneDeep } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
@@ -52,6 +52,7 @@ import {
 
 import {
   selectSpaces,
+  selectBlocks,
   fetchSpacesAsync,
   deleteBlockResvsAsync,
   selectViewSetting,
@@ -383,15 +384,13 @@ const Reservations = () => {
   const [selectedSpace, setSelectedSpace] = React.useState(location.state?.space || null);
   const [selectedBlock, setSelectedBlock] = React.useState(location.state?.block || null);
 
-  const [blocks, setBlocks] = React.useState(null);
-
   const [refreshing, setRefreshing] = React.useState(false);
   const [filterActive, setFilterActive] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [sendResults, setSendResults] = React.useState(null);
   const [reservations, setReservations] = React.useState([]);
   const [gridData, setGridData] = React.useState(null);
-  const [selectionModel, setSelectionModel] = React.useState([]);
+  const [selectionModel, setSelectionModel] = React.useState({});
   const [copied, setCopied] = React.useState("");
   const [sending, setSending] = React.useState(false);
 
@@ -400,6 +399,7 @@ const Reservations = () => {
   const [columnSortState, setColumnSortState] = React.useState({});
 
   const spaces = useSelector(selectSpaces);
+  const blocks = useSelector(selectBlocks);
   const viewSetting = useSelector(state => selectViewSetting(state, 'reservations'));
 
   const msgTimer = React.useRef();
@@ -659,52 +659,79 @@ const Reservations = () => {
   }, [saveTimer, sendResults]);
 
   React.useEffect(() => {
-    if (!spaces) {
-      setSelectedSpace(null);
-    }
-  }, [spaces]);
+    if (spaces) {
+      if (selectedSpace) {
+        const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
 
-  React.useEffect(() => {
-    if (!selectedBlock) {
-      setReservations([]);
-    } else {
-      setReservations(selectedBlock.resv || []);
-    }
-  }, [selectedBlock]);
-
-  React.useEffect(() => {
-    if (spaces && selectedSpace) {
-      const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
-
-      if (spaceIndex > -1) {
-        if (!isEqual(spaces[spaceIndex], selectedSpace)) {
-          setSelectedSpace(spaces[spaceIndex]);
-          setBlocks(spaces[spaceIndex].blocks);
-        } else if (!blocks) {
-          setBlocks(spaces[spaceIndex].blocks);
-        }
-      } else {
-        setSelectedSpace(null);
-      }
-    } else if (!selectedSpace) {
-      setSelectedBlock(null);
-      setBlocks(null);
-    }
-  }, [spaces, selectedSpace, blocks]);
-
-  React.useEffect(() => {
-    if (blocks && selectedBlock) {
-      const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
-
-      if (blockIndex > -1) {
-        if (!isEqual(blocks[blockIndex], selectedBlock)) {
-          setSelectedBlock(blocks[blockIndex]);
+        if (spaceIndex > -1) {
+          if (!isEqual(spaces[spaceIndex], selectedSpace)) {
+            setSelectedSpace(spaces[spaceIndex]);
+          }
+        } else {
+          setSelectedSpace(null);
+          setSelectedBlock(null);
         }
       } else {
         setSelectedBlock(null);
       }
+    } else {
+      setSelectedSpace(null);
+    }
+  }, [spaces, selectedSpace]);
+
+  React.useEffect(() => {
+    if (blocks) {
+      if (selectedBlock) {
+        const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
+
+        if (blockIndex > -1) {
+          if (!isEqual(blocks[blockIndex], selectedBlock)) {
+            setSelectedBlock(blocks[blockIndex]);
+          }
+
+          setReservations(blocks[blockIndex].resv || []);
+        } else {
+          setSelectedBlock(null);
+          setReservations([]);
+        }
+      } else {
+        setReservations([]);
+      }
+    } else {
+      setSelectedBlock(null);
+      setReservations([]);
     }
   }, [blocks, selectedBlock]);
+
+  React.useEffect(() => {
+    if (!isEmpty(reservations)) {
+      setSelectionModel((prev) => {
+        const newSelectionmodel = cloneDeep(prev);
+
+        Object.keys(prev).forEach((key) => {
+          const found = reservations.find((x) => x.id === key);
+
+          if (!found) {
+            delete newSelectionmodel[key];
+          }
+        });
+
+        return newSelectionmodel;
+      });
+
+      // setSelectionModel(newSelectionmodel);
+    } else {
+      setSelectionModel([]);
+    }
+  }, [reservations]);
+
+  React.useEffect(() => {
+    if (selectedSpace && selectedBlock) {
+      if (selectedBlock.parent_space !== selectedSpace.name) {
+        setSelectedBlock(null);
+      }
+    }
+  }, [selectedSpace, selectedBlock]);
 
   const refresh = React.useCallback(() => {
     (async() => {
@@ -827,7 +854,7 @@ const Reservations = () => {
               getOptionLabel={(option) => option.name}
               inputValue={blockInput}
               onInputChange={(event, newInputValue) => setBlockInput(newInputValue)}
-              value={selectedBlock}
+              value={(selectedBlock?.parent_space === selectedSpace?.name) ? selectedBlock : null}
               onChange={(event, newValue) => setSelectedBlock(newValue)}
               isOptionEqualToValue={(option, value) => isEqual(option, value)}
               sx={{ width: 300 }}

@@ -27,7 +27,7 @@ import {
 import {
   isSubnetOf,
   isSubnetOverlap
-} from "../../../../tools/utils/iputils"
+} from "../../../../tools/planner/utils/iputils"
 
 import {
   EXTERNAL_NAME_REGEX,

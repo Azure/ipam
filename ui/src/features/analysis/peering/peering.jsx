@@ -18,7 +18,7 @@ import { cloneDeep, isEmpty } from "lodash";
 import {
   selectSubscriptions,
   selectNetworks
-} from "../ipam/ipamSlice";
+} from "../../ipam/ipamSlice";
 
 const opt = {
   graphic: {

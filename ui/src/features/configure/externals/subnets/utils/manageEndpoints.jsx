@@ -57,7 +57,7 @@ import {
 
 import {
   expandCIDR
-} from "../../../../tools/utils/iputils";
+} from "../../../../tools/planner/utils/iputils";
 
 import {
   EXTERNAL_NAME_REGEX,
@@ -531,17 +531,19 @@ export default function ManageExtEndpoints(props) {
     })();
   }
 
-  function onCancel() {
-    setAdded([]);
-    setDeleted([]);
+  const onCancel = React.useCallback(() => {
+    if (open) {
+      setAdded([]);
+      setDeleted([]);
 
-    setEndName({ value: "", error: true });
-    setEndDesc({ value: "", error: true });
-    setEndAddrInput("");
-    setEndAddr(null);
+      setEndName({ value: "", error: true });
+      setEndDesc({ value: "", error: true });
+      setEndAddrInput("");
+      setEndAddr(null);
 
-    handleClose();
-  }
+      handleClose();
+    }
+  }, [open, handleClose]);
 
   const onCellDoubleClick = React.useCallback((event, cellProps) => {
     const { value } = cellProps
@@ -608,10 +610,10 @@ export default function ManageExtEndpoints(props) {
 
       setEndpoints(newData);
       setAddressOptions(["<auto>", ...newAddressOptions]);
-    } else if (open) {
+    } else {
       onCancel();
     }
-  }, [subnet, added, deleted]);
+  }, [subnet, added, deleted, onCancel]);
 
   return (
     <EndpointContext.Provider value={{ endpoints, setAdded, deleted, setDeleted, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>

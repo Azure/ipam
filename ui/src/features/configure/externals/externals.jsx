@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useLocation } from "react-router-dom";
 import { styled } from "@mui/material/styles";
 
-import { isEqual, sortBy } from 'lodash';
+import { isEqual, set, sortBy } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
@@ -24,6 +24,7 @@ import { ExternalContext } from "./externalContext";
 
 import {
   selectSpaces,
+  selectBlocks,
   fetchSpacesAsync
 } from "../../ipam/ipamSlice";
 
@@ -70,7 +71,6 @@ export default function Externals() {
   const [spaceInput, setSpaceInput] = React.useState('');
   const [blockInput, setBlockInput] = React.useState('');
 
-  const [blocks, setBlocks] = React.useState(null);
   const [externals, setExternals] = React.useState(null);
   const [subnets, setSubnets] = React.useState(null);
 
@@ -82,6 +82,7 @@ export default function Externals() {
   const [refreshing, setRefreshing] = React.useState(false);
 
   const spaces = useSelector(selectSpaces);
+  const blocks = useSelector(selectBlocks);
 
   // const externalLoadedRef = React.useRef(false);
 
@@ -107,71 +108,91 @@ export default function Externals() {
   }, [dispatch, enqueueSnackbar]);
 
   React.useEffect(() => {
-    if (!spaces) {
-      setSelectedSpace(null);
-    }
-  }, [spaces]);
+    if (spaces) {
+      if (selectedSpace) {
+        const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
 
-  React.useEffect(() => {
-    if (spaces && selectedSpace) {
-      const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
-
-      if (spaceIndex > -1) {
-        if (!isEqual(spaces[spaceIndex], selectedSpace)) {
-          setSelectedSpace(spaces[spaceIndex]);
-          setBlocks(spaces[spaceIndex].blocks);
-        } else if (!blocks) {
-          setBlocks(spaces[spaceIndex].blocks);
-        }
-      } else {
-        setSelectedSpace(null);
-      }
-    } else if (!selectedSpace) {
-      setSelectedBlock(null);
-      setBlocks(null);
-    }
-  }, [spaces, selectedSpace, blocks]);
-
-  React.useEffect(() => {
-    if (blocks && selectedBlock) {
-      const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
-
-      if (blockIndex > -1) {
-        if (!isEqual(blocks[blockIndex], selectedBlock)) {
-          setSelectedBlock(blocks[blockIndex]);
-          setExternals(blocks[blockIndex].externals);
+        if (spaceIndex > -1) {
+          if (!isEqual(spaces[spaceIndex], selectedSpace)) {
+            setSelectedSpace(spaces[spaceIndex]);
+          }
+        } else {
+          setSelectedSpace(null);
+          setSelectedBlock(null);
         }
       } else {
         setSelectedBlock(null);
       }
+    } else {
+      setSelectedSpace(null);
+    }
+  }, [spaces, selectedSpace]);
+
+  React.useEffect(() => {
+    if (blocks) {
+      if (selectedBlock) {
+        const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
+
+        if (blockIndex > -1) {
+          if (!isEqual(blocks[blockIndex], selectedBlock)) {
+            setSelectedBlock(blocks[blockIndex]);
+            setExternals(blocks[blockIndex].externals);
+          }
+        } else {
+          setSelectedBlock(null);
+          setExternals(null);
+        }
+      } else {
+        setExternals(null);
+      }
+    } else {
+      setSelectedBlock(null);
+      setExternals(null);
     }
   }, [blocks, selectedBlock]);
 
   React.useEffect(() => {
-    if (externals && selectedExternal) {
-      const externalIndex = externals.findIndex((x) => x.name === selectedExternal.name);
-
-      if (externalIndex > -1) {
-        if (!isEqual(externals[externalIndex], selectedExternal)) {
-          setSelectedExternal(externals[externalIndex]);
-        }
-      } else {
-        setSelectedExternal(null);
+    if (selectedSpace && selectedBlock) {
+      if (selectedBlock.parent_space !== selectedSpace.name) {
+        setSelectedBlock(null);
       }
+    }
+  }, [selectedSpace, selectedBlock]);
+
+  React.useEffect(() => {
+    if (externals) {
+      if (selectedExternal) {
+        const externalIndex = externals.findIndex((x) => x.name === selectedExternal.name);
+
+        if (externalIndex > -1) {
+          if (!isEqual(externals[externalIndex], selectedExternal)) {
+            setSelectedExternal(externals[externalIndex]);
+          }
+        } else {
+          setSelectedExternal(null);
+        }
+      }
+    } else {
+      setSelectedExternal(null);
+      setSubnets(null);
     }
   }, [externals, selectedExternal]);
 
   React.useEffect(() => {
-    if (subnets && selectedSubnet) {
-      const subnetIndex = subnets.findIndex((x) => x.name === selectedSubnet.name);
+    if (subnets) {
+      if (selectedSubnet) {
+        const subnetIndex = subnets.findIndex((x) => x.name === selectedSubnet.name);
 
-      if (subnetIndex > -1) {
-        if (!isEqual(subnets[subnetIndex], selectedSubnet)) {
-          setSelectedSubnet(subnets[subnetIndex]);
+        if (subnetIndex > -1) {
+          if (!isEqual(subnets[subnetIndex], selectedSubnet)) {
+            setSelectedSubnet(subnets[subnetIndex]);
+          }
+        } else {
+          setSelectedSubnet(null);
         }
-      } else {
-        setSelectedSubnet(null);
       }
+    } else {
+      setSelectedSubnet(null);
     }
   }, [subnets, selectedSubnet]);
 
@@ -184,7 +205,7 @@ export default function Externals() {
                 forcePopupIcon={false}
                 id="grouped-demo"
                 size="small"
-                options={sortBy(spaces, 'name')}
+                options={spaces ? sortBy(spaces, 'name') : []}
                 getOptionLabel={(option) => option.name}
                 inputValue={spaceInput}
                 onInputChange={(event, newInputValue) => setSpaceInput(newInputValue)}
@@ -229,11 +250,11 @@ export default function Externals() {
                 forcePopupIcon={false}
                 id="grouped-demo"
                 size="small"
-                options={(blocks && selectedSpace) ? sortBy(blocks.filter((x) => x.parent_space === selectedSpace.name), 'name') : []}
+                options={(blocks && selectedSpace) ? sortBy(blocks.filter((block) => block.parent_space === selectedSpace.name), 'name') : []}
                 getOptionLabel={(option) => option.name}
                 inputValue={blockInput}
                 onInputChange={(event, newInputValue) => setBlockInput(newInputValue)}
-                value={selectedBlock}
+                value={(selectedBlock?.parent_space === selectedSpace?.name) ? selectedBlock : null}
                 onChange={(event, newValue) => setSelectedBlock(newValue)}
                 isOptionEqualToValue={(option, value) => isEqual(option.name, value.name)}
                 sx={{ width: 300 }}

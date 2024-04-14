@@ -6,8 +6,8 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 
-import Planner from '../tools/planner';
-import Generator from '../tools/generator';
+import Planner from '../tools/planner/planner';
+import Generator from '../tools/generator/generator';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;

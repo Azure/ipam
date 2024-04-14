@@ -437,15 +437,11 @@ const Subnets = (props) => {
   function onClick(data) {
     var id = data.id;
     var newSelectionModel = {};
-    var newSelectedSubnet = null;
 
     setSelectionModel(prevState => {
       if(!prevState.hasOwnProperty(id)) {
         newSelectionModel[id] = data;
-        newSelectedSubnet = data;
       }
-
-      setSelectedSubnet(newSelectedSubnet);
 
       return newSelectionModel;
     });
@@ -468,6 +464,14 @@ const Subnets = (props) => {
       setSubnets(null)
     }
   }, [selectedExternal, setSubnets]);
+
+  React.useEffect(() => {
+    if(Object.keys(selectionModel).length > 0) {
+      setSelectedSubnet(Object.values(selectionModel)[0]);
+    } else {
+      setSelectedSubnet(null);
+    }
+  }, [selectionModel, setSelectedSubnet]);
 
   const onCellDoubleClick = React.useCallback((event, cellProps) => {
     const { value } = cellProps

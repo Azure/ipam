@@ -43,6 +43,7 @@ import {
 
 import {
   selectSpaces,
+  selectBlocks,
   selectSubscriptions,
   fetchNetworksAsync,
   selectViewSetting,
@@ -239,10 +240,6 @@ const Associations = () => {
 
   const [selectedSpace, setSelectedSpace] = React.useState(location.state?.space || null);
   const [selectedBlock, setSelectedBlock] = React.useState(location.state?.block || null);
-  // const [prevSpace, setPrevSpace] = React.useState(null);
-  // const [prevBlock, setPrevBlock] = React.useState(null);
-
-  const [blocks, setBlocks] = React.useState(null);
 
   const [prevBlock, setPrevBlock] = React.useState({});
   const [saving, setSaving] = React.useState(false);
@@ -260,6 +257,7 @@ const Associations = () => {
   const [unchanged, setUnchanged] = React.useState(true);
 
   const spaces = useSelector(selectSpaces);
+  const blocks = useSelector(selectBlocks);
   const subscriptions = useSelector(selectSubscriptions);
   const viewSetting = useSelector(state => selectViewSetting(state, 'networks'));
 
@@ -444,50 +442,53 @@ const Associations = () => {
   }, [saveTimer, sendResults]);
 
   React.useEffect(() => {
-    if (!spaces) {
-      setSelectedSpace(null);
-    }
-  }, [spaces]);
+    if (spaces) {
+      if (selectedSpace) {
+        const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
 
-  React.useEffect(() => {
-    if (!selectedBlock) {
-      setSelectionModel(null);
-    }
-  }, [selectedBlock]);
-
-  React.useEffect(() => {
-    if (spaces && selectedSpace) {
-      const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
-
-      if (spaceIndex > -1) {
-        if (!isEqual(spaces[spaceIndex], selectedSpace)) {
-          setSelectedSpace(spaces[spaceIndex]);
-          setBlocks(spaces[spaceIndex].blocks);
-        } else if (!blocks) {
-          setBlocks(spaces[spaceIndex].blocks);
-        }
-      } else {
-        setSelectedSpace(null);
-      }
-    } else if (!selectedSpace) {
-      setSelectedBlock(null);
-      setBlocks(null);
-    }
-  }, [spaces, selectedSpace, blocks]);
-
-  React.useEffect(() => {
-    if (blocks && selectedBlock) {
-      const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
-
-      if (blockIndex > -1) {
-        if (!isEqual(blocks[blockIndex], selectedBlock)) {
-          setSelectedBlock(blocks[blockIndex]);
+        if (spaceIndex > -1) {
+          if (!isEqual(spaces[spaceIndex], selectedSpace)) {
+            setSelectedSpace(spaces[spaceIndex]);
+          }
+        } else {
+          setSelectedSpace(null);
+          setSelectedBlock(null);
         }
       } else {
         setSelectedBlock(null);
       }
+    } else {
+      setSelectedSpace(null);
+    }
+  }, [spaces, selectedSpace]);
+
+  React.useEffect(() => {
+    if (blocks) {
+      if (selectedBlock) {
+        const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
+
+        if (blockIndex > -1) {
+          if (!isEqual(blocks[blockIndex], selectedBlock)) {
+            setSelectedBlock(blocks[blockIndex]);
+          }
+        } else {
+          setSelectedBlock(null);
+        }
+      } else {
+        setSelectionModel(null);
+      }
+    } else {
+      setSelectedBlock(null);
     }
   }, [blocks, selectedBlock]);
+
+  React.useEffect(() => {
+    if (selectedSpace && selectedBlock) {
+      if (selectedBlock.parent_space !== selectedSpace.name) {
+        setSelectedBlock(null);
+      }
+    }
+  }, [selectedSpace, selectedBlock]);
 
   React.useEffect(() => {
     if(selectedBlock && vNets) {
@@ -725,7 +726,7 @@ const Associations = () => {
               getOptionLabel={(option) => option.name}
               inputValue={blockInput}
               onInputChange={(event, newInputValue) => setBlockInput(newInputValue)}
-              value={selectedBlock}
+              value={(selectedBlock?.parent_space === selectedSpace?.name) ? selectedBlock : null}
               onChange={(event, newValue) => setSelectedBlock(newValue)}
               isOptionEqualToValue={(option, value) => isEqual(option, value)}
               sx={{ width: 300 }}

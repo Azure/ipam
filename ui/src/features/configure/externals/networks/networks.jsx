@@ -419,15 +419,11 @@ const Networks = (props) => {
   function onClick(data) {
     var id = data.id;
     var newSelectionModel = {};
-    var newSelectedExternal = null;
 
     setSelectionModel(prevState => {
       if(!prevState.hasOwnProperty(id)) {
         newSelectionModel[id] = data;
-        newSelectedExternal = data;
       }
-      
-      setSelectedExternal(newSelectedExternal);
 
       return newSelectionModel;
     });
@@ -450,6 +446,14 @@ const Networks = (props) => {
       setExternals(null);
     }
   }, [selectedSpace, selectedBlock, setExternals]);
+
+  React.useEffect(() => {
+    if(Object.keys(selectionModel).length > 0) {
+      setSelectedExternal(Object.values(selectionModel)[0]);
+    } else {
+      setSelectedExternal(null);
+    }
+  }, [selectionModel, setSelectedExternal]);
 
   const onCellDoubleClick = React.useCallback((event, cellProps) => {
     const { value } = cellProps

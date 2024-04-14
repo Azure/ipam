@@ -22,7 +22,7 @@ import {
   selectUpdatedVNets,
   selectUpdatedVHubs,
   selectUpdatedEndpoints
-} from "../ipam/ipamSlice";
+} from "../../ipam/ipamSlice";
 
 const opt = {
   graphic: {

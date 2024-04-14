@@ -30,7 +30,7 @@ import {
 import {
   selectBlocks,
   selectUpdatedVNets
-} from "../ipam/ipamSlice";
+} from "../../ipam/ipamSlice";
 
 import { availableSubnets, isSubnetOverlap } from './utils/iputils';
 
