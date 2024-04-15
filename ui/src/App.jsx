@@ -17,7 +17,7 @@ import { SnackbarUtilsConfigurator } from './utils/snackbar';
 
 import Slide from '@mui/material/Slide';
 
-import Login from "./features/login/Login";
+import Login from "./features/login/login";
 
 import NavDrawer from './features/drawer/drawer';
 

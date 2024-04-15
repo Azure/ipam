@@ -32,9 +32,9 @@ import {
   getRefreshInterval,
   getDarkMode,
   setDarkMode
-} from "../ipam/ipamSlice";
+} from "../../ipam/ipamSlice";
 
-import { updateMe } from "../ipam/ipamAPI";
+import { updateMe } from "../../ipam/ipamAPI";
 
 function DraggablePaper(props) {
   const nodeRef = React.useRef(null);

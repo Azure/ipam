@@ -2,23 +2,20 @@ import * as React from 'react';
 import { useSelector } from 'react-redux';
 import { ThemeProvider, createTheme, styled } from '@mui/material/styles';
 
+import { useNavigate } from "react-router-dom";
+
 import { useSnackbar } from 'notistack';
 
 import { isEqual, sortBy } from 'lodash';
 
 import {
   Box,
-  // Paper,
   TextField,
-  // FormControl,
-  // InputLabel,
-  // Select,
   Menu,
   MenuItem,
   ListItemText,
   ListItemIcon,
   Switch,
-  // Button,
   IconButton,
   Tooltip,
   SvgIcon,
@@ -143,6 +140,8 @@ const Generator = () => {
   const subscriptions = useSelector(selectSubscriptions);
   const spaces = useSelector(selectSpaces);
   const vNets = useSelector(selectUpdatedVNets);
+
+  const navigate = useNavigate();
 
   const open = Boolean(anchorEl);
 
@@ -664,12 +663,15 @@ const Generator = () => {
                       </ListItemIcon>
                       <ListItemText>Copy</ListItemText>
                     </MenuItem>
-                    <MenuItem onClick={handleClose}>
-                      <ListItemIcon>
-                        <PieChartOutlined fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText>Reservation</ListItemText>
-                    </MenuItem>
+                    {
+                      !showSubnets &&
+                      <MenuItem onClick={() =>navigate('/configure/reservations', {state: { space: selectedSpace, block: selectedBlock, cidr: nextAvailable }})}>
+                        <ListItemIcon>
+                          <PieChartOutlined fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText>Reservation</ListItemText>
+                      </MenuItem>
+                    }
                   </Menu>
                   <TextField
                     disabled={ !nextAvailable }
@@ -696,6 +698,7 @@ const Generator = () => {
                     }}
                   />
                   <LoadingButton
+                    disabled={ showSubnets ? (!selectedSubscription || !selectedNetwork || !selectedMask) : (!selectedSpace || !selectedBlock || !selectedMask) }
                     variant="contained"
                     loading={sending}
                     onClick={onSubmit}

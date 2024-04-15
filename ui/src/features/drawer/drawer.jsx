@@ -91,17 +91,16 @@ import Generator from "../../img/Generator";
 import Help from "../../img/Help";
 import VWan from "../../img/VWan";
 
-import UserSettings from "./userSettings";
-import About from "./about";
-
-import Welcome from "../welcome/Welcome";
+import Welcome from "../welcome/welcome";
 import DiscoverTabs from "../tabs/discoverTabs";
 import AnalyzeTabs from "../tabs/analyzeTabs";
 import ToolsTabs from "../tabs/toolsTabs";
 import AdminTabs from "../tabs/adminTabs";
 import ConfigTabs from "../tabs/configTabs";
 
-import Refresh from "./refresh";
+import Refresh from "./utils/refresh";
+import UserSettings from "./utils/userSettings";
+import About from "./utils/about";
 
 import {
   setUserId,

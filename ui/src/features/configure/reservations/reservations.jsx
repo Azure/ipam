@@ -46,6 +46,7 @@ import {
   CancelOutlined,
   VisibilityOutlined,
   VisibilityOffOutlined,
+  PieChartOutlined,
   ClearOutlined,
   Refresh
 } from "@mui/icons-material";
@@ -58,6 +59,8 @@ import {
   selectViewSetting,
   updateMeAsync
 } from "../../ipam/ipamSlice";
+
+import NewReservation from './utils/newReservation';
 
 // Python -> Javascript
 // import time
@@ -123,7 +126,18 @@ const gridStyle = {
 
 function HeaderMenu(props) {
   const { setting } = props;
-  const { filterActive, setFilterActive, saving, sendResults, saveConfig, loadConfig, resetConfig } = React.useContext(ReservationContext);
+  const {
+    filterActive,
+    setFilterActive,
+    selectedSpace,
+    selectedBlock,
+    setNewResvOpen,
+    saving,
+    sendResults,
+    saveConfig,
+    loadConfig,
+    resetConfig
+  } = React.useContext(ReservationContext);
 
   const [menuOpen, setMenuOpen] = React.useState(false);
 
@@ -136,7 +150,12 @@ function HeaderMenu(props) {
   }
 
   const onActive = () => {
-    setFilterActive(prev => !prev)
+    setFilterActive(prev => !prev);
+    setMenuOpen(false);
+  }
+
+  const onNewResv = () => {
+    setNewResvOpen(true);
     setMenuOpen(false);
   }
 
@@ -239,6 +258,16 @@ function HeaderMenu(props) {
                 }
               </ListItemIcon>
               { filterActive ? 'Showing Active' : 'Showing All' }
+            </MenuItem>
+            <Divider />
+            <MenuItem
+              onClick={onNewResv}
+              disabled={ !(selectedSpace && selectedBlock) }
+            >
+              <ListItemIcon>
+                <PieChartOutlined fontSize="small" />
+              </ListItemIcon>
+              New Reservation
             </MenuItem>
             <Divider />
             <MenuItem
@@ -393,6 +422,8 @@ const Reservations = () => {
   const [selectionModel, setSelectionModel] = React.useState({});
   const [copied, setCopied] = React.useState("");
   const [sending, setSending] = React.useState(false);
+
+  const [newResvOpen, setNewResvOpen] = React.useState(location.state?.cidr ? true : false);
 
   const [columnState, setColumnState] = React.useState(null);
   const [columnOrderState, setColumnOrderState] = React.useState([]);
@@ -797,7 +828,13 @@ const Reservations = () => {
   }
 
   return (
-    <ReservationContext.Provider value={{ copied, setCopied, filterActive, setFilterActive, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+    <ReservationContext.Provider value={{ copied, setCopied, filterActive, setFilterActive, selectedSpace, selectedBlock, setNewResvOpen, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+      <NewReservation
+        open={newResvOpen}
+        handleClose={() => setNewResvOpen(false)}
+        selectedSpace={selectedSpace}
+        selectedBlock={selectedBlock}
+      />
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
         <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
           <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>

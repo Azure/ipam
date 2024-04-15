@@ -5,7 +5,7 @@ import {
   getRefreshInterval,
   refreshAllAsync,
   getMeAsync
-} from '../ipam/ipamSlice';
+} from '../../ipam/ipamSlice';
 
 function Refresh() {
   const intervalAll = React.useRef(null);
