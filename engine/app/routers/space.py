@@ -50,7 +50,7 @@ SPACE_DESC_REGEX = "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$"
 BLOCK_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9/\._-]){1,64}(?<![\._-])$"
 EXTERNAL_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9\._-]){1,64}(?<![\._-])$"
 EXTERNAL_DESC_REGEX = "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$"
-EXTSUBNET_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9\._-]){1,64(?<![\._-])$"
+EXTSUBNET_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9\._-]){1,64}(?<![\._-])$"
 EXTSUBNET_DESC_REGEX = "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$"
 
 router = APIRouter(
@@ -1436,10 +1436,10 @@ async def create_external_network(
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     if not re.match(EXTERNAL_NAME_REGEX, external.name, re.IGNORECASE):
-        raise HTTPException(status_code=400, detail="External network name can be a maximum of 32 characters and may contain alphanumerics, underscores, hypens, and periods.")
+        raise HTTPException(status_code=400, detail="External network name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods.")
 
     if not re.match(EXTERNAL_DESC_REGEX, external.desc, re.IGNORECASE):
-        raise HTTPException(status_code=400, detail="External network description can be a maximum of 64 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
+        raise HTTPException(status_code=400, detail="External network description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1663,10 +1663,10 @@ async def create_external_subnet(
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     if not re.match(EXTSUBNET_NAME_REGEX, req.name, re.IGNORECASE):
-        raise HTTPException(status_code=400, detail="External subnet name can be a maximum of 32 characters and may contain alphanumerics, underscores, hypens, and periods.")
+        raise HTTPException(status_code=400, detail="External subnet name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods.")
 
     if not re.match(EXTSUBNET_DESC_REGEX, req.desc, re.IGNORECASE):
-        raise HTTPException(status_code=400, detail="External subnet description can be a maximum of 64 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
+        raise HTTPException(status_code=400, detail="External subnet description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
