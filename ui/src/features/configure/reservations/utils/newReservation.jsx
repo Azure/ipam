@@ -115,7 +115,7 @@ export default function NewReservation(props) {
   function onSubmit() {
     var body = {
       ...description.value.length > 0 && { desc: description.value },
-      ...checked && { mask: mask.value },
+      ...checked && { size: mask.value },
       ...checked && { reverse_search: reverseSearch },
       ...checked && { smallest_cidr: smallestCIDR },
       ...!checked && { cidr: cidr.value }
