@@ -17,6 +17,7 @@ import {
   createBlockExtSubnet,
   deleteBlockExtSubnet,
   replaceBlockExtSubnetEndpoints,
+  createBlockResv,
   deleteBlockResvs,
   fetchVNets,
   fetchVHubs,
@@ -221,6 +222,19 @@ export const replaceBlockExtSubnetEndpointsAsync = createAsyncThunk(
   async (args, { rejectWithValue }) => {
     try {
       const response = await replaceBlockExtSubnetEndpoints(args.space, args.block, args.external, args.subnet, args.body);
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const createBlockResvAsync = createAsyncThunk(
+  'ipam/createBlockResv',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await createBlockResv(args.space, args.block, args.body);
 
       return response;
     } catch (err) {
@@ -632,6 +646,30 @@ export const ipamSlice = createSlice({
         // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
+
+      .addCase(createBlockResvAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);
+        const blockName = action.meta.arg.block;
+        const newResv = action.payload
+
+        delete newResv['space'];
+        delete newResv['block'];
+        delete newResv['tag'];
+
+        const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+
+        if(blockIndex > -1) {
+          state.spaces[spaceIndex].blocks[blockIndex].resv.push(newResv);
+        }
+      })
+      .addCase(createBlockResvAsync.rejected, (state, action) => {
+        console.log("createBlockResvAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
+
       .addCase(deleteBlockResvsAsync.fulfilled, (state, action) => {
         const spaceName = action.meta.arg.space;
         const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);

@@ -1,18 +1,18 @@
 import * as React from "react";
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector, useDispatch } from "react-redux";
 import { styled } from "@mui/material/styles";
 
-import { isEmpty, isEqual, pickBy, orderBy, cloneDeep } from 'lodash';
+import { isEmpty, isEqual, pickBy, orderBy, cloneDeep } from "lodash";
 
 import { useSnackbar } from "notistack";
 
-import ReactDataGrid from '@inovua/reactdatagrid-community';
-import '@inovua/reactdatagrid-community/index.css';
-import '@inovua/reactdatagrid-community/theme/default-dark.css'
+import ReactDataGrid from "@inovua/reactdatagrid-community";
+import "@inovua/reactdatagrid-community/index.css";
+import "@inovua/reactdatagrid-community/theme/default-dark.css";
 
-import Draggable from 'react-draggable';
+import Draggable from "react-draggable";
 
-import { useTheme } from '@mui/material/styles';
+import { useTheme } from "@mui/material/styles";
 
 import {
   Box,
@@ -47,7 +47,7 @@ import {
   InfoOutlined
 } from "@mui/icons-material";
 
-import LoadingButton from '@mui/lab/LoadingButton';
+import LoadingButton from "@mui/lab/LoadingButton";
 
 import {
   replaceBlockExtSubnetEndpointsAsync,

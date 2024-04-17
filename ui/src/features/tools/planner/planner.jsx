@@ -1,8 +1,8 @@
-import * as React from 'react';
-import { useSelector } from 'react-redux';
-import { ThemeProvider, createTheme, styled } from '@mui/material/styles';
+import * as React from "react";
+import { useSelector } from "react-redux";
+import { ThemeProvider, createTheme, styled } from "@mui/material/styles";
 
-import { find,isEqual, orderBy } from 'lodash';
+import { find,isEqual, orderBy } from "lodash";
 
 import {
   Box,
@@ -18,21 +18,21 @@ import {
   ToggleButtonGroup,
   Typography,
   CircularProgress
-} from '@mui/material';
+} from "@mui/material";
 
-import Grid from '@mui/material/Unstable_Grid2';
+import Grid from "@mui/material/Unstable_Grid2";
 
 import {
   FilterList as FilterListIcon,
   FilterListOff as FilterListOffIcon
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
 import {
   selectBlocks,
   selectUpdatedVNets
 } from "../../ipam/ipamSlice";
 
-import { availableSubnets, isSubnetOverlap } from './utils/iputils';
+import { availableSubnets, isSubnetOverlap } from "./utils/iputils";
 
 const plannerTheme = (theme) => createTheme({
   ...theme,
@@ -229,17 +229,6 @@ const Planner = () => {
 
   React.useEffect(() => {
     if (selectedVNet && selectedPrefix && selectedMask) {
-      // let prefixParts = selectedPrefix.split("/");
-      // let currentMask = parseInt(prefixParts[1], 10);
-
-      // let query = {
-      //   address: prefixParts[0],
-      //   netmask: currentMask,
-      //   netmaskRange: { max: selectedMask.value, min: currentMask || 16 },
-      // };
-
-      // let subnetsObj = availableSubnets(query, exclusions);
-
       let subnetsObj = availableSubnets(selectedPrefix, selectedMask.value, exclusions);
 
       setSubnetData(subnetsObj);
@@ -260,7 +249,6 @@ const Planner = () => {
         <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
           <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
             <Autocomplete
-              // freeSolo
               forcePopupIcon={false}
               id="grouped-demo"
               size="small"

@@ -185,6 +185,12 @@ export function replaceBlockExternals(space, block, body) {
   return api.put(url, body);
 }
 
+export function createBlockResv(space, block, body) {
+  var url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/reservations`);
+
+  return api.post(url, body);
+}
+
 export function fetchBlockResv(space, block) {
   var url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/reservations`);
 

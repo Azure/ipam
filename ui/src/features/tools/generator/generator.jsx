@@ -1,12 +1,11 @@
-import * as React from 'react';
-import { useSelector } from 'react-redux';
-import { ThemeProvider, createTheme, styled } from '@mui/material/styles';
+import * as React from "react";
+import { useSelector } from "react-redux";
 
 import { useNavigate } from "react-router-dom";
 
-import { useSnackbar } from 'notistack';
+import { useSnackbar } from "notistack";
 
-import { isEqual, sortBy } from 'lodash';
+import { isEqual, sortBy, pick } from "lodash";
 
 import {
   Box,
@@ -27,15 +26,15 @@ import {
   Typography,
   Popper,
   CircularProgress
-} from '@mui/material';
+} from "@mui/material";
 
-import LoadingButton from '@mui/lab/LoadingButton';
+import LoadingButton from "@mui/lab/LoadingButton";
 
 import {
   ArrowDropDownOutlined,
   ContentCopyOutlined,
   PieChartOutlined
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
 import {
   selectSubscriptions,
@@ -48,22 +47,8 @@ import {
   fetchNextAvailableSubnet
 } from "../../ipam/ipamAPI";
 
-import VNet from '../../../img/VNet';
-import Subnet from '../../../img/Subnet';
-
-const plannerTheme = (theme) => createTheme({
-  ...theme,
-  breakpoints: {
-    values: {
-      xs: 0,
-      sm: 600,
-      md: 900,
-      lg: 1200,
-      xl: 1536,
-      xxl: 1920
-    },
-  },
-});
+import VNet from "../../../img/VNet";
+import Subnet from "../../../img/Subnet";
 
 const cidrMasks = [
   { name: '/8', value: 8},
@@ -311,13 +296,8 @@ const Generator = () => {
             smallest_cidr: smallestCIDR
           }
 
-        console.log("Body Data:");
-        console.log(nextAvailable);
-
         const data = showSubnets ? (await fetchNextAvailableSubnet(nextAvailable)) : (await fetchNextAvailableVNet(nextAvailable));
         setNextAvailable(data.cidr);
-        console.log(data);
-        // enqueueSnackbar("Successfully updated External Subnet Endpoints", { variant: "success" });
       } catch (e) {
         console.log("ERROR");
         console.log("------------------");
@@ -331,387 +311,382 @@ const Generator = () => {
   }
 
   return (
-    <ThemeProvider theme={plannerTheme}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
-        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
-          <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
-            <Autocomplete
-              PopperComponent={MyPopper}
-              forcePopupIcon={false}
-              id="grouped-demo"
-              size="small"
-              options={ showSubnets ? sortBy(subscriptions, 'name') : sortBy(spaces, 'name') }
-              getOptionLabel={(option) => option.name}
-              inputValue={ showSubnets ? subscriptionInput : spaceInput }
-              onInputChange={ (event, newInputValue) => showSubnets ? setSubscriptionInput(newInputValue) : setSpaceInput(newInputValue) }
-              value={ showSubnets ? selectedSubscription : selectedSpace }
-              onChange={ (event, newValue) => showSubnets ? setSelectedSubscription(newValue) : setSelectedSpace(newValue) }
-              isOptionEqualToValue={(option, value) => isEqual(option.name, value.name)}
-              noOptionsText={ !spaces ? "Loading..." : "No Spaces" }
-              sx={{ width: 300 }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label={ showSubnets ? "Subscription" : "Space" }
-                  placeholder={ `Please Select ${showSubnets ? "Subscription" : "Space"}...` }
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <React.Fragment>
-                        {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
-                      </React.Fragment>
-                    ),
-                  }}
-                />
-              )}
-              renderOption={(props, option) => {
-                return (
-                  <li {...props} key={ showSubnets ? option.id: option.name }>
-                    { showSubnets ? `${option.name} (${option.subscription_id})` : option.name }
-                  </li>
-                );
-              }}
-            />
-            <Autocomplete
-              disabled={ showSubnets ? (selectedSubscription === null) : (selectedSpace === null) }
-              forcePopupIcon={false}
-              id="grouped-demo"
-              size="small"
-              options={ showSubnets ? (networks ? sortBy(networks, 'name') : []) : (blocks ? sortBy(blocks, 'name') : []) }
-              getOptionLabel={(option) => option.name}
-              inputValue={ showSubnets ? networkInput : blockInput }
-              onInputChange={(event, newInputValue) => showSubnets ? setNetworkInput(newInputValue) : setBlockInput(newInputValue)}
-              value={ showSubnets ? selectedNetwork : selectedBlock }
-              onChange={(event, newValue) => showSubnets ? setSelectedNetwork(newValue) : setSelectedBlock(newValue)}
-              isOptionEqualToValue={(option, value) => isEqual(option.name, value.name)}
-              sx={{ width: 300 }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label={ showSubnets ? "Network" : "Block" }
-                  placeholder={ `Please Select ${showSubnets ? "Network" : "Block"}...` }
-                  InputProps={{
-                    ...params.InputProps
-                  }}
-                />
-              )}
-              renderOption={(props, option) => {
-                return (
-                  <li {...props} key={option.id}>
-                    {option.name}
-                  </li>
-                );
-              }}
-              componentsProps={{
-                paper: {
-                  sx: {
-                    width: 'fit-content'
-                  }
-                }
-              }}
-            />
-            {/* <FormControl sx={{ width: '11ch' }} size="small">
-              <InputLabel id="block-cidr-read-only">Network</InputLabel>
-              <Select
-                disabled={ !selectedBlock }
-                value={ selectedBlock ? selectedBlock.cidr : "" }
-                inputProps={
-                  !showSubnets ? { IconComponent: () => null } : {}
-                }
-              >
-                { selectedBlock ?
-                  <MenuItem key="12345" value={selectedBlock.cidr}>
-                    { selectedBlock.cidr }
-                  </MenuItem> :
-                  []
-                }
-              </Select>
-            </FormControl> */}
-            <Tooltip
-              title={
-                showSubnets ?
-                (
-                  selectedNetwork ?
-                  <>
-                    {
-                      selectedNetwork.prefixes.map((prefix) => (
-                        <React.Fragment key={prefix}>
-                          {prefix}<br />
-                        </React.Fragment>
-                      ))
-                    }
-                  </> :
-                  ""
-                ) :
-                ( selectedBlock ? selectedBlock.cidr : "" )
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
+      <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
+          <Autocomplete
+            PopperComponent={MyPopper}
+            forcePopupIcon={false}
+            id="grouped-demo"
+            size="small"
+            options={ showSubnets ? sortBy(subscriptions, 'name') : sortBy(spaces, 'name') }
+            getOptionLabel={(option) => option.name}
+            inputValue={ showSubnets ? subscriptionInput : spaceInput }
+            onInputChange={ (event, newInputValue) => showSubnets ? setSubscriptionInput(newInputValue) : setSpaceInput(newInputValue) }
+            value={ showSubnets ? selectedSubscription : selectedSpace }
+            onChange={ (event, newValue) => showSubnets ? setSelectedSubscription(newValue) : setSelectedSpace(newValue) }
+            isOptionEqualToValue={
+              (option, value) => {
+                const newOption = showSubnets ? pick(option, ['id']) : pick(option, ['name']);
+                const newValue = showSubnets ? pick(value, ['id']) : pick(value, ['name']);
+
+                return isEqual(newOption, newValue);
               }
-            >
-            <TextField
-              disabled
-              size="small"
-              id="block-cidr-read-only"
-              label={ showSubnets ? "Prefix" : "Network" }
-              value={ showSubnets ? (selectedNetwork ? selectedNetwork.prefixes.join(", ") : "") : (selectedBlock ? selectedBlock.cidr : "") }
-              variant="outlined"
-              sx={{
-                width: '11ch',
-                '& .MuiInputBase-input': {
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
+            }
+            noOptionsText={ !spaces ? "Loading..." : "No Spaces" }
+            sx={{ width: 300 }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={ showSubnets ? "Subscription" : "Space" }
+                placeholder={ `Please Select ${showSubnets ? "Subscription" : "Space"}...` }
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <React.Fragment>
+                      {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </React.Fragment>
+                  ),
+                }}
+              />
+            )}
+            renderOption={(props, option) => {
+              return (
+                <li {...props} key={ showSubnets ? option.id: option.name }>
+                  { showSubnets ? `${option.name} (${option.subscription_id})` : option.name }
+                </li>
+              );
+            }}
+          />
+          <Autocomplete
+            disabled={ showSubnets ? (selectedSubscription === null) : (selectedSpace === null) }
+            forcePopupIcon={false}
+            id="grouped-demo"
+            size="small"
+            options={ showSubnets ? (networks ? sortBy(networks, 'name') : []) : (blocks ? sortBy(blocks, 'name') : []) }
+            getOptionLabel={(option) => option.name}
+            inputValue={ showSubnets ? networkInput : blockInput }
+            onInputChange={(event, newInputValue) => showSubnets ? setNetworkInput(newInputValue) : setBlockInput(newInputValue)}
+            value={ showSubnets ? selectedNetwork : selectedBlock }
+            onChange={(event, newValue) => showSubnets ? setSelectedNetwork(newValue) : setSelectedBlock(newValue)}
+            isOptionEqualToValue={
+              (option, value) => {
+                const newOption = showSubnets ? pick(option, ['id']) : pick(option, ['id', 'name']);
+                const newValue = showSubnets ? pick(value, ['id']) : pick(value, ['id', 'name']);
+
+                return isEqual(newOption, newValue);
+              }
+            }
+            sx={{ width: 300 }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={ showSubnets ? "Network" : "Block" }
+                placeholder={ `Please Select ${showSubnets ? "Network" : "Block"}...` }
+                InputProps={{
+                  ...params.InputProps
+                }}
+              />
+            )}
+            renderOption={(props, option) => {
+              return (
+                <li {...props} key={option.id}>
+                  {option.name}
+                </li>
+              );
+            }}
+            componentsProps={{
+              paper: {
+                sx: {
+                  width: 'fit-content'
                 }
-              }}
-            />
-            </Tooltip>
-          </Box>
-          <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', marginLeft: 'auto' }}>
-            <ToggleButtonGroup
-              size="small"
-              color="primary"
-              value={showSubnets}
-              exclusive
-              onChange={() => setShowSubnets(prev => !prev)}
-            >
-              <ToggleButton value={false} aria-label="list">
-                <Tooltip title="Virtual Network">
-                  <SvgIcon>
-                    <VNet />
-                  </SvgIcon>
-                </Tooltip>
-              </ToggleButton>
-              <ToggleButton value={true} aria-label="module">
-                <Tooltip title="Subnet">
-                  <SvgIcon>
-                    <Subnet />
-                  </SvgIcon>
-                </Tooltip>
-              </ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
+              }
+            }}
+          />
+          <Tooltip
+            title={
+              showSubnets ?
+              (
+                selectedNetwork ?
+                <>
+                  {
+                    selectedNetwork.prefixes.map((prefix) => (
+                      <React.Fragment key={prefix}>
+                        {prefix}<br />
+                      </React.Fragment>
+                    ))
+                  }
+                </> :
+                ""
+              ) :
+              ( selectedBlock ? selectedBlock.cidr : "" )
+            }
+          >
+          <TextField
+            disabled
+            size="small"
+            id="block-cidr-read-only"
+            label={ showSubnets ? "Prefix" : "Network" }
+            value={ showSubnets ? (selectedNetwork ? selectedNetwork.prefixes.join(", ") : "") : (selectedBlock ? selectedBlock.cidr : "") }
+            variant="outlined"
+            sx={{
+              width: '11ch',
+              '& .MuiInputBase-input': {
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }
+            }}
+          />
+          </Tooltip>
         </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', marginLeft: 'auto' }}>
+          <ToggleButtonGroup
+            size="small"
+            color="primary"
+            value={showSubnets}
+            exclusive
+            onChange={() => setShowSubnets(prev => !prev)}
+          >
+            <ToggleButton value={false} aria-label="list">
+              <Tooltip title="Virtual Network">
+                <SvgIcon>
+                  <VNet />
+                </SvgIcon>
+              </Tooltip>
+            </ToggleButton>
+            <ToggleButton value={true} aria-label="module">
+              <Tooltip title="Subnet">
+                <SvgIcon>
+                  <Subnet />
+                </SvgIcon>
+              </Tooltip>
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+      </Box>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          width: '100%',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
         <Box
           sx={{
             display: 'flex',
             flexDirection: 'column',
-            height: '100%',
-            width: '100%',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            border: 'solid 1px rgba(0, 0, 0, 0.12)'
           }}
         >
           <Box
             sx={{
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              border: 'solid 1px rgba(0, 0, 0, 0.12)'
+              height: '100%',
+              width: '100%',
+              borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)'
+            }}
+          >
+            <Typography variant="h5" sx={{ p: 2 }}>
+              Next Available { showSubnets ? "Subnet" : "Virtual Network" }
+            </Typography>
+          </Box>
+          <Box
+            sx={{
+              p: 3,
+              display: 'flex',
+              flexDirection: 'row',
+              gap: '24px',
             }}
           >
             <Box
               sx={{
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                width: '100%',
-                borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)'
+                justifyContent: 'center'
               }}
             >
-              <Typography variant="h5" sx={{ p: 2 }}>
-                Next Available { showSubnets ? "Subnet" : "Virtual Network" }
+              <Typography variant="button">
+                Options
               </Typography>
+              <Box
+                sx={{
+                  p: 2,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  justifyContent: 'center',
+                  height: '160px',
+                  width: '250px',
+                  gap: '16px',
+                  border: 'solid 1px rgba(0, 0, 0, 0.12)'
+                }}
+              >
+                <Autocomplete
+                  forcePopupIcon={false}
+                  disabled={ showSubnets ? (selectedNetwork === null) : (selectedBlock === null) }
+                  id="cidr-mask-max"
+                  size="small"
+                  options={maskOptions || []}
+                  getOptionLabel={(option) => option.name}
+                  inputValue={maskInput}
+                  onInputChange={(event, newInputValue) => setMaskInput(newInputValue)}
+                  value={selectedMask}
+                  onChange={(event, newValue) => setSelectedMask(newValue)}
+                  sx={{ width: '5ch' }}
+                  ListboxProps={{
+                    style: {
+                      maxHeight: "15rem"
+                    },
+                    position: "bottom-start"
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Mask"
+                      placeholder="Mask"
+                    />
+                  )}
+                />
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}
+                >
+                  <FormGroup
+                    sx={{
+                      pl: 1
+                    }}
+                  >
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          size='small'
+                          checked={reverseSearch}
+                          onChange={() => setReverseSearch(prev => !prev)}
+                        />
+                      }
+                      label="Reverse Search"
+                      sx={{ pb: 1 }}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          size='small'
+                          checked={smallestCIDR}
+                          onChange={() => setSmallestCIDR(prev => !prev)}
+                        />
+                      }
+                      label="Smallest CIDR"
+                    />
+                  </FormGroup>
+                </Box>
+              </Box>
             </Box>
             <Box
               sx={{
-                p: 3,
                 display: 'flex',
-                flexDirection: 'row',
-                gap: '24px',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
+              <Typography variant="button">
+                Output
+              </Typography>
               <Box
                 sx={{
+                  p: 2,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  height: '160px',
+                  width: '250px',
+                  gap: '16px',
+                  border: 'solid 1px rgba(0, 0, 0, 0.12)'
                 }}
               >
-                <Typography variant="button">
-                  Options
-                </Typography>
-                <Box
-                  sx={{
-                    p: 2,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    justifyContent: 'center',
-                    height: '160px',
-                    width: '250px',
-                    gap: '16px',
-                    border: 'solid 1px rgba(0, 0, 0, 0.12)'
+                <Menu
+                  id="context-menu"
+                  anchorEl={anchorEl}
+                  open={open}
+                  onClose={handleClose}
+                  anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'center',
+                  }}
+                  transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'left',
+                  }}
+                  MenuListProps={{
+                    'aria-labelledby': 'basic-button',
                   }}
                 >
-                  <Autocomplete
-                    forcePopupIcon={false}
-                    disabled={ showSubnets ? (selectedNetwork === null) : (selectedBlock === null) }
-                    id="cidr-mask-max"
-                    size="small"
-                    options={maskOptions || []}
-                    getOptionLabel={(option) => option.name}
-                    inputValue={maskInput}
-                    onInputChange={(event, newInputValue) => setMaskInput(newInputValue)}
-                    value={selectedMask}
-                    onChange={(event, newValue) => setSelectedMask(newValue)}
-                    sx={{ width: '5ch' }}
-                    ListboxProps={{
-                      style: {
-                        maxHeight: "15rem"
-                      },
-                      position: "bottom-start"
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Mask"
-                        placeholder="Mask"
-                      />
-                    )}
-                  />
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column'
-                    }}
-                  >
-                    <FormGroup
-                      sx={{
-                        pl: 1
-                      }}
-                    >
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            size='small'
-                            checked={reverseSearch}
-                            onChange={() => setReverseSearch(prev => !prev)}
-                          />
-                        }
-                        label="Reverse Search"
-                        sx={{ pb: 1 }}
-                      />
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            size='small'
-                            checked={smallestCIDR}
-                            onChange={() => setSmallestCIDR(prev => !prev)}
-                          />
-                        }
-                        label="Smallest CIDR"
-                      />
-                    </FormGroup>
-                  </Box>
-                </Box>
-              </Box>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Typography variant="button">
-                  Output
-                </Typography>
-                <Box
-                  sx={{
-                    p: 2,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '160px',
-                    width: '250px',
-                    gap: '16px',
-                    border: 'solid 1px rgba(0, 0, 0, 0.12)'
-                  }}
-                >
-                  <Menu
-                    id="context-menu"
-                    anchorEl={anchorEl}
-                    open={open}
-                    onClose={handleClose}
-                    anchorOrigin={{
-                      vertical: 'bottom',
-                      horizontal: 'center',
-                    }}
-                    transformOrigin={{
-                      vertical: 'top',
-                      horizontal: 'left',
-                    }}
-                    MenuListProps={{
-                      'aria-labelledby': 'basic-button',
-                    }}
-                  >
-                    <MenuItem onClick={handleCopy}>
+                  <MenuItem onClick={handleCopy}>
+                    <ListItemIcon>
+                      <ContentCopyOutlined fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Copy</ListItemText>
+                  </MenuItem>
+                  {
+                    !showSubnets &&
+                    <MenuItem onClick={() =>navigate('/configure/reservations', {state: { space: selectedSpace, block: selectedBlock, cidr: nextAvailable }})}>
                       <ListItemIcon>
-                        <ContentCopyOutlined fontSize="small" />
+                        <PieChartOutlined fontSize="small" />
                       </ListItemIcon>
-                      <ListItemText>Copy</ListItemText>
+                      <ListItemText>Reservation</ListItemText>
                     </MenuItem>
-                    {
-                      !showSubnets &&
-                      <MenuItem onClick={() =>navigate('/configure/reservations', {state: { space: selectedSpace, block: selectedBlock, cidr: nextAvailable }})}>
-                        <ListItemIcon>
-                          <PieChartOutlined fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText>Reservation</ListItemText>
-                      </MenuItem>
+                  }
+                </Menu>
+                <TextField
+                  disabled={ !nextAvailable }
+                  size="small"
+                  id="next-available-vnet"
+                  label="Next Available"
+                  value={ nextAvailable || "" }
+                  variant="outlined"
+                  InputProps={{
+                    endAdornment:
+                      <IconButton
+                        disabled={ !nextAvailable }
+                        disableRipple
+                        onClick={handleClick}
+                      >
+                        <ArrowDropDownOutlined />
+                      </IconButton>
+                  }}
+                  sx={{
+                    width: '13ch',
+                    '& .MuiOutlinedInput-root': {
+                      paddingRight: 'unset',
                     }
-                  </Menu>
-                  <TextField
-                    disabled={ !nextAvailable }
-                    size="small"
-                    id="next-available-vnet"
-                    label="Next Available"
-                    value={ nextAvailable || "" }
-                    variant="outlined"
-                    InputProps={{
-                      endAdornment:
-                        <IconButton
-                          disabled={ !nextAvailable }
-                          disableRipple
-                          onClick={handleClick}
-                        >
-                          <ArrowDropDownOutlined />
-                        </IconButton>
-                    }}
-                    sx={{
-                      width: '13ch',
-                      '& .MuiOutlinedInput-root': {
-                        paddingRight: 'unset',
-                      }
-                    }}
-                  />
-                  <LoadingButton
-                    disabled={ showSubnets ? (!selectedSubscription || !selectedNetwork || !selectedMask) : (!selectedSpace || !selectedBlock || !selectedMask) }
-                    variant="contained"
-                    loading={sending}
-                    onClick={onSubmit}
-                  >
-                    Generate
-                  </LoadingButton>
-                </Box>
+                  }}
+                />
+                <LoadingButton
+                  disabled={ showSubnets ? (!selectedSubscription || !selectedNetwork || !selectedMask) : (!selectedSpace || !selectedBlock || !selectedMask) }
+                  variant="contained"
+                  loading={sending}
+                  onClick={onSubmit}
+                >
+                  Generate
+                </LoadingButton>
               </Box>
             </Box>
           </Box>
         </Box>
       </Box>
-    </ThemeProvider>
+    </Box>
   );
 }
 

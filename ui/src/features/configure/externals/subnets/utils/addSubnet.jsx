@@ -1,9 +1,9 @@
 import * as React from "react";
-import { useDispatch } from 'react-redux';
+import { useDispatch } from "react-redux";
 
 import { useSnackbar } from "notistack";
 
-import Draggable from 'react-draggable';
+import Draggable from "react-draggable";
 
 import {
   Box,
@@ -17,16 +17,16 @@ import {
   Paper
 } from "@mui/material";
 
-import LoadingButton from '@mui/lab/LoadingButton';
+import LoadingButton from "@mui/lab/LoadingButton";
 
 import {
   createBlockExtSubnetAsync
-} from "../../../../ipam/ipamSlice"
+} from "../../../../ipam/ipamSlice";
 
 import {
   isSubnetOf,
   isSubnetOverlap
-} from "../../../../tools/planner/utils/iputils"
+} from "../../../../tools/planner/utils/iputils";
 
 import {
   EXTSUBNET_NAME_REGEX,

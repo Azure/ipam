@@ -1,14 +1,14 @@
 import * as React from "react";
-import { useSelector } from 'react-redux';
+import { useSelector } from "react-redux";
 import { styled } from "@mui/material/styles";
 
-import { isEmpty } from 'lodash';
+import { isEmpty } from "lodash";
 
-import ReactDataGrid from '@inovua/reactdatagrid-community';
-import '@inovua/reactdatagrid-community/index.css';
-import '@inovua/reactdatagrid-community/theme/default-dark.css'
+import ReactDataGrid from "@inovua/reactdatagrid-community";
+import "@inovua/reactdatagrid-community/index.css";
+import "@inovua/reactdatagrid-community/theme/default-dark.css";
 
-import { useTheme } from '@mui/material/styles';
+import { useTheme } from "@mui/material/styles";
 
 import {
   Box,

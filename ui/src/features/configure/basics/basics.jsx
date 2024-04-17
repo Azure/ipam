@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector, useDispatch } from "react-redux";
 import { styled } from "@mui/material/styles";
 
 import { useSnackbar } from "notistack";

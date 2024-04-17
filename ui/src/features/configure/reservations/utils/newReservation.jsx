@@ -1,10 +1,10 @@
 import * as React from "react";
-import { useDispatch } from 'react-redux';
+import { useDispatch } from "react-redux";
 import { useLocation } from "react-router-dom";
 
 import { useSnackbar } from "notistack";
 
-import Draggable from 'react-draggable';
+import Draggable from "react-draggable";
 
 import {
   Box,
@@ -23,9 +23,11 @@ import {
   Paper
 } from "@mui/material";
 
-import LoadingButton from '@mui/lab/LoadingButton';
+import LoadingButton from "@mui/lab/LoadingButton";
 
-import { createSpaceAsync } from "../../../ipam/ipamSlice";
+import {
+  createBlockResvAsync
+} from "../../../ipam/ipamSlice";
 
 import {
   SPACE_DESC_REGEX,
@@ -119,30 +121,22 @@ export default function NewReservation(props) {
       ...!checked && { cidr: cidr.value }
     };
 
-    console.log("BODY");
-    console.log("------------------");
-    console.log(body);
-    console.log("------------------");
-
-    // (async () => {
-    //   try {
-    //     setSending(true);
-    //     await dispatch(createSpaceAsync({ body: body }));
-    //     setDescription({ value: "", error: false });
-    //     setMask(null);
-    //     setCidr({ value: "", error: false });
-    //     enqueueSnackbar("Successfully created new Space", { variant: "success" });
-    //     handleClose();
-    //   } catch (e) {
-    //     console.log("ERROR");
-    //     console.log("------------------");
-    //     console.log(e);
-    //     console.log("------------------");
-    //     enqueueSnackbar(e.message, { variant: "error" });
-    //   } finally {
-    //     setSending(false);
-    //   }
-    // })();
+    (async () => {
+      try {
+        setSending(true);
+        await dispatch(createBlockResvAsync({ space: selectedSpace.name, block: selectedBlock.name, body: body }));
+        enqueueSnackbar("Successfully created new Reservation", { variant: "success" });
+        onCancel();
+      } catch (e) {
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        enqueueSnackbar(e.message, { variant: "error" });
+      } finally {
+        setSending(false);
+      }
+    })();
   }
 
   function onDescriptionChange(event) {
@@ -416,7 +410,12 @@ export default function NewReservation(props) {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onCancel}>Cancel</Button>
+          <Button
+            disabled={sending}
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
           <LoadingButton
             onClick={onSubmit}
             loading={sending}

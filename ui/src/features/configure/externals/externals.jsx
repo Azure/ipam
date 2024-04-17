@@ -1,9 +1,9 @@
 import * as React from "react";
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector, useDispatch } from "react-redux";
 import { useLocation } from "react-router-dom";
 import { styled } from "@mui/material/styles";
 
-import { isEqual, set, sortBy } from 'lodash';
+import { isEqual, sortBy, pick } from "lodash";
 
 import { useSnackbar } from "notistack";
 
@@ -14,7 +14,7 @@ import {
   Autocomplete,
   Tooltip,
   CircularProgress
-} from '@mui/material';
+} from "@mui/material";
 
 import {
   Refresh
@@ -211,7 +211,14 @@ export default function Externals() {
                 onInputChange={(event, newInputValue) => setSpaceInput(newInputValue)}
                 value={selectedSpace}
                 onChange={(event, newValue) => setSelectedSpace(newValue)}
-                isOptionEqualToValue={(option, value) => isEqual(option.name, value.name)}
+                isOptionEqualToValue={
+                  (option, value) => {
+                    const newOption = pick(option, ['name']);
+                    const newValue = pick(value, ['name']);
+  
+                    return isEqual(newOption, newValue);
+                  }
+                }
                 noOptionsText={ !spaces ? "Loading..." : "No Spaces" }
                 sx={{ width: 300 }}
                 renderInput={(params) => (
@@ -256,7 +263,14 @@ export default function Externals() {
                 onInputChange={(event, newInputValue) => setBlockInput(newInputValue)}
                 value={(selectedBlock?.parent_space === selectedSpace?.name) ? selectedBlock : null}
                 onChange={(event, newValue) => setSelectedBlock(newValue)}
-                isOptionEqualToValue={(option, value) => isEqual(option.name, value.name)}
+                isOptionEqualToValue={
+                  (option, value) => {
+                    const newOption = pick(option, ['id', 'name']);
+                    const newValue = pick(value, ['id', 'name']);
+  
+                    return isEqual(newOption, newValue);
+                  }
+                }
                 sx={{ width: 300 }}
                 renderInput={(params) => (
                   <TextField

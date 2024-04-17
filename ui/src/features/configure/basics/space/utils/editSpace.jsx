@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useDispatch } from 'react-redux';
+import { useDispatch } from "react-redux";
 
 import { useSnackbar } from "notistack";
 
@@ -17,7 +17,7 @@ import {
   Paper
 } from "@mui/material";
 
-import LoadingButton from '@mui/lab/LoadingButton';
+import LoadingButton from "@mui/lab/LoadingButton";
 
 import { updateSpaceAsync } from "../../../../ipam/ipamSlice";
 

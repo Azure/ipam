@@ -1,16 +1,16 @@
-import * as React from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import * as React from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { useLocation } from "react-router-dom";
 import { styled } from "@mui/material/styles";
-import { useTheme } from '@mui/material/styles';
+import { useTheme } from "@mui/material/styles";
 
-import { isEmpty, isEqual, pickBy, orderBy, sortBy } from 'lodash';
+import { isEmpty, isEqual, pickBy, orderBy, sortBy, pick } from "lodash";
 
 import { useSnackbar } from "notistack";
 
-import ReactDataGrid from '@inovua/reactdatagrid-community';
-import '@inovua/reactdatagrid-community/index.css';
-import '@inovua/reactdatagrid-community/theme/default-dark.css'
+import ReactDataGrid from "@inovua/reactdatagrid-community";
+import "@inovua/reactdatagrid-community/index.css";
+import "@inovua/reactdatagrid-community/theme/default-dark.css";
 
 import {
   Box,
@@ -23,7 +23,7 @@ import {
   Typography,
   Tooltip,
   CircularProgress
-} from '@mui/material';
+} from "@mui/material";
 
 import {
   Refresh,
@@ -683,7 +683,14 @@ const Associations = () => {
               onInputChange={(event, newInputValue) => setSpaceInput(newInputValue)}
               value={selectedSpace}
               onChange={(event, newValue) => setSelectedSpace(newValue)}
-              isOptionEqualToValue={(option, value) => isEqual(option, value)}
+              isOptionEqualToValue={
+                (option, value) => {
+                  const newOption = pick(option, ['name']);
+                  const newValue = pick(value, ['name']);
+
+                  return isEqual(newOption, newValue);
+                }
+              }
               noOptionsText={ !spaces ? "Loading..." : "No Spaces" }
               sx={{ width: 300 }}
               renderInput={(params) => (
@@ -728,7 +735,14 @@ const Associations = () => {
               onInputChange={(event, newInputValue) => setBlockInput(newInputValue)}
               value={(selectedBlock?.parent_space === selectedSpace?.name) ? selectedBlock : null}
               onChange={(event, newValue) => setSelectedBlock(newValue)}
-              isOptionEqualToValue={(option, value) => isEqual(option, value)}
+              isOptionEqualToValue={
+                (option, value) => {
+                  const newOption = pick(option, ['id', 'name']);
+                  const newValue = pick(value, ['id', 'name']);
+
+                  return isEqual(newOption, newValue);
+                }
+              }
               sx={{ width: 300 }}
               renderInput={(params) => (
                 <TextField
