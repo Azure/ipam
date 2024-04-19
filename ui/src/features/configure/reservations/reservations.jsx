@@ -713,7 +713,7 @@ const Reservations = () => {
   React.useEffect(() => {
     if (blocks) {
       if (selectedBlock) {
-        const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
+        const blockIndex = blocks.findIndex((x) => x.id === selectedBlock.id);
 
         if (blockIndex > -1) {
           if (!isEqual(blocks[blockIndex], selectedBlock)) {
@@ -733,6 +733,14 @@ const Reservations = () => {
       setReservations([]);
     }
   }, [blocks, selectedBlock]);
+
+  React.useEffect(() => {
+    if (selectedSpace && selectedBlock) {
+      if (selectedBlock.parent_space !== selectedSpace.name) {
+        setSelectedBlock(null);
+      }
+    }
+  }, [selectedSpace, selectedBlock]);
 
   React.useEffect(() => {
     if (!isEmpty(reservations)) {
@@ -755,14 +763,6 @@ const Reservations = () => {
       setSelectionModel([]);
     }
   }, [reservations]);
-
-  React.useEffect(() => {
-    if (selectedSpace && selectedBlock) {
-      if (selectedBlock.parent_space !== selectedSpace.name) {
-        setSelectedBlock(null);
-      }
-    }
-  }, [selectedSpace, selectedBlock]);
 
   const refresh = React.useCallback(() => {
     (async() => {

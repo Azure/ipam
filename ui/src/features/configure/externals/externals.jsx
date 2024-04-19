@@ -131,7 +131,7 @@ export default function Externals() {
   React.useEffect(() => {
     if (blocks) {
       if (selectedBlock) {
-        const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
+        const blockIndex = blocks.findIndex((x) => x.id === selectedBlock.id);
 
         if (blockIndex > -1) {
           if (!isEqual(blocks[blockIndex], selectedBlock)) {

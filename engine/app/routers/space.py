@@ -1688,9 +1688,6 @@ async def create_external_subnet(
     if req.name in [x['name'] for x in target_external['subnets']]:
         raise HTTPException(status_code=400, detail="Subnet name already exists in external network.")
 
-    if str(IPNetwork(req.cidr).cidr) != req.cidr:
-        raise HTTPException(status_code=400, detail="External subnet cidr invalid, should be {}".format(IPNetwork(req.cidr).cidr))
-
     subnet_cidrs = []
 
     for s in (s for s in target_external['subnets']):
@@ -1705,6 +1702,9 @@ async def create_external_subnet(
             next_cidr = IPNetwork(req.cidr)
         except:
             raise HTTPException(status_code=400, detail="Invalid network CIDR format.")
+        
+        if str(next_cidr.cidr) != req.cidr:
+            raise HTTPException(status_code=400, detail="External subnet CIDR invalid, should be {}".format(IPNetwork(req.cidr).cidr))
 
         if next_cidr not in available_set:
             raise HTTPException(status_code=409, detail="Requested subnet CIDR overlaps existing subnet(s).")
