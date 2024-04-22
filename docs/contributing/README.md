@@ -35,7 +35,7 @@ To do so, run the following Docker commands from the root directory of the proje
 
 ```shell
 # App Services Container
-docker build --rm --no-cache -t <Repository Name>/ipam:latest -f ./Dockerfile .
+docker build --rm --no-cache -t <Repository Name>/ipam:latest -f ./Dockerfile.deb .
 docker push <Repository Name>/ipam:latest
 
 # Function Container
@@ -60,7 +60,7 @@ Next, use the following commands to update the Azure IPAM containers within your
 
 ```shell
 # App Services Container
-az acr build -r <ACR Name> -t ipam:latest -f ./Dockerfile .
+az acr build -r <ACR Name> -t ipam:latest -f ./Dockerfile.deb .
 
 # Function Container
 az acr build -r <ACR Name> -t ipamfunc:latest -f ./Dockerfile.func .
