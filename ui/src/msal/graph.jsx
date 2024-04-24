@@ -84,11 +84,11 @@ export function callMsGraphUsersFilter(nameFilter = "") {
   var urlParams = url.searchParams;
 
   if(nameFilter !== "") {
-    urlParams.append('filter', `startsWith(userPrincipalName,'${nameFilter}') OR startsWith(displayName, '${nameFilter}')`);
+    urlParams.append('$filter', `startsWith(userPrincipalName,'${nameFilter}') OR startsWith(displayName, '${nameFilter}')`);
   }
 
-  urlParams.append('orderby', 'displayName');
-  urlParams.append('count', true);
+  urlParams.append('$orderby', 'displayName');
+  urlParams.append('$count', true);
 
   return graph
     .get(url, {
@@ -109,11 +109,11 @@ export function callMsGraphPrincipalsFilter(nameFilter = "") {
   var urlParams = url.searchParams;
 
   if(nameFilter !== "") {
-    urlParams.append('filter', `startsWith(displayName,'${nameFilter}')`);
+    urlParams.append('$filter', `startsWith(displayName,'${nameFilter}')`);
   }
 
-  urlParams.append('orderby', 'displayName');
-  urlParams.append('count', true);
+  urlParams.append('$orderby', 'displayName');
+  urlParams.append('$count', true);
 
   return graph
     .get(url, {

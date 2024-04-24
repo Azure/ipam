@@ -31,8 +31,8 @@ export const apiRequest = {
 };
 
 export const graphConfig = {
-  graphMeEndpoint: `https://${MS_GRAPH}/beta/me`,
-  graphUsersEndpoint: `https://${MS_GRAPH}/beta/users`,
-  graphPrincipalsEndpoint: `https://${MS_GRAPH}/beta/servicePrincipals`,
-  graphMePhotoEndpoint: `https://${MS_GRAPH}/beta/me/photo/$value`
+  graphMeEndpoint: `https://${MS_GRAPH}/v1.0/me`,
+  graphUsersEndpoint: `https://${MS_GRAPH}/v1.0/users`,
+  graphPrincipalsEndpoint: `https://${MS_GRAPH}/v1.0/servicePrincipals`,
+  graphMePhotoEndpoint: `https://${MS_GRAPH}/v1.0/me/photo/$value`
 };
