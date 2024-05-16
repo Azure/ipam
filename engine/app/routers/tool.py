@@ -224,8 +224,6 @@ async def cidr_check(
     Get a list of Virtual Networks which overlap a given CIDR range with the following information:
 
     - **cidr**: CIDR range
-
-    <font color='red'>**EXPERIMENTAL**: This API is currently in testing and may change in future releases!</font>
     """
 
     if IPNetwork(req.cidr).ip != IPNetwork(req.cidr).network:

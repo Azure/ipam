@@ -173,8 +173,8 @@ export default function EditSpace(props) {
                   - Space name must be unique
                   <br />- Max of 64 characters
                   <br />- Can contain alphnumerics
-                  <br />- Can contain underscore, hypen, and period
-                  <br />- Cannot start/end with underscore, hypen, or period
+                  <br />- Can contain underscore, hypen and period
+                  <br />- Cannot start/end with underscore, hypen or period
                 </>
               }
             >
@@ -186,11 +186,12 @@ export default function EditSpace(props) {
                 label="Space Name"
                 type="name"
                 variant="standard"
-                sx={{ width: "80%" }}
                 value={spaceName.value}
                 onChange={(event) => {
                   onNameChange(event);
                 }}
+                inputProps={{ spellCheck: false }}
+                sx={{ width: "80%" }}
               />
             </Tooltip>
             <Tooltip
@@ -202,8 +203,8 @@ export default function EditSpace(props) {
                   - Max of 128 characters
                   <br />- Can contain alphnumerics
                   <br />- Can contain spaces
-                  <br />- Can contain underscore, hypen, slash, and period
-                  <br />- Cannot start/end with underscore, hypen, slash, or period
+                  <br />- Can contain underscore, hypen, slash and period
+                  <br />- Cannot start/end with underscore, hypen, slash or period
                 </>
               }
             >
@@ -216,6 +217,7 @@ export default function EditSpace(props) {
                 variant="standard"
                 value={description.value}
                 onChange={(event) => onDescriptionChange(event)}
+                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
               />
             </Tooltip>

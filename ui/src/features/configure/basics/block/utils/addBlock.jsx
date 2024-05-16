@@ -143,8 +143,8 @@ export default function AddBlock(props) {
                   - Block name must be unique
                   <br />- Max of 64 characters
                   <br />- Can contain alphnumerics
-                  <br />- Can contain underscore, hypen, slash, and period
-                  <br />- Cannot start/end with underscore, hypen, slash, or period
+                  <br />- Can contain underscore, hypen and period
+                  <br />- Cannot start/end with underscore, hypen or period
                 </>
               }
             >
@@ -156,11 +156,12 @@ export default function AddBlock(props) {
                 label="Block Name"
                 type="name"
                 variant="standard"
-                sx={{ width: "80%" }}
                 value={blockName.value}
                 onChange={(event) => {
                   onNameChange(event);
                 }}
+                inputProps={{ spellCheck: false }}
+                sx={{ width: "80%" }}
               />
             </Tooltip>
             <Tooltip
@@ -183,6 +184,7 @@ export default function AddBlock(props) {
                 variant="standard"
                 value={cidr.value}
                 onChange={(event) => onCidrChange(event)}
+                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
               />
             </Tooltip>

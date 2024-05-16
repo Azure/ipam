@@ -8,8 +8,10 @@ import Draggable from "react-draggable";
 import {
   Box,
   Button,
+  Radio,
   Tooltip,
   TextField,
+  Autocomplete,
   Dialog,
   DialogTitle,
   DialogActions,
@@ -31,8 +33,10 @@ import {
 import {
   EXTSUBNET_NAME_REGEX,
   EXTSUBNET_DESC_REGEX,
-  CIDR_REGEX
+  CIDR_REGEX,
+  cidrMasks
 } from "../../../../../global/globals";
+import { Spellcheck } from "@mui/icons-material";
 
 function DraggablePaper(props) {
   const nodeRef = React.useRef(null);
@@ -54,6 +58,12 @@ export default function AddExtSubnet(props) {
 
   const { enqueueSnackbar } = useSnackbar();
 
+  const [addBySize, setAddBySize] = React.useState(true);
+
+  const [maskOptions, setMaskOptions] = React.useState(null);
+  const [maskInput, setMaskInput] = React.useState('');
+  const [selectedMask, setSelectedMask] = React.useState(null);
+
   const [subName, setSubName] = React.useState({ value: "", error: false });
   const [subDesc, setSubDesc] = React.useState({ value: "", error: false });
   const [subCidr, setSubCidr] = React.useState({ value: "", error: false });
@@ -63,18 +73,23 @@ export default function AddExtSubnet(props) {
   const dispatch = useDispatch();
 
   function onCancel() {
+    handleClose();
+
     setSubName({ value: "", error: false });
     setSubDesc({ value: "", error: false });
     setSubCidr({ value: "", error: false });
 
-    handleClose();
+    setSelectedMask(maskOptions.length >= 1 ? maskOptions[1] : maskOptions[0]);
+
+    setAddBySize(true);
   }
 
   function onSubmit() {
     var body = {
       name: subName.value,
       desc: subDesc.value,
-      cidr: subCidr.value
+      ...(!addBySize && {cidr : subCidr.value}),
+      ...(addBySize && {size : selectedMask.value})
     };
 
     (async () => {
@@ -161,11 +176,34 @@ export default function AddExtSubnet(props) {
   }
 
   const hasError = React.useMemo(() => {
-    const errorCheck = (subName.error || subDesc.error || subCidr.error);
-    const emptyCheck = (subName.value.length === 0 || subDesc.value.length === 0 || subCidr.value.length === 0);
+    var emptyCheck = false;
+    var errorCheck = false;
+
+    if (addBySize) {
+      errorCheck = (subName.error || subDesc.error);
+      emptyCheck = (subName.value.length === 0 || subDesc.value.length === 0 || selectedMask === null);
+    } else {
+      errorCheck = (subName.error || subDesc.error || subCidr.error);
+      emptyCheck = (subName.value.length === 0 || subDesc.value.length === 0 || subCidr.value.length === 0);
+    }
 
     return (errorCheck || emptyCheck);
-  }, [subName, subDesc, subCidr]);
+  }, [addBySize, selectedMask, subName, subDesc, subCidr]);
+
+  React.useEffect(() => {
+    if (external) {
+      let prefixParts = external.cidr.split("/");
+      let currentMask = parseInt(prefixParts[1], 10);
+      let availableMasks = cidrMasks.filter((opt) => opt.value >= currentMask && opt.value <= 29);
+
+      setMaskOptions(availableMasks);
+      setSelectedMask(availableMasks.length >= 1 ? availableMasks[1] : availableMasks[0]);
+    } else {
+      setSelectedMask(null);
+      setMaskInput("");
+      setMaskOptions(null);
+    }
+  }, [external]);
 
   return (
     <div>
@@ -190,8 +228,8 @@ export default function AddExtSubnet(props) {
                   - Subnet name must be unique
                   <br />- Max of 64 characters
                   <br />- Can contain alphnumerics
-                  <br />- Can contain underscore, hypen, slash, and period
-                  <br />- Cannot start/end with underscore, hypen, slash, or period
+                  <br />- Can contain underscore, hypen and period
+                  <br />- Cannot start/end with underscore, hypen or period
                 </>
               }
             >
@@ -203,9 +241,10 @@ export default function AddExtSubnet(props) {
                 label="Name"
                 type="name"
                 variant="standard"
-                sx={{ width: "80%" }}
                 value={subName.value}
                 onChange={(event) => onNameChange(event)}
+                inputProps={{ spellCheck: false }}
+                sx={{width: "80%" }}
               />
             </Tooltip>
             <Tooltip
@@ -217,8 +256,8 @@ export default function AddExtSubnet(props) {
                   - Max of 128 characters
                   <br />- Can contain alphnumerics
                   <br />- Can contain spaces
-                  <br />- Can contain underscore, hypen, slash, and period
-                  <br />- Cannot start/end with underscore, hypen, slash, or period
+                  <br />- Can contain underscore, hypen, slash and period
+                  <br />- Cannot start/end with underscore, hypen, slash or period
                 </>
               }
             >
@@ -231,32 +270,88 @@ export default function AddExtSubnet(props) {
                 variant="standard"
                 value={subDesc.value}
                 onChange={(event) => onDescChange(event)}
+                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
               />
             </Tooltip>
-            <Tooltip
-              arrow
-              disableFocusListener
-              placement="right"
-              title={
-                <>
-                  - Must be in valid CIDR notation format
-                  <br />- Example: 1.2.3.4/5
-                </>
-              }
-            >
-              <TextField
-                error={subCidr.error}
-                margin="dense"
-                id="name"
-                label="CIDR"
-                type="cidr"
-                variant="standard"
-                value={subCidr.value}
-                onChange={(event) => onCidrChange(event)}
-                sx={{ width: "80%" }}
-              />
-            </Tooltip>
+            <Box sx={{ display: 'flex', flexDirection: 'row', gap: '4px', width: '80%' }}>
+              <Box sx={{ display: 'flex', alignItems: 'end', justifyContent: 'left' }}>
+                <Radio
+                  checked={addBySize}
+                  onChange={() => setAddBySize(true)}
+                  name="add-by-size"
+                  sx={{ pl: 0 }}
+                />
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'end', justifyContent: 'center', pb: 1, mr: 1 }}>
+                <Autocomplete
+                  forcePopupIcon={false}
+                  disabled={!addBySize}
+                  id="cidr-mask-max"
+                  size="small"
+                  options={maskOptions || []}
+                  getOptionLabel={(option) => option.name}
+                  inputValue={maskInput}
+                  onInputChange={(event, newInputValue) => setMaskInput(newInputValue)}
+                  value={selectedMask}
+                  onChange={(event, newValue) => setSelectedMask(newValue)}
+                  sx={{ width: '6ch' }}
+                  ListboxProps={{
+                    style: {
+                      maxHeight: "15rem"
+                    },
+                    position: "bottom-start"
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Size"
+                      placeholder="Size"
+                      variant="standard"
+                    />
+                  )}
+                />
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'end', justifyContent: 'left' }}>
+                <Radio
+                  checked={!addBySize}
+                  onChange={() => setAddBySize(false)}
+                  name="add-by-cidr"
+                  sx={{ pl: 0 }}
+                />
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'end', justifyContent: 'center', width: '100%' }}>
+                <Tooltip
+                  arrow
+                  disableFocusListener
+                  placement="right"
+                  title={
+                    <>
+                      - Must be in valid CIDR notation format
+                      <br />&nbsp;&nbsp;&nbsp;&nbsp;- Example: 1.2.3.4/5
+                      <br />- Cannot overlap existing subnets
+                    </>
+                  }
+                >
+                  <TextField
+                    disabled={addBySize}
+                    error={ !addBySize && (subCidr.value.length > 0 && subCidr.error) }
+                    margin="dense"
+                    id="name"
+                    label="CIDR"
+                    type="cidr"
+                    variant="standard"
+                    value={subCidr.value}
+                    onChange={(event) => onCidrChange(event)}
+                    inputProps={{ spellCheck: false }}
+                    sx={{
+                      width: "100%",
+                      pointerEvents: addBySize ? 'none' : 'auto'
+                    }}
+                  />
+                </Tooltip>
+              </Box>
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>

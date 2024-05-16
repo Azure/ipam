@@ -216,8 +216,8 @@ export default function NewReservation(props) {
                   <br />- Max of 128 characters
                   <br />- Can contain alphnumerics
                   <br />- Can contain spaces
-                  <br />- Can contain underscore, hypen, slash, and period
-                  <br />- Cannot start/end with underscore, hypen, slash, or period
+                  <br />- Can contain underscore, hypen, slash and period
+                  <br />- Cannot start/end with underscore, hypen, slash or period
                 </>
               }
             >
@@ -230,6 +230,7 @@ export default function NewReservation(props) {
                 variant="standard"
                 value={description.value}
                 onChange={(event) => onDescriptionChange(event)}
+                inputProps={{ spellCheck: false }}
                 sx={{ width: "100%" }}
               />
             </Tooltip>

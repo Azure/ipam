@@ -714,7 +714,7 @@ export default function ManageExtEndpoints(props) {
                 value={endName.value}
                 onChange={onNameChange}
                 inputProps={{
-                  spellCheck: 'false',
+                  spellCheck: false,
                   style: {
                     fontSize: '14px',
                     fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
@@ -776,7 +776,7 @@ export default function ManageExtEndpoints(props) {
                 value={endDesc.value}
                 onChange={onDescChange}
                 inputProps={{
-                  spellCheck: 'false',
+                  spellCheck: false,
                   style: {
                     fontSize: '14px',
                     fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
@@ -850,7 +850,7 @@ export default function ManageExtEndpoints(props) {
                     InputProps={{
                       ...params.InputProps,
                       disableUnderline: true,
-                      spellCheck: 'false',
+                      spellCheck: false,
                       style: {
                         fontSize: '14px',
                         fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
