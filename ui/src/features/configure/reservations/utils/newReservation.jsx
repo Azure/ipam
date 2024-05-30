@@ -104,6 +104,7 @@ export default function NewReservation(props) {
 
   function onCancel() {
     handleClose();
+
     setChecked(true);
     setDescription({ value: "", error: false });
     setMask(maskOptions[0]);
@@ -195,7 +196,7 @@ export default function NewReservation(props) {
     <div>
       <Dialog
         open={open}
-        onClose={handleClose}
+        onClose={onCancel}
         PaperComponent={DraggablePaper}
         maxWidth="md"
         fullWidth

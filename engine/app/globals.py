@@ -114,5 +114,33 @@ class Globals:
     @property
     def SHARED_TRANSPORT(self):
         return self.shared_transport
+    
+    @property
+    def DEPLOYMENT_STACK(self):
+        ipam_stack = ""
+
+        if os.environ.get('WEBSITE_SITE_NAME'):
+            if os.environ.get('FUNCTIONS_WORKER_RUNTIME'):
+                ipam_stack = "Function"
+            else:
+                ipam_stack = "App"
+
+            if os.environ.get('WEBSITE_STACK'):
+                if os.environ.get('WEBSITE_STACK') == 'DOCKER':
+                    ipam_stack += "Container"
+                else:
+                    ipam_stack += "Native"
+            else:
+                ipam_stack = "LegacyCompose"
+        elif os.environ.get('CONTAINER_APP_HOSTNAME'):
+            ipam_stack = "ContainerApp"
+        elif os.environ.get('KUBERNETES_SERVICE_HOST'):
+            ipam_stack = "Kubernetes"
+        elif os.path.exists('/.dockerenv'):
+            ipam_stack = "Docker"
+        else:
+            ipam_stack = "Unknown"
+
+        return ipam_stack
 
 globals = Globals()

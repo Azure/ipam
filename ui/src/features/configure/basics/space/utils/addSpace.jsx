@@ -58,9 +58,10 @@ export default function AddSpace(props) {
                       && !description.error ? false : true;
 
   function onCancel() {
+    handleClose();
+
     setSpaceName({ value: "", error: false });
     setDescription({ value: "", error: false });
-    handleClose();
   }
 
   function onSubmit() {
@@ -126,7 +127,7 @@ export default function AddSpace(props) {
     <div>
       <Dialog
         open={open}
-        onClose={handleClose}
+        onClose={onCancel}
         PaperComponent={DraggablePaper}
         maxWidth="xs"
         fullWidth

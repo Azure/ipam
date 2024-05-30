@@ -58,9 +58,10 @@ export default function AddBlock(props) {
                       && !cidr.error ? false : true;
 
   function onCancel() {
+    handleClose();
+
     setBlockName({ value: "", error: false });
     setCidr({ value: "", error: false });
-    handleClose();
   }
 
   function onSubmit() {
@@ -124,7 +125,7 @@ export default function AddBlock(props) {
     <div>
       <Dialog
         open={open}
-        onClose={handleClose}
+        onClose={onCancel}
         PaperComponent={DraggablePaper}
         maxWidth="xs"
         fullWidth

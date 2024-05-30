@@ -149,6 +149,16 @@ class ExtNet(BaseModel):
     cidr: IPv4Network
     subnets: List[ExtSubnet]
 
+class ExtNetExpand(BaseModel):
+    """DOCSTRING"""
+
+    name: str
+    desc: str
+    space: str
+    block: str
+    cidr: IPv4Network
+    subnets: List[ExtSubnet]
+
 class VNets(BaseModel):
     """DOCSTRING"""
 
@@ -399,15 +409,28 @@ class ExtNetReq(BaseModel):
     """DOCSTRING"""
 
     name: str
-    desc: str
-    cidr: IPv4Network
+    desc: Optional[str] = None
+    cidr: Optional[IPv4Network] = None
+    size: Optional[int] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def validate_request(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if 'cidr' in data and 'size' in data:
+                if data['cidr'] is not None:
+                    raise AssertionError("the 'cidr' and 'size' parameters can only be used alternatively")
+            if 'cidr' not in data and 'size' not in data:
+                raise AssertionError("it is required to provide either the 'cidr' or 'size' parameter")
+
+        return data
 
 class ExtSubnetReq(BaseModel):
     """DOCSTRING"""
 
     name: str
     desc: Optional[str] = None
-    cidr: Optional[str] = None
+    cidr: Optional[IPv4Network] = None
     size: Optional[int] = None
 
     @model_validator(mode='before')

@@ -87,9 +87,10 @@ export default function EditSpace(props) {
   }, [space]);
 
   function onCancel() {
+    handleClose();
+
     setSpaceName({ value: space.name, error: false });
     setDescription({ value: space.desc, error: false });
-    handleClose();
   }
 
   function onSubmit() {
@@ -154,7 +155,7 @@ export default function EditSpace(props) {
     <div>
       <Dialog
         open={open}
-        onClose={handleClose}
+        onClose={onCancel}
         PaperComponent={DraggablePaper}
         maxWidth="xs"
         fullWidth

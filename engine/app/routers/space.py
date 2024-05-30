@@ -1409,7 +1409,7 @@ async def get_external_networks(
 @router.post(
     "/{space}/blocks/{block}/externals",
     summary = "Create External Network",
-    response_model = ExtNet,
+    response_model = ExtNetExpand,
     status_code = 201
 )
 @cosmos_retry(
@@ -1417,7 +1417,7 @@ async def get_external_networks(
     error_msg = "Error adding external network to block, please try again."
 )
 async def create_external_network(
-    external: ExtNetReq,
+    req: ExtNetReq,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     authorization: str = Header(None, description="Azure Bearer token"),
@@ -1435,10 +1435,10 @@ async def create_external_network(
     if not is_admin:
         raise HTTPException(status_code=403, detail="API restricted to admins.")
 
-    if not re.match(EXTERNAL_NAME_REGEX, external.name, re.IGNORECASE):
+    if not re.match(EXTERNAL_NAME_REGEX, req.name, re.IGNORECASE):
         raise HTTPException(status_code=400, detail="External network name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods.")
 
-    if not re.match(EXTERNAL_DESC_REGEX, external.desc, re.IGNORECASE):
+    if not re.match(EXTERNAL_DESC_REGEX, req.desc, re.IGNORECASE):
         raise HTTPException(status_code=400, detail="External network description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
@@ -1453,22 +1453,12 @@ async def create_external_network(
     if not target_block:
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
-    if external.name in [x['name'] for x in target_block['externals']]:
+    if req.name in [x['name'] for x in target_block['externals']]:
         raise HTTPException(status_code=400, detail="External network name already exists in block.")
-
-    if str(IPNetwork(external.cidr).cidr) != external.cidr:
-        raise HTTPException(status_code=400, detail="External network cidr invalid, should be {}".format(IPNetwork(external.cidr).cidr))
 
     net_list = await get_network(authorization, True)
 
-    ext_cidr_in_block = IPNetwork(external.cidr) in IPNetwork(target_block['cidr'])
-
-    if not ext_cidr_in_block:
-        raise HTTPException(status_code=400, detail="External network CIDR not within block CIDR.")
-
     block_net_cidrs = []
-    resv_cidrs = IPSet(x['cidr'] for x in target_block['resv'])
-    ext_cidrs = IPSet(x['cidr'] for x in target_block['externals'])
 
     for v in target_block['vnets']:
         target = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
@@ -1477,25 +1467,52 @@ async def create_external_network(
             prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes']))
             block_net_cidrs += prefixes
 
-    if IPSet([external.cidr]) & ext_cidrs:
-        raise HTTPException(status_code=400, detail="Block contains external network(s) which overlap the target external network.")
+    block_set = IPSet(block_net_cidrs)
+    resv_set = IPSet(x['cidr'] for x in target_block['resv'])
+    external_set = IPSet(x['cidr'] for x in target_block['externals'])
+    available_set = IPSet([target_block['cidr']]) ^ (resv_set | external_set | block_set)
 
-    if IPSet([external.cidr]) & resv_cidrs:
-        raise HTTPException(status_code=400, detail="Block contains unfulfilled reservation(s) which overlap the target external network.")
+    if req.cidr is not None:
+        try:
+            next_cidr = IPNetwork(req.cidr)
+        except:
+            raise HTTPException(status_code=400, detail="Invalid CIDR, please ensure CIDR is in valid IPv4 CIDR notation (x.x.x.x/x).")
+
+        if str(IPNetwork(req.cidr).cidr) != req.cidr:
+            raise HTTPException(status_code=400, detail="External network cidr invalid, should be {}".format(IPNetwork(req.cidr).cidr))
+
+        if IPNetwork(req.cidr) not in IPNetwork(target_block['cidr']):
+            raise HTTPException(status_code=400, detail="External network CIDR not within block CIDR.")
+
+        if IPSet([req.cidr]) & external_set:
+            raise HTTPException(status_code=400, detail="Block contains external network(s) which overlap the target external network.")
+
+        if IPSet([req.cidr]) & resv_set:
+            raise HTTPException(status_code=400, detail="Block contains unfulfilled reservation(s) which overlap the target external network.")
+        
+        if IPSet([req.cidr]) & block_set:
+            raise HTTPException(status_code=400, detail="Block contains a virtual network(s) or hub(s) which overlap the target external network.")
+    else:
+        available_network = next((net for net in list(available_set.iter_cidrs()) if net.prefixlen <= req.size), None)
+
+        if not available_network:
+            raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block.")
+
+        next_cidr = list(available_network.subnet(req.size))[0]
     
-    if IPSet([external.cidr]) & IPSet(block_net_cidrs):
-        raise HTTPException(status_code=400, detail="Block contains a virtual network(s) or hub(s) which overlap the target external network.")
-
     new_external = {
-        "name": external.name,
-        "desc": external.desc,
-        "cidr": external.cidr,
+        "name": req.name,
+        "desc": req.desc,
+        "cidr": str(next_cidr),
         "subnets": []
     }
 
     target_block['externals'].append(jsonable_encoder(new_external))
 
     await cosmos_replace(space_query[0], target_space)
+
+    new_external['space'] = target_space['name']
+    new_external['block'] = target_block['name']
 
     return new_external
 
@@ -1688,10 +1705,7 @@ async def create_external_subnet(
     if req.name in [x['name'] for x in target_external['subnets']]:
         raise HTTPException(status_code=400, detail="Subnet name already exists in external network.")
 
-    subnet_cidrs = []
-
-    for s in (s for s in target_external['subnets']):
-        subnet_cidrs.append(s['cidr'])
+    subnet_cidrs = [s['cidr'] for s in target_external['subnets']]
 
     external_set = IPSet([target_external['cidr']])
     subnet_set = IPSet(subnet_cidrs)
@@ -1701,10 +1715,13 @@ async def create_external_subnet(
         try:
             next_cidr = IPNetwork(req.cidr)
         except:
-            raise HTTPException(status_code=400, detail="Invalid network CIDR format.")
+            raise HTTPException(status_code=400, detail="Invalid CIDR, please ensure CIDR is in valid IPv4 CIDR notation (x.x.x.x/x).")
         
         if str(next_cidr.cidr) != req.cidr:
             raise HTTPException(status_code=400, detail="External subnet CIDR invalid, should be {}".format(IPNetwork(req.cidr).cidr))
+
+        if IPNetwork(req.cidr) not in IPNetwork(target_external['cidr']):
+            raise HTTPException(status_code=400, detail="External subnet CIDR not within external network CIDR.")
 
         if next_cidr not in available_set:
             raise HTTPException(status_code=409, detail="Requested subnet CIDR overlaps existing subnet(s).")

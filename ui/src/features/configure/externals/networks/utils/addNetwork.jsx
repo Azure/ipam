@@ -236,7 +236,7 @@ export default function AddExtNetwork(props) {
     <div>
       <Dialog
         open={open}
-        onClose={handleClose}
+        onClose={onCancel}
         PaperComponent={DraggablePaper}
         maxWidth="xs"
         fullWidth

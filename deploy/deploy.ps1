@@ -388,12 +388,12 @@ process {
       }
     )
 
-    $uiWebSettings = @{
-      ImplicitGrantSetting = @{
-        EnableAccessTokenIssuance = $true
-        EnableIdTokenIssuance = $true
-      }
-    }
+    # $uiWebSettings = @{
+    #   ImplicitGrantSetting = @{
+    #     EnableAccessTokenIssuance = $true
+    #     EnableIdTokenIssuance = $true
+    #   }
+    # }
 
     # Create IPAM UI Application (If -UI:$false not specified)
     if (-not $DisableUI) {
@@ -401,8 +401,8 @@ process {
 
       $uiApp = New-AzADApplication `
         -DisplayName $UiAppName `
-        -SPARedirectUri "https://replace-this-value.azurewebsites.net" `
-        -Web $uiWebSettings
+        -SPARedirectUri "https://replace-this-value.azurewebsites.net"
+        # -Web $uiWebSettings
     }
 
     $engineResourceMap = @{
