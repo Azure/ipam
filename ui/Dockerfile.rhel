@@ -6,6 +6,9 @@ ARG PORT=8080
 # Set Environment Variable
 ENV PORT=${PORT}
 
+# Disable NPM Update Warnings
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+
 # Set the Working Directory
 WORKDIR /ipam
 
