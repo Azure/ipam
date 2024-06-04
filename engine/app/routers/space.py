@@ -529,6 +529,52 @@ async def delete_space(
 
     return PlainTextResponse(status_code=status.HTTP_200_OK)
 
+@router.get(
+    "/{space}/reservations",
+    summary = "Get Reservations for all Blocks within a Space",
+    response_model = List[ReservationExpand],
+    status_code = 200
+)
+async def get_multi_block_reservations(
+    space: str = Path(..., description="Name of the target Space"),
+    settled: bool = Query(False, description="Include settled reservations."),
+    authorization: str = Header(None, description="Azure Bearer token"),
+    tenant_id: str = Depends(get_tenant_id),
+    is_admin: str = Depends(get_admin)
+):
+    """
+    Get a list of CIDR Reservations for all Blocks within the target Space.
+    """
+
+    user_assertion = authorization.split(' ')[1]
+
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+
+    try:
+        target_space = copy.deepcopy(space_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid space name.")
+
+    resv_list = []
+
+    for block in target_space['blocks']:
+        if settled:
+            reservations = block['resv']
+        else:
+            reservations = [r for r in block['resv'] if not r['settledOn']]
+
+        for resv in reservations:
+            resv['space'] = target_space['name']
+            resv['block'] = block['name']
+
+        resv_list += reservations
+
+    if not is_admin:
+        user_name = get_username_from_jwt(user_assertion)
+        return list(filter(lambda x: x['createdBy'] == user_name, resv_list))
+    else:
+        return resv_list
+
 @router.post(
     "/{space}/reservations",
     summary = "Create CIDR Reservation from List of Blocks",

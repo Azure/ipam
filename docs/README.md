@@ -1,4 +1,4 @@
-# Welcome to Azure IPAM!
+# Welcome to Azure IPAM
 
 <!-- 
 Guidelines on README format: https://review.docs.microsoft.com/help/onboard/admin/samples/concepts/readme-template?branch=master
@@ -9,13 +9,15 @@ Taxonomies for products and languages: https://review.docs.microsoft.com/new-hop
 -->
 
 ## Overview and Architecture
-Azure IPAM was developed to give customers a simple, straightforward way to manage their IP address space in Azure. It enables end-to-end planning, deploying, managing and monitoring of your IP address space, with an intuitive user experience. Additionally, it can automatically discover IP address utilization within your Azure tenant and enables you to manage it all from a centralized UI. You can also interface with the Azure IPAM service programmatically via a RESTful API to facilitate IP address management at scale via Infrastructure as Code (IaC) and CI/CD pipelines. Azure IPAM is designed and architected based on the 5 pillars of the [Microsoft Azure Well Architected Framework](https://docs.microsoft.com/en-us/azure/architecture/framework/).
+
+Azure IPAM was developed to give customers a simple, straightforward way to manage their IP address space in Azure. It enables end-to-end planning, deploying, managing and monitoring of your IP address space, with an intuitive user experience. Additionally, it can automatically discover IP address utilization within your Azure tenant and enables you to manage it all from a centralized UI. You can also interface with the Azure IPAM service programmatically via a RESTful API to facilitate IP address management at scale via Infrastructure as Code (IaC) and CI/CD pipelines. Azure IPAM is designed and architected based on the 5 pillars of the [Microsoft Azure Well Architected Framework](https://docs.microsoft.com/azure/architecture/framework/).
 
 | App Service                                                      | Function                                                                   |
-:-----------------------------------------------------------------:|:---------------------------------------------------------------------------:
+|-----------------------------------------------------------------:|:---------------------------------------------------------------------------|
 | ![IPAM Architecture](./images/ipam_architecture_full.png ':size=70%') | ![IPAM Architecture](./images/ipam_architecture_function.png ':size=70%') |
 
 ## Azure IPAM Infrastructure
+
 The Azure IPAM solution is delivered via a container running in Azure App Services or as an Azure Function. It can also be deployed in an API-only fashion if no UI is required (e.g. pure IaC model). The container is built and published to a public Azure Container Registry (ACR), but you may also choose to build your own container and host it in a Private Container Registry. More details on this can be found in the [Deployment](./deployment/README.md) section. All of the supporting infrastructure is deployed and runs within your Azure Tenant and none of the resources are shared with other IPAM users (outside of the publicly hosted ACR).
 
 Here is a more specific breakdown of the components used:
@@ -23,12 +25,12 @@ Here is a more specific breakdown of the components used:
 - **App Registrations**
   - 2x App Registrations
     - *Engine* App Registration
-      - Granted **reader** permission to the [Root Management Group](https://learn.microsoft.com/en-us/azure/governance/management-groups/overview#root-management-group-for-each-directory) to facilitate IPAM Admin operations (global visibility)
-      - Authentication point for IPAM API operations ([on-behalf-of](https://learn.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow) flow)
+      - Granted **reader** permission to the [Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) to facilitate IPAM Admin operations (global visibility)
+      - Authentication point for IPAM API operations ([on-behalf-of](https://learn.microsoft.com/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow) flow)
     - *UI* App Registration *(Optional if no UI is desired)*
       - Granted **read** permissions for Microsoft Graph API's
       - Added as a *known client application* for the *Engine* App Registration
-      - Authentication point for the IPAM UI ([auth code](https://learn.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow) flow)
+      - Authentication point for the IPAM UI ([auth code](https://learn.microsoft.com/azure/active-directory/develop/v2-oauth2-auth-code-flow) flow)
 - **Resource Group**
   - Contains all Azure IPAM deployed resources
 - **App Service Plan with App Service** *(AppContainer Deployment only)*
@@ -68,7 +70,7 @@ Azure IPAM has been designed as such to radically simplify the often daunting ta
 
 ## User Interface
 
-The front end is written in [React](https://reactjs.org/) and leverages the [Material UI](https://mui.com/) for the UI components. The UI handles AuthN/AuthZ with AzureAD via [MSAL](https://learn.microsoft.com/en-us/azure/active-directory/develop/msal-overview), and manages token acquisition & refresh for communication to the backend Engine API (on your behalf).
+The front end is written in [React](https://reactjs.org/) and leverages the [Material UI](https://mui.com/) for the UI components. The UI handles AuthN/AuthZ with AzureAD via [MSAL](https://learn.microsoft.com/azure/active-directory/develop/msal-overview), and manages token acquisition & refresh for communication to the backend Engine API (on your behalf).
 
 ## Backend Engine
 

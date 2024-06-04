@@ -22,6 +22,7 @@ jobs:
     outputs:
       ipamVersion: ${{ steps.updateVersion.outputs.ipamVersion }}
       prNumber: ${{ fromJson(steps.getPullRequestData.outputs.result).number }}
+      commitHash: ${{ steps.commitCode.outputs.commitHash }}
     steps:
       - run: echo "Job triggered by a ${{ github.event_name }} event to main."
 
@@ -31,8 +32,9 @@ jobs:
         with:
           node-version: 18
 
-      - uses: actions/github-script@v7
+      - name: "Extract Pull Request Details"
         id: getPullRequestData
+        uses: actions/github-script@v7
         with:
           script: |
             return (
@@ -101,8 +103,9 @@ jobs:
         env:
           prNumber: ${{ fromJson(steps.getPullRequestData.outputs.result).number }}
         run: |
-          git commit -a -m "Updated Azure IPAM Version to v${{ steps.updateVersion.outputs.ipamVersion }}"
+          git commit -a -m "Updated Azure IPAM Version to v${{ steps.updateVersion.outputs.ipamVersion }} [skip ci]"
           git push
+          echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
   release:
     name: Create Azure IPAM Release
@@ -112,6 +115,7 @@ jobs:
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v4
         with:
+          ref: ${{ needs.version.outputs.commitHash }}
           sparse-checkout: |
             assets
 
@@ -140,8 +144,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ version, release ]
     steps:
-      - name: Azure login
-        uses: azure/login@v1
+      - name: Azure Login
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -151,6 +155,7 @@ jobs:
       - name: Checkout Azure IPAM Code
         uses: actions/checkout@v4
         with:
+          ref: ${{ needs.version.outputs.commitHash }}
           sparse-checkout: |
             engine
             ui
@@ -163,6 +168,32 @@ jobs:
           az acr build -r $ACR_NAME -t ipam:$IPAM_VERSION -t ipam:latest -f ./Dockerfile.deb .
           az acr build -r $ACR_NAME -t ipamfunc:$IPAM_VERSION -t ipamfunc:latest -f ./Dockerfile.func .
 
+  build-legacy:
+    name: Build Legacy Azure IPAM Containers
+    runs-on: ubuntu-latest
+    needs: [ version, release ]
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: true
+
+      - name: Checkout Azure IPAM Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.commitHash }}
+          sparse-checkout: |
+            engine
+            ui
+            lb
+
+      - name: Build Legacy Azure IPAM Containers
+        env:
+          IPAM_VERSION: ${{ needs.version.outputs.ipamVersion }}
+        run: |
           az acr build -r $ACR_NAME -t ipam-engine:$IPAM_VERSION -t ipam-engine:latest -f ./engine/Dockerfile.deb ./engine
           az acr build -r $ACR_NAME -t ipam-func:$IPAM_VERSION -t ipam-func:latest -f ./engine/Dockerfile.func ./engine
           az acr build -r $ACR_NAME -t ipam-ui:$IPAM_VERSION -t ipam-ui:latest -f ./ui/Dockerfile.deb ./ui
