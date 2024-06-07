@@ -1,7 +1,18 @@
+# Global
 .env
-.VSCodeCounter
 .eslintcache
+
+# Root Project
+.VSCodeCounter
 NOTES.md
 TODO.md
 /logs
+
+# IPAM UI
+.eslintcache
 node_modules
+build
+dist
+
+# IPAM Engine
+__pycache__

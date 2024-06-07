@@ -11,18 +11,12 @@ ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 # Set the Working Directory
 WORKDIR /tmp
 
-# Add `/app/node_modules/.bin` to $PATH
-ENV PATH /tmp/node_modules/.bin:$PATH
-
-# Install UI Dependencies
-COPY ./ui/package.json ./
-COPY ./ui/package-lock.json ./
-
-RUN npm install
-RUN chmod 777 node_modules
-
 # Copy UI Code
 COPY ./ui/. ./
+
+# Install UI Dependencies
+RUN npm install
+RUN chmod 777 -R node_modules
 
 # Build IPAM UI
 RUN npm run build
