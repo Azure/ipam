@@ -17,12 +17,14 @@ To successfully deploy the solution, the following prerequisites must be met:
 - [PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
 - [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 8.0.0 or later installed (11.4.0 or later recommended)
 - [Microsoft Graph PowerShell SDK](https://learn.microsoft.com/powershell/microsoftgraph/installation) version 2.0.0 or later installed
-  - Required for *Full* or *Apps Only* deployments to grant [Admin Consent](https://learn.microsoft.com/azure/active-directory/manage-apps/grant-admin-consent) to the App Registrations
+  - Required for *Full* or *Identities Only* deployments to grant [Admin Consent](https://learn.microsoft.com/azure/active-directory/manage-apps/grant-admin-consent) to the App Registrations
 - [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install) version 0.21.1 or later installed
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) version 2.35.0 or later installed (optional)
   - Required only if you are building your own container image and pushing it to a private Azure Container Registry (Private ACR)
 - [Docker (Linux)](https://docs.docker.com/engine/install/) / [Docker Desktop (Windows)](https://docs.docker.com/desktop/install/windows-install/) installed (optional)
   - Required only if you are building your own container image and running it locally for development/testing purposes
+
+> **NOTE:** An alternate [Management Group](https://learn.microsoft.com/en-us/azure/governance/management-groups/overview) can be specific, but is **highly discouraged** as it will limit the visibility of the Azure IPAM platform. This option should only be used for testing or proof-of-concept deployments.
 
 ## Deployment Overview
 
@@ -129,22 +131,25 @@ To deploy the full solution, run the following from within the `deploy` director
 
 You have the ability to pass optional flags to the deployment script:
 
-| Parameter                                                          | Description                                                                                |
-| :----------------------------------------------------------------- | :----------------------------------------------------------------------------------------- |
-| `-UIAppName <name>`                                                | Changes the name of the UI app registration                                                |
-| `-EngineAppName <name>`                                            | Changes the name of the Engine app registration                                            |
-| `-Tags @{​​​​​​<tag> = '​<value>'; ​<tag> = '​<value>'}`                    | Attaches the hashtable as tags on the deployed IPAM resource group                         |
-| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **<sup>1,2</sup>**                      |
-| `-NamePrefix <prefix>`                                             | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>3</sup>** |
-| `-Function`                                                        | Deploys the engine container only to an Azure Function                                     |
-| `-PrivateACR`                                                      | Deploys a private Azure Container Registry and builds the IPAM containers                  |
-| `-DisableUI`                                                       | Solution will be deployed without a UI, no UI identities will be created                   |
+| Parameter                                                          | Description                                                                                   |
+| :----------------------------------------------------------------- | :-------------------------------------------------------------------------------------------- |
+| `-UIAppName <name>`                                                | Changes the name of the UI app registration                                                   |
+| `-EngineAppName <name>`                                            | Changes the name of the Engine app registration                                               |
+| `-Tags @{​​​​​​<tag> = '​<value>'; ​<tag> = '​<value>'}`                    | Attaches the hashtable as tags on the deployed IPAM resource group                            |
+| `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **<sup>1,2</sup>**                         |
+| `-NamePrefix <prefix>`                                             | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>3</sup>**    |
+| `-Function`                                                        | Deploys the engine container only to an Azure Function                                        |
+| `-PrivateACR`                                                      | Deploys a private Azure Container Registry and builds the IPAM containers                     |
+| `-DisableUI`                                                       | Solution will be deployed without a UI, no UI identities will be created                      |
+| `-MgmtGroupId`                                                     | Specifies an alternate Management Group instead of the Root Management Group **<sup>4</sup>** |
 
 > **NOTE 1:** The required values will vary based on the deployment type.
 
 > **NOTE 2:** This must include ALL required resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
 
 > **NOTE 3:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
+
+> **NOTE 4:** It is **highly discouraged** to use a [Management Group](https://learn.microsoft.com/en-us/azure/governance/management-groups/overview) other than the [Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) as it will limit the visibility of the Azure IPAM platform. This option should only be used for testing or proof-of-concept deployments.
 
 **Customize the name of the App Registrations:**
 
@@ -261,11 +266,14 @@ To deploy Azure Identities only, run the following from within the `deploy` dire
 
 You have the ability to pass optional flags to the deployment script:
 
-| Parameter               | Description                                                              |
-| :---------------------- | :----------------------------------------------------------------------- |
-| `-UIAppName <name>`     | Changes the name of the UI app registration                              |
-| `-EngineAppName <name>` | Changes the name of the Engine app registration                          |
-| `-DisableUI`            | Solution will be deployed without a UI, no UI identities will be created |
+| Parameter               | Description                                                                                   |
+| :---------------------- | :-------------------------------------------------------------------------------------------- |
+| `-UIAppName <name>`     | Changes the name of the UI app registration                                                   |
+| `-EngineAppName <name>` | Changes the name of the Engine app registration                                               |
+| `-DisableUI`            | Solution will be deployed without a UI, no UI identities will be created                      |
+| `-MgmtGroupId`          | Specifies an alternate Management Group instead of the Root Management Group **<sup>1</sup>** |
+
+> **NOTE 1:** It is **highly discouraged** to use a [Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview) other than the [Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) as it will limit the visibility of the Azure IPAM platform. This option should only be used for testing or proof-of-concept deployments.
 
 **Customize the name of the App Registrations:**
 
