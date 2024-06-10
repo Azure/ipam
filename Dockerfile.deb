@@ -29,7 +29,7 @@ ARG PORT
 ENV PORT=${PORT}
 
 # Disable PIP Root Warnings
-ENV PIP_ROOT_USER_ACTION=ignore
+ARG PIP_ROOT_USER_ACTION=ignore
 
 # Set Working Directory
 WORKDIR /tmp

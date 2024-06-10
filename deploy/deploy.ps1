@@ -1060,7 +1060,7 @@ process {
     }
 
     if ($PSCmdlet.ParameterSetName -in ('AppContainer', 'FunctionContainer') -and $PrivateAcr) {
-      Write-Host "INFO: Building and pushing container images to Azure Container Registry" -ForegroundColor Green
+      Write-Host "INFO: Building and pushing container image to Azure Container Registry" -ForegroundColor Green
 
       $containerMap = @{
         Debian = @{
