@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi_restful.tasks import repeat_every
+from fastapi_utils.tasks import repeat_every
 from fastapi.encoders import jsonable_encoder
 
 from azure.identity.aio import ManagedIdentityCredential
