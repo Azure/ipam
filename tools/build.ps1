@@ -225,6 +225,7 @@ try {
     Write-Host "INFO: Collecting asset files..." -ForegroundColor Green
 
     Copy-Item -Path ..\engine\app -Destination $tempFolder -Recurse
+    Copy-Item -Path ..\engine\host.json -Destination $tempFolder
     Copy-Item -Path ..\engine\function_app.py -Destination $tempFolder
     Copy-Item -Path ..\engine\requirements.txt -Destination $tempFolder
     Copy-Item -Path ..\ui\dist -Destination $tempFolder -Recurse
