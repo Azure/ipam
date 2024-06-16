@@ -1,7 +1,27 @@
+# Global
+.env
+Dockerfile
+Dockerfile.*
+
+# Root Project
+.github/
+.vscode/
+.VSCodeCounter/
+assets/
+deploy/
+docs/
+examples/
+tests/
+tools/
+/*.md
+.gitattributes
+.gitignore
+LICENSE
+
+# IPAM UI
 node_modules
 build
 dist
-.dockerignore
-Dockerfile
-Dockerfile.prod
+
+# IPAM Engine
 __pycache__

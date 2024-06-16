@@ -104,7 +104,12 @@ async def get_obo_token(assertion):
 
     azure_arm_url = 'https://{}/user_impersonation'.format(globals.AZURE_ARM_URL)
 
-    credential = OnBehalfOfCredential(globals.TENANT_ID, globals.CLIENT_ID, client_secret=globals.CLIENT_SECRET, user_assertion=assertion)
+    credential = OnBehalfOfCredential(
+        tenant_id=globals.TENANT_ID,
+        client_id=globals.CLIENT_ID,
+        client_secret=globals.CLIENT_SECRET,
+        user_assertion=assertion
+    )
     obo_token = await credential.get_token(azure_arm_url)
     await credential.close()
 
@@ -113,14 +118,25 @@ async def get_obo_token(assertion):
 async def get_client_credentials():
     """DOCSTRING"""
 
-    credential = ClientSecretCredential(globals.TENANT_ID, globals.CLIENT_ID, globals.CLIENT_SECRET, authority=globals.AUTHORITY_HOST)
+    credential = ClientSecretCredential(
+        tenant_id=globals.TENANT_ID,
+        client_id=globals.CLIENT_ID,
+        client_secret=globals.CLIENT_SECRET,
+        authority=globals.AUTHORITY_HOST
+    )
 
     return credential
 
 async def get_obo_credentials(assertion):
     """DOCSTRING"""
 
-    credential = OnBehalfOfCredential(globals.TENANT_ID, globals.CLIENT_ID, client_secret=globals.CLIENT_SECRET, user_assertion=assertion, authority=globals.AUTHORITY_HOST)
+    credential = OnBehalfOfCredential(
+        tenant_id=globals.TENANT_ID,
+        client_id=globals.CLIENT_ID,
+        client_secret=globals.CLIENT_SECRET,
+        user_assertion=assertion,
+        authority=globals.AUTHORITY_HOST
+    )
 
     return credential
 

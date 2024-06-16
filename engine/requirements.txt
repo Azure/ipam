@@ -1,6 +1,5 @@
 fastapi[all]>=0.103.0
 pydantic[email]>=2.3.0
-fastapi-restful[all]>=0.4.5
 msal
 pyjwt
 cryptography
@@ -24,4 +23,4 @@ azure-mgmt-datafactory
 azure-keyvault-secrets
 azure-cosmos
 azure-functions
-nest_asyncio
+apscheduler

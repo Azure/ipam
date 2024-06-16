@@ -54,25 +54,25 @@ const filterTypes = merge({}, ReactDataGrid.defaultProps.filterTypes, {
       {
         name: 'contains',
         fn: ({ value, filterValue, data }) => {
-          return filterValue !== (null || '') ? (value || []).join(",").includes(filterValue) : true;
+          return filterValue !== (null || '') ? (value || []).findIndex(e => e.toLowerCase().includes(filterValue.toLowerCase())) >= 0 : true;
         }
       },
       {
         name: 'notContains',
         fn: ({ value, filterValue, data }) => {
-          return filterValue !== (null || '') ? !(value || []).join(",").includes(filterValue) : true;
+          return filterValue !== (null || '') ? value ? value.findIndex(e => e.toLowerCase().includes(filterValue.toLowerCase())) < 0 : false : true;
         }
       },
       {
         name: 'eq',
         fn: ({ value, filterValue, data }) => {
-          return filterValue !== (null || '') ? (value || []).includes(filterValue) : true;
+          return filterValue !== (null || '') ? value ? value.map(e => e.toLowerCase()).includes(filterValue.toLowerCase()) : false : true;
         }
       },
       {
         name: 'neq',
         fn: ({ value, filterValue, data }) => {
-          return filterValue !== (null || '') ? !(value || []).includes(filterValue) : true;
+          return filterValue !== (null || '') ? value ? !value.map(e => e.toLowerCase()).includes(filterValue.toLowerCase()) : false : true;
         }
       },
       {

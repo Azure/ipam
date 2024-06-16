@@ -290,14 +290,22 @@ async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
     await network_client.close()
 
 async def get_factory_map_sdk(credentials):
-    SUB_QUERY = "Resources | where type =~ 'Microsoft.DataFactory/factories' | project id, name, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId"
+    DF_QUERY = "Resources | where type =~ 'Microsoft.DataFactory/factories' | project id, name, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId"
 
     data_factory_map = {}
 
-    resource_graph_client = ResourceGraphClient(credentials)
+    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
+    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+
+    resource_graph_client = ResourceGraphClient(
+        credential=credentials,
+        base_url=azure_arm_url,
+        credential_scopes=[azure_arm_scope],
+        transport=globals.SHARED_TRANSPORT
+    )
 
     query = QueryRequest(
-        query=SUB_QUERY,
+        query=DF_QUERY,
         options=QueryRequestOptions(
             result_format=ResultFormat.object_array
         )
@@ -317,8 +325,17 @@ async def get_factory_map_sdk(credentials):
 async def get_factory_endpoints_sdk(credentials, factory_map):
     factory_list = []
 
+    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
+    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+
     for subscription in factory_map.keys():
-        data_factory_client = DataFactoryManagementClient(credentials, subscription)
+        data_factory_client = DataFactoryManagementClient(
+            credential=credentials,
+            subscription_id=subscription,
+            base_url=azure_arm_url,
+            credential_scopes=[azure_arm_scope],
+            transport=globals.SHARED_TRANSPORT
+        )
 
         for factory in factory_map[subscription]:
           async for poll in data_factory_client.private_end_point_connections.list_by_factory(factory['resource_group'], factory['name']):

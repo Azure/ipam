@@ -119,6 +119,26 @@ param(
   $DisableUI,
 
   [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'App')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'AppContainer')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'FunctionContainer')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'AppsOnly')]
+  [ValidatePattern('^([\x21-\x7E]*)(?<!\.)$',
+    ErrorMessage='Management Group ID can contain alphanumerics, hyphens, underscores, periods, and parentheses. It must start with letter or number and cannot end with period.')]
+  [string]
+  $MgmtGroupId = $null,
+
+  [Parameter(ValueFromPipelineByPropertyName = $true,
     Mandatory = $true,
     ParameterSetName = 'Function')]
   [Parameter(ValueFromPipelineByPropertyName = $true,
@@ -331,6 +351,7 @@ process {
 
   $debugSetting = $DEBUG_MODE ? 'Continue' : 'SilentlyContinue'
 
+  $containerBuildError = $false
   $deploymentSuccess = $false
 
   Start-Transcript -Path $transcriptLog | Out-Null
@@ -346,6 +367,43 @@ process {
     return $validLocations.Contains($Location)
   }
 
+  Function Get-BuildLogs {
+    Param(
+      [Parameter(Mandatory=$true)]
+      [string]$SubscriptionId,
+      [Parameter(Mandatory=$true)]
+      [string]$ResourceGroupName,
+      [Parameter(Mandatory=$true)]
+      [string]$RegistryName,
+      [Parameter(Mandatory=$true)]
+      [string]$BuildId
+    )
+
+    $msArmMap = @{
+      AZURE_PUBLIC         = "management.azure.com"
+      AZURE_US_GOV         = "management.usgovcloudapi.net"
+      AZURE_US_GOV_SECRET  = "management.azure.microsoft.scloud"
+      AZURE_GERMANY        = "management.microsoftazure.de"
+      AZURE_CHINA          = "management.chinacloudapi.cn"
+    };
+
+    $accessToken = (Get-AzAccessToken).Token | ConvertTo-SecureString -AsPlainText
+
+    $response = Invoke-RestMethod `
+      -Method POST `
+      -Uri "https://$($msArmMap[$AzureCloud])/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroupName/providers/Microsoft.ContainerRegistry/registries/$RegistryName/runs/$BuildId/listLogSasUrl?api-version=2019-04-01" `
+      -Authentication Bearer `
+      -Token $accessToken
+    
+    $logLink = $response.logLink
+
+    $logs = Invoke-RestMethod `
+      -Method GET `
+      -Uri $logLink
+    
+    return $logs
+  }
+
   Function Deploy-IPAMApplications {
     Param(
       [Parameter(Mandatory=$false)]
@@ -353,7 +411,7 @@ process {
       [Parameter(Mandatory=$false)]
       [string]$UIAppName = 'ipam-ui-app',
       [Parameter(Mandatory=$true)]
-      [string]$TenantId,
+      [string]$MgmtGroupId,
       [Parameter(Mandatory=$true)]
       [string]$AzureCloud,
       [Parameter(Mandatory=$false)]
@@ -388,21 +446,13 @@ process {
       }
     )
 
-    $uiWebSettings = @{
-      ImplicitGrantSetting = @{
-        EnableAccessTokenIssuance = $true
-        EnableIdTokenIssuance = $true
-      }
-    }
-
-    # Create IPAM UI Application (If -UI:$false not specified)
+    # Create IPAM UI Application (If DisableUI not specified)
     if (-not $DisableUI) {
       Write-Host "INFO: Creating Azure IPAM UI Application" -ForegroundColor Green
 
       $uiApp = New-AzADApplication `
         -DisplayName $UiAppName `
-        -SPARedirectUri "https://replace-this-value.azurewebsites.net" `
-        -Web $uiWebSettings
+        -SPARedirectUri "https://replace-this-value.azurewebsites.net"
     }
 
     $engineResourceMap = @{
@@ -479,7 +529,7 @@ process {
       RequestedAccessTokenVersion = 2
     }
 
-    # Add the UI App as a Known Client App (If -UI:$false not specified)
+    # Add the UI App as a Known Client App (If DisableUI not specified)
     if (-not $DisableUI) {
       $engineApiSettings.Add("KnownClientApplication", $knownClientApplication)
     }
@@ -509,7 +559,7 @@ process {
 
     $uiResourceAccess.Add($uiEngineApiAccess) | Out-Null
 
-    # Update IPAM UI Application Resource Access (If -UI:$false not specified)
+    # Update IPAM UI Application Resource Access (If DisableUI not specified)
     if (-not $DisableUI) {
       Write-Host "INFO: Updating Azure IPAM UI Application Resource Access" -ForegroundColor Green
 
@@ -520,14 +570,14 @@ process {
     
     $engineObject = Get-AzADApplication -ApplicationId $engineApp.AppId
 
-    # Create IPAM UI Service Principal (If -UI:$false not specified)
+    # Create IPAM UI Service Principal (If DisableUI not specified)
     if (-not $DisableUI) {
       Write-Host "INFO: Creating Azure IPAM UI Service Principal" -ForegroundColor Green
 
       New-AzADServicePrincipal -ApplicationObject $uiObject | Out-Null
     }
 
-    $scope = "/providers/Microsoft.Management/managementGroups/$TenantId"
+    $scope = "/providers/Microsoft.Management/managementGroups/$MgmtGroupId"
 
     Write-Host "INFO: Creating Azure IPAM Engine Service Principal" -ForegroundColor Green
 
@@ -553,7 +603,7 @@ process {
       EngineSecret = $engineSecret.SecretText
     }
 
-    # Add UI AppID to AppDetails (If -UI:$false not specified)
+    # Add UI AppID to AppDetails (If DisableUI not specified)
     if (-not $DisableUI) {
       $appDetails.Add("UIAppId", $uiApp.AppId)
     }
@@ -626,7 +676,7 @@ process {
     # Connect to Microsoft Graph
     Connect-MgGraph -Environment $msGraphMap[$AzureCloud].Environment -AccessToken $accesstoken | Out-Null
 
-    # Fetch Azure IPAM UI Service Principal (If -UI:$false not specified)
+    # Fetch Azure IPAM UI Service Principal (If DisableUI not specified)
     if (-not $DisableUI) {
       $uiSpn = Get-AzADServicePrincipal `
         -ApplicationId $UIAppId
@@ -636,7 +686,7 @@ process {
     $engineSpn = Get-AzADServicePrincipal `
       -ApplicationId $EngineAppId
 
-    # Grant admin consent for Microsoft Graph API permissions assigned to IPAM UI application (If -UI:$false not specified)
+    # Grant admin consent for Microsoft Graph API permissions assigned to IPAM UI application (If DisableUI not specified)
     if (-not $DisableUI) {
       Write-Host "INFO: Granting admin consent for Microsoft Graph API permissions assigned to IPAM UI application" -ForegroundColor Green
 
@@ -655,7 +705,7 @@ process {
       Write-Host "INFO: Admin consent for Microsoft Graph API permissions granted successfully" -ForegroundColor Green
     }
 
-    # Grant admin consent to the IPAM UI application for exposed API from the IPAM Engine application (If -UI:$false not specified)
+    # Grant admin consent to the IPAM UI application for exposed API from the IPAM Engine application (If DisableUI not specified)
     if (-not $DisableUI) {
       Write-Host "INFO: Granting admin consent to the IPAM UI application for exposed API from the IPAM Engine application" -ForegroundColor Green
 
@@ -930,11 +980,12 @@ process {
 
   # Main Deployment Script Section
   Write-Host
-  Write-Host "NOTE: IPAM Deployment Type: $($PSCmdlet.ParameterSetName)" -ForegroundColor Magenta
 
   if($DEBUG_MODE) {
     Write-Host "DEBUG: Debug Mode Enabled" -ForegroundColor Gray
   }
+
+  Write-Host "NOTE: IPAM Deployment Type: $($PSCmdlet.ParameterSetName)" -ForegroundColor Magenta
 
   try {
     if($PrivateAcr) {
@@ -968,10 +1019,13 @@ process {
     }
 
     if ($PSCmdlet.ParameterSetName -in ('App', 'AppContainer', 'Function', 'FunctionContainer', 'AppsOnly')) {
-      Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor Green
-
-      # Fetch Tenant ID
-      $tenantId = (Get-AzContext).Tenant.Id
+      # Fetch Tenant ID (If Required)
+      if($MgmtGroupId) {
+        Write-Host "NOTE: Management Group ID Specified" -ForegroundColor Magenta
+      } else {
+        Write-Host "INFO: Fetching Tenant ID from Azure PowerShell SDK" -ForegroundColor Green
+        $script:MgmtGroupId = (Get-AzContext).Tenant.Id
+      }
 
       Write-Host "INFO: Fetching Azure Cloud type from Azure PowerShell SDK" -ForegroundColor Green
 
@@ -1007,7 +1061,7 @@ process {
       $appDetails = Deploy-IPAMApplications `
         -UIAppName $UIAppName `
         -EngineAppName $EngineAppName `
-        -TenantId $tenantId `
+        -MgmtGroupId $MgmtGroupId `
         -AzureCloud $azureCloud `
         -DisableUI $DisableUI
 
@@ -1060,12 +1114,12 @@ process {
     }
 
     if ($PSCmdlet.ParameterSetName -in ('AppContainer', 'FunctionContainer') -and $PrivateAcr) {
-      Write-Host "INFO: Building and pushing container images to Azure Container Registry" -ForegroundColor Green
+      Write-Host "INFO: Building and pushing container image to Azure Container Registry" -ForegroundColor Green
 
       $containerMap = @{
         Debian = @{
           Extension = 'deb'
-          Port = 80
+          Port = 8080
           Images = @{
             Build = 'node:18-slim'
             Serve = 'python:3.9-slim'
@@ -1091,11 +1145,24 @@ process {
         $funcBuildOutput = $(
           az acr build -r $deployment.Outputs["acrName"].Value `
           -t ipamfunc:latest `
-          -f $dockerFileFunc $ROOT_DIR
+          -f $dockerFileFunc $ROOT_DIR `
+          --no-logs
         ) *>&1
 
         if ($LASTEXITCODE -ne 0) {
-          throw $funcBuildOutput
+          Write-Host "ERROR: Container build process failed, fetching error logs..." -ForegroundColor Red
+
+          $buildId = [regex]::Matches($funcBuildOutput, "(?<=Queued a build with ID: )[\w]*").Value.Trim()
+
+          $buildLogs = Get-BuildLogs `
+            -SubscriptionId $deployment.Outputs["subscriptionId"].Value `
+            -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value `
+            -RegistryName $deployment.Outputs["acrName"].Value `
+            -BuildId $buildId
+
+          $buildLogs | Out-File -FilePath $errorLog -Append
+
+          $script:containerBuildError = $true
         } else {
           Write-Host "INFO: Function container image build and push completed successfully" -ForegroundColor Green
         }
@@ -1112,22 +1179,43 @@ process {
             -f $dockerFilePath $ROOT_DIR `
             --build-arg PORT=$($containerMap[$ContainerType].Port) `
             --build-arg BUILD_IMAGE=$($containerMap[$ContainerType].Images.Build) `
-            --build-arg SERVE_IMAGE=$($containerMap[$ContainerType].Images.Serve)
+            --build-arg SERVE_IMAGE=$($containerMap[$ContainerType].Images.Serve) `
+            --no-logs
         ) *>&1
 
         if ($LASTEXITCODE -ne 0) {
-          throw $appBuildOutput
+          Write-Host "ERROR: Container build process failed, fetching error logs..." -ForegroundColor Red
+
+          $buildId = [regex]::Matches($appBuildOutput, "(?<=Queued a build with ID: )[\w]*").Value.Trim()
+
+          $buildLogs = Get-BuildLogs `
+            -SubscriptionId $deployment.Outputs["subscriptionId"].Value `
+            -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value `
+            -RegistryName $deployment.Outputs["acrName"].Value `
+            -BuildId $buildId
+
+          $buildLogs | Out-File -FilePath $errorLog -Append
+
+          $script:containerBuildError = $true
         } else {
           Write-Host "INFO: App container image build and push completed successfully" -ForegroundColor Green
         }
 
-        Write-Host "INFO: Restarting App Service" -ForegroundColor Green
+        if(-not $containerBuildError) {
+          Write-Host "INFO: Restarting App Service" -ForegroundColor Green
 
-        Restart-AzWebApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value | Out-Null
+          Restart-AzWebApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value | Out-Null
+        }
       }
     }
 
-    Write-Host "INFO: Azure IPAM Solution deployed successfully" -ForegroundColor Green
+    if(-not $containerBuildError) {
+      Write-Host "INFO: Azure IPAM Solution deployed successfully" -ForegroundColor Green
+    } else {
+      Write-Host "WARNING: Azure IPAM Solution deployed with errors, see logs for details!" -ForegroundColor Yellow
+      Write-Host "Run Log: $transcriptLog" -ForegroundColor Yellow
+      Write-Host "Error Log: $errorLog" -ForegroundColor Yellow
+    }
 
     if ($($PSCmdlet.ParameterSetName -notin 'AppsOnly') -and (-not $DisableUI) -and $ParameterFile) {
       $updateUrl = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/$($appDetails.UIAppId)"

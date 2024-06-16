@@ -143,10 +143,52 @@ export function replaceBlockNetworks(space, block, body) {
   return api.put(url, body);
 }
 
+export function createBlockExternal(space, block, body) {
+  const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals`);
+
+  return api.post(url, body);
+}
+
+export function deleteBlockExternal(space, block, external, force) {
+  const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals/${external}`);
+  var urlParams = url.searchParams;
+
+  force && urlParams.append('force', true);
+
+  return api.delete(url);
+}
+
+export function createBlockExtSubnet(space, block, external, body) {
+  const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals/${external}/subnets`);
+
+  return api.post(url, body);
+}
+
+export function deleteBlockExtSubnet(space, block, external, subnet, force) {
+  const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals/${external}/subnets/${subnet}`);
+  var urlParams = url.searchParams;
+
+  force && urlParams.append('force', true);
+
+  return api.delete(url);
+}
+
+export function replaceBlockExtSubnetEndpoints(space, block, external, subnet, body) {
+  const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals/${external}/subnets/${subnet}/endpoints`);
+
+  return api.put(url, body);
+}
+
 export function replaceBlockExternals(space, block, body) {
   const url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/externals`);
 
   return api.put(url, body);
+}
+
+export function createBlockResv(space, block, body) {
+  var url = new URL(`${ENGINE_URL}/api/spaces/${space}/blocks/${block}/reservations`);
+
+  return api.post(url, body);
 }
 
 export function fetchBlockResv(space, block) {
@@ -251,4 +293,16 @@ export function updateMe(body) {
   var url = new URL(`${ENGINE_URL}/api/users/me`);
 
   return api.patch(url, body);
+}
+
+export function fetchNextAvailableVNet(body) {
+  const url = new URL(`${ENGINE_URL}/api/tools/nextAvailableVNet`);
+
+  return api.post(url, body);
+}
+
+export function fetchNextAvailableSubnet(body) {
+  const url = new URL(`${ENGINE_URL}/api/tools/nextAvailableSubnet`);
+
+  return api.post(url, body);
 }

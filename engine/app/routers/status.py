@@ -20,16 +20,17 @@ router = APIRouter(
     status_code = 200
 )
 async def get_status():
-    is_container = os.environ.get('WEBSITE_STACK') == 'DOCKER'
-    is_function = os.environ.get('FUNCTIONS_WORKER_RUNTIME') is not None
-
-    stack_type = 'Function' if is_function else 'App'
-    stack_type += 'Container' if is_container else ''
-
+    is_container = (
+        os.environ.get('WEBSITE_STACK') == 'DOCKER' or
+        os.environ.get('KUBERNETES_SERVICE_HOST') or
+        os.path.exists('/.dockerenv')
+    )
+    
     status_message = {
         "status": "OK",
         "version": globals.IPAM_VERSION,
-        "stack": stack_type
+        "stack": globals.DEPLOYMENT_STACK,
+        "environment": globals.AZURE_ENV
     }
 
     if (is_container):

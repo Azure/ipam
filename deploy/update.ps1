@@ -247,6 +247,28 @@ try {
     }
   }
 
+  if (-not $appContainer) {
+    Write-Host "INFO: Verifying application Python version" -ForegroundColor Green
+
+    $engineFolder = Join-Path -Path $ROOT_DIR -ChildPath 'engine'
+    $engineVersionFile = Join-Path -Path $engineFolder -ChildPath "app" -AdditionalChildPath 'version.json'
+    $enginePythonVersion = $(Get-Content -Path $engineVersionFile | ConvertFrom-Json).python
+
+    $appPythonVersion = $existingApp.SiteConfig.LinuxFxVersion.Split('|')[1]
+
+    if($enginePythonVersion -ne $appPythonVersion) {
+      Write-Host "WARNING: Python version has changed (" -ForegroundColor Yellow -NoNewline
+      Write-Host "v$appPythonVersion -> v$enginePythonVersion" -ForegroundColor Cyan -NoNewline
+      Write-Host ")" -ForegroundColor Yellow
+      Write-Host "INFO: Updating application Python version..." -ForegroundColor Green
+
+      $existingApp.SiteConfig.LinuxFxVersion = "PYTHON|$enginePythonVersion"
+      $existingApp | Set-AzWebApp | Out-Null
+
+      Start-Sleep -Seconds 10
+    }
+  }
+
   if ($appContainer) {
     if (-not $isFunction) {
       Write-Host "INFO: Detecting container distro..." -ForegroundColor Green

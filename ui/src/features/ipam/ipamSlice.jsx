@@ -12,6 +12,12 @@ import {
   createBlock,
   updateBlock,
   deleteBlock,
+  createBlockExternal,
+  deleteBlockExternal,
+  createBlockExtSubnet,
+  deleteBlockExtSubnet,
+  replaceBlockExtSubnetEndpoints,
+  createBlockResv,
   deleteBlockResvs,
   fetchVNets,
   fetchVHubs,
@@ -151,6 +157,84 @@ export const deleteBlockAsync = createAsyncThunk(
   async (args, { rejectWithValue }) => {
     try {
       const response = await deleteBlock(args.space, args.block, args.force);
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const createBlockExternalAsync = createAsyncThunk(
+  'ipam/createBlockExternal',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await createBlockExternal(args.space, args.block, args.body);
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const deleteBlockExternalAsync = createAsyncThunk(
+  'ipam/deleteBlockExternal',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await deleteBlockExternal(args.space, args.block, args.external, args.force);
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const createBlockExtSubnetAsync = createAsyncThunk(
+  'ipam/createBlockExtSubnet',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await createBlockExtSubnet(args.space, args.block, args.external, args.body);
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const deleteBlockExtSubnetAsync = createAsyncThunk(
+  'ipam/deleteBlockExtSubnet',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await deleteBlockExtSubnet(args.space, args.block, args.external, args.subnet, args.force);
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const replaceBlockExtSubnetEndpointsAsync = createAsyncThunk(
+  'ipam/replaceBlockExtSubnetEndpoints',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await replaceBlockExtSubnetEndpoints(args.space, args.block, args.external, args.subnet, args.body);
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const createBlockResvAsync = createAsyncThunk(
+  'ipam/createBlockResv',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await createBlockResv(args.space, args.block, args.body);
 
       return response;
     } catch (err) {
@@ -463,6 +547,129 @@ export const ipamSlice = createSlice({
         // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
+      .addCase(createBlockExternalAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);
+        const blockName = action.meta.arg.block;
+        const newExternal = action.payload
+
+        const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+
+        if(blockIndex > -1) {
+          state.spaces[spaceIndex].blocks[blockIndex].externals.push(newExternal);
+        }
+      })
+      .addCase(createBlockExternalAsync.rejected, (state, action) => {
+        console.log("createBlockExternalAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
+      .addCase(deleteBlockExternalAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const blockName = action.meta.arg.block;
+        const externalName = action.meta.arg.external;
+
+        const spaceIndex = state.spaces.findIndex((space) => space.name === spaceName);
+        const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+        const externalIndex = state.spaces[spaceIndex].blocks[blockIndex].externals.findIndex((external) => external.name === externalName);
+
+        if(externalIndex > -1) {
+          state.spaces[spaceIndex].blocks[blockIndex].externals.splice(externalIndex, 1);
+        }
+      })
+      .addCase(deleteBlockExternalAsync.rejected, (state, action) => {
+        console.log("deleteBlockExternalAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
+      .addCase(createBlockExtSubnetAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);
+        const blockName = action.meta.arg.block;
+        const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+        const externalName = action.meta.arg.external;
+        const newSubnet = action.payload
+
+        const externalIndex = state.spaces[spaceIndex].blocks[blockIndex].externals.findIndex((external) => external.name === externalName);
+
+        if(externalIndex > -1) {
+          state.spaces[spaceIndex].blocks[blockIndex].externals[externalIndex].subnets.push(newSubnet);
+        }
+      })
+      .addCase(createBlockExtSubnetAsync.rejected, (state, action) => {
+        console.log("createBlockExtSubnetAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
+      .addCase(deleteBlockExtSubnetAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const blockName = action.meta.arg.block;
+        const externalName = action.meta.arg.external;
+        const subnetName = action.meta.arg.subnet;
+
+        const spaceIndex = state.spaces.findIndex((space) => space.name === spaceName);
+        const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+        const externalIndex = state.spaces[spaceIndex].blocks[blockIndex].externals.findIndex((external) => external.name === externalName);
+        const subnetIndex = state.spaces[spaceIndex].blocks[blockIndex].externals[externalIndex].subnets.findIndex((subnet) => subnet.name === subnetName);
+
+        if(subnetIndex > -1) {
+          state.spaces[spaceIndex].blocks[blockIndex].externals[externalIndex].subnets.splice(subnetIndex, 1);
+        }
+      })
+      .addCase(deleteBlockExtSubnetAsync.rejected, (state, action) => {
+        console.log("deleteBlockExtSubnetAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
+      .addCase(replaceBlockExtSubnetEndpointsAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const blockName = action.meta.arg.block;
+        const externalName = action.meta.arg.external;
+        const subnetName = action.meta.arg.subnet;
+
+        const spaceIndex = state.spaces.findIndex((space) => space.name === spaceName);
+        const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+        const externalIndex = state.spaces[spaceIndex].blocks[blockIndex].externals.findIndex((external) => external.name === externalName);
+        const subnetIndex = state.spaces[spaceIndex].blocks[blockIndex].externals[externalIndex].subnets.findIndex((subnet) => subnet.name === subnetName);
+
+        if(subnetIndex > -1) {
+          state.spaces[spaceIndex].blocks[blockIndex].externals[externalIndex].subnets[subnetIndex].endpoints = action.payload;
+        }
+      })
+      .addCase(replaceBlockExtSubnetEndpointsAsync.rejected, (state, action) => {
+        console.log("replaceBlockExtSubnetEndpoints Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
+
+      .addCase(createBlockResvAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);
+        const blockName = action.meta.arg.block;
+        const newResv = action.payload
+
+        delete newResv['space'];
+        delete newResv['block'];
+        delete newResv['tag'];
+
+        const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+
+        if(blockIndex > -1) {
+          state.spaces[spaceIndex].blocks[blockIndex].resv.push(newResv);
+        }
+      })
+      .addCase(createBlockResvAsync.rejected, (state, action) => {
+        console.log("createBlockResvAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
+
       .addCase(deleteBlockResvsAsync.fulfilled, (state, action) => {
         const spaceName = action.meta.arg.space;
         const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);

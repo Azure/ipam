@@ -46,6 +46,13 @@ param privateAcrUri string
 // ACR Uri Variable
 var acrUri = privateAcr ? privateAcrUri : 'azureipam.azurecr.io'
 
+// Disable Build Process Internet-Restricted Clouds
+var runFromPackage = azureCloud == 'AZURE_US_GOV_SECRET' ? true : false
+
+// Current Python Version
+var engineVersion = loadJsonContent('../../engine/app/version.json')
+var pythonVersion = engineVersion.python
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-06-01' existing = {
   name: storageAccountName
 }
@@ -80,7 +87,7 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
     siteConfig: {
       acrUseManagedIdentityCreds: privateAcr ? true : false
       acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
-      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipamfunc:latest' : 'Python|3.9'
+      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipamfunc:latest' : 'PYTHON|${pythonVersion}'
       healthCheckPath: '/api/status'
       appSettings: concat(
         [
@@ -157,6 +164,15 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
           {
             name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
             value: 'false'
+          }
+        ] : runFromPackage ? [
+          {
+            name: 'FUNCTIONS_WORKER_RUNTIME'
+            value: 'python'
+          }
+          {
+            name: 'WEBSITE_RUN_FROM_PACKAGE'
+            value: '1'
           }
         ] : [
           {
