@@ -40,6 +40,9 @@ WORKDIR /tmp
 # Switch to Root User
 USER root
 
+# Disable Subscription Manager YUM Plugin
+RUN sed -i s/enabled=./enabled=0/g /etc/yum/pluginconf.d/subscription-manager.conf
+
 # Install OpenSSH and set the password for root to "Docker!"
 RUN yum update -y
 RUN yum install -qq openssh-server -y \
