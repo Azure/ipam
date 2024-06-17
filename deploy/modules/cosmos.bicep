@@ -19,6 +19,9 @@ param workspaceId string
 @description('Managed Identity PrincipalId')
 param principalId string
 
+param privateEndpointSubnetId string
+param private bool
+
 var dbContributor = '00000000-0000-0000-0000-000000000002'
 var dbContributorId = '${resourceGroup().id}/providers/Microsoft.DocumentDB/databaseAccounts/${cosmosAccount.name}/sqlRoleDefinitions/${dbContributor}'
 var dbContributorRoleAssignmentId = guid(dbContributor, principalId, cosmosAccount.id)
@@ -40,6 +43,7 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2021-04-15' = {
     databaseAccountOfferType: 'Standard'
     enableAutomaticFailover: true
     disableKeyBasedMetadataWriteAccess: true
+    publicNetworkAccess: private ? 'Disabled' : 'Enabled'
   }
 }
 
@@ -165,6 +169,27 @@ resource sqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignm
     roleDefinitionId: dbContributorId
     principalId: principalId
     scope: cosmosAccount.id
+  }
+}
+
+resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-06-01' = if(private) {
+  name: '${cosmosAccountName}-privateEndpoint'
+  location: location
+  properties: {
+    subnet: {
+      id: privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: '${cosmosAccountName}-privateLinkServiceConnection'
+        properties: {
+          privateLinkServiceId: cosmosAccount.id
+          groupIds: [
+            'sql'
+          ]
+        }
+      }
+    ]
   }
 }
 

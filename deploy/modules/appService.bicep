@@ -40,15 +40,12 @@ param privateAcr bool
 @description('Uri for Private Container Registry')
 param privateAcrUri string
 
+param privateEndpointSubnetId string
+param egressSubnetId string
+param private bool
+
 // ACR Uri Variable
 var acrUri = privateAcr ? privateAcrUri : 'azureipam.azurecr.io'
-
-// Disable Build Process Internet-Restricted Clouds
-var runFromPackage = azureCloud == 'AZURE_US_GOV_SECRET' ? true : false
-
-// Current Python Version
-var engineVersion = loadJsonContent('../../engine/app/version.json')
-var pythonVersion = engineVersion.python
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
   name: appServicePlanName
@@ -65,7 +62,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
   }
 }
 
-resource appService 'Microsoft.Web/sites@2021-02-01' = {
+resource appService 'Microsoft.Web/sites@2023-01-01' = {
   name: appServiceName
   location: location
   kind: deployAsContainer ? 'app,linux,container' : 'app,linux'
@@ -83,8 +80,8 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
       acrUseManagedIdentityCreds: privateAcr ? true : false
       acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
       alwaysOn: true
-      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:latest' : 'PYTHON|${pythonVersion}'
-      appCommandLine: !deployAsContainer ? 'bash ./init.sh 8000' : null
+      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:latest' : 'PYTHON|3.9'
+      appCommandLine: !deployAsContainer ? 'init.sh 8000' : null
       healthCheckPath: '/api/status'
       appSettings: concat(
         [
@@ -142,11 +139,6 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
             name: 'DOCKER_REGISTRY_SERVER_URL'
             value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
           }
-        ] : runFromPackage ? [
-          {
-            name: 'WEBSITE_RUN_FROM_PACKAGE'
-            value: '1'
-          }
         ] : [
           {
             name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
@@ -155,6 +147,29 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
         ]
       )
     }
+    virtualNetworkSubnetId: egressSubnetId
+    publicNetworkAccess: private ? 'Disabled' : 'Enabled'
+  }
+}
+
+resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-06-01' = if(private) {
+  name: '${appServiceName}-privateEndpoint'
+  location: location
+  properties: {
+    subnet: {
+      id: privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: '${appServiceName}-privateEndpoint'
+        properties: {
+          privateLinkServiceId: appService.id
+          groupIds: [
+            'sites'
+          ]
+        }
+      }
+    ]
   }
 }
 
