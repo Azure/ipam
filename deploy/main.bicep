@@ -53,6 +53,28 @@ param resourceNames object = {
   containerRegistryName: '${namePrefix}acr${uniqueString(guid)}'
 }
 
+@description('Diagnostic settings for app service')
+@allowed([
+  'AppServiceAntivirusScanAuditLogs'
+  'AppServiceHTTPLogs'
+  'AppServiceConsoleLogs'
+  'AppServiceAppLogs'
+  'AppServiceFileAuditLogs'
+  'AppServiceAuditLogs'
+  'AppServiceIPSecAuditLogs'
+  'AppServicePlatformLogs'
+])
+param appServiceDiagSettingsLogCategory string[] = [
+  'AppServiceAntivirusScanAuditLogs'
+  'AppServiceHTTPLogs'
+  'AppServiceConsoleLogs'
+  'AppServiceAppLogs'
+  'AppServiceFileAuditLogs'
+  'AppServiceAuditLogs'
+  'AppServiceIPSecAuditLogs'
+  'AppServicePlatformLogs'
+]
+
 // Resource Group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   location: location
@@ -143,6 +165,7 @@ module appService './modules/appService.bicep' = if (!deployAsFunc) {
     azureCloud: azureCloud
     appServiceName: resourceNames.appServiceName
     appServicePlanName: resourceNames.appServicePlanName
+    appServiceDiagSettingsLogCategory: appServiceDiagSettingsLogCategory
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     databaseName: resourceNames.cosmosDatabaseName
