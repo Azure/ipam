@@ -1,6 +1,8 @@
 // Global parameters
 targetScope = 'subscription'
 
+import { appServiceDiagSettingsLogCategory } from './types/types.bicep'
+
 @description('GUID for Resource Naming')
 param guid string = newGuid()
 
@@ -54,17 +56,7 @@ param resourceNames object = {
 }
 
 @description('Diagnostic settings for app service')
-@allowed([
-  'AppServiceAntivirusScanAuditLogs'
-  'AppServiceHTTPLogs'
-  'AppServiceConsoleLogs'
-  'AppServiceAppLogs'
-  'AppServiceFileAuditLogs'
-  'AppServiceAuditLogs'
-  'AppServiceIPSecAuditLogs'
-  'AppServicePlatformLogs'
-])
-param appServiceDiagSettingsLogCategory string[] = [
+param appServiceDiagSettingsLogCategory appServiceDiagSettingsLogCategory[] = [
   'AppServiceAntivirusScanAuditLogs'
   'AppServiceHTTPLogs'
   'AppServiceConsoleLogs'
