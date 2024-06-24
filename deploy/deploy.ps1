@@ -1252,7 +1252,7 @@ process {
     Write-Host
     Stop-Transcript | Out-Null
 
-    if ($script:deploymentSuccess) {
+    if (($PSCmdlet.ParameterSetName -notin 'AppsOnly') -and $script:deploymentSuccess) {
       Write-Output "ipamURL=https://$($deployment.Outputs["appServiceHostName"].Value)" >> $Env:GITHUB_OUTPUT
       Write-Output "ipamUIAppId=$($appDetails.UIAppId)" >> $Env:GITHUB_OUTPUT
       Write-Output "ipamEngineAppId=$($appDetails.EngineAppId)" >> $Env:GITHUB_OUTPUT
