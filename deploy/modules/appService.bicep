@@ -4,7 +4,8 @@ param appServiceName string
 @description('App Service Plan Name')
 param appServicePlanName string
 
-param appServiceDiagSettingsLogCategory string[] = [
+@description('Diagnostic settings for app service')
+@allowed([
   'AppServiceAntivirusScanAuditLogs'
   'AppServiceHTTPLogs'
   'AppServiceConsoleLogs'
@@ -13,7 +14,8 @@ param appServiceDiagSettingsLogCategory string[] = [
   'AppServiceAuditLogs'
   'AppServiceIPSecAuditLogs'
   'AppServicePlatformLogs'
-]
+])
+param appServiceDiagSettingsLogCategory string[] = []
 
 @description('CosmosDB URI')
 param cosmosDbUri string
