@@ -4,6 +4,17 @@ param appServiceName string
 @description('App Service Plan Name')
 param appServicePlanName string
 
+param appServiceDiagSettingsLogCategory string[] = [
+  'AppServiceAntivirusScanAuditLogs'
+  'AppServiceHTTPLogs'
+  'AppServiceConsoleLogs'
+  'AppServiceAppLogs'
+  'AppServiceFileAuditLogs'
+  'AppServiceAuditLogs'
+  'AppServiceIPSecAuditLogs'
+  'AppServicePlatformLogs'
+]
+
 @description('CosmosDB URI')
 param cosmosDbUri string
 
@@ -201,64 +212,8 @@ resource diagnosticSettingsApp 'Microsoft.Insights/diagnosticSettings@2021-05-01
   scope: appService
   properties: {
     logs: [
-      {
-        category: 'AppServiceAntivirusScanAuditLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceHTTPLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceConsoleLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceAppLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceFileAuditLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceAuditLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceIPSecAuditLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServicePlatformLogs'
+      for categoryName in appServiceDiagSettingsLogCategory : {
+        category: categoryName
         enabled: true
         retentionPolicy: {
           days: 0
