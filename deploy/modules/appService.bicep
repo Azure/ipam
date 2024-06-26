@@ -53,6 +53,9 @@ param workspaceId string
 @description('Flag to Deploy IPAM as a Container')
 param deployAsContainer bool = false
 
+@description('IPAM Container Image Tag to use')
+param acrImageTag string = 'latest'
+
 @description('Flag to Deploy Private Container Registry')
 param privateAcr bool
 
@@ -100,7 +103,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
       acrUseManagedIdentityCreds: privateAcr ? true : false
       acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
       alwaysOn: true
-      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:latest' : 'PYTHON|${pythonVersion}'
+      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:${acrImageTag}' : 'PYTHON|${pythonVersion}'
       appCommandLine: !deployAsContainer ? 'bash ./init.sh 8000' : null
       healthCheckPath: '/api/status'
       appSettings: concat(
