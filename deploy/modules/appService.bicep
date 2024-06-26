@@ -221,20 +221,12 @@ resource diagnosticSettingsApp 'Microsoft.Insights/diagnosticSettings@2021-05-01
       for categoryName in appServiceDiagSettingsLogCategory : {
         category: categoryName
         enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
       }
     ]
     metrics: [
       {
         category: 'AllMetrics'
         enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
       }
     ]
     workspaceId: workspaceId
