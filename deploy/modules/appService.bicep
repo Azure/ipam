@@ -18,6 +18,7 @@ param appServicePlanName string
 param appServicePlanSkuName string = 'P1v3'
 
 @description('Number of workers associated with the App Service Plan.')
+@minValue(1)
 param appServicePlanSkuCapacity int = 1
 
 @description('Diagnostic settings for app service')
