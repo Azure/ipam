@@ -26,6 +26,9 @@
     "deployAsContainer": {
       "value": false
     },
+    "acrImageTag": {
+      "value": "latest"
+    },
     "privateAcr": {
       "value": false
     },
