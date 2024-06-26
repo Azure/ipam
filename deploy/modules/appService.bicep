@@ -6,6 +6,20 @@ param appServiceName string
 @description('App Service Plan Name')
 param appServicePlanName string
 
+@description('The name of the SKU will Determine the tier, size, family of the App Service Plan.')
+@metadata({
+  example: '''
+  'F1'
+  'B1'
+  'P1v3'
+  'I1v2'
+  '''
+})
+param appServicePlanSkuName string = 'P1v3'
+
+@description('Number of workers associated with the App Service Plan.')
+param appServicePlanSkuCapacity int = 1
+
 @description('Diagnostic settings for app service')
 param appServiceDiagSettingsLogCategory appServiceDiagSettingsLogCategoryType[] = []
 
@@ -59,10 +73,8 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
   name: appServicePlanName
   location: location
   sku: {
-    name: 'P1v3'
-    size: 'P1v3'
-    tier: 'PremiumV3'
-    capacity: 1
+    name: appServicePlanSkuName
+    capacity: appServicePlanSkuCapacity
   }
   kind: 'linux'
   properties: {

@@ -55,6 +55,20 @@ param resourceNames object = {
   containerRegistryName: '${namePrefix}acr${uniqueString(guid)}'
 }
 
+@description('App Service Plan SKU name, this will determine the tier, size, family of the App Service Plan.')
+@metadata({
+  example: '''
+  'F1'
+  'B1'
+  'P1v3'
+  'I1v2'
+  '''
+})
+param appServicePlanSkuName string = 'P1v3'
+
+@description('Number of workers associated with the App Service Plan.')
+param appServicePlanSkuCapacity int = 1
+
 @description('Diagnostic settings for app service')
 param appServiceDiagSettingsLogCategory appServiceDiagSettingsLogCategoryType[] = [
   'AppServiceAntivirusScanAuditLogs'
@@ -157,6 +171,8 @@ module appService './modules/appService.bicep' = if (!deployAsFunc) {
     azureCloud: azureCloud
     appServiceName: resourceNames.appServiceName
     appServicePlanName: resourceNames.appServicePlanName
+    appServicePlanSkuName: appServicePlanSkuName
+    appServicePlanSkuCapacity: appServicePlanSkuCapacity
     appServiceDiagSettingsLogCategory: appServiceDiagSettingsLogCategory
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
