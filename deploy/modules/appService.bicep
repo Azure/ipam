@@ -1,4 +1,4 @@
-import { appServiceDiagSettingsLogCategory } from '../types/types.bicep'
+import { appServiceDiagSettingsLogCategoryType } from '../types/types.bicep'
 
 @description('App Service Name')
 param appServiceName string
@@ -7,7 +7,7 @@ param appServiceName string
 param appServicePlanName string
 
 @description('Diagnostic settings for app service')
-param appServiceDiagSettingsLogCategory appServiceDiagSettingsLogCategory[] = []
+param appServiceDiagSettingsLogCategory appServiceDiagSettingsLogCategoryType[] = []
 
 @description('CosmosDB URI')
 param cosmosDbUri string
