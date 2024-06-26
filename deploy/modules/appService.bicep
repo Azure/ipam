@@ -1,8 +1,28 @@
+import { appServiceDiagSettingsLogCategoryType } from '../types/types.bicep'
+
 @description('App Service Name')
 param appServiceName string
 
 @description('App Service Plan Name')
 param appServicePlanName string
+
+@description('The name of the SKU will Determine the tier, size, family of the App Service Plan.')
+@metadata({
+  example: '''
+  'F1'
+  'B1'
+  'P1v3'
+  'I1v2'
+  '''
+})
+param appServicePlanSkuName string = 'P1v3'
+
+@description('Number of workers associated with the App Service Plan.')
+@minValue(1)
+param appServicePlanSkuCapacity int = 1
+
+@description('Diagnostic settings for app service')
+param appServiceDiagSettingsLogCategory appServiceDiagSettingsLogCategoryType[] = []
 
 @description('CosmosDB URI')
 param cosmosDbUri string
@@ -34,6 +54,9 @@ param workspaceId string
 @description('Flag to Deploy IPAM as a Container')
 param deployAsContainer bool = false
 
+@description('IPAM Container Image Tag to use')
+param acrImageTag string = 'latest'
+
 @description('Flag to Deploy Private Container Registry')
 param privateAcr bool
 
@@ -54,10 +77,8 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
   name: appServicePlanName
   location: location
   sku: {
-    name: 'P1v3'
-    size: 'P1v3'
-    tier: 'PremiumV3'
-    capacity: 1
+    name: appServicePlanSkuName
+    capacity: appServicePlanSkuCapacity
   }
   kind: 'linux'
   properties: {
@@ -83,7 +104,7 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
       acrUseManagedIdentityCreds: privateAcr ? true : false
       acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
       alwaysOn: true
-      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:latest' : 'PYTHON|${pythonVersion}'
+      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:${acrImageTag}' : 'PYTHON|${pythonVersion}'
       appCommandLine: !deployAsContainer ? 'bash ./init.sh 8000' : null
       healthCheckPath: '/api/status'
       appSettings: concat(
@@ -201,79 +222,15 @@ resource diagnosticSettingsApp 'Microsoft.Insights/diagnosticSettings@2021-05-01
   scope: appService
   properties: {
     logs: [
-      {
-        category: 'AppServiceAntivirusScanAuditLogs'
+      for categoryName in appServiceDiagSettingsLogCategory : {
+        category: categoryName
         enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceHTTPLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceConsoleLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceAppLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceFileAuditLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceAuditLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServiceIPSecAuditLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'AppServicePlatformLogs'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
       }
     ]
     metrics: [
       {
         category: 'AllMetrics'
         enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
       }
     ]
     workspaceId: workspaceId
