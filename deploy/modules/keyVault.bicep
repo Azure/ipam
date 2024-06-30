@@ -11,7 +11,7 @@ param identityPrincipalId string
 param identityClientId string
 
 @description('Additional identities to assign Key Vault Secrets User')
-param additionalKeyVaultSecretsUserPrincipalId string[] = []
+param additionalKeyVaultSecretsUserPrincipalIds string[] = []
 
 @description('AzureAD TenantId')
 param tenantId string = subscription().tenantId
@@ -121,7 +121,7 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
 
 var allKeyVaultSecretsUserPrincipalIds =  union(
   [identityPrincipalId],
-  additionalKeyVaultSecretsUserPrincipalId
+  additionalKeyVaultSecretsUserPrincipalIds
 )
 resource keyVaultUserAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = [ for principalId in allKeyVaultSecretsUserPrincipalIds: {
   name: guid(keyVaultUser, principalId, keyVault.id)
