@@ -1,6 +1,8 @@
 # Bicep only deployments
 
 The Entra Id app registrations and Azure infrastructure is bundled into seperate `main.bicep` files.
+- `deploy/identity/main.bicep`
+- `deploy/main.bicep` (move infra bicep to its own subfolder?)
 
 
 ## Configuration
