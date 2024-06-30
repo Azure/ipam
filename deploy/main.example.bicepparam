@@ -9,7 +9,8 @@ param deployAsFunc = false
 param deployAsContainer = true
 param uiAppId = '<UI APP REGISTRATION APP/CLIENT ID>'
 param engineAppId = '<ENGINE APP REGISTRATION APP/CLIENT ID>'
-param engineAppSecret = sys.readEnvironmentVariable('ENGINE_APP_SECRET')
+param engineAppSecret = sys.readEnvironmentVariable('ENGINE_APP_SECRET') // change to getSecret() after the initial deployment
+// param engineAppSecret = az.getSecret('<subscription-id>', '<rg-name>', '<key-vault-name>', '<secret-name>', '<secret-version>')
 param tags = {}
 param resourceNames = {
   functionName: '${namePrefix}-${uniqueString(guid)}'
