@@ -6,7 +6,7 @@ The Entra Id app registrations and Azure infrastructure is bundled into seperate
 
 
 ## Configuration
-All configuration should be done in the `.bicepparam`-files.
+All configuration should be done in `.bicepparam`-files.
 
 ## Challenges
 The Entra Id app registration deployment has circular dependencies (both depend on values from the other for a complete setup):
