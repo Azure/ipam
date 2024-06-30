@@ -10,6 +10,9 @@ param identityPrincipalId string
 @description('Managed Identity ClientId')
 param identityClientId string
 
+@description('Additional identities to assign Key Vault Secrets User')
+param additionalKeyVaultSecretsUserPrincipalId string[] = []
+
 @description('AzureAD TenantId')
 param tenantId string = subscription().tenantId
 
@@ -28,7 +31,6 @@ param workspaceId string
 
 var keyVaultUser = '4633458b-17de-408a-b874-0445c86b69e6'
 var keyVaultUserId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultUser)
-var keyVaultUserRoleAssignmentId = guid(keyVaultUser, identityPrincipalId, keyVault.id)
 
 resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
   name: keyVaultName
@@ -36,6 +38,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
   properties: {
     enablePurgeProtection: true
     enableRbacAuthorization: true
+    enabledForTemplateDeployment: true
     tenantId: tenantId
     sku: {
       name: 'standard'
@@ -116,15 +119,19 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
   }
 }
 
-resource keyVaultUserAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  name: keyVaultUserRoleAssignmentId
+var allKeyVaultSecretsUserPrincipalIds =  union(
+  [identityPrincipalId],
+  additionalKeyVaultSecretsUserPrincipalId
+)
+resource keyVaultUserAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = [ for principalId in allKeyVaultSecretsUserPrincipalIds: {
+  name: guid(keyVaultUser, principalId, keyVault.id)
   scope: keyVault
   properties: {
     principalType: 'ServicePrincipal'
     roleDefinitionId: keyVaultUserId
-    principalId: identityPrincipalId
+    principalId: principalId
   }
-}
+}]
 
 output keyVaultName string = keyVault.name
 output keyVaultUri string = keyVault.properties.vaultUri
