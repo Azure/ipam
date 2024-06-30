@@ -33,6 +33,9 @@ param engineAppId string
 @description('IPAM-Engine App Registration Client Secret')
 param engineAppSecret string
 
+@description('Additional identities to assign Key Vault Secrets User on the Key Vault')
+param additionalKeyVaultSecretsUserPrincipalIds string[] = []
+
 @description('Tags')
 param tags object = {}
 
@@ -90,6 +93,7 @@ module keyVault './modules/keyVault.bicep' = {
     keyVaultName: resourceNames.keyVaultName
     identityPrincipalId:  managedIdentity.outputs.principalId
     identityClientId:  managedIdentity.outputs.clientId
+    additionalKeyVaultSecretsUserPrincipalIds: additionalKeyVaultSecretsUserPrincipalIds
     uiAppId: uiAppId
     engineAppId: engineAppId
     engineAppSecret: engineAppSecret
