@@ -445,7 +445,7 @@ class ExtSubnetReq(BaseModel):
 
         return data
 
-class ExtEndpointUpdate(BaseModel):
+class ExtEndpointReq(BaseModel):
     """DOCSTRING"""
 
     name: str
@@ -462,6 +462,12 @@ class JSONPatch(BaseModel):
 SpaceUpdate = Annotated[List[JSONPatch], None]
 
 BlockUpdate = Annotated[List[JSONPatch], None]
+
+ExtNetUpdate = Annotated[List[JSONPatch], None]
+
+ExtSubnetUpdate = Annotated[List[JSONPatch], None]
+
+ExtEndpointUpdate = Annotated[List[JSONPatch], None]
 
 VNetsUpdate = Annotated[List[str], None]
 

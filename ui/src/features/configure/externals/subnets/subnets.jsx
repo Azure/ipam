@@ -29,7 +29,7 @@ import {
   TaskAltOutlined,
   CancelOutlined,
   AddOutlined,
-  // EditOutlined,
+  EditOutlined,
   DeleteOutline,
   EditNoteOutlined
 } from "@mui/icons-material";
@@ -40,6 +40,7 @@ import {
 } from "../../../ipam/ipamSlice";
 
 import AddExtSubnet from "./utils/addSubnet";
+import EditExtSubnet from "./utils/editSubnet";
 import DeleteExtSubnet from "./utils/deleteSubnet";
 import ManageExtEndpoints from "./utils/manageEndpoints";
 
@@ -59,6 +60,7 @@ function HeaderMenu(props) {
     selectedExternal,
     selectedSubnet,
     setAddExtSubOpen,
+    setEditExtSubOpen,
     setDelExtSubOpen,
     setManExtEndOpen,
     saving,
@@ -80,6 +82,11 @@ function HeaderMenu(props) {
 
   const onAddExtSub = () => {
     setAddExtSubOpen(true);
+    setMenuOpen(false);
+  }
+
+  const onEditExtSub = () => {
+    setEditExtSubOpen(true);
     setMenuOpen(false);
   }
 
@@ -190,15 +197,15 @@ function HeaderMenu(props) {
               </ListItemIcon>
               Add Subnet
             </MenuItem>
-            {/* <MenuItem
-              onClick={() => console.log("EDIT!")}
-              disabled={ true }
+            <MenuItem
+              onClick={onEditExtSub}
+              disabled={ !selectedSubnet }
             >
               <ListItemIcon>
                 <EditOutlined fontSize="small" />
               </ListItemIcon>
               Edit Subnet
-            </MenuItem> */}
+            </MenuItem>
             <MenuItem
               onClick={onDelExtSub}
               disabled={ !selectedSubnet }
@@ -270,6 +277,7 @@ const Subnets = (props) => {
   const [columnSortState, setColumnSortState] = React.useState({});
 
   const [addExtSubOpen, setAddExtSubOpen] = React.useState(false);
+  const [editExtSubOpen, setEditExtSubOpen] = React.useState(false);
   const [delExtSubOpen, setDelExtSubOpen] = React.useState(false);
   const [manExtEndOpen, setManExtEndOpen] = React.useState(false);
 
@@ -505,6 +513,15 @@ const Subnets = (props) => {
         external={selectedExternal ? selectedExternal : null}
         subnets={subnets}
       />
+      <EditExtSubnet
+        open={editExtSubOpen}
+        handleClose={() => setEditExtSubOpen(false)}
+        space={selectedSpace ? selectedSpace.name : null}
+        block={selectedBlock ? selectedBlock.name : null}
+        external={selectedExternal ? selectedExternal : null}
+        subnets={subnets}
+        selectedSubnet={selectedSubnet}
+      />
       <DeleteExtSubnet
         open={delExtSubOpen}
         handleClose={() => setDelExtSubOpen(false)}
@@ -521,7 +538,7 @@ const Subnets = (props) => {
         external={selectedExternal ? selectedExternal.name : null}
         subnet={selectedSubnet ? selectedSubnet : null}
       />
-      <ExtSubnetContext.Provider value={{ selectedExternal, selectedSubnet, setAddExtSubOpen, setDelExtSubOpen, setManExtEndOpen,  saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+      <ExtSubnetContext.Provider value={{ selectedExternal, selectedSubnet, setAddExtSubOpen, setEditExtSubOpen, setDelExtSubOpen, setManExtEndOpen,  saving, sendResults, saveConfig, loadConfig, resetConfig }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
           <Box sx={{ display: 'flex', height: '35px', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(224, 224, 224, 1)', borderBottom: 'none' }}>
             <Typography variant='button'>

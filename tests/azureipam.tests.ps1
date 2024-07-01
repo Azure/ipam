@@ -317,7 +317,7 @@ Context 'Blocks' {
   }
 
   # GET /api/spaces/{space}/blocks/{block}
-  It 'Get A Specific Block' {
+  It 'Get a Specific Block' {
 
     $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA'
 
@@ -336,7 +336,7 @@ Context 'Networks' {
   }
 
   # POST /api/spaces/{space}/blocks/{block}/networks
-  It 'Add a Virtual Network to a Block' {
+  It 'Add a Virtual Network to Block' {
     $script:newNetA = New-AzVirtualNetwork `
       -Name 'TestVNet01' `
       -ResourceGroupName $env:IPAM_RESOURCE_GROUP `
@@ -446,7 +446,7 @@ Context 'External Networks' {
   }
 
   # GET /api/spaces/{space}/blocks/{block}/externals/{external}
-  It 'Get Specific External Network' {
+  It 'Get a Specific External Network' {
 
     $external, $externalStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetB'
     
@@ -455,9 +455,44 @@ Context 'External Networks' {
     $external.Cidr -eq "10.1.2.0/24" | Should -Be $true
   }
 
+  # PATCH /api/spaces/{space}/blocks/{block}/externals/{external}
+  It 'Update an External Network' {
+    $update = @(
+      @{
+        op = 'replace'
+        path = '/name'
+        value = 'ExternalNetC'
+      }
+      @{
+        op = 'replace'
+        path = '/desc'
+        value = 'External Network C'
+      }
+      @{
+        op = 'replace'
+        path = '/cidr'
+        value = '10.1.3.0/23'
+      }
+    )
+
+    Update-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetB' $update
+
+    $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
+    
+    $externals.Count | Should -Be 2
+
+    $externals[0].Name -eq "ExternalNetA" | Should -Be $true
+    $externals[0].Desc -eq "External Network A" | Should -Be $true
+    $externals[0].Cidr -eq "10.1.1.0/24" | Should -Be $true
+
+    $externals[1].Name -eq "ExternalNetC" | Should -Be $true
+    $externals[1].Desc -eq "External Network B" | Should -Be $true
+    $externals[1].Cidr -eq "10.1.3.0/23" | Should -Be $true
+  }
+
   # DELETE /api/spaces/{space}/blocks/{block}/externals/{external}
   It 'Delete an External Network' {
-    Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetB'
+    Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetC'
 
     $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
     
@@ -469,7 +504,7 @@ Context 'External Networks' {
   }
 
   # GET /api/spaces/{space}/blocks/{block}/externals/{external}/subnets
-  It 'Verify No Subnets Exist in External Network' {
+  It 'Verify No External Subnets Exist in External Network' {
 
     $subnets, $subnetsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetA/subnets'
     
@@ -477,7 +512,7 @@ Context 'External Networks' {
   }
 
   # POST /api/spaces/{space}/blocks/{block}/externals/{external}/subnets
-  It 'Add a Subnet to an External Network' {
+  It 'Add an External Subnet to an External Network' {
     $script:subnetA = @{
       name = "SubnetA"
       desc = "Subnet A"
@@ -496,7 +531,7 @@ Context 'External Networks' {
   }
 
   # POST /api/spaces/{space}/blocks/{block}/externals/{external}/subnets
-  It 'Add a Second Subnet to an External Network' {
+  It 'Add a Second External Subnet to an External Network' {
     $script:subnetB = @{
       name = "SubnetB"
       desc = "Subnet B"
@@ -519,7 +554,7 @@ Context 'External Networks' {
   }
 
   # GET /api/spaces/{space}/blocks/{block}/externals/{external}/subnets/{subnet}
-  It 'Get Specific Subnet' {
+  It 'Get Specific External Subnet' {
 
     $subnet, $subnetStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetA/subnets/SubnetB'
     
@@ -528,9 +563,44 @@ Context 'External Networks' {
     $subnet.Cidr -eq "10.1.1.64/26" | Should -Be $true
   }
 
+  # PATCH /api/spaces/{space}/blocks/{block}/externals/{external}/subnets/{subnet}
+  It 'Update an External Subnet' {
+    $update = @(
+      @{
+        op = 'replace'
+        path = '/name'
+        value = 'SubnetC'
+      }
+      @{
+        op = 'replace'
+        path = '/desc'
+        value = 'Subnet C'
+      }
+      @{
+        op = 'replace'
+        path = '/cidr'
+        value = '10.1.1.128/27'
+      }
+    )
+
+    Update-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetA/subnets/SubnetB' $update
+
+    $subnets, $subnetsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetA/subnets'
+    
+    $subnets.Count | Should -Be 2
+
+    $subnets[0].Name -eq "SubnetA" | Should -Be $true
+    $subnets[0].Desc -eq "Subnet A" | Should -Be $true
+    $subnets[0].Cidr -eq "10.1.1.0/26" | Should -Be $true
+
+    $subnets[1].Name -eq "SubnetC" | Should -Be $true
+    $subnets[1].Desc -eq "Subnet C" | Should -Be $true
+    $subnets[1].Cidr -eq "10.1.1.128/27" | Should -Be $true
+  }
+
   # DELETE /api/spaces/{space}/blocks/{block}/externals/{external}/subnets/{subnet}
-  It 'Delete an Subnet' {
-    Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetA/subnets/SubnetB'
+  It 'Delete an External Subnet' {
+    Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetA/subnets/SubnetC'
 
     $subnets, $subnetsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetA/subnets'
     
@@ -542,7 +612,7 @@ Context 'External Networks' {
   }
 
   # GET /api/spaces/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints
-  It 'Verify No Endpoints Exist in Subnet' {
+  It 'Verify No External Endpoints Exist in External Subnet' {
 
     $endpoints, $endpointsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetA/subnets/SubnetA/endpoints'
     
@@ -550,7 +620,7 @@ Context 'External Networks' {
   }
 
   # POST /api/spaces/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints
-  It 'Add an Endpoint to a Subnet' {
+  It 'Add an External Endpoint to an External Subnet' {
     $script:endpointA = @{
       name = "EndpointA"
       desc = "Endpoint A"
@@ -569,7 +639,7 @@ Context 'External Networks' {
   }
 
   # POST /api/spaces/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints
-  It 'Add a Second Endpoint to a Subnet' {
+  It 'Add a Second External Endpoint to an External Subnet' {
     $script:endpointB = @{
       name = "EndpointB"
       desc = "Endpoint B"
@@ -592,7 +662,7 @@ Context 'External Networks' {
   }
 
   # PUT /api/spaces/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints
-  It 'Replace Endpoints in Subnet' {
+  It 'Replace External Endpoints in an External Subnet' {
     $script:endpointC = @{
       name = "EndpointC"
       desc = "Endpoint C"
@@ -636,7 +706,7 @@ Context 'External Networks' {
   }
 
   # DELETE /api/spaces/{space}/blocks/{block}/externals/ExternalNetA/subnets/SubnetA/endpoints
-  It 'Delete Endpoint' {
+  It 'Delete External Endpoints' {
     $body = @(
       $script:endpointC.name
       $script:endpointD.name
@@ -658,7 +728,7 @@ Context 'External Networks' {
   }
 
   # GET /api/spaces/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints/{endpoint}
-  It 'Get Specific Endpoint' {
+  It 'Get a Specific External Endpoint' {
 
     $endpoint, $endpointStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetA/subnets/SubnetA/endpoints/EndpointA'
     
@@ -667,17 +737,52 @@ Context 'External Networks' {
     $endpoint.IP | Should -Be "10.1.1.4"
   }
 
+  # PATCH /api/spaces/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints/{endpoint}
+  It 'Update an External Endpoint' {
+    $update = @(
+      @{
+        op = 'replace'
+        path = '/name'
+        value = 'EndpointC'
+      }
+      @{
+        op = 'replace'
+        path = '/desc'
+        value = 'Endpoint C'
+      }
+      @{
+        op = 'replace'
+        path = '/ip'
+        value = '10.1.1.10'
+      }
+    )
+
+    Update-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetA/subnets/SubnetA/endpoints/EndpointB' $update
+
+    $endpoints, $endpointsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetA/subnets/SubnetA/endpoints'
+    
+    $endpoints.Count | Should -Be 2
+
+    $endpoints[0].Name -eq "EndpointA" | Should -Be $true
+    $endpoints[0].Desc -eq "Endpoint A" | Should -Be $true
+    $endpoints[0].IP -eq "10.1.1.4" | Should -Be $true
+
+    $endpoints[1].Name -eq "EndpointC" | Should -Be $true
+    $endpoints[1].Desc -eq "Endpoint C" | Should -Be $true
+    $endpoints[1].IP -eq "10.1.1.10" | Should -Be $true
+  }
+
   # DELETE /api/spaces/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints/{endpoint}
-  It 'Delete an Endpoint' {
-    Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetA/subnets/SubnetA/endpoints/EndpointA'
+  It 'Delete an External Endpoint' {
+    Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetA/subnets/SubnetA/endpoints/EndpointC'
 
     $endpoints, $endpointsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetA/subnets/SubnetA/endpoints'
     
     $endpoints.Count | Should -Be 1
 
-    $endpoints[0].Name -eq "EndpointB" | Should -Be $true
-    $endpoints[0].Desc -eq "Endpoint B" | Should -Be $true
-    $endpoints[0].IP -eq "10.1.1.1" | Should -Be $true
+    $endpoints[0].Name -eq "EndpointA" | Should -Be $true
+    $endpoints[0].Desc -eq "Endpoint A" | Should -Be $true
+    $endpoints[0].IP -eq "10.1.1.4" | Should -Be $true
   }
 }
 
@@ -702,11 +807,18 @@ Context 'Reservations' {
       desc = "Test Reservation B"
     }
 
+    $bodyC = @{
+      size = 24
+      desc = "Test Reservation C"
+    }
+
     $script:reservationA, $reservationAStatus = New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $bodyA
     $script:reservationB, $reservationBStatus = New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $bodyB
+    $script:reservationC, $reservationCStatus = New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $bodyC
+
     $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations'
     
-    $reservations.Count | Should -Be 2
+    $reservations.Count | Should -Be 3
 
     $reservations[0].Space -eq "TestSpaceA" | Should -Be $true
     $reservations[0].Block -eq "TestBlockA" | Should -Be $true
@@ -719,6 +831,12 @@ Context 'Reservations' {
     $reservations[1].Desc -eq "Test Reservation B" | Should -Be $true
     $reservations[1].Cidr -eq "10.1.3.0/24" | Should -Be $true
     $reservations[1].SettledOn -eq $null | Should -Be $true
+
+    $reservations[2].Space -eq "TestSpaceA" | Should -Be $true
+    $reservations[2].Block -eq "TestBlockA" | Should -Be $true
+    $reservations[2].Desc -eq "Test Reservation C" | Should -Be $true
+    $reservations[2].Cidr -eq "10.1.4.0/24" | Should -Be $true
+    $reservations[2].SettledOn -eq $null | Should -Be $true
   }
 
   # Create an Azure Virtual Network w/ Reservation ID Tag and Verify it's Automatically Imported into IPAM
@@ -742,16 +860,18 @@ Context 'Reservations' {
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetA.Id | Should -Be $true
     $($networks | Select-Object -ExpandProperty id) -contains $script:newNetC.Id | Should -Be $true
 
-    $reservations.Count | Should -Be 2
+    $reservations.Count | Should -Be 3
 
     $reservations[0].SettledOn -eq $null | Should -Be $false
     $reservations[0].Status -eq "fulfilled" | Should -Be $true
     $reservations[1].SettledOn -eq $null | Should -Be $true
     $reservations[1].Status -eq "wait" | Should -Be $true
+    $reservations[2].SettledOn -eq $null | Should -Be $true
+    $reservations[2].Status -eq "wait" | Should -Be $true
   }
 
   # DELETE /api/spaces/{space}/blocks/{block}/reservations
-  It 'Delete A Reservation' {
+  It 'Delete Reservations' {
     $body = @(
       $script:reservationB.Id
     )
@@ -764,12 +884,46 @@ Context 'Reservations' {
 
     $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $query
 
-    $reservations.Count | Should -Be 2
+    $reservations.Count | Should -Be 3
 
     $reservations[0].SettledOn -eq $null | Should -Be $false
     $reservations[0].Status -eq "fulfilled" | Should -Be $true
     $reservations[1].SettledOn -eq $null | Should -Be $false
     $reservations[1].Status -eq "cancelledByUser" | Should -Be $true
+    $reservations[2].SettledOn -eq $null | Should -Be $true
+    $reservations[2].Status -eq "wait" | Should -Be $true
+  }
+
+  # GET /api/spaces/{space}/blocks/{block}/reservations/{reservationId}
+  It 'Get a Specific Reservation' {
+
+    $reservation, $reservationStatus = Get-ApiResource "/spaces/TestSpaceA/blocks/TestBlockA/reservations/$($script:reservationA.Id)"
+    
+    $reservation.Space -eq "TestSpaceA" | Should -Be $true
+    $reservation.Block -eq "TestBlockA" | Should -Be $true
+    $reservation.Desc -eq "Test Reservation C" | Should -Be $true
+    $reservation.Cidr -eq "10.1.4.0/24" | Should -Be $true
+    $reservation.SettledOn -eq $null | Should -Be $true
+  }
+
+  # DELETE /api/spaces/{space}/blocks/{block}/reservations/{reservationId}
+  It 'Delete a Specific Reservation' {
+    $query = @{
+      settled = $true
+    }
+
+    Remove-ApiResource "/spaces/TestSpaceA/blocks/TestBlockA/reservations/$($script:reservationA.Id)"
+
+    $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $query
+
+    $reservations.Count | Should -Be 3
+
+    $reservations[0].SettledOn -eq $null | Should -Be $false
+    $reservations[0].Status -eq "fulfilled" | Should -Be $true
+    $reservations[1].SettledOn -eq $null | Should -Be $false
+    $reservations[1].Status -eq "cancelledByUser" | Should -Be $true
+    $reservations[2].SettledOn -eq $null | Should -Be $false
+    $reservations[2].Status -eq "cancelledByUser" | Should -Be $true
   }
 }
 

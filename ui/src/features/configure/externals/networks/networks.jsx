@@ -29,7 +29,7 @@ import {
   TaskAltOutlined,
   CancelOutlined,
   AddOutlined,
-  // EditOutlined,
+  EditOutlined,
   DeleteOutline
 } from "@mui/icons-material";
 
@@ -39,6 +39,7 @@ import {
 } from "../../../ipam/ipamSlice";
 
 import AddExtNetwork from "./utils/addNetwork";
+import EditExtNetwork from "./utils/editNetwork";
 import DeleteExtNetwork from "./utils/deleteNetwork";
 
 import { ExternalContext } from "../externalContext";
@@ -58,6 +59,7 @@ function HeaderMenu(props) {
     selectedBlock,
     selectedExternal,
     setAddExtOpen,
+    setEditExtOpen,
     setDelExtOpen,
     saving,
     sendResults,
@@ -78,6 +80,11 @@ function HeaderMenu(props) {
 
   const onAddExt = () => {
     setAddExtOpen(true);
+    setMenuOpen(false);
+  }
+
+  const onEditExt = () => {
+    setEditExtOpen(true);
     setMenuOpen(false);
   }
 
@@ -183,15 +190,15 @@ function HeaderMenu(props) {
               </ListItemIcon>
               Add Network
             </MenuItem>
-            {/* <MenuItem
-              onClick={() => console.log("EDIT!")}
-              disabled={ true }
+            <MenuItem
+              onClick={onEditExt}
+              disabled={ !selectedExternal }
             >
               <ListItemIcon>
                 <EditOutlined fontSize="small" />
               </ListItemIcon>
               Edit Network
-            </MenuItem> */}
+            </MenuItem>
             <MenuItem
               onClick={onDelExt}
               disabled={ !selectedExternal }
@@ -253,6 +260,7 @@ const Networks = (props) => {
   const [columnSortState, setColumnSortState] = React.useState({});
 
   const [addExtOpen, setAddExtOpen] = React.useState(false);
+  const [editExtOpen, setEditExtOpen] = React.useState(false);
   const [delExtOpen, setDelExtOpen] = React.useState(false);
 
   const viewSetting = useSelector(state => selectViewSetting(state, 'extnetworks'));
@@ -486,6 +494,14 @@ const Networks = (props) => {
         block={selectedBlock ? selectedBlock : null}
         externals={externals}
       />
+      <EditExtNetwork
+        open={editExtOpen}
+        handleClose={() => setEditExtOpen(false)}
+        space={selectedSpace ? selectedSpace.name : null}
+        block={selectedBlock ? selectedBlock : null}
+        externals={externals}
+        selectedExternal={selectedExternal}
+      />
       <DeleteExtNetwork
         open={delExtOpen}
         handleClose={() => setDelExtOpen(false)}
@@ -493,7 +509,7 @@ const Networks = (props) => {
         block={selectedBlock ? selectedBlock.name : null}
         external={selectedExternal ? selectedExternal.name : null}
       />
-      <ExtNetworkContext.Provider value={{ selectedSpace, selectedBlock, selectedExternal, setAddExtOpen, setDelExtOpen, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+      <ExtNetworkContext.Provider value={{ selectedSpace, selectedBlock, selectedExternal, setAddExtOpen, setEditExtOpen, setDelExtOpen, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
           <Box sx={{ display: 'flex', height: '35px', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(224, 224, 224, 1)', borderBottom: 'none' }}>
             <Typography variant='button'>

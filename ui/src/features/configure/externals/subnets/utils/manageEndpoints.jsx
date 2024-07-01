@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { styled } from "@mui/material/styles";
 
-import { isEmpty, isEqual, pickBy, orderBy, cloneDeep } from "lodash";
+import { omit, isEmpty, isEqual, pickBy, orderBy, cloneDeep } from "lodash";
 
 import { useSnackbar } from "notistack";
 
@@ -13,6 +13,8 @@ import "@inovua/reactdatagrid-community/theme/default-dark.css";
 import Draggable from "react-draggable";
 
 import { useTheme } from "@mui/material/styles";
+
+import md5 from "md5";
 
 import {
   Box,
@@ -43,7 +45,9 @@ import {
   TaskAltOutlined,
   CancelOutlined,
   PlaylistAddOutlined,
-  HighlightOff,
+  PlaylistAddCheckOutlined,
+  PlaylistRemoveOutlined,
+  // HighlightOff,
   InfoOutlined
 } from "@mui/icons-material";
 
@@ -56,7 +60,8 @@ import {
 } from "../../../../ipam/ipamSlice";
 
 import {
-  expandCIDR
+  expandCIDR,
+  getSubnetSize
 } from "../../../../tools/planner/utils/iputils";
 
 import {
@@ -87,7 +92,7 @@ const gridStyle = {
 
 function RenderDelete(props) {
   const { value } = props;
-  const { endpoints, setAdded, deleted, setDeleted, selectionModel } = React.useContext(EndpointContext);
+  const { setChanges, selectionModel } = React.useContext(EndpointContext);
 
   const flexCenter = {
     display: "flex",
@@ -108,14 +113,18 @@ function RenderDelete(props) {
           disableTouchRipple
           disableRipple
           onClick={() => {
-            if(endpoints.find(e => e.name === value.name) && !deleted.includes(value.name)) {
-              setDeleted(prev => [...prev, value.name]);
-            } else {
-              setAdded(prev => prev.filter(e => e.name !== value.name));
-            }
+            var endpointDetails = cloneDeep(value);
+
+            endpointDetails['op'] = "delete";
+
+            setChanges(prev => [
+              ...prev,
+              endpointDetails
+            ]);
           }}
         >
-          <HighlightOff />
+          {/* <HighlightOff /> */}
+          <PlaylistRemoveOutlined />
         </IconButton>
       </span>
     </Tooltip>
@@ -284,8 +293,7 @@ export default function ManageExtEndpoints(props) {
   const [sendResults, setSendResults] = React.useState(null);
   const [endpoints, setEndpoints] = React.useState(null);
   const [addressOptions, setAddressOptions] = React.useState([]);
-  const [added, setAdded] = React.useState([]);
-  const [deleted, setDeleted] = React.useState([]);
+  const [changes, setChanges] = React.useState([]);
   const [gridData, setGridData] = React.useState(null);
   const [sending, setSending] = React.useState(false);
   const [selectionModel, setSelectionModel] = React.useState({});
@@ -331,6 +339,31 @@ export default function ManageExtEndpoints(props) {
     setSelectionModel(prevState => {
       if(!prevState.hasOwnProperty(id)) {
         newSelectionModel[id] = data;
+
+        setEndName({ value: data.name, error: false });
+        setEndDesc({ value: data.desc, error: false });
+        setEndAddrInput(data.ip);
+        setEndAddr(data.ip);
+
+        const endpointAddresses = endpoints.map(e => {
+          if (data.ip !== e.ip) {
+            return e.ip;
+          }
+        });
+
+        const newAddressOptions = expandCIDR(subnet.cidr).slice(1,-1).filter(addr => !endpointAddresses.includes(addr));
+  
+        setAddressOptions(newAddressOptions);
+      } else {
+        setEndName({ value: "", error: true });
+        setEndDesc({ value: "", error: true });
+        setEndAddrInput("");
+        setEndAddr(null);
+
+        const endpointAddresses = endpoints.map(e => e.ip);
+        const newAddressOptions = expandCIDR(subnet.cidr).slice(1,-1).filter(addr => !endpointAddresses.includes(addr));
+  
+        setAddressOptions(["<auto>", ...newAddressOptions]);
       }
       
       return newSelectionModel;
@@ -482,14 +515,43 @@ export default function ManageExtEndpoints(props) {
 
   function onAddExternal() {
     if(!hasError) {
-      setAdded(prev => [
-        ...prev,
-        {
-          name: endName.value,
-          desc: endDesc.value,
-          ip: endAddr
+      var endpointDetails =         {
+        name: endName.value,
+        desc: endDesc.value,
+        ip: endAddr
+      };
+
+      endpointDetails['id'] = md5(JSON.stringify(endpointDetails));
+
+      if (Object.keys(selectionModel).length !== 0) {
+        const updates = {
+          op: "update",
+          old: Object.values(selectionModel)[0],
+          new: endpointDetails
         }
-      ]);
+
+        setChanges(prev => [
+          ...prev,
+          updates
+        ]);
+      } else {
+        const numEndpoints = endpoints.length;
+        const numAdditions = changes.filter(change => change.op === "add").length;
+        const numDeletions = changes.filter(change => change.op === "delete").length;
+        const subnetSize = getSubnetSize(subnet.cidr) - 2;
+
+        if (((numEndpoints + numAdditions) - numDeletions) >= subnetSize) {
+          enqueueSnackbar(`Number of endpoints cannot exceed subnet size of ${subnetSize}`, { variant: "error" });
+          return;
+        }
+
+        endpointDetails['op'] = "add";
+
+        setChanges(prev => [
+          ...prev,
+          endpointDetails
+        ]);
+      }
 
       setEndName({ value: "", error: true });
       setEndDesc({ value: "", error: true });
@@ -533,15 +595,15 @@ export default function ManageExtEndpoints(props) {
 
   const onCancel = React.useCallback(() => {
     if (open) {
-      setAdded([]);
-      setDeleted([]);
+      handleClose();
+
+      setSelectionModel({});
+      setChanges([]);
 
       setEndName({ value: "", error: true });
       setEndDesc({ value: "", error: true });
       setEndAddrInput("");
       setEndAddr(null);
-
-      handleClose();
     }
   }, [open, handleClose]);
 
@@ -561,7 +623,17 @@ export default function ManageExtEndpoints(props) {
       );
 
       const nameError = newName ? !regex.test(newName) : false;
-      const nameExists = endpoints.map(e => e.name.toLowerCase()).includes(newName.toLowerCase());
+      const nameExists = endpoints?.reduce((acc, curr) => {
+        if(Object.keys(selectionModel).length !== 0) {
+          if (curr['name'].toLowerCase() !== Object.values(selectionModel)[0].name.toLowerCase()) {
+            acc.push(curr['name'].toLowerCase());
+          }
+        } else {
+          acc.push(curr['name'].toLowerCase());
+        }
+
+        return acc;
+      }, []).includes(newName.toLowerCase());
 
       setEndName({
           value: newName,
@@ -594,16 +666,40 @@ export default function ManageExtEndpoints(props) {
     if(subnet) {
       var newEndpoints = cloneDeep(subnet['endpoints']);
 
-      newEndpoints = newEndpoints.filter(e => !deleted.includes(e.name));
-      newEndpoints = newEndpoints.concat(added);
-
-      const newData = newEndpoints.reduce((acc, curr) => {
-        curr['id'] = `${subnet}@${curr.name}}`
+      var newData = newEndpoints.reduce((acc, curr) => {
+        // curr['id'] = `${subnet}@${curr.name}}`;
+        curr['id'] = md5(JSON.stringify(curr));
 
         acc.push(curr);
 
         return acc;
       }, []);
+
+      changes.forEach(change => {
+        switch(change.op) {
+          case "add": {
+            newData.push(omit(change, 'op'));
+
+            break;
+          }
+          case "update": {
+            const index = newData.findIndex(e => e.name === change.old.name);
+
+            if (index !== -1) {
+              newData[index] = change.new;
+            }
+
+            break;
+          }
+          case "delete": {
+            newData = newData.filter(e => e.name !== change.name);
+
+            break;
+          }
+          default:
+            break;
+        }
+      });
 
       const endpointAddresses = newData.map(e => e.ip);
       const newAddressOptions = expandCIDR(subnet.cidr).slice(1,-1).filter(addr => !endpointAddresses.includes(addr));
@@ -613,10 +709,10 @@ export default function ManageExtEndpoints(props) {
     } else {
       onCancel();
     }
-  }, [subnet, added, deleted, onCancel]);
+  }, [subnet, changes, onCancel]);
 
   return (
-    <EndpointContext.Provider value={{ endpoints, setAdded, deleted, setDeleted, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+    <EndpointContext.Provider value={{ endpoints, setChanges, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
       <Dialog
         open={open}
         onClose={onCancel}
@@ -674,7 +770,11 @@ export default function ManageExtEndpoints(props) {
                 color: theme.palette.mode === 'dark' ? '#9ba7b4' : '#555e68'
               }}
             >
-              Add New Endpoint
+              {
+                Object.keys(selectionModel).length !== 0 ?
+                "Edit Existing Endpoint" :
+                "Add New Endpoint"
+              }
             </span>
           </Box>
           <Box
@@ -884,17 +984,31 @@ export default function ManageExtEndpoints(props) {
                     disabled={(hasError || sending || refreshing)}
                     onClick={onAddExternal}
                   >
-                    <PlaylistAddOutlined
-                      style={
-                        theme.palette.mode === 'dark'
-                        ? (hasError || sending || refreshing)
-                          ? { color: "lightgrey", opacity: 0.25 }
-                          : { color: "forestgreen", opacity: 1 }
-                        : (hasError || sending || refreshing)
-                          ? { color: "black", opacity: 0.25 }
-                          : { color: "limegreen", opacity: 1 }
-                      }
-                    />
+                    {
+                      Object.keys(selectionModel).length !== 0 ?
+                      <PlaylistAddCheckOutlined
+                        style={
+                          theme.palette.mode === 'dark'
+                          ? (hasError || sending || refreshing)
+                            ? { color: "lightgrey", opacity: 0.25 }
+                            : { color: "forestgreen", opacity: 1 }
+                          : (hasError || sending || refreshing)
+                            ? { color: "black", opacity: 0.25 }
+                            : { color: "limegreen", opacity: 1 }
+                        }
+                      /> :
+                      <PlaylistAddOutlined
+                        style={
+                          theme.palette.mode === 'dark'
+                          ? (hasError || sending || refreshing)
+                            ? { color: "lightgrey", opacity: 0.25 }
+                            : { color: "forestgreen", opacity: 1 }
+                          : (hasError || sending || refreshing)
+                            ? { color: "black", opacity: 0.25 }
+                            : { color: "limegreen", opacity: 1 }
+                        }
+                      />
+                    }
                   </IconButton>
                 </span>
               </Tooltip>
