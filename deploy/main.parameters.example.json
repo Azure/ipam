@@ -28,9 +28,6 @@
     },
     "privateAcr": {
       "value": false
-    },
-    "disableUi": {
-      "value": false
     }
   }
 }
