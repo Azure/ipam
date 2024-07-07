@@ -56,7 +56,8 @@ import LoadingButton from "@mui/lab/LoadingButton";
 import {
   replaceBlockExtSubnetEndpointsAsync,
   selectViewSetting,
-  updateMeAsync
+  updateMeAsync,
+  getAdminStatus
 } from "../../../../ipam/ipamSlice";
 
 import {
@@ -308,6 +309,7 @@ export default function ManageExtEndpoints(props) {
   const [endAddrInput, setEndAddrInput] = React.useState("");
   const [endAddr, setEndAddr] = React.useState(null);
 
+  const isAdmin = useSelector(getAdminStatus);
   const viewSetting = useSelector(state => selectViewSetting(state, 'extendpoints'));
 
   const dispatch = useDispatch();
@@ -748,6 +750,8 @@ export default function ManageExtEndpoints(props) {
           <DialogContentText>
             Define the Endpoints below which should be associated with the Subnet <Spotlight>'{subnet && subnet.name}'</Spotlight>
           </DialogContentText>
+          { isAdmin &&
+          <React.Fragment>
           <Box
             sx={{
               mt: 4,
@@ -976,7 +980,7 @@ export default function ManageExtEndpoints(props) {
               <Tooltip
                 arrow
                 placement="top"
-                title="Add Network"
+                title={ Object.keys(selectionModel).length !== 0 ? "Update Network" : "Add Network" }
               >
                 <span>
                   <IconButton
@@ -1014,6 +1018,8 @@ export default function ManageExtEndpoints(props) {
               </Tooltip>
             </Box>
           </Box>
+          </React.Fragment>
+          }
           <Box
             sx={{
               mt: 4,
@@ -1070,7 +1076,7 @@ export default function ManageExtEndpoints(props) {
               dataSource={gridData || []}
               sortInfo={columnSortState}
               defaultFilterValue={filterValue}
-              onRowClick={(rowData) => onClick(rowData.data)}
+              onRowClick={(rowData) => { isAdmin && onClick(rowData.data)}}
               onCellDoubleClick={onCellDoubleClick}
               selected={selectionModel}
               style={gridStyle}

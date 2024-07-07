@@ -35,7 +35,8 @@ import {
 
 import {
   selectViewSetting,
-  updateMeAsync
+  updateMeAsync,
+  getAdminStatus
 } from "../../../ipam/ipamSlice";
 
 import AddExtNetwork from "./utils/addNetwork";
@@ -72,6 +73,7 @@ function HeaderMenu(props) {
 
   const menuRef = React.useRef(null);
 
+  const isAdmin = useSelector(getAdminStatus);
   const viewSetting = useSelector(state => selectViewSetting(state, setting));
 
   const onClick = () => {
@@ -183,7 +185,7 @@ function HeaderMenu(props) {
           >
             <MenuItem
               onClick={onAddExt}
-              disabled={ !selectedSpace || !selectedBlock }
+              disabled={ !selectedSpace || !selectedBlock || !isAdmin }
             >
               <ListItemIcon>
                 <AddOutlined fontSize="small" />
@@ -192,7 +194,7 @@ function HeaderMenu(props) {
             </MenuItem>
             <MenuItem
               onClick={onEditExt}
-              disabled={ !selectedExternal }
+              disabled={ !selectedExternal || !isAdmin }
             >
               <ListItemIcon>
                 <EditOutlined fontSize="small" />
@@ -201,7 +203,7 @@ function HeaderMenu(props) {
             </MenuItem>
             <MenuItem
               onClick={onDelExt}
-              disabled={ !selectedExternal }
+              disabled={ !selectedExternal || !isAdmin }
             >
               <ListItemIcon>
                 <DeleteOutline fontSize="small" />
@@ -263,6 +265,7 @@ const Networks = (props) => {
   const [editExtOpen, setEditExtOpen] = React.useState(false);
   const [delExtOpen, setDelExtOpen] = React.useState(false);
 
+  const isAdmin = useSelector(getAdminStatus);
   const viewSetting = useSelector(state => selectViewSetting(state, 'extnetworks'));
 
   const saveTimer = React.useRef();
@@ -487,28 +490,32 @@ const Networks = (props) => {
 
   return (
     <React.Fragment>
-      <AddExtNetwork
-        open={addExtOpen}
-        handleClose={() => setAddExtOpen(false)}
-        space={selectedSpace ? selectedSpace.name : null}
-        block={selectedBlock ? selectedBlock : null}
-        externals={externals}
-      />
-      <EditExtNetwork
-        open={editExtOpen}
-        handleClose={() => setEditExtOpen(false)}
-        space={selectedSpace ? selectedSpace.name : null}
-        block={selectedBlock ? selectedBlock : null}
-        externals={externals}
-        selectedExternal={selectedExternal}
-      />
-      <DeleteExtNetwork
-        open={delExtOpen}
-        handleClose={() => setDelExtOpen(false)}
-        space={selectedSpace ? selectedSpace.name : null}
-        block={selectedBlock ? selectedBlock.name : null}
-        external={selectedExternal ? selectedExternal.name : null}
-      />
+      { isAdmin &&
+        <React.Fragment>
+          <AddExtNetwork
+            open={addExtOpen}
+            handleClose={() => setAddExtOpen(false)}
+            space={selectedSpace ? selectedSpace.name : null}
+            block={selectedBlock ? selectedBlock : null}
+            externals={externals}
+          />
+          <EditExtNetwork
+            open={editExtOpen}
+            handleClose={() => setEditExtOpen(false)}
+            space={selectedSpace ? selectedSpace.name : null}
+            block={selectedBlock ? selectedBlock : null}
+            externals={externals}
+            selectedExternal={selectedExternal}
+          />
+          <DeleteExtNetwork
+            open={delExtOpen}
+            handleClose={() => setDelExtOpen(false)}
+            space={selectedSpace ? selectedSpace.name : null}
+            block={selectedBlock ? selectedBlock.name : null}
+            external={selectedExternal ? selectedExternal.name : null}
+          />
+        </React.Fragment>
+      }
       <ExtNetworkContext.Provider value={{ selectedSpace, selectedBlock, selectedExternal, setAddExtOpen, setEditExtOpen, setDelExtOpen, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
           <Box sx={{ display: 'flex', height: '35px', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(224, 224, 224, 1)', borderBottom: 'none' }}>

@@ -471,7 +471,7 @@ Context 'External Networks' {
       @{
         op = 'replace'
         path = '/cidr'
-        value = '10.1.3.0/23'
+        value = '10.1.3.0/24'
       }
     )
 
@@ -486,8 +486,8 @@ Context 'External Networks' {
     $externals[0].Cidr -eq "10.1.1.0/24" | Should -Be $true
 
     $externals[1].Name -eq "ExternalNetC" | Should -Be $true
-    $externals[1].Desc -eq "External Network B" | Should -Be $true
-    $externals[1].Cidr -eq "10.1.3.0/23" | Should -Be $true
+    $externals[1].Desc -eq "External Network C" | Should -Be $true
+    $externals[1].Cidr -eq "10.1.3.0/24" | Should -Be $true
   }
 
   # DELETE /api/spaces/{space}/blocks/{block}/externals/{external}
@@ -897,7 +897,7 @@ Context 'Reservations' {
   # GET /api/spaces/{space}/blocks/{block}/reservations/{reservationId}
   It 'Get a Specific Reservation' {
 
-    $reservation, $reservationStatus = Get-ApiResource "/spaces/TestSpaceA/blocks/TestBlockA/reservations/$($script:reservationA.Id)"
+    $reservation, $reservationStatus = Get-ApiResource "/spaces/TestSpaceA/blocks/TestBlockA/reservations/$($script:reservationC.Id)"
     
     $reservation.Space -eq "TestSpaceA" | Should -Be $true
     $reservation.Block -eq "TestBlockA" | Should -Be $true
@@ -912,7 +912,7 @@ Context 'Reservations' {
       settled = $true
     }
 
-    Remove-ApiResource "/spaces/TestSpaceA/blocks/TestBlockA/reservations/$($script:reservationA.Id)"
+    Remove-ApiResource "/spaces/TestSpaceA/blocks/TestBlockA/reservations/$($script:reservationC.Id)"
 
     $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $query
 

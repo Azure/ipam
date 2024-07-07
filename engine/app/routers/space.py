@@ -176,7 +176,7 @@ async def scrub_block_patch(patch, space_name, block_name, tenant_id):
         {
             "op": "replace",
             "path": "/name",
-            "valid": valid_ext_network_name_update,
+            "valid": valid_block_name_update,
             "error": "Block name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, slashes, and periods."
         },
         {
@@ -1374,8 +1374,8 @@ async def available_block_nets(
 
     available_vnets = []
 
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
+    # if not is_admin:
+    #     raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
@@ -1389,7 +1389,7 @@ async def available_block_nets(
     if not target_block:
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
-    net_list = await get_network(authorization, True)
+    net_list = await get_network(authorization, tenant_id, is_admin)
     resv_cidrs = IPSet(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
     ext_cidrs = IPSet(x['cidr'] for x in target_block['externals'])
 

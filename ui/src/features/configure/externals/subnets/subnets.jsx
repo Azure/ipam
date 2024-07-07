@@ -36,7 +36,8 @@ import {
 
 import {
   selectViewSetting,
-  updateMeAsync
+  updateMeAsync,
+  getAdminStatus
 } from "../../../ipam/ipamSlice";
 
 import AddExtSubnet from "./utils/addSubnet";
@@ -74,6 +75,7 @@ function HeaderMenu(props) {
 
   const menuRef = React.useRef(null);
 
+  const isAdmin = useSelector(getAdminStatus);
   const viewSetting = useSelector(state => selectViewSetting(state, setting));
 
   const onClick = () => {
@@ -190,7 +192,7 @@ function HeaderMenu(props) {
           >
             <MenuItem
               onClick={onAddExtSub}
-              disabled={ !selectedExternal }
+              disabled={ !selectedExternal || !isAdmin }
             >
               <ListItemIcon>
                 <AddOutlined fontSize="small" />
@@ -199,7 +201,7 @@ function HeaderMenu(props) {
             </MenuItem>
             <MenuItem
               onClick={onEditExtSub}
-              disabled={ !selectedSubnet }
+              disabled={ !selectedSubnet || !isAdmin }
             >
               <ListItemIcon>
                 <EditOutlined fontSize="small" />
@@ -208,7 +210,7 @@ function HeaderMenu(props) {
             </MenuItem>
             <MenuItem
               onClick={onDelExtSub}
-              disabled={ !selectedSubnet }
+              disabled={ !selectedSubnet || !isAdmin }
             >
               <ListItemIcon>
                 <DeleteOutline fontSize="small" />
@@ -281,6 +283,7 @@ const Subnets = (props) => {
   const [delExtSubOpen, setDelExtSubOpen] = React.useState(false);
   const [manExtEndOpen, setManExtEndOpen] = React.useState(false);
 
+  const isAdmin = useSelector(getAdminStatus);
   const viewSetting = useSelector(state => selectViewSetting(state, 'extsubnets'));
 
   const saveTimer = React.useRef();
@@ -505,31 +508,35 @@ const Subnets = (props) => {
 
   return (
     <React.Fragment>
-      <AddExtSubnet
-        open={addExtSubOpen}
-        handleClose={() => setAddExtSubOpen(false)}
-        space={selectedSpace ? selectedSpace.name : null}
-        block={selectedBlock ? selectedBlock.name : null}
-        external={selectedExternal ? selectedExternal : null}
-        subnets={subnets}
-      />
-      <EditExtSubnet
-        open={editExtSubOpen}
-        handleClose={() => setEditExtSubOpen(false)}
-        space={selectedSpace ? selectedSpace.name : null}
-        block={selectedBlock ? selectedBlock.name : null}
-        external={selectedExternal ? selectedExternal : null}
-        subnets={subnets}
-        selectedSubnet={selectedSubnet}
-      />
-      <DeleteExtSubnet
-        open={delExtSubOpen}
-        handleClose={() => setDelExtSubOpen(false)}
-        space={selectedSpace ? selectedSpace.name : null}
-        block={selectedBlock ? selectedBlock.name : null}
-        external={selectedExternal ? selectedExternal.name : null}
-        subnet={selectedSubnet ? selectedSubnet.name : null}
-      />
+      { !isAdmin &&
+        <React.Fragment>
+          <AddExtSubnet
+            open={addExtSubOpen}
+            handleClose={() => setAddExtSubOpen(false)}
+            space={selectedSpace ? selectedSpace.name : null}
+            block={selectedBlock ? selectedBlock.name : null}
+            external={selectedExternal ? selectedExternal : null}
+            subnets={subnets}
+          />
+          <EditExtSubnet
+            open={editExtSubOpen}
+            handleClose={() => setEditExtSubOpen(false)}
+            space={selectedSpace ? selectedSpace.name : null}
+            block={selectedBlock ? selectedBlock.name : null}
+            external={selectedExternal ? selectedExternal : null}
+            subnets={subnets}
+            selectedSubnet={selectedSubnet}
+          />
+          <DeleteExtSubnet
+            open={delExtSubOpen}
+            handleClose={() => setDelExtSubOpen(false)}
+            space={selectedSpace ? selectedSpace.name : null}
+            block={selectedBlock ? selectedBlock.name : null}
+            external={selectedExternal ? selectedExternal.name : null}
+            subnet={selectedSubnet ? selectedSubnet.name : null}
+          />
+        </React.Fragment>
+      }
       <ManageExtEndpoints
         open={manExtEndOpen}
         handleClose={() => setManExtEndOpen(false)}
