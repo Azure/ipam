@@ -23,6 +23,13 @@ function getIpRangeForSubnet(cidr) {
   return results;
 }
 
+export function getSubnetSize(cidr) {
+  var mask = parseInt(cidr.split('/')[1], 10);
+  var size = Math.pow(2, (32 - mask));
+
+  return size;
+}
+
 export function isSubnetOverlap(subnetCIDR, existingSubnetCIDR) {
   var ipRangeforCurrent = getIpRangeForSubnet(subnetCIDR);
 

@@ -13,13 +13,13 @@ ENV PIP_ROOT_USER_ACTION=ignore
 WORKDIR /ipam
 
 # Copy Requirements File
-ADD ./requirements.txt .
+ADD ./requirements.lock.txt .
 
 # Upgrade PIP
 RUN pip install --upgrade pip --progress-bar off
 
 # Install Dependencies
-RUN pip install --no-cache-dir --upgrade -r ./requirements.txt --progress-bar off
+RUN pip install --no-cache-dir --upgrade -r ./requirements.lock.txt --progress-bar off
 
 # Copy Application Scripts & Sources
 ADD ./app ./app

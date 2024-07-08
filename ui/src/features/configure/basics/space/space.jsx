@@ -156,25 +156,25 @@ export default function SpaceDataGrid(props) {
     <React.Fragment>
       { isAdmin &&
         <React.Fragment>
-        <EditSpace
-          open={editSpaceOpen}
-          handleClose={() => setEditSpaceOpen(false)}
-          space={selectedSpace ? selectedSpace : null}
-          spaces={spaces}
-          refresh={refresh}
-        />
-        <AddSpace
-          open={addSpaceOpen}
-          handleClose={() => setAddSpaceOpen(false)}
-          spaces={spaces}
-          refresh={refresh}
-        />
-        <ConfirmDelete
-          open={deleteSpaceOpen}
-          handleClose={() => setDeleteSpaceOpen(false)}
-          space={selectedSpace ? selectedSpace.name : null}
-          refresh={refresh}
-        />
+          <EditSpace
+            open={editSpaceOpen}
+            handleClose={() => setEditSpaceOpen(false)}
+            space={selectedSpace ? selectedSpace : null}
+            spaces={spaces}
+            refresh={refresh}
+          />
+          <AddSpace
+            open={addSpaceOpen}
+            handleClose={() => setAddSpaceOpen(false)}
+            spaces={spaces}
+            refresh={refresh}
+          />
+          <ConfirmDelete
+            open={deleteSpaceOpen}
+            handleClose={() => setDeleteSpaceOpen(false)}
+            space={selectedSpace ? selectedSpace.name : null}
+            refresh={refresh}
+          />
         </React.Fragment>
       }
       <GridHeader
@@ -186,93 +186,94 @@ export default function SpaceDataGrid(props) {
         <Box sx={{ width: "20%" }}></Box>
         <GridTitle>{selectedSpace ? `'${selectedSpace.name}' selected` : "Spaces"}</GridTitle>
         <Box sx={{ width: "20%", display: "flex", justifyContent: "flex-end" }}>
-          { isAdmin &&
-            <React.Fragment>
-              <Tooltip title="Actions">
-                <IconButton
-                  aria-label="upload picture"
-                  component="span"
-                  onClick={handleMenuClick}
-                  sx={{ mr: 1.5 }}
-                >
-                  <MoreVertIcon />
-                </IconButton>
-              </Tooltip>
-              <Menu
-                id="demo-positioned-menu"
-                aria-labelledby="demo-positioned-button"
-                anchorEl={anchorEl}
-                open={menuOpen}
-                onClose={handleMenuClose}
-                anchorOrigin={{
-                  vertical: "bottom",
-                  horizontal: "right",
-                }}
-                transformOrigin={{
-                  vertical: "top",
-                  horizontal: "right",
-                }}
-                PaperProps={{
-                  elevation: 0,
-                  style: {
-                    width: 200,
-                  },
-                  sx: {
-                    overflow: "visible",
-                    filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
-                    mt: 1.5,
-                    "& .MuiAvatar-root": {
-                      width: 32,
-                      height: 32,
-                      ml: -0.5,
-                      mr: 1,
-                    },
-                    "&:before": {
-                      content: '""',
-                      display: "block",
-                      position: "absolute",
-                      top: 0,
-                      right: 14,
-                      width: 10,
-                      height: 10,
-                      bgcolor: "background.paper",
-                      transform: "translateY(-50%) rotate(45deg)",
-                      zIndex: 0,
-                    },
-                  },
-                }}
+          <React.Fragment>
+            <Tooltip title="Actions">
+              <IconButton
+                aria-label="spaces menu"
+                component="span"
+                onClick={handleMenuClick}
+                sx={{ mr: 1.5 }}
               >
-                <MenuItem onClick={handleAddSpace}>
-                  <ListItemIcon>
-                    {/* <CloudQueueIcon fontSize="small" /> */}
-                    <SvgIcon fontSize="small">
-                      <Space />
-                    </SvgIcon>
-                  </ListItemIcon>
-                  Add Space
-                </MenuItem>
-                <MenuItem
-                  onClick={handleEditSpace}
-                  disabled={!selectedSpace}
-                >
-                  <ListItemIcon>
-                    <EditIcon fontSize="small" />
-                  </ListItemIcon>
-                  Edit Space
-                </MenuItem>
-                <Divider />
-                <MenuItem
-                  onClick={handleDeleteSpace}
-                  disabled={!selectedSpace}
-                >
-                  <ListItemIcon>
-                    <DeleteOutlineIcon fontSize="small" />
-                  </ListItemIcon>
-                  Delete
-                </MenuItem>
-              </Menu>
-            </React.Fragment>
-          }
+                <MoreVertIcon />
+              </IconButton>
+            </Tooltip>
+            <Menu
+              id="demo-positioned-menu"
+              aria-labelledby="demo-positioned-button"
+              anchorEl={anchorEl}
+              open={menuOpen}
+              onClose={handleMenuClose}
+              anchorOrigin={{
+                vertical: "bottom",
+                horizontal: "right",
+              }}
+              transformOrigin={{
+                vertical: "top",
+                horizontal: "right",
+              }}
+              PaperProps={{
+                elevation: 0,
+                style: {
+                  width: 200,
+                },
+                sx: {
+                  overflow: "visible",
+                  filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
+                  mt: 1.5,
+                  "& .MuiAvatar-root": {
+                    width: 32,
+                    height: 32,
+                    ml: -0.5,
+                    mr: 1,
+                  },
+                  "&:before": {
+                    content: '""',
+                    display: "block",
+                    position: "absolute",
+                    top: 0,
+                    right: 14,
+                    width: 10,
+                    height: 10,
+                    bgcolor: "background.paper",
+                    transform: "translateY(-50%) rotate(45deg)",
+                    zIndex: 0,
+                  },
+                },
+              }}
+            >
+              <MenuItem
+                onClick={handleAddSpace}
+                disabled={!isAdmin || !spaces}
+              >
+                <ListItemIcon>
+                  {/* <CloudQueueIcon fontSize="small" /> */}
+                  <SvgIcon fontSize="small">
+                    <Space />
+                  </SvgIcon>
+                </ListItemIcon>
+                Add Space
+              </MenuItem>
+              <MenuItem
+                onClick={handleEditSpace}
+                disabled={!selectedSpace || !isAdmin}
+              >
+                <ListItemIcon>
+                  <EditIcon fontSize="small" />
+                </ListItemIcon>
+                Edit Space
+              </MenuItem>
+              <Divider />
+              <MenuItem
+                onClick={handleDeleteSpace}
+                disabled={!selectedSpace || !isAdmin}
+              >
+                <ListItemIcon>
+                  <DeleteOutlineIcon fontSize="small" />
+                </ListItemIcon>
+                Delete
+              </MenuItem>
+            </Menu>
+          </React.Fragment>
         </Box>
       </GridHeader>
       <GridBody>

@@ -13,8 +13,10 @@ import {
   updateBlock,
   deleteBlock,
   createBlockExternal,
+  updateBlockExternal,
   deleteBlockExternal,
   createBlockExtSubnet,
+  updateBlockExtSubnet,
   deleteBlockExtSubnet,
   replaceBlockExtSubnetEndpoints,
   createBlockResv,
@@ -178,6 +180,19 @@ export const createBlockExternalAsync = createAsyncThunk(
   }
 );
 
+export const updateBlockExternalAsync = createAsyncThunk(
+  'ipam/updateBlockExternal',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await updateBlockExternal(args.space, args.block, args.external, args.body);
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
 export const deleteBlockExternalAsync = createAsyncThunk(
   'ipam/deleteBlockExternal',
   async (args, { rejectWithValue }) => {
@@ -196,6 +211,19 @@ export const createBlockExtSubnetAsync = createAsyncThunk(
   async (args, { rejectWithValue }) => {
     try {
       const response = await createBlockExtSubnet(args.space, args.block, args.external, args.body);
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const updateBlockExtSubnetAsync = createAsyncThunk(
+  'ipam/updateBlockExtSubnet',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await updateBlockExtSubnet(args.space, args.block, args.external, args.subnet, args.body);
 
       return response;
     } catch (err) {
@@ -565,6 +593,31 @@ export const ipamSlice = createSlice({
         // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
+      .addCase(updateBlockExternalAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const blockName = action.meta.arg.block;
+        const externalName = action.meta.arg.external;
+        const updatedExternal = action.payload;
+        const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);
+
+        if (spaceIndex > -1) {
+          const blockIndex = state.spaces[spaceIndex].blocks.findIndex((x) => x.name === blockName);
+
+          if(blockIndex > -1) {
+            const externalIndex = state.spaces[spaceIndex].blocks[blockIndex].externals.findIndex((x) => x.name === externalName);
+
+            if(externalIndex > -1) {
+              state.spaces[spaceIndex].blocks[blockIndex].externals[externalIndex] = merge(state.spaces[spaceIndex].blocks[blockIndex].externals[externalIndex], updatedExternal);
+            }
+          }
+        }
+      })
+      .addCase(updateBlockExternalAsync.rejected, (state, action) => {
+        console.log("updateBlockExternalAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
       .addCase(deleteBlockExternalAsync.fulfilled, (state, action) => {
         const spaceName = action.meta.arg.space;
         const blockName = action.meta.arg.block;
@@ -600,6 +653,36 @@ export const ipamSlice = createSlice({
       })
       .addCase(createBlockExtSubnetAsync.rejected, (state, action) => {
         console.log("createBlockExtSubnetAsync Rejected");
+        console.log(action);
+        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
+      .addCase(updateBlockExtSubnetAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const blockName = action.meta.arg.block;
+        const externalName = action.meta.arg.external;
+        const subnetName = action.meta.arg.subnet;
+        const updatedSubnet = action.payload;
+        const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);
+
+        if (spaceIndex > -1) {
+          const blockIndex = state.spaces[spaceIndex].blocks.findIndex((x) => x.name === blockName);
+
+          if(blockIndex > -1) {
+            const externalIndex = state.spaces[spaceIndex].blocks[blockIndex].externals.findIndex((x) => x.name === externalName);
+
+            if(externalIndex > -1) {
+              const subnetIndex = state.spaces[spaceIndex].blocks[blockIndex].externals[externalIndex].subnets.findIndex((x) => x.name === subnetName);
+
+              if(subnetIndex > -1) {
+                state.spaces[spaceIndex].blocks[blockIndex].externals[externalIndex].subnets[subnetIndex] = merge(state.spaces[spaceIndex].blocks[blockIndex].externals[externalIndex].subnets[subnetIndex], updatedSubnet);
+              }
+            }
+          }
+        }
+      })
+      .addCase(updateBlockExtSubnetAsync.rejected, (state, action) => {
+        console.log("updateBlockExtSubnetAsync Rejected");
         console.log(action);
         // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;

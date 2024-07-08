@@ -47,7 +47,8 @@ import {
   selectSubscriptions,
   fetchNetworksAsync,
   selectViewSetting,
-  updateMeAsync
+  updateMeAsync,
+  getAdminStatus
 } from "../../ipam/ipamSlice";
 
 const vNetPattern = "/Microsoft.Network/virtualNetworks/";
@@ -256,6 +257,7 @@ const Associations = () => {
 
   const [unchanged, setUnchanged] = React.useState(true);
 
+  const isAdmin = useSelector(getAdminStatus);
   const spaces = useSelector(selectSpaces);
   const blocks = useSelector(selectBlocks);
   const subscriptions = useSelector(selectSubscriptions);
@@ -859,7 +861,7 @@ const Associations = () => {
               theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
               idProperty="id"
               showCellBorders="horizontal"
-              checkboxColumn
+              checkboxColumn={isAdmin}
               checkboxOnlyRowSelect
               showZebraRows={false}
               multiSelect={true}
@@ -881,7 +883,7 @@ const Associations = () => {
               loadingText={sending ? <Update>Updating</Update> : "Loading"}
               dataSource={gridData || []}
               selected={selectionModel || []}
-              onSelectionChange={({selected}) => setSelection(selected)}
+              onSelectionChange={({selected}) => isAdmin && setSelection(selected)}
               rowClassName={({data}) => `ipam-block-vnet-${!data.active ? 'stale' : 'normal'}`}
               onCellDoubleClick={onCellDoubleClick}
               sortInfo={columnSortState}

@@ -152,7 +152,10 @@ async def ipam_init():
         "env": globals.AZURE_ENV
     }
 
-    requests.post(url = "https://azureipammetrics.azurewebsites.net/api/heartbeat", json = hb_message)
+    try:
+        requests.post(url = "https://azureipammetrics.azurewebsites.net/api/heartbeat", json = hb_message)
+    except Exception:
+        pass
 
 async def upgrade_db():
     managed_identity_credential = ManagedIdentityCredential(

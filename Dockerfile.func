@@ -13,7 +13,7 @@ WORKDIR /tmp
 COPY ./ui/. ./
 
 # Install UI Dependencies
-RUN npm install
+RUN npm ci
 RUN chmod 777 -R node_modules
 
 # Build IPAM UI
@@ -31,13 +31,13 @@ ENV PIP_ROOT_USER_ACTION=ignore
 WORKDIR /tmp
 
 # Copy Requirements File
-COPY ./engine/requirements.txt .
+COPY ./engine/requirements.lock.txt .
 
 # Upgrade PIP
 RUN pip install --upgrade pip --progress-bar off
 
 # Install Dependencies
-RUN pip install --no-cache-dir --upgrade -r ./requirements.txt --progress-bar off
+RUN pip install --no-cache-dir --upgrade -r ./requirements.lock.txt --progress-bar off
 
 # Copy Application Code to Function App Root Directory
 COPY ./engine/. /home/site/wwwroot
