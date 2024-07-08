@@ -16,13 +16,13 @@ WORKDIR /ipam
 USER root
 
 # Copy Requirements File
-ADD ./requirements.txt /ipam
+ADD ./requirements.lock.txt /ipam
 
 # Upgrade PIP
 RUN pip install --upgrade pip --progress-bar off
 
 # Install Dependencies
-RUN pip install --no-cache-dir --upgrade -r ./requirements.txt --progress-bar off
+RUN pip install --no-cache-dir --upgrade -r ./requirements.lock.txt --progress-bar off
 
 # Copy Application Scripts & Sources
 ADD ./app ./appDockerfile

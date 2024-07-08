@@ -15,7 +15,7 @@ WORKDIR /tmp
 COPY ./ui/. ./
 
 # Install UI Dependencies
-RUN npm install
+RUN npm ci
 RUN chmod 777 -R node_modules
 
 # Build IPAM UI
@@ -52,13 +52,13 @@ RUN mkdir /var/run/sshd
 WORKDIR /ipam
 
 # Install Engine Dependencies
-COPY ./engine/requirements.txt /code/requirements.txt
+COPY ./engine/requirements.lock.txt /code/requirements.lock.txt
 
 # Upgrade PIP
 RUN pip install --upgrade pip --progress-bar off
 
 # Install Dependencies
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt --progress-bar off
+RUN pip install --no-cache-dir --upgrade -r /code/requirements.lock.txt --progress-bar off
 
 # Copy Engine Code
 COPY ./engine/app ./app
