@@ -5,9 +5,15 @@
 ###############################################################################################################
 
 # Set minimum version requirements
+# Az versions included in Az 11.6.0 (https://www.powershellgallery.com/packages/Az/11.6.0)
+# Graph versions included in Microsoft.Graph 2.19.0 (https://www.powershellgallery.com/packages/Microsoft.Graph/2.19.0)
 #Requires -Version 7.2
-#Requires -Modules @{ ModuleName="Az"; ModuleVersion="10.3.0"}
-#Requires -Modules @{ ModuleName="Microsoft.Graph"; ModuleVersion="2.0.0"}
+#Requires -Modules @{ ModuleName="Az.Accounts"; ModuleVersion="2.19.0"}
+#Requires -Modules @{ ModuleName="Az.Resources"; ModuleVersion="6.16.2"}
+#Requires -Modules @{ ModuleName="Az.Websites"; ModuleVersion="3.2.1"}
+#Requires -Modules @{ ModuleName="Az.Functions"; ModuleVersion="4.0.8"}
+#Requires -Modules @{ ModuleName="Microsoft.Graph.Authentication"; ModuleVersion="2.19.0"}
+#Requires -Modules @{ ModuleName="Microsoft.Graph.Identity.SignIns"; ModuleVersion="2.19.0"}
 
 # Intake and set global parameters
 [CmdletBinding(DefaultParameterSetName = 'AppContainer')]
