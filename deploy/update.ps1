@@ -1,7 +1,7 @@
 ###############################################################################################################
 ##
 ## Azure IPAM ZIP Deploy Updater Script
-## 
+##
 ###############################################################################################################
 
 # Set minimum version requirements
@@ -41,11 +41,11 @@ $updateLog = Join-Path -Path $logPath -ChildPath "update_$(get-date -format `"yy
 
 Function Restart-IpamApp {
   Param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$AppName,
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$ResourceGroupName,
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch]$Function
   )
 
@@ -61,14 +61,15 @@ Function Restart-IpamApp {
           -ErrorVariable restartErr `
           -ErrorAction SilentlyContinue `
           -Force `
-          | Out-Null
-      } else {
+        | Out-Null
+      }
+      else {
         Restart-AzWebApp `
           -Name $AppName `
           -ResourceGroupName $ResourceGroupName `
           -ErrorVariable restartErr `
           -ErrorAction SilentlyContinue `
-          | Out-Null
+        | Out-Null
       }
 
       if ($restartErr) {
@@ -77,11 +78,13 @@ Function Restart-IpamApp {
 
       $restartSuccess = $True
       Write-Host "INFO: Application successfuly restarted" -ForegroundColor Green
-    } catch {
-      if($restartRetries -gt 0) {
+    }
+    catch {
+      if ($restartRetries -gt 0) {
         Write-Host "WARNING: Problem while restarting application! Retrying..." -ForegroundColor Yellow
         $restartRetries--
-      } else {
+      }
+      else {
         Write-Host "ERROR: Unable to restart application!" -ForegroundColor Red
         throw $_
       }
@@ -91,11 +94,11 @@ Function Restart-IpamApp {
 
 Function Publish-ZipFile {
   Param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$AppName,
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$ResourceGroupName,
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch]$UseAPI
   )
 
@@ -125,8 +128,9 @@ Function Publish-ZipFile {
           -ArchivePath $zipPath `
           -Restart `
           -Force `
-          | Out-Null
-      } else {
+        | Out-Null
+      }
+      else {
         Invoke-RestMethod `
           -Uri "https://${zipUrl}/api/zipdeploy" `
           -Method Post `
@@ -134,20 +138,22 @@ Function Publish-ZipFile {
           -Headers @{ "Authorization" = "Bearer $accessToken" } `
           -Form @{ file = $zipContents } `
           -StatusCodeVariable statusCode `
-          | Out-Null
+        | Out-Null
 
-          if ($statusCode -ne 200) {
-            throw [System.Exception]::New("Error while uploading ZIP Deploy via Kudu API! ($statusCode)")
-          }
+        if ($statusCode -ne 200) {
+          throw [System.Exception]::New("Error while uploading ZIP Deploy via Kudu API! ($statusCode)")
+        }
       }
 
       $publishSuccess = $True
       Write-Host "INFO: ZIP Deploy archive successfully uploaded" -ForegroundColor Green
-    } catch {
-      if($publishRetries -gt 0) {
+    }
+    catch {
+      if ($publishRetries -gt 0) {
         Write-Host "WARNING: Problem while uploading ZIP Deploy archive! Retrying..." -ForegroundColor Yellow
         $publishRetries--
-      } else {
+      }
+      else {
         Write-Host "ERROR: Unable to upload ZIP Deploy archive!" -ForegroundColor Red
         throw $_
       }
@@ -168,17 +174,18 @@ try {
 
   $existingApp = Get-AzWebApp -ResourceGroupName $ResourceGroupName -Name $AppName -ErrorAction SilentlyContinue
 
-  if($null -eq $existingApp) {
+  if ($null -eq $existingApp) {
     Write-Host "ERROR: Application not found in current subscription!" -ForegroundColor Red
     throw "Application does not exist!"
-  } else {
+  }
+  else {
     $appKind = $existingApp.Kind
     $appType = $($appKind.Split(",") -contains 'functionapp') ? 'Function' : 'App'
-    $isFunction = $appType -eq 'Function' ? $true : $false 
+    $isFunction = $appType -eq 'Function' ? $true : $false
   }
 
   $appContainer = $existingApp.Kind.Split(",") -contains 'container'
-  
+
   if ($appContainer) {
     $appType += "Container"
   }
@@ -196,7 +203,7 @@ try {
       exit
     }
 
-    if($privateAcr) {
+    if ($privateAcr) {
       $acrName = $appAcr.Split('.')[0]
 
       Write-Host "INFO: Deployment is using a private ACR (" -ForegroundColor Green -NoNewline
@@ -222,7 +229,7 @@ try {
       # Verify Minimum Azure CLI Version
       $azureCliVer = [System.Version](az version | ConvertFrom-Json).'azure-cli'
 
-      if($azureCliVer -lt $MIN_AZ_CLI_VER) {
+      if ($azureCliVer -lt $MIN_AZ_CLI_VER) {
         Write-Host "ERROR: Azure CLI must be version $MIN_AZ_CLI_VER or greater!" -ForegroundColor Red
         exit
       }
@@ -232,7 +239,7 @@ try {
       # Verify Azure PowerShell and Azure CLI Contexts Match
       $azureCliContext = $(az account show | ConvertFrom-Json) 2>$null
 
-      if(-not $azureCliContext) {
+      if (-not $azureCliContext) {
         Write-Host "ERROR: Azure CLI not logged in or no subscription has been selected!" -ForegroundColor Red
         exit
       }
@@ -240,7 +247,7 @@ try {
       $azureCliSub = $azureCliContext.id
       $azurePowerShellSub = (Get-AzContext).Subscription.Id
 
-      if($azurePowerShellSub -ne $azureCliSub) {
+      if ($azurePowerShellSub -ne $azureCliSub) {
         Write-Host "ERROR: Azure PowerShell and Azure CLI must be set to the same context!" -ForegroundColor Red
         exit
       }
@@ -256,7 +263,7 @@ try {
 
     $appPythonVersion = $existingApp.SiteConfig.LinuxFxVersion.Split('|')[1]
 
-    if($enginePythonVersion -ne $appPythonVersion) {
+    if ($enginePythonVersion -ne $appPythonVersion) {
       Write-Host "WARNING: Python version has changed (" -ForegroundColor Yellow -NoNewline
       Write-Host "v$appPythonVersion -> v$enginePythonVersion" -ForegroundColor Cyan -NoNewline
       Write-Host ")" -ForegroundColor Yellow
@@ -290,16 +297,16 @@ try {
     $containerMap = @{
       debian = @{
         Extension = 'deb'
-        Port = 80
-        Images = @{
+        Port      = 80
+        Images    = @{
           Build = 'node:18-slim'
           Serve = 'python:3.9-slim'
         }
       }
-      rhel = @{
+      rhel   = @{
         Extension = 'rhel'
-        Port = 8080
-        Images = @{
+        Port      = 8080
+        Images    = @{
           Build = 'registry.access.redhat.com/ubi8/nodejs-18'
           Serve = 'registry.access.redhat.com/ubi8/python-39'
         }
@@ -310,25 +317,27 @@ try {
     $dockerFilePath = Join-Path -Path $ROOT_DIR -ChildPath $dockerFile
     $dockerFileFunc = Join-Path -Path $ROOT_DIR -ChildPath 'Dockerfile.func'
 
-    if($isFunction) {
+    if ($isFunction) {
       Write-Host "INFO: Building Function container..." -ForegroundColor Green
 
       $funcBuildOutput = $(
         az acr build -r $acrName `
-        -t ipamfunc:latest `
-        -f $dockerFileFunc $ROOT_DIR
+          -t ipamfunc:latest `
+          -f $dockerFileFunc $ROOT_DIR
       ) *>&1
 
       if ($LASTEXITCODE -ne 0) {
         throw $funcBuildOutput
-      } else {
+      }
+      else {
         Write-Host "INFO: Function container image build and push completed successfully" -ForegroundColor Green
       }
 
       Write-Host "INFO: Restarting Function App" -ForegroundColor Green
 
       Restart-IpamApp -AppName $AppName -ResourceGroupName $ResourceGroupName -Function
-    } else {
+    }
+    else {
       Write-Host "INFO: Building App container (" -ForegroundColor Green -NoNewline
       Write-Host "$containerType" -ForegroundColor Cyan -NoNewline
       Write-Host ")..." -ForegroundColor Green
@@ -344,7 +353,8 @@ try {
 
       if ($LASTEXITCODE -ne 0) {
         throw $appBuildOutput
-      } else {
+      }
+      else {
         Write-Host "INFO: App container image build and push completed successfully" -ForegroundColor Green
       }
 
@@ -352,12 +362,14 @@ try {
 
       Restart-IpamApp -AppName $AppName -ResourceGroupName $ResourceGroupName
     }
-  } else {
+  }
+  else {
     Write-Host "INFO: Uploading ZIP Deploy archive..." -ForegroundColor Green
 
     try {
       Publish-ZipFile -AppName $AppName -ResourceGroupName $ResourceGroupName
-    } catch {
+    }
+    catch {
       Write-Host "SWITCH: Retrying ZIP Deploy with Kudu API..." -ForegroundColor Blue
       Publish-ZipFile -AppName $AppName -ResourceGroupName $ResourceGroupName -UseAPI
     }
