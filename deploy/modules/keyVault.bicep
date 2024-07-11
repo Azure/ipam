@@ -4,14 +4,8 @@ param keyVaultName string
 @description('Deployment Location')
 param location string = resourceGroup().location
 
-@description('Managed Identity PrincipalId')
-param identityPrincipalId string
-
 @description('Managed Identity ClientId')
 param identityClientId string
-
-@description('Additional identities to assign Key Vault Secrets User')
-param additionalKeyVaultSecretsUserPrincipalIds string[] = []
 
 @description('AzureAD TenantId')
 param tenantId string = subscription().tenantId
@@ -29,8 +23,8 @@ param engineAppSecret string
 @description('Log Analytics Worskpace ID')
 param workspaceId string
 
-var keyVaultUser = '4633458b-17de-408a-b874-0445c86b69e6'
-var keyVaultUserId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultUser)
+@description('Array of role assignments to create.')
+param roleAssignments roleAssignmentType
 
 resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
   name: keyVaultName
@@ -119,19 +113,30 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
   }
 }
 
-var allKeyVaultSecretsUserPrincipalIds =  union(
-  [identityPrincipalId],
-  additionalKeyVaultSecretsUserPrincipalIds
-)
-resource keyVaultUserAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = [ for principalId in allKeyVaultSecretsUserPrincipalIds: {
-  name: guid(keyVaultUser, principalId, keyVault.id)
+resource keyVaultRoleAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [ for (roleAssignment, index) in (roleAssignments ?? []): {
+  name: guid(keyVault.id, roleAssignment.principalId, roleAssignment.roleDefinitionId)
   scope: keyVault
   properties: {
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: keyVaultUserId
-    principalId: principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleAssignment.roleDefinitionId)
+    principalId: roleAssignment.principalId
+    description: roleAssignment.?description
+    principalType: roleAssignment.?principalType
   }
 }]
 
 output keyVaultName string = keyVault.name
 output keyVaultUri string = keyVault.properties.vaultUri
+
+type roleAssignmentType = {
+  @description('Required. The role definition GUID to assign.')
+  roleDefinitionId: string
+
+  @description('Required. The principal ID of the principal (user/group/identity) to assign the role to.')
+  principalId: string
+
+  @description('Optional. The principal type of the assigned principal ID.')
+  principalType: ('ServicePrincipal' | 'Group' | 'User' | 'ForeignGroup' | 'Device')?
+
+  @description('Optional. The description of the role assignment.')
+  description: string?
+}[]?
