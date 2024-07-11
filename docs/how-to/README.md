@@ -68,13 +68,33 @@ As a IPAM Administrator, you can add Reservations for IP CIDR blocks. Tagging yo
 
 Please see the **Example API Calls** section for more information on how to create IP address block reservations programmatically.
 
-To create a reservation in the UI, select the **Space** and **Block** where you want to reserve a IP range, then click on the down arrow to bring up a menu of **Reservation** operations. Select **New Reservation**.
+To create a reservation in the UI, select the **Space** and **Block** where you want to reserve a IP range, then click on the overflow icon to bring up a menu of **Reservations** operations. Select **New Reservation**.
 
 ![IPAM Reservations](.\images\add_reservations.png)
 
-Give the reservation a description and choose between reserving a specific CIDR or a bit mask size, then click Create.
+Give the reservation a description and choose between reserving a specific CIDR or a bit mask size, then click **Create**.
 
 ![IPAM Reservations Details](.\images\add_reservation_details.png)
+
+## Externals
+
+As a IPAM Administrator, you can add External Networks and External Subnets to **Blocks**. Adding externals causes **Reservations** to treat these ranges as already in use.
+
+To add a external network to a **Block**, select the **Block** you want to associate the virtual network to, then click on the overflow icon to bring up a menu of **External Networks** operations. Select **Add Network**.
+
+![IPAM External Network](.\images\add_external_network.png)
+
+Give the new **External Network** a name and description. Choose between a bit mask size or a specific CIDR. Then click **Add**.
+
+![IPAM External Network Details](.\images\add_external_network_details.png)
+
+To add a subnet to the external network, select the **External Network** you want to add a subnet to, then click on the overflow icon to bring up a menu of **External Subnet** operations. Select **Add Subnet**.
+
+![IPAM External Network Subnet](.\images\add_external_network_subnet.png)
+
+Give the new **External Subnet** a name and description. Choose between a bit mask size or a specific CIDR. Then click **Add**.
+
+![IPAM External Network Subnet Details](.\images\add_external_network_subnet_details.png)
 
 ## vNETs, Subnets, vHUBs, and Endpoints
 
