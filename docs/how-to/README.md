@@ -48,7 +48,7 @@ As an IPAM Administrator, you can add **Blocks** via the **Configure** section o
 
 ![IPAM Add Block](./images/add_block.png)
 
-Give the new **Block** a name a valid CIDR range, then click **Create** to create add a new **Block** to the target **Space**.
+Give the new **Block** a name and a valid CIDR range, then click **Create** to create add a new **Block** to the target **Space**.
 
 ![IPAM Add Block Details](./images/add_block_details.png)
 
@@ -124,11 +124,11 @@ By clicking to expand the **Subnet** details, you can find more granular **Subne
 
 For **vHUBs**, you can find the name, the parent vWAN, view the parent **Block** (if assigned), Resource Group, and the address space(s).
 
-![IPAM vNETs](./images/discover_vhubs.png)
+![IPAM vHUBs](./images/discover_vhubs.png)
 
 By clicking to expand the **vHUB** details, you can find more granular **vHUB** information and are presented the option to view the **vHUB** resource directly in the Azure Portal by clicking on **VIEW IN PORTAL**.
 
-![IPAM Subnets Details](./images/discover_vhubs_details.png)
+![IPAM vHUBs Details](./images/discover_vhubs_details.png)
 
 ### Endpoints
 
