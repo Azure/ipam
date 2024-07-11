@@ -64,7 +64,17 @@ Place a checkmark next to the virtual networks you'd like to associate to the ta
 
 ## Reservations
 
-Currently, IP CIDR block reservations are not supported via the UI, but are supported programmatically via the API. Please see the **Example API Calls** section for more information on how to create IP address block reservations.
+As a IPAM Administrator, you can create a reservation for a IP CIDR block. Tagging your newly created vNET with the reservation ID as value for the tag `X-IPAM-RES-ID` will automatically associate the vNET with the **Block** the reservation was created from.
+
+Please see the **Example API Calls** section for more information on how to create IP address block reservations programmatically.
+
+To create a reservation in the UI, select the **Space** and **Block** where you want to reserve a IP range, then click on the down arrow to bring up a menu of **Reservation** operations. Select **New Reservation**.
+
+![IPAM Reservations](.\images\add_reservations.png)
+
+Give the reservation a description and choose between reserving a specific CIDR or a bit mask size, then click Create.
+
+![IPAM Reservations Details](.\images\add_reservation_details.png)
 
 ## vNETs, Subnets, and Endpoints
 
