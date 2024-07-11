@@ -33,6 +33,9 @@ param engineAppId string
 @description('IPAM-Engine App Registration Client Secret')
 param engineAppSecret string
 
+@description('Array of additional role assignments to create on the Key Vault')
+param additionalKeyVaultRoleAssignments object[] = []
+
 @description('Tags')
 param tags object = {}
 
@@ -88,12 +91,20 @@ module keyVault './modules/keyVault.bicep' = {
   params: {
     location: location
     keyVaultName: resourceNames.keyVaultName
-    identityPrincipalId:  managedIdentity.outputs.principalId
     identityClientId:  managedIdentity.outputs.clientId
     uiAppId: uiAppId
     engineAppId: engineAppId
     engineAppSecret: engineAppSecret
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
+    roleAssignments: union(
+      [{
+        roleDefinitionId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User
+        principalId: managedIdentity.outputs.principalId
+        principalType: 'ServicePrincipal'
+        description: 'Required: Managed Identity for IPAM'
+      }],
+      additionalKeyVaultRoleAssignments
+    )
   }
 }
 
