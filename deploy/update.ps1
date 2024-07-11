@@ -1,7 +1,7 @@
 ###############################################################################################################
 ##
 ## Azure IPAM ZIP Deploy Updater Script
-## 
+##
 ###############################################################################################################
 
 # Set minimum version requirements
@@ -181,11 +181,11 @@ try {
   else {
     $appKind = $existingApp.Kind
     $appType = $($appKind.Split(",") -contains 'functionapp') ? 'Function' : 'App'
-    $isFunction = $appType -eq 'Function' ? $true : $false 
+    $isFunction = $appType -eq 'Function' ? $true : $false
   }
 
   $appContainer = $existingApp.Kind.Split(",") -contains 'container'
-  
+
   if ($appContainer) {
     $appType += "Container"
   }
