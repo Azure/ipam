@@ -72,7 +72,7 @@ var engineResourceMap = {
   }
 }
 
-// Initialize the Graph provider
+// Initialize the Graph provider / extension: https://github.com/Azure/bicep/issues/14374
 provider microsoftGraph
 
 // Get the Resource Id of the Graph resource in the tenant
