@@ -64,7 +64,7 @@ Place a checkmark next to the virtual networks you'd like to associate to the ta
 
 ## Reservations
 
-As a IPAM Administrator, you can create a reservation for a IP CIDR block. Tagging your newly created vNET with the reservation ID as value for the tag `X-IPAM-RES-ID` will automatically associate the vNET with the **Block** the reservation was created from.
+As a IPAM Administrator, you can add Reservations for IP CIDR blocks. Tagging your newly created vNET with the reservation ID as value for the tag `X-IPAM-RES-ID` will automatically associate the vNET with the **Block** the reservation was created from.
 
 Please see the **Example API Calls** section for more information on how to create IP address block reservations programmatically.
 
