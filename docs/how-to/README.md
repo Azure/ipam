@@ -76,9 +76,9 @@ Give the reservation a description and choose between reserving a specific CIDR 
 
 ![IPAM Reservations Details](.\images\add_reservation_details.png)
 
-## vNETs, Subnets, and Endpoints
+## vNETs, Subnets, vHUBs, and Endpoints
 
-As an IPAM user, you can view IP address utilization information and detailed Azure resource related information for **vNETs**, **Subnets**, and **Endpoints** you have existing Azure RBAC access to.
+As an IPAM user, you can view IP address utilization information and detailed Azure resource related information for **vNETs**, **Subnets**, **vHUBs**, and **Endpoints** you have existing Azure RBAC access to.
 
 ### Virtual Networks
 
@@ -99,6 +99,16 @@ For **Subnets**, you can find the name, view the parent **vNET**, utilization me
 By clicking to expand the **Subnet** details, you can find more granular **Subnet** information and are presented the option to view the **Subnet** resource directly in the Azure Portal by clicking on **VIEW IN PORTAL**.
 
 ![IPAM Subnets Details](./images/discover_subnets_details.png)
+
+### Virtual Hubs
+
+For **vHUBs**, you can find the name, the parent vWAN, view the parent **Block** (if assigned), Resource Group, and the address space(s).
+
+![IPAM vNETs](./images/discover_vhubs.png)
+
+By clicking to expand the **vHUB** details, you can find more granular **vHUB** information and are presented the option to view the **vHUB** resource directly in the Azure Portal by clicking on **VIEW IN PORTAL**.
+
+![IPAM Subnets Details](./images/discover_vhubs_details.png)
 
 ### Endpoints
 
