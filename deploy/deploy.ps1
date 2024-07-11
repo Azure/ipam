@@ -1,7 +1,7 @@
 ###############################################################################################################
 ##
 ## Azure IPAM Solution Deployment Script
-## 
+##
 ###############################################################################################################
 
 # Set minimum version requirements
@@ -203,7 +203,7 @@ param(
       if ($_ -notmatch "(\.json)") {
         throw [System.ArgumentException]::New("The file specified in the 'ParameterFile' argument must be of type json.")
       }
-      return $true 
+      return $true
     })]
   [System.IO.FileInfo]
   $ParameterFile
@@ -395,13 +395,13 @@ process {
       -Uri "https://$($msArmMap[$AzureCloud])/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroupName/providers/Microsoft.ContainerRegistry/registries/$RegistryName/runs/$BuildId/listLogSasUrl?api-version=2019-04-01" `
       -Authentication Bearer `
       -Token $accessToken
-    
+
     $logLink = $response.logLink
 
     $logs = Invoke-RestMethod `
       -Method GET `
       -Uri $logLink
-    
+
     return $logs
   }
 
@@ -506,7 +506,7 @@ process {
 
     $engineApiSettings = @{
       Oauth2PermissionScope       = @(
-        @{ 
+        @{
           AdminConsentDescription = "Allows the IPAM UI to access IPAM Engine API as the signed-in user."
           AdminConsentDisplayName = "Access IPAM Engine API"
           Id                      = $engineApiGuid
@@ -568,7 +568,7 @@ process {
 
       $uiObject = Get-AzADApplication -ApplicationId $uiApp.AppId
     }
-    
+
     $engineObject = Get-AzADApplication -ApplicationId $engineApp.AppId
 
     # Create IPAM UI Service Principal (If DisableUI not specified)
@@ -695,7 +695,7 @@ process {
       foreach ($scope in $uiGraphScopes) {
         $msGraphId = Get-AzADServicePrincipal `
           -ApplicationId $scope.scopeId
-      
+
         New-MgOauth2PermissionGrant `
           -ResourceId $msGraphId.Id `
           -Scope $scope.scopes `
@@ -979,7 +979,7 @@ process {
     $appServiceEndpoint = "https://$Endpoint"
 
     # Update UI Application with single-page application configuration
-    Update-AzADApplication -ApplicationId $UIAppId -SPARedirectUri $appServiceEndpoint 
+    Update-AzADApplication -ApplicationId $UIAppId -SPARedirectUri $appServiceEndpoint
 
     Write-Host "INFO: UI Application SPA configuration update complete" -ForegroundColor Green
   }
