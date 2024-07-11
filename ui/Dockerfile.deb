@@ -16,7 +16,7 @@ WORKDIR /ipam
 ADD . .
 
 # Install Dependencies
-RUN npm install
+RUN npm ci
 
 # Build Application
 RUN npm run build

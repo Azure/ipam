@@ -171,6 +171,39 @@ async def update_admins(
 
     return PlainTextResponse(status_code=status.HTTP_200_OK)
 
+@router.get(
+    "/admins/{objectId}",
+    summary = "Get IPAM Admin",
+    response_model = Admin,
+    status_code = 200
+)
+async def get_admins(
+    objectId: UUID = Path(..., description="Azure AD ObjectID for the target user"),
+    authorization: str = Header(None, description="Azure Bearer token"),
+    tenant_id: str = Depends(get_tenant_id),
+    is_admin: str = Depends(get_admin)
+):
+    """
+    Get a specific IPAM admin.
+    """
+
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="API restricted to admins.")
+
+    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
+
+    try:
+        admins = copy.deepcopy(admin_query[0])
+    except:
+        raise HTTPException(status_code=400, detail="No admins found in database.")
+
+    target_admin = next((x for x in admins['admins'] if x['id'] == str(objectId)), None)
+
+    if target_admin:
+        return target_admin
+    else:
+        raise HTTPException(status_code=404, detail="Admin not found.")
+
 @router.delete(
     "/admins/{objectId}",
     summary = "Delete IPAM Admin",

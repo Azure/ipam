@@ -32,6 +32,12 @@ jobs:
         with:
           node-version: 18
 
+      - name: "Setup Python v3.9"
+        id: setupPython
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
       - name: "Extract Pull Request Details"
         id: getPullRequestData
         uses: actions/github-script@v7
@@ -90,6 +96,19 @@ jobs:
         working-directory: ui
         run: |
           npm install
+
+      - name: Install PIP Packages
+        id: installPipPackages
+        working-directory: engine
+        run: |
+          pip install -r requirements.txt
+
+      - name: Freeze PIP Packages
+        id: freezePipPackages
+        working-directory: engine
+        run: |
+          echo "# Dependencies for Azure IPAM v${{ steps.updateVersion.outputs.ipamVersion }}" > requirements.lock.txt
+          pip freeze >> requirements.lock.txt
 
       - name: "Create Azure IPAM ZIP Asset"
         id: buildZipAsset

@@ -8,10 +8,8 @@ import Draggable from "react-draggable";
 import {
   Box,
   Button,
-  Radio,
   Tooltip,
   TextField,
-  Autocomplete,
   Dialog,
   DialogTitle,
   DialogActions,
@@ -22,7 +20,7 @@ import {
 import LoadingButton from "@mui/lab/LoadingButton";
 
 import {
-  createBlockExtSubnetAsync
+  updateBlockExtSubnetAsync
 } from "../../../../ipam/ipamSlice";
 
 import {
@@ -33,8 +31,7 @@ import {
 import {
   EXTSUBNET_NAME_REGEX,
   EXTSUBNET_DESC_REGEX,
-  CIDR_REGEX,
-  cidrMasks
+  CIDR_REGEX
 } from "../../../../../global/globals";
 
 function DraggablePaper(props) {
@@ -52,16 +49,10 @@ function DraggablePaper(props) {
   );
 }
 
-export default function AddExtSubnet(props) {
-  const { open, handleClose, space, block, external, subnets } = props;
+export default function EditExtSubnet(props) {
+  const { open, handleClose, space, block, external, subnets, selectedSubnet } = props;
 
   const { enqueueSnackbar } = useSnackbar();
-
-  const [addBySize, setAddBySize] = React.useState(true);
-
-  const [maskOptions, setMaskOptions] = React.useState(null);
-  const [maskInput, setMaskInput] = React.useState('');
-  const [selectedMask, setSelectedMask] = React.useState(null);
 
   const [subName, setSubName] = React.useState({ value: "", error: false });
   const [subDesc, setSubDesc] = React.useState({ value: "", error: false });
@@ -74,28 +65,41 @@ export default function AddExtSubnet(props) {
   function onCancel() {
     handleClose();
 
-    setSubName({ value: "", error: false });
-    setSubDesc({ value: "", error: false });
-    setSubCidr({ value: "", error: false });
-
-    setSelectedMask(maskOptions.length >= 1 ? maskOptions[1] : maskOptions[0]);
-
-    setAddBySize(true);
+    if(selectedSubnet) {
+      setSubName({ value: selectedSubnet.name, error: false });
+      setSubDesc({ value: selectedSubnet.desc, error: false });
+      setSubCidr({ value: selectedSubnet.cidr, error: false });
+    } else {
+      setSubName({ value: "", error: false });
+      setSubDesc({ value: "", error: false });
+      setSubCidr({ value: "", error: false });
+    }
   }
 
   function onSubmit() {
-    var body = {
-      name: subName.value,
-      desc: subDesc.value,
-      ...(!addBySize && {cidr : subCidr.value}),
-      ...(addBySize && {size : selectedMask.value})
-    };
+    var body = [
+      {
+        op: "replace",
+        path: "/name",
+        value: subName.value
+      },
+      {
+        op: "replace",
+        path: "/desc",
+        value: subDesc.value
+      },
+      {
+        op: "replace",
+        path: "/cidr",
+        value: subCidr.value
+      }
+    ];
 
     (async () => {
       try {
         setSending(true);
-        await dispatch(createBlockExtSubnetAsync({ space: space, block: block, external: external.name, body: body }));
-        enqueueSnackbar("Successfully created new External Subnet", { variant: "success" });
+        await dispatch(updateBlockExtSubnetAsync({ space: space, block: block, external: external.name, subnet: selectedSubnet.name, body: body }));
+        enqueueSnackbar("Successfully updated External Subnet", { variant: "success" });
         onCancel();
       } catch (e) {
         console.log("ERROR");
@@ -118,7 +122,11 @@ export default function AddExtSubnet(props) {
       );
 
       const nameError = newName ? !regex.test(newName) : false;
-      const nameExists = subnets.map(s => s.name.toLowerCase()).includes(newName.toLowerCase());
+      const nameExists = subnets?.reduce((acc, curr) => {
+        curr['name'] !== selectedSubnet['name'] && acc.push(curr['name'].toLowerCase());
+
+        return acc;
+      }, []).includes(newName.toLowerCase());
 
       setSubName({
           value: newName,
@@ -159,7 +167,7 @@ export default function AddExtSubnet(props) {
 
       if(subnets) {
         extSubnets = subnets?.reduce((acc, curr) => {
-          acc.push(curr['cidr']);
+          curr['name'] !== selectedSubnet['name'] && acc.push(curr['cidr']);
 
           return acc;
         }, []);
@@ -174,35 +182,41 @@ export default function AddExtSubnet(props) {
     });
   }
 
+  const unchanged = React.useMemo(() => {
+    if(selectedSubnet) {
+      return (
+        subName.value === selectedSubnet.name &&
+        subDesc.value === selectedSubnet.desc &&
+        subCidr.value === selectedSubnet.cidr
+      );
+    } else {
+      return true;
+    }
+  }, [selectedSubnet, subName, subDesc, subCidr]);
+
   const hasError = React.useMemo(() => {
     var emptyCheck = false;
     var errorCheck = false;
 
-    if (addBySize) {
-      errorCheck = (subName.error || subDesc.error);
-      emptyCheck = (subName.value.length === 0 || subDesc.value.length === 0 || selectedMask === null);
-    } else {
-      errorCheck = (subName.error || subDesc.error || subCidr.error);
-      emptyCheck = (subName.value.length === 0 || subDesc.value.length === 0 || subCidr.value.length === 0);
-    }
+    errorCheck = (subName.error || subDesc.error || subCidr.error);
+    emptyCheck = (subName.value.length === 0 || subDesc.value.length === 0 || subCidr.value.length === 0);
 
     return (errorCheck || emptyCheck);
-  }, [addBySize, selectedMask, subName, subDesc, subCidr]);
+  }, [subName, subDesc, subCidr]);
 
   React.useEffect(() => {
-    if (external) {
-      let prefixParts = external.cidr.split("/");
-      let currentMask = parseInt(prefixParts[1], 10);
-      let availableMasks = cidrMasks.filter((opt) => opt.value >= currentMask && opt.value <= 29);
-
-      setMaskOptions(availableMasks);
-      setSelectedMask(availableMasks.length >= 1 ? availableMasks[1] : availableMasks[0]);
+    if (selectedSubnet) {
+      setSubName({ value: selectedSubnet.name, error: false });
+      setSubDesc({ value: selectedSubnet.desc, error: false });
+      setSubCidr({ value: selectedSubnet.cidr, error: false });
     } else {
-      setSelectedMask(null);
-      setMaskInput("");
-      setMaskOptions(null);
+      handleClose();
+
+      setSubName({ value: "", error: false });
+      setSubDesc({ value: "", error: false });
+      setSubCidr({ value: "", error: false });
     }
-  }, [external]);
+  }, [selectedSubnet, handleClose]);
 
   return (
     <div>
@@ -214,7 +228,7 @@ export default function AddExtSubnet(props) {
         fullWidth
       >
         <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
-          Add External Subnet
+          Edit External Subnet
         </DialogTitle>
         <DialogContent>
           <Box display="flex" flexDirection="column" alignItems="center">
@@ -273,84 +287,31 @@ export default function AddExtSubnet(props) {
                 sx={{ width: "80%" }}
               />
             </Tooltip>
-            <Box sx={{ display: 'flex', flexDirection: 'row', gap: '4px', width: '80%' }}>
-              <Box sx={{ display: 'flex', alignItems: 'end', justifyContent: 'left' }}>
-                <Radio
-                  checked={addBySize}
-                  onChange={() => setAddBySize(true)}
-                  name="add-by-size"
-                  sx={{ pl: 0 }}
-                />
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'end', justifyContent: 'center', pb: 1, mr: 1 }}>
-                <Autocomplete
-                  forcePopupIcon={false}
-                  disabled={!addBySize}
-                  id="cidr-mask-max"
-                  size="small"
-                  options={maskOptions || []}
-                  getOptionLabel={(option) => option.name}
-                  inputValue={maskInput}
-                  onInputChange={(event, newInputValue) => setMaskInput(newInputValue)}
-                  value={selectedMask}
-                  onChange={(event, newValue) => setSelectedMask(newValue)}
-                  sx={{ width: '6ch' }}
-                  ListboxProps={{
-                    style: {
-                      maxHeight: "15rem"
-                    },
-                    position: "bottom-start"
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Size"
-                      placeholder="Size"
-                      variant="standard"
-                    />
-                  )}
-                />
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'end', justifyContent: 'left' }}>
-                <Radio
-                  checked={!addBySize}
-                  onChange={() => setAddBySize(false)}
-                  name="add-by-cidr"
-                  sx={{ pl: 0 }}
-                />
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'end', justifyContent: 'center', width: '100%' }}>
-                <Tooltip
-                  arrow
-                  disableFocusListener
-                  placement="right"
-                  title={
-                    <>
-                      - Must be in valid CIDR notation format
-                      <br />&nbsp;&nbsp;&nbsp;&nbsp;- Example: 1.2.3.4/5
-                      <br />- Cannot overlap existing subnets
-                    </>
-                  }
-                >
-                  <TextField
-                    disabled={addBySize}
-                    error={ !addBySize && (subCidr.value.length > 0 && subCidr.error) }
-                    margin="dense"
-                    id="name"
-                    label="CIDR"
-                    type="cidr"
-                    variant="standard"
-                    value={subCidr.value}
-                    onChange={(event) => onCidrChange(event)}
-                    inputProps={{ spellCheck: false }}
-                    sx={{
-                      width: "100%",
-                      pointerEvents: addBySize ? 'none' : 'auto'
-                    }}
-                  />
-                </Tooltip>
-              </Box>
-            </Box>
+            <Tooltip
+              arrow
+              disableFocusListener
+              placement="right"
+              title={
+                <>
+                  - Must be in valid CIDR notation format
+                  <br />&nbsp;&nbsp;&nbsp;&nbsp;- Example: 1.2.3.4/5
+                  <br />- Cannot overlap existing subnets
+                </>
+              }
+            >
+              <TextField
+                error={(subCidr.value.length > 0 && subCidr.error)}
+                margin="dense"
+                id="name"
+                label="CIDR"
+                type="cidr"
+                variant="standard"
+                value={subCidr.value}
+                onChange={(event) => onCidrChange(event)}
+                inputProps={{ spellCheck: false }}
+                sx={{ width: "80%" }}
+              />
+            </Tooltip>
           </Box>
         </DialogContent>
         <DialogActions>
@@ -363,9 +324,9 @@ export default function AddExtSubnet(props) {
           <LoadingButton
             onClick={onSubmit}
             loading={sending}
-            disabled={hasError}
+            disabled={hasError || unchanged}
           >
-            Add
+            Update
           </LoadingButton>
         </DialogActions>
       </Dialog>

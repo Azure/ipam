@@ -271,39 +271,33 @@ export default function BlockDataGrid(props) {
                 },
               }}
             >
-              { isAdmin &&
-                <MenuItem
-                  onClick={handleAddBlock}
-                  disabled={!selectedSpace}
-                >
-                  <ListItemIcon>
-                    <GridViewIcon fontSize="small" />
-                  </ListItemIcon>
-                  Add Block
-                </MenuItem>
-              }
-              { isAdmin &&
-                <MenuItem
-                  onClick={handleEditBlock}
-                  disabled={!selectedBlock}
-                >
-                  <ListItemIcon>
-                    <EditIcon fontSize="small" />
-                  </ListItemIcon>
-                  Edit Block
-                </MenuItem>
-              }
-              { isAdmin &&
-                <MenuItem
-                  onClick={() =>navigate('/configure/associations', {state: { space: selectedSpace, block: selectedBlock }})}
-                  disabled={!selectedBlock}
-                >
-                  <ListItemIcon>
-                    <SettingsEthernetIcon fontSize="small" />
-                  </ListItemIcon>
-                  Block Networks
-                </MenuItem>
-              }
+              <MenuItem
+                onClick={handleAddBlock}
+                disabled={!selectedSpace || !isAdmin}
+              >
+                <ListItemIcon>
+                  <GridViewIcon fontSize="small" />
+                </ListItemIcon>
+                Add Block
+              </MenuItem>
+              <MenuItem
+                onClick={handleEditBlock}
+                disabled={!selectedBlock || !isAdmin}
+              >
+                <ListItemIcon>
+                  <EditIcon fontSize="small" />
+                </ListItemIcon>
+                Edit Block
+              </MenuItem>
+              <MenuItem
+                onClick={() =>navigate('/configure/associations', {state: { space: selectedSpace, block: selectedBlock }})}
+                disabled={!selectedBlock}
+              >
+                <ListItemIcon>
+                  <SettingsEthernetIcon fontSize="small" />
+                </ListItemIcon>
+                Block Networks
+              </MenuItem>
               <MenuItem
                 onClick={() =>navigate('/configure/reservations', {state: { space: selectedSpace, block: selectedBlock }})}
                 disabled={!selectedBlock}
@@ -313,31 +307,25 @@ export default function BlockDataGrid(props) {
                 </ListItemIcon>
                 Reservations
               </MenuItem>
-              { isAdmin &&
-                <MenuItem
-                  onClick={() =>navigate('/configure/externals', {state: { space: selectedSpace, block: selectedBlock }})}
-                  disabled={!selectedBlock}
-                >
-                  <ListItemIcon>
-                    <MapOutlinedIcon fontSize="small" />
-                  </ListItemIcon>
-                  External Networks
-                </MenuItem>
-              }
-              { isAdmin &&
-                <Divider />
-              }
-              { isAdmin &&
-                <MenuItem
-                  onClick={handleDeleteBlock}
-                  disabled={!selectedBlock}
-                >
-                  <ListItemIcon>
-                    <DeleteOutlineIcon fontSize="small" />
-                  </ListItemIcon>
-                  Delete
-                </MenuItem>
-              }
+              <MenuItem
+                onClick={() =>navigate('/configure/externals', {state: { space: selectedSpace, block: selectedBlock }})}
+                disabled={!selectedBlock}
+              >
+                <ListItemIcon>
+                  <MapOutlinedIcon fontSize="small" />
+                </ListItemIcon>
+                External Networks
+              </MenuItem>
+              <Divider />
+              <MenuItem
+                onClick={handleDeleteBlock}
+                disabled={!selectedBlock || !isAdmin}
+              >
+                <ListItemIcon>
+                  <DeleteOutlineIcon fontSize="small" />
+                </ListItemIcon>
+                Delete
+              </MenuItem>
             </Menu>
           </React.Fragment>
         </Box>
