@@ -376,7 +376,9 @@ process {
       [Parameter(Mandatory=$true)]
       [string]$RegistryName,
       [Parameter(Mandatory=$true)]
-      [string]$BuildId
+      [string]$BuildId,
+      [Parameter(Mandatory=$true)]
+      [string]$AzureCloud
     )
 
     $msArmMap = @{
@@ -385,7 +387,7 @@ process {
       AZURE_US_GOV_SECRET  = "management.azure.microsoft.scloud"
       AZURE_GERMANY        = "management.microsoftazure.de"
       AZURE_CHINA          = "management.chinacloudapi.cn"
-    };
+    }
 
     $accessToken = (Get-AzAccessToken).Token | ConvertTo-SecureString -AsPlainText
 
@@ -1158,7 +1160,8 @@ process {
             -SubscriptionId $deployment.Outputs["subscriptionId"].Value `
             -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value `
             -RegistryName $deployment.Outputs["acrName"].Value `
-            -BuildId $buildId
+            -BuildId $buildId `
+            -AzureCloud $azureCloud
 
           $buildLogs | Out-File -FilePath $errorLog -Append
 
@@ -1192,7 +1195,8 @@ process {
             -SubscriptionId $deployment.Outputs["subscriptionId"].Value `
             -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value `
             -RegistryName $deployment.Outputs["acrName"].Value `
-            -BuildId $buildId
+            -BuildId $buildId `
+            -AzureCloud $azureCloud
 
           $buildLogs | Out-File -FilePath $errorLog -Append
 
