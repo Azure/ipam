@@ -123,11 +123,11 @@ resource engineSpn 'Microsoft.Graph/servicePrincipals@v1.0' = {
 
 module roleAssignments 'br/public:avm/ptn/authorization/role-assignment:0.1.0' = [
   for mgId in engineReaderRoleManagementGroupIds: {
-    name: 'ipam-engine-roleAssignment-${mgId}'
+    name: guid(engineAppName, 'Reader', mgId)
     params: {
       principalId: engineSpn.id
       principalType: 'ServicePrincipal'
-      roleDefinitionIdOrName: 'Reader' // not following least privilege principle // alternative: https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/compute#virtual-machine-user-login
+      roleDefinitionIdOrName: 'Reader'
       managementGroupId: mgId
     }
   }
