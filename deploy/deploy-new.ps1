@@ -91,6 +91,7 @@ process {
 
   # initial identity deployment
   if ($IncludeIdentities) {
+    Write-Debug "Deploying identity resources [initial]"
     $identityDeploySplat = @{
       DeploymentName        = -join ('ipamIdentityDeploy-{0}' -f (Get-Date -Format 'yyyyMMddTHHMMss'))[0..63]
       Location              = $Location
@@ -102,11 +103,13 @@ process {
     }
 
     $identityDeplyment = New-AzManagementGroupDeployment @identityDeploySplat
+    Write-Debug "Deployed identity resources [initial]"
   }
 
 
   # infrastructure deployment
   if ($IncludeInfrastructure) {
+    Write-Debug "Deploying infrastructure resources"
     $infrastructureDeploySplat = @{
       DeploymentName        = -join ('ipamInfrastructureDeploy-{0}' -f (Get-Date -Format 'yyyyMMddTHHMMss'))[0..63]
       Location              = $Location
@@ -124,11 +127,13 @@ process {
 
     Select-AzSubscription -SubscriptionId $SubscriptionIdForInfrastructureDeployment
     $infrastructureDeployment = New-AzSubscriptionDeployment @infrastructureDeploySplat
+    Write-Debug "Deployed infrastructure resources"
   }
 
 
   # full identity deployment
   if ($IncludeIdentities) {
+    Write-Debug "Deploying identity resources [full]"
     $identityDeploySplat = @{
       DeploymentName        = -join ('ipamIdentityDeploy-{0}' -f (Get-Date -Format 'yyyyMMddTHHMMss'))[0..63]
       Location              = $Location
@@ -137,27 +142,39 @@ process {
       WhatIf                = $false
       Verbose               = $DEBUG_MODE
       ManagementGroupId     = $ManagementGroupIdForIdentityDeployment
-      # pass appIds & appServiceHostName from previous deployment
+      # pass appIds from initial deployment
       uiAppId               = $identityDeplyment.Outputs.uiAppId.Value
       engineAppId           = $identityDeplyment.Outputs.engineAppId.Value
     }
 
-    # include uiAppRedirectUris from infrastructure deployment if it was included
+    # pass uiAppRedirectUris from infrastructure deployment, if it was included
     if ($IncludeInfrastructure) {
       $identityDeploySplat.Add('uiAppRedirectUris', @( $infrastructureDeployment.Outputs.appServiceHostName.Value ))
     }
 
     $identityDeplyment = New-AzManagementGroupDeployment @identityDeploySplat
+    Write-Debug "Deployed identity resources [full]"
   }
 
 
+  # az acr build
   if ($IncludeInfrastructure -and $infrastructureDeployment.Outputs.acrName.Value.Length -gt 1) {
-    # az acr build
+    Write-Debug "Building and pushing container image to Azure Container Registry"
   }
 
 
+  # archive and publish .zip
   if ($IncludeInfrastructure -and [bool]$infrastructureDeployment.Outputs.zipDeployNeeded.Value) {
-    # archive and publish .zip
+    Write-Debug "Creating ZIP Deploy archive"
+    Write-Debug "Uploading ZIP Deploy archive"
+  }
+  
+
+  # catch any errors
+  trap {
+    Write-Debug "Inside trap block, an error occurred"
+    throw
+    # break
   }
 
 } # process
