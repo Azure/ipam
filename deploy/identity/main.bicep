@@ -24,7 +24,7 @@ param engineAppApiPermissionGuid string = guid('myOrgNameHereForUniqueness')
 @description('Management group IDs where the IPAM Engine will get Reader permissions. e.g. [\'alz-platform-connectivity\',\'alz-landingzones-corp\']')
 param engineReaderRoleManagementGroupIds string[] = [tenant().tenantId]
 
-@description('Azure cloud environment.')
+@description('Azure cloud environment. Verify in pwsh with (Get-AzContext).Environment.Name')
 @allowed([
   'AZURE_PUBLIC'
   'AZURE_US_GOV'
