@@ -19,7 +19,7 @@ jobs:
     - name: Azure PowerShell script
       uses: azure/powershell@v2
       with:
-         inlineScript: ./deploy/deploy.ps1
+         inlineScript: .jwipam/deploy/deploy.ps1
          azPSVersion: "Latest"
     
     
