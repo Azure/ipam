@@ -1,0 +1,219 @@
+name: Azure IPAM Build
+
+run-name: Azure IPAM Production Build & Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: read
+
+env:
+  ACR_NAME: ${{ vars.IPAM_PROD_ACR }}
+
+jobs:
+  version:
+    name: Update Azure IPAM Version
+    runs-on: ubuntu-latest
+    outputs:
+      ipamVersion: ${{ steps.updateVersion.outputs.ipamVersion }}
+      prNumber: ${{ fromJson(steps.getPullRequestData.outputs.result).number }}
+      commitHash: ${{ steps.commitCode.outputs.commitHash }}
+    steps:
+      - run: echo "Job triggered by a ${{ github.event_name }} event to main."
+
+      - name: "Setup NodeJS v18"
+        id: setupNode
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: "Setup Python v3.9"
+        id: setupPython
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: "Extract Pull Request Details"
+        id: getPullRequestData
+        uses: actions/github-script@v7
+        with:
+          script: |
+            return (
+              await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                commit_sha: context.sha,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              })
+            ).data[0];
+
+      - name: Checkout Azure IPAM Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Configure Git
+        id: configureGit
+        run: |
+          git config --global user.name "IPAM GitHub Actions"
+          git config --global user.email "ipam-actions@users.noreply.github.com"
+
+      - name: "Increment Azure IPAM Version"
+        id: updateVersion
+        working-directory: tools
+        env:
+          prBody: ${{ fromJson(steps.getPullRequestData.outputs.result).body }}
+        shell: pwsh
+        run: |
+          $version = [regex]::matches($env:prBody, '(?<=\[version:).*(?=])').value
+          $major = $env:prBody -match '(?<=\[)major(?=])'
+          $minor = $env:prBody -match '(?<=\[)minor(?=])'
+          $build = $env:prBody -match '(?<=\[)build(?=])'
+
+          try {
+            $version = [System.Version]$version
+            $newVersion = "{0}.{1}.{2}" -f $version.Major, $version.Minor, $version.Build
+          } catch {
+            $version = $null
+          }
+
+          if ($version) {
+            ./version.ps1 -Version $newVersion
+          } elseif ($major) {
+            ./version.ps1 -BumpMajor
+          } elseif ($minor) {
+            ./version.ps1 -BumpMinor
+          } else {
+            ./version.ps1 -BumpBuild
+          }
+
+      - name: Install NPM Packages
+        id: installNpmPackages
+        working-directory: ui
+        run: |
+          npm install
+
+      - name: Install PIP Packages
+        id: installPipPackages
+        working-directory: engine
+        run: |
+          pip install -r requirements.txt
+
+      - name: Freeze PIP Packages
+        id: freezePipPackages
+        working-directory: engine
+        run: |
+          echo "# Dependencies for Azure IPAM v${{ steps.updateVersion.outputs.ipamVersion }}" > requirements.lock.txt
+          pip freeze >> requirements.lock.txt
+
+      - name: "Create Azure IPAM ZIP Asset"
+        id: buildZipAsset
+        working-directory: tools
+        shell: pwsh
+        run: |
+          ./build.ps1 -Path ../assets/ 
+
+      - name: Commit Updated Azure IPAM Code
+        id: commitCode
+        env:
+          prNumber: ${{ fromJson(steps.getPullRequestData.outputs.result).number }}
+        run: |
+          git commit -a -m "Updated Azure IPAM Version to v${{ steps.updateVersion.outputs.ipamVersion }} [skip ci]"
+          git push
+          echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+  release:
+    name: Create Azure IPAM Release
+    runs-on: ubuntu-latest
+    needs: [ version ]
+    steps:
+      - name: Checkout Azure IPAM Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.commitHash }}
+          sparse-checkout: |
+            assets
+
+      - name: Publish Azure IPAM Release
+        id: publishRelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tagName: v${{ needs.version.outputs.ipamVersion }}
+        run: |
+          gh release create "$tagName" \
+            --repo="$GITHUB_REPOSITORY" \
+            --title="$tagName" \
+            --notes "Azure IPAM Release"
+
+      - name: Upload Azure IPAM Release Asset
+        id: uploadReleaseAsset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tagName: v${{ needs.version.outputs.ipamVersion }}
+          assetPath: ./assets/ipam.zip
+        run: |
+          gh release upload "$tagName" "$assetPath"
+
+  build:
+    name: Build Azure IPAM Containers
+    runs-on: ubuntu-latest
+    needs: [ version, release ]
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: true
+
+      - name: Checkout Azure IPAM Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.commitHash }}
+          sparse-checkout: |
+            engine
+            ui
+            lb
+
+      - name: Build Azure IPAM Containers
+        env:
+          IPAM_VERSION: ${{ needs.version.outputs.ipamVersion }}
+        run: |
+          az acr build -r $ACR_NAME -t ipam:$IPAM_VERSION -t ipam:latest -f ./Dockerfile.deb .
+          az acr build -r $ACR_NAME -t ipamfunc:$IPAM_VERSION -t ipamfunc:latest -f ./Dockerfile.func .
+
+  build-legacy:
+    name: Build Legacy Azure IPAM Containers
+    runs-on: ubuntu-latest
+    needs: [ version, release ]
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: true
+
+      - name: Checkout Azure IPAM Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.commitHash }}
+          sparse-checkout: |
+            engine
+            ui
+            lb
+
+      - name: Build Legacy Azure IPAM Containers
+        env:
+          IPAM_VERSION: ${{ needs.version.outputs.ipamVersion }}
+        run: |
+          az acr build -r $ACR_NAME -t ipam-engine:$IPAM_VERSION -t ipam-engine:latest -f ./engine/Dockerfile.deb ./engine
+          az acr build -r $ACR_NAME -t ipam-func:$IPAM_VERSION -t ipam-func:latest -f ./engine/Dockerfile.func ./engine
+          az acr build -r $ACR_NAME -t ipam-ui:$IPAM_VERSION -t ipam-ui:latest -f ./ui/Dockerfile.deb ./ui
+          az acr build -r $ACR_NAME -t ipam-lb:$IPAM_VERSION -t ipam-lb:latest -f ./lb/Dockerfile ./lb
