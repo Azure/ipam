@@ -19,8 +19,7 @@ jobs:
     - name: Azure PowerShell script
       uses: azure/powershell@v2
       with:
-        azPSVersion: latest
-         inlineScript:|
-          ./deploy.ps1 -TemplateFile main.bicep -ParameterFile parameters.json
+         inlineScript: ./deploy/deploy.ps1
+         azPSVersion: "Latest"
     
     
