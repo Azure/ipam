@@ -1,0 +1,10 @@
+name: How to use a Windows Runner on GitHub Actions
+on: push
+jobs:
+  build:
+    runs-on: windows-2019
+    steps:
+      - name: Check out repo        
+        uses: actions/checkout@v2
+      - run: |
+          ./deploy/deploy.ps1
