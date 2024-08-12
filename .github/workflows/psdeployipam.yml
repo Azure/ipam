@@ -21,12 +21,9 @@ jobs:
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }} 
         enable-AzPSSession: true
 
-    - name: Install Az module
-      run: |
-        Install-Module -Name Az -Force -Scope CurrentUser
-        Import-Module Az
-
-    - name: Run deploy script
-      shell: pwsh
-      run: ./deploy/deploy.ps1
+    - name: Deploy Hub
+      uses: azure/powershell@v2
+      with:
+        inlineScript: |
+          .\deploy\deploy.ps1
     
