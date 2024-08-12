@@ -20,7 +20,7 @@ jobs:
       uses: azure/powershell@v2
       with:
         azPSVersion: latest
-        scriptPath: ./deploy/deploy.ps1
-        arguments: '-TemplateFile main.bicep -ParameterFile parameters.json'
+         inlineScript:|
+          ./deploy.ps1 -TemplateFile main.bicep -ParameterFile parameters.json
     
     
