@@ -23,5 +23,5 @@ jobs:
 
     - name: Run deploy script
       shell: pwsh
-      run: ./deploy/deploy.ps1
+      run: ./deploy.ps1
     
