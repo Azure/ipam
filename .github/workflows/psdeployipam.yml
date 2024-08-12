@@ -16,10 +16,11 @@ jobs:
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }} 
         enable-AzPSSession: true
 
-    - name: Azure PowerShell script
-      uses: azure/powershell@v2
-      with:
-         inlineScript: ./deploy.ps1
-         azPSVersion: "Latest"
-    
+    - name: Install PowerShell
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y powershell
+
+    - name: Run deploy script
+      run: pwsh ./deploy/deploy.ps1
     
