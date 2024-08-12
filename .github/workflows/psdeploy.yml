@@ -1,10 +1,16 @@
-name: How to use a Windows Runner on GitHub Actions
-on: push
+name: Run Azure Login with OIDC
+on: [push]
+
+permissions:
+  id-token: write
+  contents: read
 jobs:
-  build:
-    runs-on: windows-2019
+  build-and-deploy:
+    runs-on: ubuntu-latest
     steps:
-      - name: Check out repo        
-        uses: actions/checkout@v2
-      - run: |
-          ./deploy/deploy.ps1
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
