@@ -1,4 +1,4 @@
-# .github/workflows/deploy.yml
+# .github/workflows/deployipam.yml
 name: psdeployipam
 
 on: [workflow_dispatch]
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - name: Check out repository
@@ -17,11 +17,12 @@ jobs:
 
     - name: Install Azure CLI
       run: |
-        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        Invoke-WebRequest -Uri https://aka.ms/installazurecliwindows -OutFile .\AzureCLI.msi
+        Start-Process msiexec.exe -ArgumentList '/I AzureCLI.msi /quiet' -Wait
 
     - name: Log in to Azure
       run: |
-        az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -p ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
+        az login --service-principal --username ${{ secrets.ARM_CLIENT_ID }} --password ${{ secrets.ARM_CLIENT_SECRET }} --tenant ${{ secrets.ARM_TENANT_ID }}
 
     - name: Run deploy script
-      run: pwsh ./deploy/deploy.ps1
+      run: pwsh ./deploy.ps1
