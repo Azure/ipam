@@ -1,28 +1,19 @@
-# .github/workflows/deployipam.yml
-name: psdeployipam
-
-on: [workflow_dispatch]
+name: Run Azure Login with OpenID Connect
+on: [push]
 
 permissions:
-  id-token: write
-  contents: read
-
-jobs:
-  deploy:
-    runs-on: windows-latest
-
+  id-token: write # Require write permission to Fetch an OIDC token.
+      
+jobs: 
+  test:
+    runs-on: ubuntu-latest
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v3
-
-    - name: Install Azure CLI
-      run: |
-        Invoke-WebRequest -Uri https://aka.ms/installazurecliwindows -OutFile .\AzureCLI.msi
-        Start-Process msiexec.exe -ArgumentList '/I AzureCLI.msi /quiet' -Wait
-
-    - name: Log in to Azure
-      run: |
-        az login --service-principal --username ${{ secrets.ARM_CLIENT_ID }} --password ${{ secrets.ARM_CLIENT_SECRET }} --tenant ${{ secrets.ARM_TENANT_ID }}
-
-    - name: Run deploy script
-      run: pwsh ./deploy.ps1
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }} 
+        enable-AzPSSession: true
+    
+    
