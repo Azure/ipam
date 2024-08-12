@@ -1,4 +1,6 @@
+# .github/workflows/run-azure-login.yml
 name: Run Azure Login with OpenID Connect
+
 on: [push]
 
 permissions:
@@ -6,8 +8,11 @@ permissions:
       
 jobs: 
   test:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+
     - name: Azure Login
       uses: azure/login@v2
       with:
@@ -16,12 +21,7 @@ jobs:
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }} 
         enable-AzPSSession: true
 
-    - name: Install PowerShell
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y powershell
-
     - name: Run deploy script
       shell: pwsh
-      run: ./deploy.ps1
+      run: ./deploy/deploy.ps1
     
