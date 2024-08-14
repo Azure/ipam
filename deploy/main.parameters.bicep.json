@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "tags": {
+      "value": {
+        "Application": "ipam",
+        "Environment": "dev"
+      }
+    },
+    "uiAppId": {
+      "value": "6b5f3165-8b1f-43af-a5d7-3ae11af2fc52"
+    },
+    "engineAppId": {
+      "value": "b68940f0-571b-4271-a7d8-d1f81ceead2e"
+    },
+    "engineAppSecret": {
+      "value": "EWs8Q~EHiivXYaBKrJaKtgvCDNNeWEMuCPqCfdA-"
+    },
+    "deployAsFunc": {
+      "value": false
+    },
+    "deployAsContainer": {
+      "value": true
+    },
+    "privateAcr": {
+      "value": false
+    }
+  }
+}
