@@ -25,6 +25,6 @@ jobs:
       uses: azure/powershell@v2
       with:
         inlineScript: |
-          .\deploy\deploy.ps1 -Location "uksouth" -ParameterFile .\deploy\main.parameters.json
+          .\deploy\deploy.ps1 -Location "uksouth" -ParameterFile .\deploy\main.parameters.example.json
         azPSVersion: "latest"
     
