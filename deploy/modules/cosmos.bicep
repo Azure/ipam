@@ -7,9 +7,6 @@ param cosmosContainerName string
 @description('CosmosDB Database Name')
 param cosmosDatabaseName string
 
-@description('KeyVault Name')
-param keyVaultName string
-
 @description('Deployment Location')
 param location string = resourceGroup().location
 
@@ -23,7 +20,7 @@ var dbContributor = '00000000-0000-0000-0000-000000000002'
 var dbContributorId = '${resourceGroup().id}/providers/Microsoft.DocumentDB/databaseAccounts/${cosmosAccount.name}/sqlRoleDefinitions/${dbContributor}'
 var dbContributorRoleAssignmentId = guid(dbContributor, principalId, cosmosAccount.id)
 
-resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2021-04-15' = {
+resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2021-06-15' = {
   name: cosmosAccountName
   location: location
   kind: 'GlobalDocumentDB'
@@ -39,6 +36,7 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2021-04-15' = {
     ]
     databaseAccountOfferType: 'Standard'
     enableAutomaticFailover: true
+    // disableLocalAuth: true
     disableKeyBasedMetadataWriteAccess: true
   }
 }
@@ -87,13 +85,6 @@ resource cosmosContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/con
         ]
       }
     }
-  }
-}
-
-resource cosmosKeySecret 'Microsoft.KeyVault/vaults/secrets@2021-11-01-preview' = {
-  name: '${keyVaultName}/COSMOS-KEY'
-  properties: {
-    value: cosmosAccount.listKeys().primaryMasterKey
   }
 }
 

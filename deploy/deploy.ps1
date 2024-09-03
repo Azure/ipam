@@ -6,8 +6,12 @@
 
 # Set minimum version requirements
 #Requires -Version 7.2
-#Requires -Modules @{ ModuleName="Az"; ModuleVersion="10.3.0"}
-#Requires -Modules @{ ModuleName="Microsoft.Graph"; ModuleVersion="2.0.0"}
+#Requires -Modules @{ ModuleName="Az.Accounts"; ModuleVersion="2.13.0"}
+#Requires -Modules @{ ModuleName="Az.Functions"; ModuleVersion="4.0.6"}
+#Requires -Modules @{ ModuleName="Az.Resources"; ModuleVersion="6.10.0"}
+#Requires -Modules @{ ModuleName="Az.Websites"; ModuleVersion="3.1.1"}
+#Requires -Modules @{ ModuleName="Microsoft.Graph.Authentication"; ModuleVersion="2.0.0"}
+#Requires -Modules @{ ModuleName="Microsoft.Graph.Identity.SignIns"; ModuleVersion="2.0.0"}
 
 # Intake and set global parameters
 [CmdletBinding(DefaultParameterSetName = 'AppContainer')]
@@ -194,19 +198,40 @@ param(
     Mandatory = $false,
     ParameterSetName = 'FunctionContainer')]
   [ValidateScript({
-    if(-Not ($_ | Test-Path) ){
+    if(-Not ($_ | Test-Path) ) {
       throw [System.ArgumentException]::New("Target file or does not exist.")
     }
-    if(-Not ($_ | Test-Path -PathType Leaf) ){
+    if(-Not ($_ | Test-Path -PathType Leaf) ) {
       throw [System.ArgumentException]::New("The 'ParameterFile' argument must be a file, folder paths are not allowed.")
     }
-    if($_ -notmatch "(\.json)"){
+    if($_ -notmatch "(\.json)") {
       throw [System.ArgumentException]::New("The file specified in the 'ParameterFile' argument must be of type json.")
     }
     return $true 
   })]
   [System.IO.FileInfo]
-  $ParameterFile
+  $ParameterFile,
+
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'App')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    ParameterSetName = 'Function')]
+  [ValidateScript({
+    if(-Not ($_ | Test-Path) ) {
+      throw [System.ArgumentException]::New("Target file or does not exist.")
+    }
+    if(-Not ($_ | Test-Path -PathType Leaf) ) {
+      throw [System.ArgumentException]::New("The 'ZipFilePath' argument must be a file, folder paths are not allowed.")
+    }
+    if($_ -notmatch "(\.zip)") {
+      throw [System.ArgumentException]::New("The file specified in the 'ZipFilePath' argument must be of type zip.")
+    }
+    return $true 
+  })]
+  [System.IO.FileInfo]
+  $ZipFilePath
 )
 
 DynamicParam {
@@ -353,6 +378,11 @@ process {
 
   $containerBuildError = $false
   $deploymentSuccess = $false
+
+  $GitHubUserName = 'Azure'
+  $GitHubRepoName = 'ipam'
+  $ZipFileName = 'ipam.zip'
+  $TempFolderObj = $null
 
   Start-Transcript -Path $transcriptLog | Out-Null
 
@@ -664,8 +694,9 @@ process {
     $accesstoken = (Get-AzAccessToken -Resource "https://$($msGraphMap[$AzureCloud].Endpoint)/").Token
 
     # Switch Access Token to SecureString if Graph Version is 2.x
-    $graphVersion = [System.Version](Get-InstalledModule -Name Microsoft.Graph | Sort-Object -Property Version | Select-Object -Last 1).Version `
-      ?? (Get-Module -Name Microsoft.Graph | Sort-Object -Property Version | Select-Object -Last 1).Version
+    $graphVersion = [System.Version](Get-InstalledModule -Name Microsoft.Graph -ErrorAction SilentlyContinue | Sort-Object -Property Version | Select-Object -Last 1).Version `
+      ?? (Get-Module -Name Microsoft.Graph -ErrorAction SilentlyContinue | Sort-Object -Property Version | Select-Object -Last 1).Version `
+      ?? (Get-Module -Name Microsoft.Graph -ListAvailable -ErrorAction SilentlyContinue | Sort-Object -Property Version | Select-Object -Last 1).Version
 
     if ($graphVersion.Major -gt 1) {
       $accesstoken = ConvertTo-SecureString $accesstoken -AsPlainText -Force
@@ -894,12 +925,51 @@ process {
     return $deployment
   }
 
+  Function Get-ZipFile {
+    Param(
+      [Parameter(Mandatory=$true)]
+      [string]$GitHubUserName,
+      [Parameter(Mandatory=$true)]
+      [string]$GitHubRepoName,
+      [Parameter(Mandatory=$true)]
+      [string]$ZipFileName,
+      [Parameter(Mandatory=$true)]
+      [System.IO.DirectoryInfo]$AssetFolder
+    )
+  
+    $ZipFilePath = Join-Path -Path $AssetFolder.FullName -ChildPath $ZipFileName
+  
+    try {
+      $GitHubURL = "https://api.github.com/repos/$GitHubUserName/$GitHubRepoName/releases/latest"
+  
+      Write-Host "INFO: Target GitHub Repo is " -ForegroundColor Green -NoNewline
+      Write-Host "$GitHubUserName/$GitHubRepoName" -ForegroundColor Cyan
+      Write-Host "INFO: Fetching download URL..." -ForegroundColor Green
+  
+      $GHResponse = Invoke-WebRequest -Method GET -Uri $GitHubURL
+      $JSONResponse = $GHResponse.Content | ConvertFrom-Json
+      $AssetList = $JSONResponse.assets
+      $Asset = $AssetList | Where-Object { $_.name -eq $ZipFileName }
+      $DownloadURL = $Asset.browser_download_url
+  
+      Write-Host "INFO: Downloading ZIP Archive to " -ForegroundColor Green -NoNewline
+      Write-Host $ZipFilePath -ForegroundColor Cyan
+  
+      Invoke-WebRequest -Uri $DownloadURL -OutFile $ZipFilePath
+    } catch {
+      Write-Host "ERROR: Unable to download ZIP Deploy archive!" -ForegroundColor Red
+      throw $_
+    }
+  }
+
   Function Publish-ZipFile {
     Param(
       [Parameter(Mandatory=$true)]
       [string]$AppName,
       [Parameter(Mandatory=$true)]
       [string]$ResourceGroupName,
+      [Parameter(Mandatory=$true)]
+      [System.IO.FileInfo]$ZipFilePath,
       [Parameter(Mandatory=$false)]
       [switch]$UseAPI
     )
@@ -908,14 +978,12 @@ process {
       Write-Host "INFO: Using Kudu API for ZIP Deploy" -ForegroundColor Green
     }
 
-    $zipPath = Join-Path -Path $ROOT_DIR -ChildPath 'assets' -AdditionalChildPath "ipam.zip"
-
     $publishRetries = 3
     $publishSuccess = $False
 
     if ($UseAPI) {
       $accessToken = (Get-AzAccessToken).Token
-      $zipContents = Get-Item -Path $zipPath
+      $zipContents = Get-Item -Path $ZipFilePath
 
       $publishProfile = Get-AzWebAppPublishingProfile -Name $AppName -ResourceGroupName $ResourceGroupName
       $zipUrl = ([System.uri]($publishProfile | Select-Xml -XPath "//publishProfile[@publishMethod='ZipDeploy']" | Select-Object -ExpandProperty Node).publishUrl).Scheme
@@ -927,7 +995,7 @@ process {
           Publish-AzWebApp `
             -Name $AppName `
             -ResourceGroupName $ResourceGroupName `
-            -ArchivePath $zipPath `
+            -ArchivePath $ZipFilePath `
             -Restart `
             -Force `
             | Out-Null
@@ -1103,13 +1171,40 @@ process {
     }
 
     if ($PSCmdlet.ParameterSetName -in ('App', 'Function')) {
+      if (-Not $ZipFilePath) {
+        try {
+          # Create a temporary folder path
+          $TempFolder = Join-Path -Path TEMP:\ -ChildPath $(New-Guid)
+
+          # Create directory if not exists
+          $script:TempFolderObj = New-Item -ItemType Directory -Path $TempFolder -Force
+        } catch {
+          Write-Host "ERROR: Unable to create temp directory to store ZIP archive!" -ForegroundColor Red
+          throw $_
+        }
+
+        Write-Host "INFO: Fetching latest ZIP Deploy archive..." -ForegroundColor Green
+
+        Get-ZipFile -GitHubUserName $GitHubUserName -GitHubRepoName $GitHubRepoName -ZipFileName $ZipFileName -AssetFolder $TempFolderObj
+
+        $script:ZipFilePath = Join-Path -Path $TempFolderObj.FullName -ChildPath $ZipFileName
+      } else {
+        $script:ZipFilePath = Get-Item -Path $ZipFilePath
+      }
+
       Write-Host "INFO: Uploading ZIP Deploy archive..." -ForegroundColor Green
 
       try {
-        Publish-ZipFile -AppName $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value
+        Publish-ZipFile -AppName $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -ZipFilePath $ZipFilePath
       } catch {
         Write-Host "SWITCH: Retrying ZIP Deploy with Kudu API..." -ForegroundColor Blue
-        Publish-ZipFile -AppName $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -UseAPI
+        Publish-ZipFile -AppName $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -ZipFilePath $ZipFilePath -UseAPI
+      }
+
+      if ($TempFolderObj) {
+        Write-Host "INFO: Cleaning up temporary directory" -ForegroundColor Green
+        Remove-Item -LiteralPath $TempFolderObj.FullName -Force -Recurse -ErrorAction SilentlyContinue
+        $script:TempFolderObj = $null
       }
     }
 
@@ -1171,7 +1266,9 @@ process {
 
         Restart-AzFunctionApp -Name $deployment.Outputs["appServiceName"].Value -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value -Force | Out-Null
       } else {
-        Write-Host "INFO: Building App container ($ContainerType)..." -ForegroundColor Green
+        Write-Host "INFO: Building App container (" -ForegroundColor Green -NoNewline
+        Write-Host $ContainerType.ToLower() -ForegroundColor Cyan -NoNewline
+        Write-Host ")..." -ForegroundColor Green
 
         $appBuildOutput = $(
           az acr build -r $deployment.Outputs["acrName"].Value `
@@ -1247,17 +1344,27 @@ process {
     if($DEBUG_MODE) {
       Write-Host "Debug Log: $debugLog" -ForegroundColor Red
     }
+
+    if ($env:CI) {
+      Write-Host $_.ToString()
+    }  
+
+    exit 1
   }
   finally {
+    if ($TempFolderObj) {
+      Remove-Item -LiteralPath $TempFolderObj.FullName -Force -Recurse -ErrorAction SilentlyContinue
+    }
+
     Write-Host
     Stop-Transcript | Out-Null
 
     if (($PSCmdlet.ParameterSetName -notin 'AppsOnly') -and $script:deploymentSuccess) {
-      Write-Output "ipamURL=https://$($deployment.Outputs["appServiceHostName"].Value)" >> $Env:GITHUB_OUTPUT
-      Write-Output "ipamUIAppId=$($appDetails.UIAppId)" >> $Env:GITHUB_OUTPUT
-      Write-Output "ipamEngineAppId=$($appDetails.EngineAppId)" >> $Env:GITHUB_OUTPUT
-      Write-Output "ipamSuffix=$($deployment.Outputs["suffix"].Value)" >> $Env:GITHUB_OUTPUT
-      Write-Output "ipamResourceGroup=$($deployment.Outputs["resourceGroupName"].Value)" >> $Env:GITHUB_OUTPUT
+      Write-Output "ipamURL=https://$($deployment.Outputs["appServiceHostName"].Value)" >> $env:GITHUB_OUTPUT
+      Write-Output "ipamUIAppId=$($appDetails.UIAppId)" >> $env:GITHUB_OUTPUT
+      Write-Output "ipamEngineAppId=$($appDetails.EngineAppId)" >> $env:GITHUB_OUTPUT
+      Write-Output "ipamSuffix=$($deployment.Outputs["suffix"].Value)" >> $env:GITHUB_OUTPUT
+      Write-Output "ipamResourceGroup=$($deployment.Outputs["resourceGroupName"].Value)" >> $env:GITHUB_OUTPUT
     }
 
     exit

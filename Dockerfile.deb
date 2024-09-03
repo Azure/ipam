@@ -58,7 +58,7 @@ COPY ./engine/requirements.lock.txt /code/requirements.lock.txt
 RUN pip install --upgrade pip --progress-bar off
 
 # Install Dependencies
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.lock.txt --progress-bar off
+RUN pip install --no-cache-dir -r /code/requirements.lock.txt --progress-bar off
 
 # Copy Engine Code
 COPY ./engine/app ./app

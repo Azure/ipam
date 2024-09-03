@@ -156,7 +156,7 @@ try {
 
   # Build Azure IPAM UI
   $npmInstallErr = $(
-    $npmInstall = npm install --no-progress --no-update-notifier
+    $npmInstall = npm ci --no-progress --no-update-notifier --no-fund
   ) 2>&1
 
   # Switch back to original dir
@@ -206,7 +206,7 @@ try {
 
   # Fetch Azure IPAM Engine modules
   $pipInstallErr = $(
-    $pipInstall = pip install --upgrade -r requirements.txt --target $packageDir.FullName --progress-bar off
+    $pipInstall = pip install --upgrade -r requirements.lock.txt --target $packageDir.FullName --no-warn-script-location --progress-bar off
   ) 2>&1
 
   # Switch back to original dir
@@ -257,6 +257,12 @@ catch {
   $_ | Out-File -FilePath $buildLog -Append
   Write-Host "ERROR: Unable to build Azure IPAM Zip assets due to an exception, see log for detailed information!" -ForegroundColor red
   Write-Host "Build Log: $buildLog" -ForegroundColor Red
+
+  if ($env:CI) {
+    Write-Host $_.ToString()
+  }
+
+  exit 1
 }
 finally {
   Set-Location (Get-Item $($MyInvocation.MyCommand.Path)).Directory
