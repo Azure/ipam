@@ -154,17 +154,17 @@ try {
 
   Write-Host "INFO: Running NPM Install..." -ForegroundColor Green
 
-  # Build Azure IPAM UI
+  # Install Azure IPAM UI Dependencies
   $npmInstallErr = $(
-    $npmInstall = npm ci --no-progress --no-update-notifier --no-fund
+    $npmInstall = npm ci --no-progress --no-update-notifier --no-fund --loglevel error
   ) 2>&1
 
   # Switch back to original dir
   Pop-Location
 
-  # Exit if NPM Build fails
+  # Exit if NPM Install fails
   if($npmInstallErr) {
-    Write-Host "ERROR: NPM Build failed!" -ForegroundColor red
+    Write-Host "ERROR: NPM Install failed!" -ForegroundColor red
     throw $npmInstallErr
   }
 
@@ -183,7 +183,7 @@ try {
 
   # Exit if NPM Build fails
   if($npmBuildErr) {
-    Write-Host "ERROR: NPM Install failed!" -ForegroundColor red
+    Write-Host "ERROR: NPM Build failed!" -ForegroundColor red
     throw $npmBuildErr
   }
 

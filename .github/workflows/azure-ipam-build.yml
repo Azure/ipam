@@ -16,6 +16,7 @@ jobs:
   init:
     name: Initialize Azure IPAM Build
     runs-on: ubuntu-latest
+    environment: production
     outputs:
       ipamVersion: ${{ steps.extractVersion.outputs.ipamVersion }}
     steps:
@@ -34,6 +35,7 @@ jobs:
   build:
     name: Build Azure IPAM Containers
     runs-on: ubuntu-latest
+    environment: production
     needs: [ init ]
     steps:
       - name: Azure Login
@@ -61,6 +63,7 @@ jobs:
   build-legacy:
     name: Build Legacy Azure IPAM Containers
     runs-on: ubuntu-latest
+    environment: production
     needs: [ init ]
     steps:
       - name: Azure Login
