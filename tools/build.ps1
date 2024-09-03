@@ -198,15 +198,12 @@ try {
 
   Write-Host "INFO: Running PIP install..." -ForegroundColor Green
 
-  # Remove package directory if it exists
-  Remove-Item -Path TEMP:\packages -Recurse -Force -ErrorAction SilentlyContinue
-
   # Create temporary directory for PIP packages
   $packageDir = New-Item -ItemType Directory -Path (Join-Path -Path $tempFolder -ChildPath "packages")
 
   # Fetch Azure IPAM Engine modules
   $pipInstallErr = $(
-    $pipInstall = pip install --upgrade -r requirements.lock.txt --target $packageDir.FullName --no-warn-script-location --progress-bar off
+    $pipInstall = pip install -r requirements.lock.txt --target $packageDir.FullName --no-warn-script-location --progress-bar off
   ) 2>&1
 
   # Switch back to original dir
