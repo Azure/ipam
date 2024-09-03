@@ -1,0 +1,62 @@
+name: Azure IPAM Release Assets
+
+run-name: Azure IPAM Assets Build & Upload
+
+on:
+  release:
+    types: [ published ]
+
+permissions:
+  contents: write
+
+jobs:
+  assets:
+    name: Build & Upload Asset Files to Release
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Job triggered by a ${{ github.event_name }} event."
+      - run: echo "Release Tag - ${{ github.event.release.tag_name }}."
+
+      - name: "Setup NodeJS v18"
+        id: setupNode
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: "Setup Python v3.9"
+        id: setupPython
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Checkout Azure IPAM Code
+        uses: actions/checkout@v4
+
+      - name: Install NPM Packages
+        id: installNpmPackages
+        working-directory: ui
+        run: |
+          npm ci
+
+      - name: Install PIP Packages
+        id: installPipPackages
+        working-directory: engine
+        run: |
+          pip install -r requirements.lock.txt --progress-bar off
+
+      - name: "Create Azure IPAM ZIP Asset"
+        id: buildZipAsset
+        working-directory: tools
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Name ../assets/ -Force
+          ./build.ps1 -Path ../assets/ 
+
+      - name: Upload Azure IPAM Release Asset
+        id: uploadReleaseAsset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tagName: ${{ github.event.release.tag_name }}
+          assetPath: ./assets/ipam.zip
+        run: |
+          gh release upload "$tagName" "$assetPath"

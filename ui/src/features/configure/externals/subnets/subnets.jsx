@@ -508,7 +508,7 @@ const Subnets = (props) => {
 
   return (
     <React.Fragment>
-      { !isAdmin &&
+      { isAdmin &&
         <React.Fragment>
           <AddExtSubnet
             open={addExtSubOpen}

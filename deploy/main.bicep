@@ -106,7 +106,6 @@ module cosmos './modules/cosmos.bicep' = {
     cosmosAccountName: resourceNames.cosmosAccountName
     cosmosContainerName: resourceNames.cosmosContainerName
     cosmosDatabaseName: resourceNames.cosmosDatabaseName
-    keyVaultName: keyVault.outputs.keyVaultName
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     principalId: managedIdentity.outputs.principalId
   }

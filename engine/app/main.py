@@ -78,7 +78,7 @@ async def ipam_init():
 
     os.environ['VITE_CONTAINER_IMAGE_ID'] = release_data['ID']
     os.environ['VITE_CONTAINER_IMAGE_VERSION'] = release_data['VERSION_ID']
-    os.environ['VITE_CONTAINER_IMAGE_CODENAME'] = release_data['VERSION'].split(" ")[1][1:-1].lower()
+    os.environ['VITE_CONTAINER_IMAGE_CODENAME'] = release_data['VERSION'].split(" ")[1][1:-1].lower() if "VERSION" in release_data else "N/A"
     os.environ['VITE_CONTAINER_IMAGE_PRETTY_NAME'] = release_data['PRETTY_NAME']
 
     if os.path.exists(BUILD_DIR):

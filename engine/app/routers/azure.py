@@ -674,9 +674,18 @@ async def vmss(
     """
 
     if globals.AZURE_ENV == "AZURE_PUBLIC":
-        results = await arg_query(authorization, admin, argquery.VM_SCALE_SET)
+        vm_scale_sets = await arg_query(authorization, admin, argquery.VM_SCALE_SET)
     else:
-        results = await get_vmss(authorization, admin)
+        vm_scale_sets = await get_vmss(authorization, admin)
+
+    results = []
+
+    for vmss in vm_scale_sets:
+        for private_ip in vmss["private_ips"] or []:
+            new_vmss = copy.deepcopy(vmss)
+            del new_vmss["private_ips"]
+            new_vmss["private_ip"] = private_ip
+            results.append(new_vmss)
 
     return results
 

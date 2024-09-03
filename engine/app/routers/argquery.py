@@ -96,7 +96,8 @@ resources
 | join kind = leftouter(
     resources
     | where type =~ 'Microsoft.Network/virtualNetworks'
-    | mv-expand subnet = todynamic(properties.subnets)
+    | extend subnet = todynamic(properties.subnets)
+    | mv-expand subnet limit 1024
     | extend nameMap = dynamic({{'AzureFirewallSubnet': 'AFW', 'GatewaySubnet': 'VGW', 'AzureBastionSubnet': 'BAS'}})
     | extend nameResult = nameMap[tostring(subnet.name)]
     | extend appGwConfig = subnet.properties.applicationGatewayIPConfigurations
@@ -272,39 +273,44 @@ resources
 # | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines"
 # | where subscriptionId !in~ {}
 # | project name, tostring(id), resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId
-# | extend lower_id = tolower(id)
+# | extend id_lower = tolower(id)
 # | join kind = leftouter (
 #     ComputeResources
 #     | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines/networkinterfaces"
 #     | mv-expand ipConfig = properties.ipConfigurations
-#     | project id = tostring(properties.virtualMachine.id), private_ip = ipConfig.properties.privateIPAddress, subnet_id = ipConfig.properties.subnet.id
-#     | extend lower_id = tolower(id)
-#     | extend lower_subnet_id = tolower(tostring(subnet_id))
-# ) on lower_id
+#     | project id = tostring(properties.virtualMachine.id), private_ip = ipConfig.properties.privateIPAddress, subnet_id = tostring(ipConfig.properties.subnet.id)
+#     | extend id_lower = tolower(id)
+#     | extend subnet_id_lower = tolower(tostring(subnet_id))
+# ) on id_lower
 # | join kind = leftouter (
 #     resources
 #     | where type =~ 'microsoft.network/virtualnetworks'
 #     | mv-expand subnet = properties.subnets
-#     | project subnet_id = subnet.id, subnet_name = subnet.name, vnet_id = id, vnet_name = name
-#     | extend lower_subnet_id = tolower(tostring(subnet_id))
-# ) on lower_subnet_id
-# | extend vmss_name = replace(@'_[^_]+$', '', name)
+#     | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
+#     | extend subnet_id_lower = tolower(tostring(subnet_id))
+# ) on subnet_id_lower
+# | extend vmss_name = extract(@'virtualMachineScaleSets\/(.*)\/virtualMachines', 1, id)
 # | extend vmss_vm_num = todynamic(replace(@'.*\/virtualMachines/', '', id))
 # | extend vmss_id = replace(@'/virtualMachines.*', '', id)
-# | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = pack('vmss_name', vmss_name, 'vmss_vm_num', vmss_vm_num, 'vmss_id', vmss_id)
+# | extend metadata = pack('kind', 'VM Scale Set', 'vmss_name', vmss_name, 'vmss_vm_num', vmss_vm_num, 'vmss_id', vmss_id)
+# | project name = strcat(vmss_name, '_', vmss_vm_num), id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 # """
 
 VM_SCALE_SET = """
 ComputeResources
 | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines"
 | where subscriptionId !in~ {}
+| where properties.provisioningState == "Succeeded"
 | project name, tostring(id), resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId
 | extend id_lower = tolower(id)
 | join kind = leftouter (
     ComputeResources
     | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines/networkinterfaces"
     | mv-expand ipConfig = properties.ipConfigurations
-    | project id = tostring(properties.virtualMachine.id), private_ip = ipConfig.properties.privateIPAddress, subnet_id = tostring(ipConfig.properties.subnet.id)
+    | extend id = tostring(properties.virtualMachine.id)
+    | extend subnet_id = tostring(ipConfig.properties.subnet.id)
+    | extend id_lower = tolower(id)
+    | summarize private_ips = make_list(ipConfig.properties.privateIPAddress) by id, subnet_id
     | extend id_lower = tolower(id)
     | extend subnet_id_lower = tolower(tostring(subnet_id))
 ) on id_lower
@@ -319,7 +325,7 @@ ComputeResources
 | extend vmss_vm_num = todynamic(replace(@'.*\/virtualMachines/', '', id))
 | extend vmss_id = replace(@'/virtualMachines.*', '', id)
 | extend metadata = pack('kind', 'VM Scale Set', 'vmss_name', vmss_name, 'vmss_vm_num', vmss_vm_num, 'vmss_id', vmss_id)
-| project name = strcat(vmss_name, '_', vmss_vm_num), id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
+| project name = strcat(vmss_name, '_', vmss_vm_num), id, private_ips, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata 
 """
 
 FIREWALL_VNET = """

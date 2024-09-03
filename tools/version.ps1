@@ -156,6 +156,12 @@ catch {
   $_ | Out-File -FilePath $versionLog -Append
   Write-Host "ERROR: Unable to update Azure IPAM component versions due to an exception, see log for detailed information!" -ForegroundColor red
   Write-Host "Version Log: $versionLog" -ForegroundColor Red
+
+  if ($env:CI) {
+    Write-Host $_.ToString()
+  }
+
+  exit 1
 }
 finally {
   Write-Host

@@ -6,7 +6,9 @@
 
 # Set minimum version requirements
 #Requires -Version 7.2
-#Requires -Modules @{ ModuleName="Az"; ModuleVersion="10.3.0"}
+#Requires -Modules @{ ModuleName="Az.Accounts"; ModuleVersion="2.13.0" }
+#Requires -Modules @{ ModuleName="Az.Functions"; ModuleVersion="4.0.6" }
+#Requires -Modules @{ ModuleName="Az.Websites"; ModuleVersion="3.1.1" }
 
 # Intake and set global parameters
 param(
@@ -18,7 +20,60 @@ param(
   [Parameter(ValueFromPipelineByPropertyName = $true,
     Mandatory = $true)]
   [string]
-  $ResourceGroupName
+  $ResourceGroupName,
+
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory=$false)]
+  [string]
+  $GitHubUserName = "Azure",
+
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory=$false)]
+  [string]
+  $GitHubRepoName = "ipam",
+
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory=$false)]
+  [ValidateScript({
+    $IndexOfInvalidChar = $_.IndexOfAny([System.IO.Path]::GetInvalidFileNameChars())
+    if (-Not ($IndexOfInvalidChar -eq -1)) {
+      throw [System.ArgumentException]::New("The 'ZipFileName' argument contains one or more invalid characters.")
+    }
+    if(-Not ($_ -match "(\.zip)")) {
+      throw [System.ArgumentException]::New("The 'ZipFileName' argument must be of type zip.")
+    }
+    return $true
+  })]
+  [string]
+  $ZipFileName = "ipam.zip",
+
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory=$false)]
+  [ValidateScript({
+    if(-Not ($_ | Get-Item) ) {
+      throw [System.ArgumentException]::New("AssetFolder does not exist, please provide a pre-existing folder.")
+    }
+    return $true 
+  })]
+  [System.IO.DirectoryInfo]
+  $AssetFolder,
+
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false)]
+  [ValidateScript({
+    if(-Not ($_ | Test-Path) ) {
+      throw [System.ArgumentException]::New("Target file or does not exist.")
+    }
+    if(-Not ($_ | Test-Path -PathType Leaf) ) {
+      throw [System.ArgumentException]::New("The 'ZipFilePath' argument must be a file, folder paths are not allowed.")
+    }
+    if($_ -notmatch "(\.zip)") {
+      throw [System.ArgumentException]::New("The file specified in the 'ZipFilePath' argument must be of type zip.")
+    }
+    return $true 
+  })]
+  [System.IO.FileInfo]
+  $ZipFilePath
 )
 
 # Root Directory
@@ -38,6 +93,48 @@ $logPath = Join-Path -Path $ROOT_DIR -ChildPath "logs"
 New-Item -ItemType Directory -Path $logpath -Force | Out-Null
 
 $updateLog = Join-Path -Path $logPath -ChildPath "update_$(get-date -format `"yyyyMMddhhmmsstt`").log"
+$errorLog = Join-Path -Path $logPath -ChildPath "error_$(get-date -format `"yyyyMMddhhmmsstt`").log"
+
+$containerBuildError = $false
+
+$TempFolderObj = $null
+
+Function Get-BuildLogs {
+  Param(
+    [Parameter(Mandatory=$true)]
+    [string]$SubscriptionId,
+    [Parameter(Mandatory=$true)]
+    [string]$ResourceGroupName,
+    [Parameter(Mandatory=$true)]
+    [string]$RegistryName,
+    [Parameter(Mandatory=$true)]
+    [string]$BuildId
+  )
+
+  $msArmMap = @{
+    AZURE_PUBLIC         = "management.azure.com"
+    AZURE_US_GOV         = "management.usgovcloudapi.net"
+    AZURE_US_GOV_SECRET  = "management.azure.microsoft.scloud"
+    AZURE_GERMANY        = "management.microsoftazure.de"
+    AZURE_CHINA          = "management.chinacloudapi.cn"
+  };
+
+  $accessToken = (Get-AzAccessToken).Token | ConvertTo-SecureString -AsPlainText
+
+  $response = Invoke-RestMethod `
+    -Method POST `
+    -Uri "https://$($msArmMap[$AzureCloud])/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroupName/providers/Microsoft.ContainerRegistry/registries/$RegistryName/runs/$BuildId/listLogSasUrl?api-version=2019-04-01" `
+    -Authentication Bearer `
+    -Token $accessToken
+  
+  $logLink = $response.logLink
+
+  $logs = Invoke-RestMethod `
+    -Method GET `
+    -Uri $logLink
+  
+  return $logs
+}
 
 Function Restart-IpamApp {
   Param(
@@ -89,12 +186,51 @@ Function Restart-IpamApp {
   } while ($restartSuccess -eq $False -and $restartRetries -gt 0)
 }
 
+Function Get-ZipFile {
+  Param(
+    [Parameter(Mandatory=$true)]
+    [string]$GitHubUserName,
+    [Parameter(Mandatory=$true)]
+    [string]$GitHubRepoName,
+    [Parameter(Mandatory=$true)]
+    [string]$ZipFileName,
+    [Parameter(Mandatory=$true)]
+    [System.IO.DirectoryInfo]$AssetFolder
+  )
+
+  $ZipFilePath = Join-Path -Path $AssetFolder.FullName -ChildPath $ZipFileName
+
+  try {
+    $GitHubURL = "https://api.github.com/repos/$GitHubUserName/$GitHubRepoName/releases/latest"
+
+    Write-Host "INFO: Target GitHub Repo is " -ForegroundColor Green -NoNewline
+    Write-Host "$GitHubUserName/$GitHubRepoName" -ForegroundColor Cyan
+    Write-Host "INFO: Fetching download URL..." -ForegroundColor Green
+
+    $GHResponse = Invoke-WebRequest -Method GET -Uri $GitHubURL
+    $JSONResponse = $GHResponse.Content | ConvertFrom-Json
+    $AssetList = $JSONResponse.assets
+    $Asset = $AssetList | Where-Object { $_.name -eq $ZipFileName }
+    $DownloadURL = $Asset.browser_download_url
+
+    Write-Host "INFO: Downloading ZIP Archive to " -ForegroundColor Green -NoNewline
+    Write-Host $ZipFilePath -ForegroundColor Cyan
+
+    Invoke-WebRequest -Uri $DownloadURL -OutFile $ZipFilePath
+  } catch {
+    Write-Host "ERROR: Unable to download ZIP Deploy archive!" -ForegroundColor Red
+    throw $_
+  }
+}
+
 Function Publish-ZipFile {
   Param(
     [Parameter(Mandatory=$true)]
     [string]$AppName,
     [Parameter(Mandatory=$true)]
     [string]$ResourceGroupName,
+    [Parameter(Mandatory=$true)]
+    [System.IO.FileInfo]$ZipFilePath,
     [Parameter(Mandatory=$false)]
     [switch]$UseAPI
   )
@@ -103,14 +239,12 @@ Function Publish-ZipFile {
     Write-Host "INFO: Using Kudu API for ZIP Deploy" -ForegroundColor Green
   }
 
-  $zipPath = Join-Path -Path $ROOT_DIR -ChildPath 'assets' -AdditionalChildPath "ipam.zip"
-
   $publishRetries = 3
   $publishSuccess = $False
 
   if ($UseAPI) {
     $accessToken = (Get-AzAccessToken).Token
-    $zipContents = Get-Item -Path $zipPath
+    $zipContents = Get-Item -Path $ZipFilePath
 
     $publishProfile = Get-AzWebAppPublishingProfile -Name $AppName -ResourceGroupName $ResourceGroupName
     $zipUrl = ([System.uri]($publishProfile | Select-Xml -XPath "//publishProfile[@publishMethod='ZipDeploy']" | Select-Object -ExpandProperty Node).publishUrl).Scheme
@@ -122,7 +256,7 @@ Function Publish-ZipFile {
         Publish-AzWebApp `
           -Name $AppName `
           -ResourceGroupName $ResourceGroupName `
-          -ArchivePath $zipPath `
+          -ArchivePath $ZipFilePath `
           -Restart `
           -Force `
           | Out-Null
@@ -306,8 +440,11 @@ try {
       }
     }
 
-    $dockerFile = 'Dockerfile.' + $containerMap[$containerType].Extension
-    $dockerFilePath = Join-Path -Path $ROOT_DIR -ChildPath $dockerFile
+    if($containerType) {
+      $dockerFile = 'Dockerfile.' + $containerMap[$containerType].Extension
+      $dockerFilePath = Join-Path -Path $ROOT_DIR -ChildPath $dockerFile
+    }
+
     $dockerFileFunc = Join-Path -Path $ROOT_DIR -ChildPath 'Dockerfile.func'
 
     if($isFunction) {
@@ -316,11 +453,24 @@ try {
       $funcBuildOutput = $(
         az acr build -r $acrName `
         -t ipamfunc:latest `
-        -f $dockerFileFunc $ROOT_DIR
+        -f $dockerFileFunc $ROOT_DIR `
+        --no-logs
       ) *>&1
 
       if ($LASTEXITCODE -ne 0) {
-        throw $funcBuildOutput
+        Write-Host "ERROR: Container build process failed, fetching error logs..." -ForegroundColor Red
+
+        $buildId = [regex]::Matches($funcBuildOutput, "(?<=Queued a build with ID: )[\w]*").Value.Trim()
+
+        $buildLogs = Get-BuildLogs `
+          -SubscriptionId (Get-AzContext).Subscription.Id `
+          -ResourceGroupName $ResourceGroupName `
+          -RegistryName $acrName `
+          -BuildId $buildId
+
+        $buildLogs | Out-File -FilePath $errorLog -Append
+
+        $script:containerBuildError = $true
       } else {
         Write-Host "INFO: Function container image build and push completed successfully" -ForegroundColor Green
       }
@@ -339,11 +489,24 @@ try {
           -f $dockerFilePath $ROOT_DIR `
           --build-arg PORT=$($containerMap[$ContainerType].Port) `
           --build-arg BUILD_IMAGE=$($containerMap[$containerType].Images.Build) `
-          --build-arg SERVE_IMAGE=$($containerMap[$containerType].Images.Serve)
+          --build-arg SERVE_IMAGE=$($containerMap[$containerType].Images.Serve) `
+          --no-logs
       ) *>&1
 
       if ($LASTEXITCODE -ne 0) {
-        throw $appBuildOutput
+        Write-Host "ERROR: Container build process failed, fetching error logs..." -ForegroundColor Red
+
+        $buildId = [regex]::Matches($appBuildOutput, "(?<=Queued a build with ID: )[\w]*").Value.Trim()
+
+        $buildLogs = Get-BuildLogs `
+          -SubscriptionId (Get-AzContext).Subscription.Id `
+          -ResourceGroupName $ResourceGroupName `
+          -RegistryName $acrName `
+          -BuildId $buildId
+
+        $buildLogs | Out-File -FilePath $errorLog -Append
+
+        $script:containerBuildError = $true
       } else {
         Write-Host "INFO: App container image build and push completed successfully" -ForegroundColor Green
       }
@@ -352,14 +515,55 @@ try {
 
       Restart-IpamApp -AppName $AppName -ResourceGroupName $ResourceGroupName
     }
+
+    if(-not $containerBuildError) {
+      Write-Host "INFO: Azure IPAM Solution updated successfully" -ForegroundColor Green
+    } else {
+      Write-Host "WARNING: Azure IPAM Solution deployed with errors, see logs for details!" -ForegroundColor Yellow
+      Write-Host "Run Log: $transcriptLog" -ForegroundColor Yellow
+      Write-Host "Error Log: $errorLog" -ForegroundColor Yellow
+    }
   } else {
+    if (-Not $ZipFilePath) {
+      if (-Not $AssetFolder) {
+        try {
+          # Create a temporary folder path
+          $TempFolder = Join-Path -Path TEMP:\ -ChildPath $(New-Guid)
+
+          # Create directory if not exists
+          $script:TempFolderObj = New-Item -ItemType Directory -Path $TempFolder -Force
+
+          $script:AssetFolder = $TempFolderObj
+        } catch {
+          Write-Host "ERROR: Unable to create temp directory to store ZIP archive!" -ForegroundColor Red
+          throw $_
+        }
+      } else {
+        $script:AssetFolder = Get-Item -Path $AssetFolder
+      }
+
+      Write-Host "INFO: Fetching latest ZIP Deploy archive..." -ForegroundColor Green
+
+      Get-ZipFile -GitHubUserName $GitHubUserName -GitHubRepoName $GitHubRepoName -ZipFileName $ZipFileName -AssetFolder $AssetFolder
+
+      $script:ZipFilePath = Join-Path -Path $AssetFolder.FullName -ChildPath $ZipFileName
+    } else {
+      $script:ZipFilePath = Get-Item -Path $ZipFilePath
+    }
+
     Write-Host "INFO: Uploading ZIP Deploy archive..." -ForegroundColor Green
 
     try {
-      Publish-ZipFile -AppName $AppName -ResourceGroupName $ResourceGroupName
+      Publish-ZipFile -AppName $AppName -ResourceGroupName $ResourceGroupName -ZipFilePath $ZipFilePath
     } catch {
       Write-Host "SWITCH: Retrying ZIP Deploy with Kudu API..." -ForegroundColor Blue
-      Publish-ZipFile -AppName $AppName -ResourceGroupName $ResourceGroupName -UseAPI
+      Publish-ZipFile -AppName $AppName -ResourceGroupName $ResourceGroupName -ZipFilePath $ZipFilePath -UseAPI
+    }
+
+    if ($TempFolderObj) {
+      Write-Host "INFO: Cleaning up temporary directory" -ForegroundColor Green
+      Remove-Item -LiteralPath $TempFolderObj.FullName -Force -Recurse -ErrorAction SilentlyContinue
+      $script:TempFolderObj = $null
     }
 
     Write-Host
@@ -367,11 +571,21 @@ try {
   }
 }
 catch {
-  $_ | Out-File -FilePath $updateLog -Append
+  $_ | Out-File -FilePath $errorLog -Append
   Write-Host "ERROR: Unable to update Azure IPAM application, see log for detailed information!" -ForegroundColor red
-  Write-Host "Update Log: $updateLog" -ForegroundColor Red
+  Write-Host "Update Log: $errorLog" -ForegroundColor Red
+
+  if ($env:CI) {
+    Write-Host $_.ToString()
+  }
+
+  exit 1
 }
 finally {
+  if ($TempFolderObj) {
+    Remove-Item -LiteralPath $TempFolderObj.FullName -Force -Recurse -ErrorAction SilentlyContinue
+  }
+
   Write-Host
   Stop-Transcript | Out-Null
 }
