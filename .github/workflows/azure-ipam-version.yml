@@ -99,6 +99,7 @@ jobs:
         working-directory: engine
         run: |
           echo "# Dependencies for Azure IPAM v${{ steps.updateVersion.outputs.ipamVersion }}" > requirements.lock.txt
+          echo "# Generated on $(date)" >> requirements.lock.txt
           pip freeze >> requirements.lock.txt
 
       - name: Commit Updated Azure IPAM Code
