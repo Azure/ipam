@@ -49,6 +49,7 @@ jobs:
         working-directory: tools
         shell: pwsh
         run: |
+          New-Item -ItemType Directory -Name ../assets/ -Force
           ./build.ps1 -Path ../assets/ 
 
       - name: Upload Azure IPAM Release Asset
