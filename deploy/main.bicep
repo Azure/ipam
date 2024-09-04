@@ -36,6 +36,8 @@ param engineAppSecret string
 @description('Tags')
 param tags object = {}
 
+param private bool = false
+
 @description('IPAM Resource Names')
 param resourceNames object = {
   functionName: '${namePrefix}-${uniqueString(guid)}'
@@ -51,6 +53,7 @@ param resourceNames object = {
   resourceGroupName: '${namePrefix}-rg-${uniqueString(guid)}'
   storageAccountName: '${namePrefix}stg${uniqueString(guid)}'
   containerRegistryName: '${namePrefix}acr${uniqueString(guid)}'
+  virtualNetwork: '${namePrefix}vnet${uniqueString(guid)}'
 }
 
 // Resource Group
@@ -59,6 +62,16 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   #disable-next-line use-stable-resource-identifiers
   name: resourceNames.resourceGroupName
   tags: tags
+}
+
+module virtualNetwork 'modules/virtualNetwork.bicep' = {
+  name: 'virtualNetworkModule'
+  scope: resourceGroup
+  params: {
+    private: private
+    location: location
+    virtualNetworkName: resourceNames.virtualNetwork
+  }
 }
 
 // Log Analytics Workspace
@@ -94,6 +107,8 @@ module keyVault './modules/keyVault.bicep' = {
     engineAppId: engineAppId
     engineAppSecret: engineAppSecret
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
+    privateEndpointSubnetId: virtualNetwork.outputs.privateEndpointSubnetId
+    private: private
   }
 }
 
@@ -108,6 +123,8 @@ module cosmos './modules/cosmos.bicep' = {
     cosmosDatabaseName: resourceNames.cosmosDatabaseName
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     principalId: managedIdentity.outputs.principalId
+    privateEndpointSubnetId: virtualNetwork.outputs.privateEndpointSubnetId
+    private: private
   }
 }
 
@@ -119,6 +136,8 @@ module storageAccount './modules/storageAccount.bicep' = if (deployAsFunc) {
     location: location
     storageAccountName: resourceNames.storageAccountName
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
+    privateEndpointSubnetId: virtualNetwork.outputs.privateEndpointSubnetId
+    private: private
   }
 }
 
@@ -130,6 +149,8 @@ module containerRegistry './modules/containerRegistry.bicep' = if (privateAcr) {
     location: location
     containerRegistryName: resourceNames.containerRegistryName
     principalId: managedIdentity.outputs.principalId
+    privateEndpointSubnetId: virtualNetwork.outputs.privateEndpointSubnetId
+    private: private
   }
 }
 
@@ -152,6 +173,9 @@ module appService './modules/appService.bicep' = if (!deployAsFunc) {
     deployAsContainer: deployAsContainer
     privateAcr: privateAcr
     privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
+    privateEndpointSubnetId: virtualNetwork.outputs.privateEndpointSubnetId
+    egressSubnetId: virtualNetwork.outputs.egressSubnetId
+    private: private
   }
 }
 
@@ -175,12 +199,14 @@ module functionApp './modules/functionApp.bicep' = if (deployAsFunc) {
     deployAsContainer: deployAsContainer
     privateAcr: privateAcr
     privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
+    privateEndpointSubnetId: virtualNetwork.outputs.privateEndpointSubnetId
+    egressSubnetId: virtualNetwork.outputs.egressSubnetId
+    private: private
   }
 }
 
 // Outputs
 output suffix string = uniqueString(guid)
-output subscriptionId string = subscription().subscriptionId
 output resourceGroupName string = resourceGroup.name
 output appServiceName string = deployAsFunc ? resourceNames.functionName : resourceNames.appServiceName
 output appServiceHostName string = deployAsFunc ? functionApp.outputs.functionAppHostName : appService.outputs.appServiceHostName

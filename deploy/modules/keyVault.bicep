@@ -26,6 +26,9 @@ param engineAppSecret string
 @description('Log Analytics Worskpace ID')
 param workspaceId string
 
+param privateEndpointSubnetId string
+param private bool
+
 var keyVaultUser = '4633458b-17de-408a-b874-0445c86b69e6'
 var keyVaultUserId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultUser)
 var keyVaultUserRoleAssignmentId = guid(keyVaultUser, identityPrincipalId, keyVault.id)
@@ -123,6 +126,27 @@ resource keyVaultUserAssignment 'Microsoft.Authorization/roleAssignments@2020-04
     principalType: 'ServicePrincipal'
     roleDefinitionId: keyVaultUserId
     principalId: identityPrincipalId
+  }
+}
+
+resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-06-01' = if(private) {
+  name: '${keyVaultName}-privateEndpoint'
+  location: location
+  properties: {
+    subnet: {
+      id: privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: 'privateLinkServiceConnection'
+        properties: {
+          privateLinkServiceId: keyVault.id
+          groupIds: [
+            'vault'
+          ]
+        }
+      }
+    ]
   }
 }
 
