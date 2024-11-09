@@ -696,7 +696,8 @@ process {
     # Switch Access Token to SecureString if Graph Version is 2.x
     $graphVersion = [System.Version](Get-InstalledModule -Name Microsoft.Graph -ErrorAction SilentlyContinue | Sort-Object -Property Version | Select-Object -Last 1).Version `
       ?? (Get-Module -Name Microsoft.Graph -ErrorAction SilentlyContinue | Sort-Object -Property Version | Select-Object -Last 1).Version `
-      ?? (Get-Module -Name Microsoft.Graph -ListAvailable -ErrorAction SilentlyContinue | Sort-Object -Property Version | Select-Object -Last 1).Version
+      ?? (Get-Module -Name Microsoft.Graph -ListAvailable -ErrorAction SilentlyContinue | Sort-Object -Property Version | Select-Object -Last 1).Version `
+      ?? [System.Version]([array](Get-InstalledModule | Where-Object { $_.Name -like "Microsoft.Graph.*" } | Select-Object -ExpandProperty Version | Sort-Object | Get-Unique))[0]
 
     if ($graphVersion.Major -gt 1) {
       $accesstoken = ConvertTo-SecureString $accesstoken -AsPlainText -Force
