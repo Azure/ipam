@@ -1815,7 +1815,7 @@ async def create_external_network(
             block_net_cidrs += prefixes
 
     block_set = IPSet(block_net_cidrs)
-    resv_set = IPSet(x['cidr'] for x in target_block['resv'])
+    resv_set = IPSet(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
     external_set = IPSet(x['cidr'] for x in target_block['externals'])
     available_set = IPSet([target_block['cidr']]) ^ (resv_set | external_set | block_set)
 
