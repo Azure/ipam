@@ -31,7 +31,7 @@ import {
 import LoadingButton from "@mui/lab/LoadingButton";
 
 import {
-  ArrowDropDownOutlined,
+  MenuOpenOutlined,
   ContentCopyOutlined,
   PieChartOutlined
 } from "@mui/icons-material";
@@ -682,7 +682,7 @@ const Generator = () => {
                         disableRipple
                         onClick={handleClick}
                       >
-                        <ArrowDropDownOutlined />
+                        <MenuOpenOutlined />
                       </IconButton>
                   }}
                   sx={{
