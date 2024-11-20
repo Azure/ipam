@@ -494,7 +494,6 @@ const Associations = () => {
 
   React.useEffect(() => {
     if(selectedBlock && vNets) {
-      //eslint-disable-next-line
       setUnchanged(isEqual(selectedBlock['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}), selectionModel));
     } else {
       setUnchanged(true);
@@ -563,7 +562,6 @@ const Associations = () => {
 
               return newSelection;
             } else {
-              //eslint-disable-next-line
               return selectedBlock['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{});
             }
           });

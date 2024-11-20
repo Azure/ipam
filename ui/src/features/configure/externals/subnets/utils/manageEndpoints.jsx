@@ -318,7 +318,6 @@ export default function ManageExtEndpoints(props) {
 
   const theme = useTheme();
 
-  //eslint-disable-next-line
   const unchanged = (subnet && endpoints) ? isEqual(subnet['endpoints'], endpoints.map(({id, ...rest}) => rest)) : false;
 
   const columns = React.useMemo(() => [
