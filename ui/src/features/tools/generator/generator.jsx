@@ -31,7 +31,7 @@ import {
 import LoadingButton from "@mui/lab/LoadingButton";
 
 import {
-  ArrowDropDownOutlined,
+  MenuOpenOutlined,
   ContentCopyOutlined,
   PieChartOutlined
 } from "@mui/icons-material";
@@ -145,38 +145,57 @@ const Generator = () => {
   }, [spaces]);
 
   React.useEffect(() => {
-    if (spaces && selectedSpace) {
-      const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
+    if (spaces) {
+      if (selectedSpace) {
+        const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
 
-      if (spaceIndex > -1) {
-        if (!isEqual(spaces[spaceIndex], selectedSpace)) {
-          setSelectedSpace(spaces[spaceIndex]);
-          setBlocks(spaces[spaceIndex].blocks);
-        } else if (!blocks) {
-          setBlocks(spaces[spaceIndex].blocks);
-        }
-      } else {
-        setSelectedSpace(null);
-      }
-    } else if (!selectedSpace) {
-      setSelectedBlock(null);
-      setBlocks(null);
-    }
-  }, [spaces, selectedSpace, blocks]);
-
-  React.useEffect(() => {
-    if (blocks && selectedBlock) {
-      const blockIndex = blocks.findIndex((x) => x.name === selectedBlock.name);
-
-      if (blockIndex > -1) {
-        if (!isEqual(blocks[blockIndex], selectedBlock)) {
-          setSelectedBlock(blocks[blockIndex]);
+        if (spaceIndex > -1) {
+          if (!isEqual(spaces[spaceIndex], selectedSpace)) {
+            setSelectedSpace(spaces[spaceIndex]);
+          }
+        } else {
+          setSelectedSpace(null);
+          setSelectedBlock(null);
         }
       } else {
         setSelectedBlock(null);
       }
+    } else {
+      setSelectedSpace(null);
+    }
+  }, [spaces, selectedSpace]);
+
+  React.useEffect(() => {
+    if (blocks) {
+      if (selectedBlock) {
+        const blockIndex = blocks.findIndex((x) => x.id === selectedBlock.id);
+
+        if (blockIndex > -1) {
+          if (!isEqual(blocks[blockIndex], selectedBlock)) {
+            setSelectedBlock(blocks[blockIndex]);
+          }
+        } else {
+          setSelectedBlock(null);
+        }
+      }
+    } else {
+      setSelectedBlock(null);
     }
   }, [blocks, selectedBlock]);
+
+  React.useEffect(() => {
+    if (selectedSpace) {
+      setBlocks(selectedSpace.blocks);
+    }
+  }, [selectedSpace]);
+
+  React.useEffect(() => {
+    if (selectedSpace && selectedBlock) {
+      if (selectedBlock.parent_space !== selectedSpace.name) {
+        setSelectedBlock(null);
+      }
+    }
+  }, [selectedSpace, selectedBlock]);
 
   React.useEffect(() => {
     if (selectedBlock) {
@@ -663,7 +682,7 @@ const Generator = () => {
                         disableRipple
                         onClick={handleClick}
                       >
-                        <ArrowDropDownOutlined />
+                        <MenuOpenOutlined />
                       </IconButton>
                   }}
                   sx={{

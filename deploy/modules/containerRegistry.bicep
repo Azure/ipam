@@ -7,11 +7,9 @@ param containerRegistryName string
 @description('Managed Identity PrincipalId')
 param principalId string
 
-@description('Role Assignment GUID')
-param roleAssignmentName string = newGuid()
-
 var acrPull = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 var acrPullId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPull)
+var acrPullRoleAssignmentId = guid(subscription().id, acrPull, principalId)
 
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2021-12-01-preview' = {
   name: containerRegistryName
@@ -22,8 +20,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2021-12-01-pr
 }
 
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  #disable-next-line use-stable-resource-identifiers
-  name: roleAssignmentName
+  name: acrPullRoleAssignmentId
   scope: containerRegistry
   properties: {
     principalType: 'ServicePrincipal'

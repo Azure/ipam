@@ -6,10 +6,10 @@ param managedIdentityName string
 
 var contributor = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 var contributorId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributor)
-var contributorRoleAssignmentId = guid(contributor, managedIdentity.id, subscription().id)
+var contributorRoleAssignmentId = guid(subscription().id, contributor, managedIdentity.id)
 var managedIdentityOperator = 'f1a07417-d97a-45cb-824c-7a7467783830'
 var managedIdentityOperatorId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', managedIdentityOperator)
-var managedIdentityOperatorRoleAssignmentId = guid(managedIdentityOperator, managedIdentity.id, subscription().id)
+var managedIdentityOperatorRoleAssignmentId = guid(subscription().id, managedIdentityOperator, managedIdentity.id)
 
 resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
   name: managedIdentityName

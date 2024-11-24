@@ -20,7 +20,7 @@ import {
   CircularProgress
 } from "@mui/material";
 
-import Grid from "@mui/material/Unstable_Grid2";
+import Grid from "@mui/material/Grid2";
 
 import {
   FilterList as FilterListIcon,
@@ -386,7 +386,7 @@ const Planner = () => {
                   {
                     subnetData?.filter((x) => x.mask === mask).map((item) => {
                       return (
-                        <Grid key={`grid-item-${item.network}-${mask}`} xs={5} sm={3} md={2} xxl={1}>
+                        <Grid key={`grid-item-${item.network}-${mask}`} size={{ xs: 5, sm: 3, md: 2, xxl: 1 }}>
                           <Item
                             overlap={+item.overlap}
                           >
