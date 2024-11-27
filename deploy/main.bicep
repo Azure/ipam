@@ -1,6 +1,8 @@
 // Global parameters
 targetScope = 'subscription'
 
+import { appServiceDiagSettingsLogCategoryType } from './types/types.bicep'
+
 @description('GUID for Resource Naming')
 param guid string = newGuid()
 
@@ -22,6 +24,9 @@ param deployAsFunc bool = false
 
 @description('Flag to Deploy IPAM as a Container')
 param deployAsContainer bool = false
+
+@description('IPAM Container Image Tag to use')
+param acrImageTag string = 'latest'
 
 @description('IPAM-UI App Registration Client/App ID')
 param uiAppId string = '00000000-0000-0000-0000-000000000000'
@@ -52,6 +57,32 @@ param resourceNames object = {
   storageAccountName: '${namePrefix}stg${uniqueString(guid)}'
   containerRegistryName: '${namePrefix}acr${uniqueString(guid)}'
 }
+
+@description('App Service Plan SKU name, this will determine the tier, size, family of the App Service Plan.')
+@metadata({
+  example: '''
+  'F1'
+  'B1'
+  'P1v3'
+  'I1v2'
+  '''
+})
+param appServicePlanSkuName string = 'P1v3'
+
+@description('Number of workers associated with the App Service Plan.')
+param appServicePlanSkuCapacity int = 1
+
+@description('Diagnostic settings for app service')
+param appServiceDiagSettingsLogCategory appServiceDiagSettingsLogCategoryType[] = [
+  'AppServiceAntivirusScanAuditLogs'
+  'AppServiceHTTPLogs'
+  'AppServiceConsoleLogs'
+  'AppServiceAppLogs'
+  'AppServiceFileAuditLogs'
+  'AppServiceAuditLogs'
+  'AppServiceIPSecAuditLogs'
+  'AppServicePlatformLogs'
+]
 
 // Resource Group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -142,6 +173,9 @@ module appService './modules/appService.bicep' = if (!deployAsFunc) {
     azureCloud: azureCloud
     appServiceName: resourceNames.appServiceName
     appServicePlanName: resourceNames.appServicePlanName
+    appServicePlanSkuName: appServicePlanSkuName
+    appServicePlanSkuCapacity: appServicePlanSkuCapacity
+    appServiceDiagSettingsLogCategory: appServiceDiagSettingsLogCategory
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     databaseName: resourceNames.cosmosDatabaseName
@@ -150,6 +184,7 @@ module appService './modules/appService.bicep' = if (!deployAsFunc) {
     managedIdentityClientId: managedIdentity.outputs.clientId
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     deployAsContainer: deployAsContainer
+    acrImageTag: acrImageTag
     privateAcr: privateAcr
     privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
   }
@@ -173,6 +208,7 @@ module functionApp './modules/functionApp.bicep' = if (deployAsFunc) {
     storageAccountName: resourceNames.storageAccountName
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     deployAsContainer: deployAsContainer
+    acrImageTag: acrImageTag
     privateAcr: privateAcr
     privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
   }
