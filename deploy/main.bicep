@@ -186,3 +186,4 @@ output appServiceName string = deployAsFunc ? resourceNames.functionName : resou
 output appServiceHostName string = deployAsFunc ? functionApp.outputs.functionAppHostName : appService.outputs.appServiceHostName
 output acrName string = privateAcr ? containerRegistry.outputs.acrName : ''
 output acrUri string = privateAcr ? containerRegistry.outputs.acrUri : ''
+output zipDeployNeeded bool = deployAsContainer ? false : true
