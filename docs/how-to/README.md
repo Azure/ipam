@@ -48,7 +48,7 @@ As an IPAM Administrator, you can add **Blocks** via the **Configure** section o
 
 ![IPAM Add Block](./images/add_block.png)
 
-Give the new **Block** a name a valid CIDR range, then click **Create** to create add a new **Block** to the target **Space**.
+Give the new **Block** a name and a valid CIDR range, then click **Create** to create add a new **Block** to the target **Space**.
 
 ![IPAM Add Block Details](./images/add_block_details.png)
 
@@ -64,11 +64,41 @@ Place a checkmark next to the virtual networks you'd like to associate to the ta
 
 ## Reservations
 
-Currently, IP CIDR block reservations are not supported via the UI, but are supported programmatically via the API. Please see the **Example API Calls** section for more information on how to create IP address block reservations.
+As a IPAM Administrator, you can add Reservations for IP CIDR blocks. Tagging your newly created vNET with the reservation ID as value for the tag `X-IPAM-RES-ID` will automatically associate the vNET with the **Block** the reservation was created from.
 
-## vNETs, Subnets, and Endpoints
+Please see the **Example API Calls** section for more information on how to create IP address block reservations programmatically.
 
-As an IPAM user, you can view IP address utilization information and detailed Azure resource related information for **vNETs**, **Subnets**, and **Endpoints** you have existing Azure RBAC access to.
+To create a reservation in the UI, select the **Space** and **Block** where you want to reserve a IP range, then click on the overflow icon to bring up a menu of **Reservations** operations. Select **New Reservation**.
+
+![IPAM Reservations](.\images\add_reservations.png)
+
+Give the reservation a description and choose between reserving a specific CIDR or a bit mask size, then click **Create**.
+
+![IPAM Reservations Details](.\images\add_reservation_details.png)
+
+## Externals
+
+As a IPAM Administrator, you can add External Networks and External Subnets to **Blocks**. Adding externals causes **Reservations** to treat these ranges as already in use.
+
+To add a external network to a **Block**, select the **Block** you want to associate the virtual network to, then click on the overflow icon to bring up a menu of **External Networks** operations. Select **Add Network**.
+
+![IPAM External Network](.\images\add_external_network.png)
+
+Give the new **External Network** a name and description. Choose between a bit mask size or a specific CIDR. Then click **Add**.
+
+![IPAM External Network Details](.\images\add_external_network_details.png)
+
+To add a subnet to the external network, select the **External Network** you want to add a subnet to, then click on the overflow icon to bring up a menu of **External Subnet** operations. Select **Add Subnet**.
+
+![IPAM External Network Subnet](.\images\add_external_network_subnet.png)
+
+Give the new **External Subnet** a name and description. Choose between a bit mask size or a specific CIDR. Then click **Add**.
+
+![IPAM External Network Subnet Details](.\images\add_external_network_subnet_details.png)
+
+## vNETs, Subnets, vHUBs, and Endpoints
+
+As an IPAM user, you can view IP address utilization information and detailed Azure resource related information for **vNETs**, **Subnets**, **vHUBs**, and **Endpoints** you have existing Azure RBAC access to.
 
 ### Virtual Networks
 
@@ -89,6 +119,16 @@ For **Subnets**, you can find the name, view the parent **vNET**, utilization me
 By clicking to expand the **Subnet** details, you can find more granular **Subnet** information and are presented the option to view the **Subnet** resource directly in the Azure Portal by clicking on **VIEW IN PORTAL**.
 
 ![IPAM Subnets Details](./images/discover_subnets_details.png)
+
+### Virtual Hubs
+
+For **vHUBs**, you can find the name, the parent vWAN, view the parent **Block** (if assigned), Resource Group, and the address space(s).
+
+![IPAM vHUBs](./images/discover_vhubs.png)
+
+By clicking to expand the **vHUB** details, you can find more granular **vHUB** information and are presented the option to view the **vHUB** resource directly in the Azure Portal by clicking on **VIEW IN PORTAL**.
+
+![IPAM vHUBs Details](./images/discover_vhubs_details.png)
 
 ### Endpoints
 
