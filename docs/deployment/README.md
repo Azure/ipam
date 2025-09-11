@@ -18,7 +18,7 @@ To successfully deploy the solution, the following prerequisites must be met:
 - [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 8.0.0 or later installed (11.4.0 or later recommended)
 - [Microsoft Graph PowerShell SDK](https://learn.microsoft.com/powershell/microsoftgraph/installation) version 2.0.0 or later installed
   - Required for *Full* or *Identities Only* deployments to grant [Admin Consent](https://learn.microsoft.com/azure/active-directory/manage-apps/grant-admin-consent) to the App Registrations
-- [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install) version 0.21.1 or later installed
+- [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install) version 0.28.1 or later installed
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) version 2.35.0 or later installed (optional)
   - Required only if you are building your own container image and pushing it to a private Azure Container Registry (Private ACR)
 - [Docker (Linux)](https://docs.docker.com/engine/install/) / [Docker Desktop (Windows)](https://docs.docker.com/desktop/install/windows-install/) installed (optional)
