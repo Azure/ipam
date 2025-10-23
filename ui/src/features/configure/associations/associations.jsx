@@ -494,34 +494,41 @@ const Associations = () => {
 
   React.useEffect(() => {
     if(selectedBlock && vNets) {
-      setUnchanged(isEqual(selectedBlock['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}), selectionModel));
+      const blockVnets = Array.isArray(selectedBlock.vnets) ? selectedBlock.vnets : [];
+      setUnchanged(isEqual(blockVnets.reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{}), selectionModel));
     } else {
       setUnchanged(true);
     }
   }, [vNets, selectedBlock, selectionModel]);
 
   const mockVNet = React.useCallback((id) => {
-    const nameRegex = "(?<=/virtualNetworks/).*";
-    const rgRegex = "(?<=/resourceGroups/).*?(?=/)";
-    const subRegex = "(?<=/subscriptions/).*?(?=/)";
-  
-    const name = id.match(nameRegex)[0]
-    const resourceGroup = id.match(rgRegex)[0]
-    const subscription = id.match(subRegex)[0]
-  
+    const typeLookup = { virtualnetworks: 'vNET', virtualhubs: 'vHUB' };
+
+    const segments = id.split('/').filter(Boolean);
+
+    const subscriptionIndex = segments.findIndex(segment => segment.toLowerCase() === 'subscriptions');
+    const resourceGroupIndex = segments.findIndex(segment => segment.toLowerCase() === 'resourcegroups');
+
+    const subscription = subscriptionIndex > -1 ? segments[subscriptionIndex + 1] : null;
+    const resourceGroup = resourceGroupIndex > -1 ? segments[resourceGroupIndex + 1] : null;
+
+    const providerIndex = segments.findIndex(segment => segment.toLowerCase() === 'microsoft.network');
+    const typeSegment = providerIndex > -1 ? segments[providerIndex + 1] : null;
+    const nameSegment = providerIndex > -1 ? segments[providerIndex + 2] : null;
+
     const mockNet = {
-      name: name,
+      name: nameSegment || id,
       id: id,
-      type: id.includes(vNetPattern) ? "vNET" : id.includes(vHubPattern) ? "vHUB" : "Unknown",
+      type: typeLookup[(typeSegment || '').toLowerCase()] || 'Unknown',
       prefixes: ["ErrNotFound"],
       subnets: [],
-      resource_group: resourceGroup.toLowerCase(),
-      subscription_name: subscriptions.find(sub => sub.subscription_id === subscription)?.name || 'Unknown',
-      subscription_id: subscription,
+      resource_group: resourceGroup ? resourceGroup.toLowerCase() : 'Unknown',
+      subscription_name: subscription ? subscriptions.find(sub => sub.subscription_id === subscription)?.name || 'Unknown' : 'Unknown',
+      subscription_id: subscription || 'Unknown',
       tenant_id: null,
       active: false
     };
-  
+
     return mockNet
   }, [subscriptions]);
 
@@ -540,7 +547,8 @@ const Associations = () => {
             item['active'] = true;
           });
 
-          const missing = selectedBlock['vnets'].map(vnet => vnet.id).filter(item => !data.map(a => a.id.toLowerCase()).includes(item.toLowerCase()));
+          const blockVnets = Array.isArray(selectedBlock.vnets) ? selectedBlock.vnets : [];
+          const missing = blockVnets.map(vnet => vnet.id).filter(item => !data.map(a => a.id.toLowerCase()).includes(item.toLowerCase()));
 
           missing.forEach((item) => {
             missing_data.push(mockVNet(item));
@@ -562,7 +570,7 @@ const Associations = () => {
 
               return newSelection;
             } else {
-              return selectedBlock['vnets'].reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{});
+              return blockVnets.reduce((obj, vnet) => (obj[vnet.id] = vnet, obj) ,{});
             }
           });
         } catch (e) {
@@ -636,9 +644,9 @@ const Associations = () => {
         id: value.id,
         active: value.active
       };
-    
+
       acc[key] = n;
-    
+
       return acc;
     }, {});
 
