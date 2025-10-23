@@ -1,4 +1,8 @@
-$accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl $Env:IPAM_API_SCOPE).Token -AsPlainText
+$accessToken = (Get-AzAccessToken -ResourceUrl $Env:IPAM_API_SCOPE).Token
+
+if ($accessToken -isnot [System.Security.SecureString]) {
+  $accessToken = ConvertTo-SecureString $accessToken -AsPlainText -Force
+}
 
 $body = @{
     'size' = 16

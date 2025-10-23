@@ -29,7 +29,7 @@ resource fetchNetworkPrefix 'Microsoft.Resources/deploymentScripts@2020-10-01' =
     }
   }
   properties: {
-    azPowerShellVersion: '7.5'
+    azPowerShellVersion: '14.0'
     timeout: 'PT1H'
     environmentVariables: [
       {
@@ -42,17 +42,21 @@ resource fetchNetworkPrefix 'Microsoft.Resources/deploymentScripts@2020-10-01' =
       }
     ]
     scriptContent: '''
-      $accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl $Env:IPAM_API_SCOPE).Token -AsPlainText
- 
+      $accessToken = (Get-AzAccessToken -ResourceUrl $Env:IPAM_API_SCOPE).Token
+
+      if ($accessToken -isnot [System.Security.SecureString]) {
+        $accessToken = ConvertTo-SecureString $accessToken -AsPlainText -Force
+      }
+
       $body = @{
           'size' = 16
       } | ConvertTo-Json
-      
+
       $headers = @{
         'Accept' = 'application/json'
         'Content-Type' = 'application/json'
       }
-      
+
       $response = Invoke-RestMethod `
       -Method 'Post' `
       -Uri $Env:IPAM_URL `
