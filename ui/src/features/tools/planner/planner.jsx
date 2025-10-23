@@ -130,10 +130,22 @@ const Planner = () => {
       if (showAll) {
         setVNetData(vNets);
       } else {
+        // Don't process if blocks haven't loaded yet
+        if (!blocks) {
+          setVNetData(null);
+          return;
+        }
+
         const data = vNets.reduce((vAcc, vCurr) => {
           if (vCurr['parent_block'] !== null) {
             vCurr['parent_block'].forEach((p) => {
               const block = blocks.find((block) => block.name === p && block['parent_space'] === vCurr['parent_space']);
+
+              // Guard against block not being found
+              if (!block) {
+                console.warn(`Block not found: ${p} in space ${vCurr['parent_space']} for VNet ${vCurr.name}`);
+                return;
+              }
 
               const blockPrefixes = vCurr.prefixes.reduce((bAcc, bCurr) => {
                 if (isSubnetOverlap(bCurr, [block.cidr])) {
@@ -159,12 +171,14 @@ const Planner = () => {
 
             vAcc.push(temp)
           }
-        
+
           return vAcc;
         }, []);
 
         setVNetData(data);
       }
+    } else {
+      setVNetData(null);
     }
   }, [blocks, vNets, showAll]);
 
@@ -332,7 +346,7 @@ const Planner = () => {
                   )) : null
                 }
               </Select>
-            </FormControl> 
+            </FormControl>
             <Autocomplete
               forcePopupIcon={false}
               disabled={selectedPrefix === ''}
