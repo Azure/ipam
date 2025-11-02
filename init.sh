@@ -1,7 +1,7 @@
 #!/bin/bash
 PORT=$1
 
-if [ $WEBSITE_RUN_FROM_PACKAGE = "1" ]; then
+if [ "${WEBSITE_RUN_FROM_PACKAGE:-}" = "1" ]; then
   export PATH=$PATH:$APP_PATH/packages
   export PYTHONPATH=$PYTHONPATH:$APP_PATH/packages
 fi
