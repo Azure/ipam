@@ -24,3 +24,4 @@ azure-keyvault-secrets
 azure-cosmos
 azure-functions
 apscheduler
+six
