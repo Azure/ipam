@@ -5,6 +5,9 @@ import { isEqual } from 'lodash';
 
 import { useSnackbar } from "notistack";
 
+import { useMsal } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
+
 import Draggable from 'react-draggable';
 
 import {
@@ -66,6 +69,8 @@ export default function UserSettings(props) {
   const refreshInterval = useSelector(getRefreshInterval);
 
   const dispatch = useDispatch();
+  const { inProgress } = useMsal();
+  const pendingRefreshRef = React.useRef(false);
 
   const changed = React.useMemo(() => {
     const currentState = {
@@ -100,6 +105,13 @@ export default function UserSettings(props) {
     }
   }, [open, prevOpen, darkModeSetting, refreshInterval]);
 
+  React.useEffect(() => {
+    if (pendingRefreshRef.current && inProgress === InteractionStatus.None) {
+      pendingRefreshRef.current = false;
+      dispatch(getMeAsync());
+    }
+  }, [inProgress, dispatch]);
+
   function onSubmit() {
     var body = [
       { "op": "replace", "path": "/apiRefresh", "value": refreshValue },
@@ -117,7 +129,11 @@ export default function UserSettings(props) {
             apiRefresh: refreshValue
           }
         );
-        dispatch(getMeAsync());
+        if (inProgress === InteractionStatus.None) {
+          dispatch(getMeAsync());
+        } else {
+          pendingRefreshRef.current = true;
+        }
         handleClose();
       } catch (e) {
         console.log("ERROR");
@@ -145,7 +161,7 @@ export default function UserSettings(props) {
         </DialogTitle>
         <DialogContent>
           <Box
-            sx={{ 
+            sx={{
               pt: 1,
               pb: 2,
               pl: 2,

@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { InteractionRequiredAuthError, BrowserAuthError } from "@azure/msal-browser";
 
 import { msalInstance } from '../index';
 import { graphConfig } from "./authConfig";
@@ -24,15 +23,8 @@ async function generateToken() {
   try {
     const response = await msalInstance.acquireTokenSilent(tokenRequest);
     return response.accessToken;
-  } catch (e) {
-    if (e instanceof InteractionRequiredAuthError ||
-        (e instanceof BrowserAuthError && e.errorCode === "monitor_window_timeout")) {
-
-      await msalInstance.acquireTokenRedirect(tokenRequest);
-      return null;
-    } else {
-      throw e;
-    }
+  } catch (error) {
+    throw error;
   }
 }
 
@@ -47,7 +39,7 @@ graph.interceptors.request.use(
     return config;
   },
   error => {
-    Promise.reject(error)
+    return Promise.reject(error);
 });
 
 export function callMsGraph() {

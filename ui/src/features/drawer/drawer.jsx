@@ -355,24 +355,37 @@ export default function NavDrawer() {
   ];
 
   React.useEffect(() => {
-    if (!graphData) {
-      (async() => {
-        try {
-          const graphResponse = await callMsGraph();
-          const photoResponse = await callMsGraphPhoto();
-          await dispatch(setUserId(graphResponse.userPrincipalName));
-          setGraphPhoto(photoResponse);
-          setGraphData(graphResponse);
-        } catch (e) {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          // enqueueSnackbar(e.message, { variant: "error" });
-        }
-      })();
+    if (graphData || inProgress !== InteractionStatus.None) {
+      return;
     }
-  }, [graphData, dispatch]);
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const graphResponse = await callMsGraph();
+        const photoResponse = await callMsGraphPhoto();
+
+        if (cancelled) {
+          return;
+        }
+
+        await dispatch(setUserId(graphResponse.userPrincipalName));
+        setGraphPhoto(photoResponse);
+        setGraphData(graphResponse);
+      } catch (e) {
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        // enqueueSnackbar(e.message, { variant: "error" });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [graphData, inProgress, dispatch]);
 
   React.useEffect(() => {
     // Handler to call on window resize

@@ -1,6 +1,9 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
+import { useMsal } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
+
 import {
   getRefreshInterval,
   refreshAllAsync,
@@ -13,12 +16,22 @@ function Refresh() {
   const refreshAllRef = React.useRef();
   const refreshMeRef = React.useRef(null);
   const refreshLoadedRef = React.useRef(false);
+  const inProgressRef = React.useRef(InteractionStatus.None);
 
   const refreshInterval = useSelector(getRefreshInterval);
 
   const dispatch = useDispatch();
+  const { inProgress } = useMsal();
+
+  React.useEffect(() => {
+    inProgressRef.current = inProgress;
+  }, [inProgress]);
 
   refreshAllRef.current = React.useCallback(() => {
+    if (inProgressRef.current !== InteractionStatus.None) {
+      return;
+    }
+
     (async() => {
       try {
         await dispatch(refreshAllAsync());
@@ -32,11 +45,15 @@ function Refresh() {
   }, [dispatch]);
 
   refreshMeRef.current = React.useCallback(() => {
+    if (inProgressRef.current !== InteractionStatus.None) {
+      return;
+    }
+
     (async() => {
       try {
         await dispatch(getMeAsync());
       } catch (e) {
-        console.log("REFRESM ME ERROR");
+        console.log("REFRESH ME ERROR");
         console.log("------------------");
         console.log(e);
         console.log("------------------");

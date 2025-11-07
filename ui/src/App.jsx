@@ -20,6 +20,7 @@ import Slide from '@mui/material/Slide';
 import Login from "./features/login/login";
 
 import NavDrawer from './features/drawer/drawer';
+import AuthHandler from './msal/authHandler';
 
 import {
   getDarkMode
@@ -43,6 +44,7 @@ function App() {
 
   return (
     <div className="App">
+      <AuthHandler />
       <AuthenticatedTemplate>
         <SnackbarProvider
           anchorOrigin={{

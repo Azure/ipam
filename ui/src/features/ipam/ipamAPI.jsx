@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { InteractionRequiredAuthError, BrowserAuthError } from "@azure/msal-browser";
 
 import { msalInstance } from '../../index';
 import { apiRequest } from '../../msal/authConfig';
@@ -22,15 +21,8 @@ async function generateToken() {
   try {
     const response = await msalInstance.acquireTokenSilent(tokenRequest);
     return response.accessToken;
-  } catch (e) {
-    if (e instanceof InteractionRequiredAuthError ||
-        (e instanceof BrowserAuthError && e.errorCode === "monitor_window_timeout")) {
-
-      await msalInstance.acquireTokenRedirect(tokenRequest);
-      return null;
-    } else {
-      throw e;
-    }
+  } catch (error) {
+    throw error;
   }
 }
 
@@ -45,7 +37,7 @@ api.interceptors.request.use(
     return config;
   },
   error => {
-    Promise.reject(error)
+    return Promise.reject(error);
 });
 
 api.interceptors.response.use(
@@ -54,11 +46,11 @@ api.interceptors.response.use(
     console.log("ERROR CALLING IPAM API");
     console.log(error);
 
-    if(error.response) {
+    if (error.response) {
       return Promise.reject(new Error(error.response.data.error));
-    } else {
-      return Promise.reject(error);
     }
+
+    return Promise.reject(error);
 });
 
 export function fetchSpaces(utilization = false) {
