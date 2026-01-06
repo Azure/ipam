@@ -34,7 +34,9 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
   name: keyVaultName
   location: location
   properties: {
+    enableSoftDelete: true
     enablePurgeProtection: true
+    softDeleteRetentionInDays: 7
     enableRbacAuthorization: true
     tenantId: tenantId
     sku: {
