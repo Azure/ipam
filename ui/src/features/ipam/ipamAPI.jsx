@@ -18,12 +18,8 @@ async function generateToken() {
     account: accounts[0]
   };
 
-  try {
-    const response = await msalInstance.acquireTokenSilent(tokenRequest);
-    return response.accessToken;
-  } catch (error) {
-    throw error;
-  }
+  const response = await msalInstance.acquireTokenSilent(tokenRequest);
+  return response.accessToken;
 }
 
 const api = axios.create();
