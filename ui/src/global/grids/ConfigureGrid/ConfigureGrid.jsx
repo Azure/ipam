@@ -82,6 +82,11 @@ const ConfigureGrid = ({
     enableClickSelection: true,
   }), []);
 
+  // Provide stable row identity so AG Grid preserves scroll position across data updates
+  const getRowId = useCallback((params) => {
+    return String(params.data[idProperty]);
+  }, [idProperty]);
+
   // Handle row click
   const onRowClicked = useCallback((event) => {
     if (onRowClick) {
@@ -164,6 +169,7 @@ const ConfigureGrid = ({
         columnDefs={agColumnDefs}
         defaultColDef={defaultColDef}
         rowSelection={rowSelection}
+        getRowId={getRowId}
         onRowClicked={onRowClicked}
         suppressCellFocus={true}
         animateRows={true}
