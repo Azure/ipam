@@ -10,7 +10,7 @@ export default () => {
     plugins: [
       react(),
       eslint({
-        // cache: false,
+        cache: false,
         lintOnStart: true,
         lintInWorker: true,
         include: ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"],
