@@ -1,3 +1,5 @@
+import * as React from "react";
+
 import {
   Box,
   LinearProgress,
@@ -19,12 +21,19 @@ import {
   selectUpdatedEndpoints
 } from '../../ipam/ipamSlice';
 
-import NumberFilter from '@inovua/reactdatagrid-community/NumberFilter'
+// ============================================================================
+// Cell Renderers
+// ============================================================================
 
-function renderProgress(value) {
+/**
+ * Renders a progress bar with color based on utilization percentage
+ */
+function ProgressCellRenderer(props) {
+  const value = props.value;
   return (
-    <Box sx={{ width: "100%" }}>
+    <Box sx={{ width: "100%", height: "100%", display: "flex", alignItems: "center" }}>
       <LinearProgress
+        sx={{ width: "100%" }}
         variant="determinate"
         value={value <= 100 ? value : 100}
         color={
@@ -41,14 +50,31 @@ function renderProgress(value) {
   );
 }
 
-function infoCell(value, message, color) {
+/**
+ * Renders a cell with an info icon tooltip.
+ * Uses cellRendererParams for configuration:
+ * - condition: function(data) that returns true if info icon should show
+ * - message: tooltip text to display
+ * - color: text color when condition is true
+ */
+function InfoCellRenderer(props) {
+  const { value, data, colDef } = props;
+  const { condition, message, color } = colDef.cellRendererParams || {};
+
+  // Check if condition is met (defaults to false if no condition provided)
+  const showInfo = condition ? condition(data) : false;
+
+  if (!showInfo) {
+    return value;
+  }
+
   return (
     <Box
       sx={{
         display: 'flex',
         alignItems: 'center',
         fontStyle: 'italic',
-        color: color
+        color: color || 'inherit'
       }}
     >
       {value}
@@ -62,7 +88,7 @@ function infoCell(value, message, color) {
         }}>
         <Tooltip
           arrow
-          title={message}
+          title={message || ''}
           placement="top"
           PopperProps={{
             popperOptions: {
@@ -89,6 +115,43 @@ function infoCell(value, message, color) {
   );
 }
 
+/**
+ * Renders array values as comma-separated string with fallback
+ */
+function ArrayCellRenderer(props) {
+  const { value, colDef } = props;
+  const fallback = colDef.cellRendererParams?.fallback ?? "";
+  return value?.join(", ") ?? fallback;
+}
+
+/**
+ * Value formatter for N/A fallback on empty values
+ */
+function naValueFormatter(params) {
+  return params.value || "N/A";
+}
+
+// ============================================================================
+// Filter Configurations
+// ============================================================================
+
+// Number filter params for utilization columns (0-100 range with inRange default)
+const utilizationFilterParams = {
+  filterOptions: ['inRange', 'equals', 'lessThan', 'greaterThan', 'lessThanOrEqual', 'greaterThanOrEqual'],
+  defaultOption: 'inRange',
+  inRangeInclusive: true,
+};
+
+// Number filter params for count columns (gte 0 default)
+const countFilterParams = {
+  filterOptions: ['greaterThanOrEqual', 'equals', 'lessThan', 'greaterThan', 'lessThanOrEqual', 'inRange'],
+  defaultOption: 'greaterThanOrEqual',
+};
+
+// ============================================================================
+// Spaces Configuration
+// ============================================================================
+
 export const spaces = {
   config: {
     title: "Space",
@@ -97,18 +160,30 @@ export const spaces = {
     idProp: "name"
   },
   columns: [
-    { name: "name", header: "Space Name", type: "string", flex: 0.85, visible: true },
-    { name: "utilization", header: "Utilization", type: "number", flex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value), visible: true },
-    { name: "desc", header: "Description", type: "string", flex: 1.00, visible: true },
-    { name: "size", header: "Total IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
-    { name: "used", header: "Allocated IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
-  ],
-  filterSettings: [
-    { name: 'name', operator: 'contains', type: 'string', value: '' },
-    { name: 'utilization', operator: 'inrange', type: 'number', value: { start: 0, end: 100 } },
-    { name: 'desc', operator: 'contains', type: 'string', value: '' },
-    { name: 'size', operator: 'gte', type: 'number', value: 0 },
-    { name: 'used', operator: 'gte', type: 'number', value: 0 }
+    { field: "name", headerName: "Space Name", flex: 0.85 },
+    {
+      field: "utilization",
+      headerName: "Utilization",
+      flex: 0.5,
+      filter: 'agNumberColumnFilter',
+      filterParams: utilizationFilterParams,
+      cellRenderer: ProgressCellRenderer
+    },
+    { field: "desc", headerName: "Description", flex: 1.00 },
+    {
+      field: "size",
+      headerName: "Total IP's",
+      flex: 0.45,
+      filter: 'agNumberColumnFilter',
+      filterParams: countFilterParams
+    },
+    {
+      field: "used",
+      headerName: "Allocated IP's",
+      flex: 0.45,
+      filter: 'agNumberColumnFilter',
+      filterParams: countFilterParams
+    },
   ],
   detailsMap: {
     showProgress: true,
@@ -122,6 +197,10 @@ export const spaces = {
   }
 };
 
+// ============================================================================
+// Blocks Configuration
+// ============================================================================
+
 export const blocks = {
   config: {
     title: "Block",
@@ -130,20 +209,31 @@ export const blocks = {
     idProp: "id"
   },
   columns: [
-    { name: "name", header: "Block Name", type: "string", flex: 0.85, visible: true },
-    { name: "utilization", header: "Utilization", type: "number", flex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value), visible: true },
-    { name: "parent_space", header: "Space", type: "string", flex: 0.85, visible: true },
-    { name: "size", header: "Total IP's", type: "number", flex: 0.4, filterEditor: NumberFilter, visible: true },
-    { name: "used", header: "Allocated IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
-    { name: "cidr", header: "CIDR Block", type: "string", flex: 0.50, visible: true },
-  ],
-  filterSettings: [
-    { name: 'name', operator: 'contains', type: 'string', value: '' },
-    { name: 'utilization', operator: 'inrange', type: 'number', value: { start: 0, end: 100 } },
-    { name: 'parent_space', operator: 'contains', type: 'string', value: '' },
-    { name: 'size', operator: 'gte', type: 'number', value: 0 },
-    { name: 'used', operator: 'gte', type: 'number', value: 0 },
-    { name: 'cidr', operator: 'contains', type: 'string', value: '' }
+    { field: "name", headerName: "Block Name", flex: 0.85 },
+    {
+      field: "utilization",
+      headerName: "Utilization",
+      flex: 0.5,
+      filter: 'agNumberColumnFilter',
+      filterParams: utilizationFilterParams,
+      cellRenderer: ProgressCellRenderer
+    },
+    { field: "parent_space", headerName: "Space", flex: 0.85 },
+    {
+      field: "size",
+      headerName: "Total IP's",
+      flex: 0.4,
+      filter: 'agNumberColumnFilter',
+      filterParams: countFilterParams
+    },
+    {
+      field: "used",
+      headerName: "Allocated IP's",
+      flex: 0.45,
+      filter: 'agNumberColumnFilter',
+      filterParams: countFilterParams
+    },
+    { field: "cidr", headerName: "CIDR Block", flex: 0.50 },
   ],
   detailsMap: {
     showProgress: true,
@@ -158,6 +248,10 @@ export const blocks = {
   }
 };
 
+// ============================================================================
+// Virtual Networks Configuration
+// ============================================================================
+
 export const vnets = {
   config: {
     title: "Virtual Network",
@@ -166,26 +260,48 @@ export const vnets = {
     idProp: "id"
   },
   columns: [
-    { name: "name", header: "vNet Name", type: "string", flex: 0.85, visible: true },
-    { name: "utilization", header: "Utilization", type: "number", flex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value), visible: true },
-    { name: "parent_block", header: "Block", type: "array", flex: 0.85, render: ({value}) => value?.join(", ") ?? "<Unassigned>", visible: true },
-    { name: "resource_group", header: "Resource Group", type: "string", flex: 0.75, visible: false },
-    { name: "subscription_name", header: "Subscription Name", type: "string", flex: 0.85, visible: false },
-    { name: "subscription_id", header: "Subscription ID", type: "string", flex: 0.85, visible: false },
-    { name: "size", header: "Total IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
-    { name: "used", header: "Allocated IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
-    { name: "prefixes", header: "Address Space", type: "array", flex: 0.75, render: ({value}) => value.join(", "), visible: true }
-  ],
-  filterSettings: [
-    { name: 'name', operator: 'contains', type: 'string', value: '' },
-    { name: 'utilization', operator: 'inrange', type: 'number', value: { start: 0, end: 100 } },
-    { name: 'parent_block', operator: 'contains', type: 'array', value: '' },
-    { name: 'resource_group', operator: 'contains', type: 'string', value: '' },
-    { name: 'subscription_name', operator: 'contains', type: 'string', value: '' },
-    { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
-    { name: 'size', operator: 'gte', type: 'number', value: 0 },
-    { name: 'used', operator: 'gte', type: 'number', value: 0 },
-    { name: 'prefixes', operator: 'contains', type: 'array', value: '' }
+    { field: "name", headerName: "vNet Name", flex: 0.85 },
+    {
+      field: "utilization",
+      headerName: "Utilization",
+      flex: 0.5,
+      filter: 'agNumberColumnFilter',
+      filterParams: utilizationFilterParams,
+      cellRenderer: ProgressCellRenderer
+    },
+    {
+      field: "parent_block",
+      headerName: "Block",
+      flex: 0.85,
+      cellRenderer: ArrayCellRenderer,
+      cellRendererParams: { fallback: "<Unassigned>" },
+      valueFormatter: (params) => params.value?.join(", ") ?? "<Unassigned>",
+      filterValueGetter: (params) => params.data?.parent_block?.join(", ") ?? ""
+    },
+    { field: "resource_group", headerName: "Resource Group", flex: 0.75, hide: true },
+    { field: "subscription_name", headerName: "Subscription Name", flex: 0.85, hide: true },
+    { field: "subscription_id", headerName: "Subscription ID", flex: 0.85, hide: true },
+    {
+      field: "size",
+      headerName: "Total IP's",
+      flex: 0.45,
+      filter: 'agNumberColumnFilter',
+      filterParams: countFilterParams
+    },
+    {
+      field: "used",
+      headerName: "Allocated IP's",
+      flex: 0.45,
+      filter: 'agNumberColumnFilter',
+      filterParams: countFilterParams
+    },
+    {
+      field: "prefixes",
+      headerName: "Address Space",
+      flex: 0.75,
+      valueFormatter: (params) => params.value?.join(", ") ?? "",
+      filterValueGetter: (params) => params.data?.prefixes?.join(", ") ?? ""
+    }
   ],
   detailsMap: {
     showProgress: true,
@@ -206,6 +322,10 @@ export const vnets = {
   }
 };
 
+// ============================================================================
+// Subnets Configuration
+// ============================================================================
+
 export const subnets = {
   config: {
     title: "Subnet",
@@ -214,26 +334,34 @@ export const subnets = {
     idProp: "id"
   },
   columns: [
-    { name: "name", header: "Subnet Name", type: "String", flex: 0.85, visible: true },
-    { name: "utilization", header: "Utilization", type: "number", flex: 0.5, filterEditor: NumberFilter, render: ({value}) => renderProgress(value), visible: true },
-    { name: "vnet_name", header: "Parent vNet", type: "string", flex: 0.85, visible: true },
-    { name: "resource_group", header: "Resource Group", type: "string", flex: 0.75, visible: false },
-    { name: "subscription_name", header: "Subscription Name", type: "string", flex: 0.75, visible: false },
-    { name: "subscription_id", header: "Subscription ID", type: "String", flex: 0.75, visible: false },
-    { name: "size", header: "Total IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
-    { name: "used", header: "Assigned IP's", type: "number", flex: 0.45, filterEditor: NumberFilter, visible: true },
-    { name: "prefix", header: "Address Space", type: "string", flex: 0.50, visible: true },
-  ],
-  filterSettings: [
-    { name: 'name', operator: 'contains', type: 'string', value: '' },
-    { name: 'utilization', operator: 'inrange', type: 'number', value: { start: 0, end: 100 } },
-    { name: 'vnet_name', operator: 'contains', type: 'string', value: '' },
-    { name: 'resource_group', operator: 'contains', type: 'string', value: '' },
-    { name: 'subscription_name', operator: 'contains', type: 'string', value: '' },
-    { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
-    { name: 'size', operator: 'gte', type: 'number', value: 0 },
-    { name: 'used', operator: 'gte', type: 'number', value: 0 },
-    { name: 'prefix', operator: 'contains', type: 'string', value: '' }
+    { field: "name", headerName: "Subnet Name", flex: 0.85 },
+    {
+      field: "utilization",
+      headerName: "Utilization",
+      flex: 0.5,
+      filter: 'agNumberColumnFilter',
+      filterParams: utilizationFilterParams,
+      cellRenderer: ProgressCellRenderer
+    },
+    { field: "vnet_name", headerName: "Parent vNet", flex: 0.85 },
+    { field: "resource_group", headerName: "Resource Group", flex: 0.75, hide: true },
+    { field: "subscription_name", headerName: "Subscription Name", flex: 0.75, hide: true },
+    { field: "subscription_id", headerName: "Subscription ID", flex: 0.75, hide: true },
+    {
+      field: "size",
+      headerName: "Total IP's",
+      flex: 0.45,
+      filter: 'agNumberColumnFilter',
+      filterParams: countFilterParams
+    },
+    {
+      field: "used",
+      headerName: "Assigned IP's",
+      flex: 0.45,
+      filter: 'agNumberColumnFilter',
+      filterParams: countFilterParams
+    },
+    { field: "prefix", headerName: "Address Space", flex: 0.50 },
   ],
   detailsMap: {
     showProgress: true,
@@ -254,6 +382,10 @@ export const subnets = {
   }
 };
 
+// ============================================================================
+// Virtual Hubs Configuration
+// ============================================================================
+
 export const vhubs = {
   config: {
     title: "Virtual Hub",
@@ -262,22 +394,27 @@ export const vhubs = {
     idProp: "id"
   },
   columns: [
-    { name: "name", header: "vNet Name", type: "string", flex: 0.6, visible: true },
-    { name: "vwan_name", header: "Parent vWAN", type: "string", flex: 0.6, visible: true },
-    { name: "parent_block", header: "Block", type: "array", flex: 0.75, render: ({value}) => value?.join(", ") ?? "<Unassigned>", visible: true },
-    { name: "subscription_name", header: "Subscription Name", type: "string", flex: 0.75, visible: false },
-    { name: "subscription_id", header: "Subscription ID", type: "string", flex: 0.75, visible: false },
-    { name: "resource_group", header: "Resource Group", type: "string", flex: 0.75, visible: true },
-    { name: "prefixes", header: "Address Space", type: "array", flex: 0.35, render: ({value}) => value.toString(), visible: true }
-  ],
-  filterSettings: [
-    { name: 'name', operator: 'contains', type: 'string', value: '' },
-    { name: 'vwan_name', operator: 'contains', type: 'string', value: '' },
-    { name: 'parent_block', operator: 'contains', type: 'array', value: '' },
-    { name: 'subscription_name', operator: 'contains', type: 'string', value: '' },
-    { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
-    { name: 'resource_group', operator: 'contains', type: 'string', value: '' },
-    { name: 'prefixes', operator: 'contains', type: 'array', value: '' }
+    { field: "name", headerName: "vHub Name", flex: 0.6 },
+    { field: "vwan_name", headerName: "Parent vWAN", flex: 0.6 },
+    {
+      field: "parent_block",
+      headerName: "Block",
+      flex: 0.75,
+      cellRenderer: ArrayCellRenderer,
+      cellRendererParams: { fallback: "<Unassigned>" },
+      valueFormatter: (params) => params.value?.join(", ") ?? "<Unassigned>",
+      filterValueGetter: (params) => params.data?.parent_block?.join(", ") ?? ""
+    },
+    { field: "subscription_name", headerName: "Subscription Name", flex: 0.75, hide: true },
+    { field: "subscription_id", headerName: "Subscription ID", flex: 0.75, hide: true },
+    { field: "resource_group", headerName: "Resource Group", flex: 0.75 },
+    {
+      field: "prefixes",
+      headerName: "Address Space",
+      flex: 0.35,
+      valueFormatter: (params) => params.value?.toString() ?? "",
+      filterValueGetter: (params) => params.data?.prefixes?.toString() ?? ""
+    }
   ],
   detailsMap: {
     showProgress: false,
@@ -297,6 +434,10 @@ export const vhubs = {
   }
 };
 
+// ============================================================================
+// Endpoints Configuration
+// ============================================================================
+
 export const endpoints = {
   config: {
     title: "Endpoint",
@@ -305,22 +446,38 @@ export const endpoints = {
     idProp: "uniqueId"
   },
   columns: [
-    { name: "name", header: "Endpoint Name", type: "string", flex: 0.75, render: ({value, data}) => data.metadata?.orphaned ? infoCell(value, 'Orphaned Endpoint', 'red') : value, visible: true },
-    { name: "vnet_name", header: "Parent vNet", type: "string", flex: 0.75, render: ({value}) => value || "N/A", visible: true },
-    { name: "subnet_name", header: "Parent Subnet", type: "string", flex: 0.75, render: ({value}) => value || "N/A", visible: true },
-    { name: "resource_group", header: "Resource Group", type: "string", flex: 0.75, visible: true },
-    { name: "subscription_name", header: "Subscription Name", type: "string", flex: 0.75, visible: false },
-    { name: "subscription_id", header: "Subscription ID", type: "string", flex: 0.75, visible: false },
-    { name: "private_ip", header: "Private IP", type: "string", flex: 0.35, render: ({value}) => value || "N/A", visible: true },
-  ],
-  filterSettings: [
-    { name: 'name', operator: 'contains', type: 'string', value: '' },
-    { name: 'vnet_name', operator: 'contains', type: 'string', value: '' },
-    { name: 'subnet_name', operator: 'contains', type: 'string', value: '' },
-    { name: 'resource_group', operator: 'contains', type: 'string', value: '' },
-    { name: 'subscription_name', operator: 'contains', type: 'string', value: '' },
-    { name: 'subscription_id', operator: 'contains', type: 'string', value: '' },
-    { name: 'private_ip', operator: 'contains', type: 'string', value: '' }
+    {
+      field: "name",
+      headerName: "Endpoint Name",
+      flex: 0.75,
+      cellRenderer: InfoCellRenderer,
+      cellRendererParams: {
+        condition: (data) => data?.metadata?.orphaned,
+        message: 'Orphaned Endpoint',
+        color: 'red'
+      }
+    },
+    {
+      field: "vnet_name",
+      headerName: "Parent vNet",
+      flex: 0.75,
+      valueFormatter: naValueFormatter
+    },
+    {
+      field: "subnet_name",
+      headerName: "Parent Subnet",
+      flex: 0.75,
+      valueFormatter: naValueFormatter
+    },
+    { field: "resource_group", headerName: "Resource Group", flex: 0.75 },
+    { field: "subscription_name", headerName: "Subscription Name", flex: 0.75, hide: true },
+    { field: "subscription_id", headerName: "Subscription ID", flex: 0.75, hide: true },
+    {
+      field: "private_ip",
+      headerName: "Private IP",
+      flex: 0.35,
+      valueFormatter: naValueFormatter
+    },
   ],
   detailsMap: {
     showProgress: false,
