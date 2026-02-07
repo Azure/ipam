@@ -792,7 +792,7 @@ export const ipamSlice = createSlice({
 
         const subnets = vnets.map((vnet) => {
           var subnetArray = [];
-        
+
           vnet.subnets.forEach((subnet) => {
             const subnetDetails = {
               name: subnet.name,
@@ -871,7 +871,7 @@ export const ipamSlice = createSlice({
 
         const subnets = vNetData.map((vnet) => {
           var subnetArray = [];
-        
+
           vnet.subnets.forEach((subnet) => {
             const subnetDetails = {
               name: subnet.name,
@@ -959,7 +959,7 @@ export const ipamSlice = createSlice({
 
           const subnets = vNetData.map((vnet) => {
             var subnetArray = [];
-          
+
             vnet.subnets.forEach((subnet) => {
               const subnetDetails = {
                 name: subnet.name,
@@ -993,8 +993,10 @@ export const ipamSlice = createSlice({
         }
 
         if(action.payload[3].status === 'fulfilled') {
-          const endpoints = action.payload[3].value.map((endpoint) => {
-            endpoint.uniqueId = `${endpoint.id}@$${endpoint.private_ip}`
+          const endpoints = action.payload[3].value.map((endpoint, index) => {
+            // Use index as fallback when private_ip is null to ensure uniqueness
+            const ipPart = endpoint.private_ip ?? `idx${index}`;
+            endpoint.uniqueId = `${endpoint.id}@$${ipPart}`;
 
             return endpoint;
           });
