@@ -679,7 +679,7 @@ const Visualize = () => {
     }
   }, [spaces, vnets, vhubs, endpoints, theme]);
 
-  function setDataFocus(target) {
+  const setDataFocus = React.useCallback((target) => {
     if(eChartsRef && !isEmpty(options.series)) {
       let newOptions = cloneDeep(options);
 
@@ -703,7 +703,7 @@ const Visualize = () => {
         });
       }
     }
-  }
+  }, [eChartsRef, options]);
 
   function resetView() {
     if(!searchRef.current.hasValue()) {

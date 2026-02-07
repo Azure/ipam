@@ -819,12 +819,12 @@ const Peering = () => {
     };
   }
 
-  const onEvents = {
+  const onEvents = React.useMemo(() => ({
     click: onClick
     // restore: onRestore
-  };
+  }), []);
 
-  function setDataFocus(target) {
+  const setDataFocus = React.useCallback((target) => {
     if(target) {
       let newOptions = cloneDeep(options);
 
@@ -861,7 +861,7 @@ const Peering = () => {
     } else {
       eChartsRef?.getEchartsInstance().setOption(options);
     }
-  }
+  }, [eChartsRef, options]);
 
   function onClick(param, echarts) {
     if (param.data.value > 0) {
