@@ -60,10 +60,7 @@ function AuthHandler() {
         return;
       }
 
-      if (
-        event.eventType === EventType.ACQUIRE_TOKEN_FAILURE ||
-        event.eventType === EventType.LOGIN_FAILURE
-      ) {
+      if (event.eventType === EventType.ACQUIRE_TOKEN_FAILURE) {
         const error = event.error;
         const errorCode = event.errorCode;
 
