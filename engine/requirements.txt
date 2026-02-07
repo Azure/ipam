@@ -17,6 +17,7 @@ azure-mgmt-core
 azure-mgmt-compute
 azure-mgmt-network
 azure-mgmt-resource
+azure-mgmt-resource-subscriptions
 azure-mgmt-resourcegraph
 azure-mgmt-managementgroups
 azure-mgmt-datafactory
