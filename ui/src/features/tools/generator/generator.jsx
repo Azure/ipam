@@ -294,7 +294,6 @@ const Generator = () => {
   };
 
   function onSubmit() {
-    console.log("Fetching Next Available...");
     (async () => {
       try {
         setSending(true);
