@@ -1,27 +1,18 @@
 import * as React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useLocation } from "react-router";
-import { styled } from "@mui/material/styles";
-import { useTheme } from '@mui/material/styles';
 
-import { isEmpty, isEqual, pickBy, orderBy, sortBy, cloneDeep, pick } from "lodash";
+import { isEmpty, isEqual, sortBy, pick } from "lodash";
 
 import { useSnackbar } from "notistack";
 
 import moment from "moment";
 
-import ReactDataGrid from "@inovua/reactdatagrid-community";
-import "@inovua/reactdatagrid-community/index.css";
-import "@inovua/reactdatagrid-community/theme/default-dark.css";
-import DateFilter from "@inovua/reactdatagrid-community/DateFilter";
+import { DataGrid } from "../../../global/grids/DataGrid";
 
 import {
   Box,
   IconButton,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  Divider,
   TextField,
   Autocomplete,
   Typography,
@@ -38,12 +29,6 @@ import {
   ErrorOutline,
   BlockOutlined,
   TimerOffOutlined,
-  ExpandCircleDownOutlined,
-  FileDownloadOutlined,
-  FileUploadOutlined,
-  ReplayOutlined,
-  TaskAltOutlined,
-  CancelOutlined,
   VisibilityOutlined,
   VisibilityOffOutlined,
   PieChartOutlined,
@@ -55,9 +40,7 @@ import {
   selectSpaces,
   selectBlocks,
   fetchSpacesAsync,
-  deleteBlockResvsAsync,
-  selectViewSetting,
-  updateMeAsync
+  deleteBlockResvsAsync
 } from "../../ipam/ipamSlice";
 
 import NewReservation from "./utils/newReservation";
@@ -111,192 +94,6 @@ const MESSAGE_MAP = {
 };
 
 const ReservationContext = React.createContext({});
-
-const Update = styled("span")(({ theme }) => ({
-  fontWeight: 'bold',
-  color: theme.palette.error.light,
-  textShadow: '-1px 0 white, 0 1px white, 1px 0 white, 0 -1px white'
-}));
-
-const gridStyle = {
-  height: '100%',
-  border: '1px solid rgba(224, 224, 224, 1)',
-  fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
-};
-
-function HeaderMenu(props) {
-  const { setting } = props;
-  const {
-    filterActive,
-    setFilterActive,
-    selectedSpace,
-    selectedBlock,
-    setNewResvOpen,
-    saving,
-    sendResults,
-    saveConfig,
-    loadConfig,
-    resetConfig
-  } = React.useContext(ReservationContext);
-
-  const [menuOpen, setMenuOpen] = React.useState(false);
-
-  const menuRef = React.useRef(null);
-
-  const viewSetting = useSelector(state => selectViewSetting(state, setting));
-
-  const onClick = () => {
-    setMenuOpen(prev => !prev);
-  }
-
-  const onActive = () => {
-    setFilterActive(prev => !prev);
-    setMenuOpen(false);
-  }
-
-  const onNewResv = () => {
-    setNewResvOpen(true);
-    setMenuOpen(false);
-  }
-
-  const onSave = () => {
-    saveConfig();
-    setMenuOpen(false);
-  }
-
-  const onLoad = () => {
-    loadConfig();
-    setMenuOpen(false);
-  }
-
-  const onReset = () => {
-    resetConfig();
-    setMenuOpen(false);
-  }
-
-  return (
-    <Box
-      ref={menuRef}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center"
-      }}
-    >
-      {
-        saving ?
-        <React.Fragment>
-          <CircularProgress size={24} />
-        </React.Fragment> :
-        (sendResults !== null) ?
-        <React.Fragment>
-          {
-            sendResults ?
-            <TaskAltOutlined color="success"/> :
-            <CancelOutlined color="error"/>
-          }
-        </React.Fragment> :
-        <React.Fragment>
-          <IconButton
-            id="table-state-menu"
-            onClick={onClick}
-          >
-            <ExpandCircleDownOutlined />
-          </IconButton>
-          <Menu
-            id="table-state-menu"
-            anchorEl={menuRef.current}
-            open={menuOpen}
-            onClose={onClick}
-            anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'center',
-            }}
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'right',
-            }}
-            PaperProps={{
-              elevation: 0,
-              style: {
-                width: 215,
-                transform: 'translateX(35px)',
-              },
-              sx: {
-                overflow: 'visible',
-                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-                mt: 1.5,
-                '& .MuiAvatar-root': {
-                  width: 32,
-                  height: 32,
-                  ml: -0.5,
-                  mr: 1,
-                },
-                '&:before': {
-                  content: '""',
-                  display: 'block',
-                  position: 'absolute',
-                  top: 0,
-                  right: 29,
-                  width: 10,
-                  height: 10,
-                  bgcolor: 'background.paper',
-                  transform: 'translateY(-50%) rotate(45deg)',
-                  zIndex: 0,
-                },
-              },
-            }}
-          >
-            <MenuItem
-              onClick={onActive}
-            >
-              <ListItemIcon>
-                {
-                  filterActive ?
-                  <VisibilityOffOutlined fontSize="small" /> :
-                  <VisibilityOutlined fontSize="small" />
-                }
-              </ListItemIcon>
-              { filterActive ? 'Showing Active' : 'Showing All' }
-            </MenuItem>
-            <Divider />
-            <MenuItem
-              onClick={onNewResv}
-              disabled={ !(selectedSpace && selectedBlock) }
-            >
-              <ListItemIcon>
-                <PieChartOutlined fontSize="small" />
-              </ListItemIcon>
-              New Reservation
-            </MenuItem>
-            <Divider />
-            <MenuItem
-              onClick={onLoad}
-              disabled={ !viewSetting || isEmpty(viewSetting) }
-            >
-              <ListItemIcon>
-                <FileDownloadOutlined fontSize="small" />
-              </ListItemIcon>
-              Load Saved View
-            </MenuItem>
-            <MenuItem onClick={onSave}>
-              <ListItemIcon>
-                <FileUploadOutlined fontSize="small" />
-              </ListItemIcon>
-              Save Current View
-            </MenuItem>
-            <MenuItem onClick={onReset}>
-              <ListItemIcon>
-                <ReplayOutlined fontSize="small" />
-              </ListItemIcon>
-              Reset Default View
-            </MenuItem>
-          </Menu>
-        </React.Fragment>
-      }
-    </Box>
-  )
-}
 
 function ReservationStatus(props) {
   const { value } = props;
@@ -415,255 +212,101 @@ const Reservations = () => {
 
   const [refreshing, setRefreshing] = React.useState(false);
   const [filterActive, setFilterActive] = React.useState(true);
-  const [saving, setSaving] = React.useState(false);
-  const [sendResults, setSendResults] = React.useState(null);
   const [reservations, setReservations] = React.useState([]);
   const [gridData, setGridData] = React.useState(null);
-  const [selectionModel, setSelectionModel] = React.useState({});
+  const [selectedRows, setSelectedRows] = React.useState([]);
   const [copied, setCopied] = React.useState("");
   const [sending, setSending] = React.useState(false);
 
   const [newResvOpen, setNewResvOpen] = React.useState(location.state?.cidr ? true : false);
 
-  const [columnState, setColumnState] = React.useState(null);
-  const [columnOrderState, setColumnOrderState] = React.useState([]);
-  const [columnSortState, setColumnSortState] = React.useState({});
-
   const spaces = useSelector(selectSpaces);
   const blocks = useSelector(selectBlocks);
-  const viewSetting = useSelector(state => selectViewSetting(state, 'reservations'));
 
   const msgTimer = React.useRef();
-  const saveTimer = React.useRef();
 
   const dispatch = useDispatch();
-  const theme = useTheme();
-
-  window.moment = moment;
-
-  const filterTypes = Object.assign({}, ReactDataGrid.defaultProps.filterTypes, {
-    unixdate: {
-      name: 'unixdate',
-      emptyValue: '',
-      operators: [
-        {
-          name: 'after',
-          fn: ({ value, filterValue, column, data }) => {
-            return filterValue !== (null || '') ? moment.unix(value).isAfter(window.moment(filterValue, column.dateFormat)) : true;
-          }
-        },
-        {
-          name: 'afterOrOn',
-          fn: ({ value, filterValue, column, data }) => {
-            return filterValue !== (null || '') ? moment.unix(value).isSameOrAfter(window.moment(filterValue, column.dateFormat)) : true;
-          }
-        },
-        {
-          name: 'before',
-          fn: ({ value, filterValue, column, data }) => {
-            return filterValue !== (null || '') ? moment.unix(value).isBefore(window.moment(filterValue, column.dateFormat)) : true;
-          }
-        },
-        {
-          name: 'beforeOrOn',
-          fn: ({ value, filterValue, column, data }) => {
-            return filterValue !== (null || '') ? moment.unix(value).isSameOrBefore(window.moment(filterValue, column.dateFormat)) : true;
-          }
-        },
-        {
-          name: 'eq',
-          fn: ({ value, filterValue, column, data }) => {
-            return filterValue !== (null || '') ? moment.unix(value).isSame(window.moment(filterValue, column.dateFormat)) : true;
-          }
-        },
-        {
-          name: 'neq',
-          fn: ({ value, filterValue, column, data }) => {
-            return filterValue !== (null || '') ? !moment.unix(value).isSame(window.moment(filterValue, column.dateFormat)) : true;
-          }
-        }
-      ]
-    }
-  });
 
   const columns = React.useMemo(() => [
-    { name: "cidr", header: "CIDR", type: "string", flex: 0.5, visible: true },
-    { name: "createdBy", header: "Created By", type: "string", flex: 1, visible: true },
-    { name: "desc", header: "Description", type: "string", flex: 1.5, visible: true },
+    { field: "cidr", headerName: "CIDR", flex: 0.5 },
+    { field: "createdBy", headerName: "Created By", flex: 1 },
+    { field: "desc", headerName: "Description", flex: 1.5 },
     {
-      name: "createdOn",
-      header: "Creation Date",
-      type: "unixdate",
+      field: "createdOn",
+      headerName: "Creation Date",
       flex: 0.75,
-      dateFormat: 'lll',
-      filterEditor: DateFilter,
-      filterEditorProps: (props, { index }) => {
-        return {
-          dateFormat: 'lll',
+      valueFormatter: (params) => params.value ? moment.unix(params.value).format('lll') : null,
+      filter: 'agDateColumnFilter',
+      filterParams: {
+        comparator: (filterDate, cellValue) => {
+          if (!cellValue) return -1;
+          const cellDate = moment.unix(cellValue).startOf('day').toDate();
+          const filterDateStart = moment(filterDate).startOf('day').toDate();
+          if (cellDate < filterDateStart) return -1;
+          if (cellDate > filterDateStart) return 1;
+          return 0;
         }
-      },
-      render: ({value}) => moment.unix(value).format('lll'),
-      visible: true
+      }
     },
     {
-      name: "settledOn",
-      header: "Settled Date",
-      type: "unixdate",
+      field: "settledOn",
+      headerName: "Settled Date",
       flex: 0.75,
-      dateFormat: 'lll',
-      filterEditor: DateFilter,
-      filterEditorProps: (props, { index }) => {
-        return {
-          dateFormat: 'lll',
+      hide: true,
+      valueFormatter: (params) => params.value ? moment.unix(params.value).format('lll') : null,
+      filter: 'agDateColumnFilter',
+      filterParams: {
+        comparator: (filterDate, cellValue) => {
+          if (!cellValue) return -1;
+          const cellDate = moment.unix(cellValue).startOf('day').toDate();
+          const filterDateStart = moment(filterDate).startOf('day').toDate();
+          if (cellDate < filterDateStart) return -1;
+          if (cellDate > filterDateStart) return 1;
+          return 0;
         }
-      },
-      render: ({value}) => value ? moment.unix(value).format('lll') : null,
-      visible: false
+      }
     },
-    { name: "settledBy", header: "Settled By", type: "string", flex: 1, visible: false },
-    { name: "status", header: "Status", headerAlign: "center", width: 90, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({value}) => <ReservationStatus value={value} />, visible: true },
-    { name: "id", header: () => <HeaderMenu setting="reservations"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => <ReservationId value={data} />, visible: true }
+    { field: "settledBy", headerName: "Settled By", flex: 1, hide: true },
+    {
+      field: "status",
+      headerName: "Status",
+      width: 90,
+      minWidth: 90,
+      maxWidth: 90,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      cellRenderer: (params) => <ReservationStatus value={params.value} />
+    }
   ], []);
 
-  const filterValue = [
-    { name: "cidr", operator: "contains", type: "string", value: "" },
-    { name: "createdBy", operator: "contains", type: "string", value: "" },
-    { name: "desc", operator: "contains", type: "string", value: "" },
-    { name: "createdOn", operator: "afterOrOn", type: "unixdate", value: "" },
-    { name: "settledOn", operator: "afterOrOn", type: "unixdate", value: "" },
-    { name: "settledBy", operator: "contains", type: "string", value: "" }
-  ];
+  const actionsCellRenderer = React.useCallback((params) => {
+    return <ReservationId value={params.data} />;
+  }, []);
 
-  const onBatchColumnResize = (batchColumnInfo) => {
-    const colsMap = batchColumnInfo.reduce((acc, colInfo) => {
-      const { column, flex } = colInfo
-      acc[column.name] = { flex }
-      return acc
-    }, {});
-
-    const newColumns = columnState.map(c => {
-      return Object.assign({}, c, colsMap[c.name]);
-    })
-
-    setColumnState(newColumns);
-  }
-
-  const onColumnOrderChange = (columnOrder) => {
-    setColumnOrderState(columnOrder);
-  }
-
-  const onColumnVisibleChange = ({ column, visible }) => {
-    const newColumns = columnState.map(c => {
-      if(c.name === column.name) {
-        return Object.assign({}, c, { visible });
-      } else {
-        return c;
-      }
-    });
-
-    setColumnState(newColumns);
-  }
-
-  const onSortInfoChange = (sortInfo) => {
-    setColumnSortState(sortInfo);
-  }
-
-  const saveConfig = () => {
-    const values = columnState.reduce((acc, colInfo) => {
-      const { name, flex, visible } = colInfo;
-
-      acc[name] = { flex, visible };
-
-      return acc;
-    }, {});
-
-    const saveData = {
-      values: values,
-      order: columnOrderState,
-      sort: columnSortState
+  const extraMenuItems = React.useMemo(() => [
+    {
+      icon: filterActive ? VisibilityOffOutlined : VisibilityOutlined,
+      label: filterActive ? 'Showing Active' : 'Showing All',
+      onClick: () => setFilterActive(prev => !prev)
+    },
+    {
+      icon: PieChartOutlined,
+      label: 'New Reservation',
+      onClick: () => setNewResvOpen(true),
+      disabled: !(selectedSpace && selectedBlock)
     }
+  ], [filterActive, selectedSpace, selectedBlock]);
 
-    var body = [
-      { "op": "add", "path": `/views/reservations`, "value": saveData }
-    ];
-
-    (async () => {
-      try {
-        setSaving(true);
-        await dispatch(updateMeAsync({ body: body }));
-        setSendResults(true);
-      } catch (e) {
-        console.log("ERROR");
-        console.log("------------------");
-        console.log(e);
-        console.log("------------------");
-        setSendResults(false);
-        enqueueSnackbar("Error saving view settings", { variant: "error" });
-      } finally {
-        setSaving(false);
-      }
-    })();
-  };
-
-  const loadConfig = React.useCallback(() => {
-    const { values, order, sort } = viewSetting;
-
-    const colsMap = columns.reduce((acc, colInfo) => {
-
-      acc[colInfo.name] = colInfo;
-
-      return acc;
-    }, {})
-
-    const loadColumns = order.map(item => {
-      const assigned = pickBy(values[item], v => v !== undefined)
-
-      return Object.assign({}, colsMap[item], assigned);
-    });
-
-    setColumnState(loadColumns);
-    setColumnOrderState(order);
-    setColumnSortState(sort);
-  }, [columns, viewSetting]);
-
-  const resetConfig = React.useCallback(() => {
-    setColumnState(columns);
-    setColumnOrderState(columns.flatMap(({name}) => name));
-    setColumnSortState({ name: 'createdOn', dir: 1, type: 'date' });
-  }, [columns]);
-
-  const renderColumnContextMenu = React.useCallback((menuProps) => {
-    const columnIndex = menuProps.items.findIndex((item) => item.itemId === 'columns');
-    const idIndex = menuProps.items[columnIndex].items.findIndex((item) => item.value === 'id');
-
-    menuProps.items[columnIndex].items.splice(idIndex, 1);
+  const onRowSelectionChanged = React.useCallback((rows) => {
+    setSelectedRows(rows);
   }, []);
 
   React.useEffect(() => {
-    if(!columnState && viewSetting) {
-      if(columns && !isEmpty(viewSetting)) {
-        loadConfig();
-      } else {
-        resetConfig();
-      }
-    }
-  },[columns, viewSetting, columnState, loadConfig, resetConfig]);
-
-  React.useEffect(() => {
     const newReservations = filterActive ? reservations.filter(x => x.settledOn === null) : reservations;
-
-    if(columnSortState) {
-      setGridData(
-        orderBy(
-          newReservations,
-          [columnSortState.name],
-          [columnSortState.dir === -1 ? 'desc' : 'asc']
-        )
-      );
-    } else {
-      setGridData(newReservations);
-    }
-  }, [reservations, filterActive, columnSortState]);
+    setGridData(newReservations);
+  }, [reservations, filterActive]);
 
   React.useEffect(() => {
     if(copied !== "") {
@@ -676,18 +319,6 @@ const Reservations = () => {
       );
     }
   }, [msgTimer, copied]);
-
-  React.useEffect(() => {
-    if(sendResults !== null) {
-      clearTimeout(saveTimer.current);
-
-      saveTimer.current = setTimeout(
-        function() {
-          setSendResults(null);
-        }, 2000
-      );
-    }
-  }, [saveTimer, sendResults]);
 
   React.useEffect(() => {
     if (spaces) {
@@ -744,23 +375,11 @@ const Reservations = () => {
 
   React.useEffect(() => {
     if (!isEmpty(reservations)) {
-      setSelectionModel((prev) => {
-        const newSelectionmodel = cloneDeep(prev);
-
-        Object.keys(prev).forEach((key) => {
-          const found = reservations.find((x) => x.id === key);
-
-          if (!found) {
-            delete newSelectionmodel[key];
-          }
-        });
-
-        return newSelectionmodel;
+      setSelectedRows((prev) => {
+        return prev.filter(row => reservations.find(x => x.id === row.id));
       });
-
-      // setSelectionModel(newSelectionmodel);
     } else {
-      setSelectionModel([]);
+      setSelectedRows([]);
     }
   }, [reservations]);
 
@@ -785,8 +404,8 @@ const Reservations = () => {
     (async () => {
       try {
         setSending(true);
-        await dispatch(deleteBlockResvsAsync({ space: selectedBlock.parent_space, block: selectedBlock.name, body: Object.keys(selectionModel) }));
-        setSelectionModel([]);
+        await dispatch(deleteBlockResvsAsync({ space: selectedBlock.parent_space, block: selectedBlock.name, body: selectedRows.map(r => r.id) }));
+        setSelectedRows([]);
         setFilterActive(true);
         enqueueSnackbar("Successfully removed IP Block reservation(s)", { variant: "success" });
       } catch (e) {
@@ -800,13 +419,6 @@ const Reservations = () => {
       }
     })();
   }
-
-  const onCellDoubleClick = React.useCallback((event, cellProps) => {
-    const { value } = cellProps
-
-    navigator.clipboard.writeText(value);
-    enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
-  }, [enqueueSnackbar]);
 
   function NoRowsOverlay() {
     return (
@@ -828,7 +440,7 @@ const Reservations = () => {
   }
 
   return (
-    <ReservationContext.Provider value={{ copied, setCopied, filterActive, setFilterActive, selectedSpace, selectedBlock, setNewResvOpen, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+    <ReservationContext.Provider value={{ copied, setCopied }}>
       <NewReservation
         open={newResvOpen}
         handleClose={() => setNewResvOpen(false)}
@@ -950,7 +562,7 @@ const Reservations = () => {
               title="Remove"
               placement="top"
               style={{
-                visibility: (isEmpty(selectionModel) || refreshing) ? 'hidden' : 'visible'
+                visibility: (isEmpty(selectedRows) || refreshing) ? 'hidden' : 'visible'
               }}
             >
               <span>
@@ -983,38 +595,17 @@ const Reservations = () => {
         </Box>
         <Box sx={{ flexGrow: 1, pb: 3, pr: 3, pl: 3, overflowY: 'auto', overflowX: 'hidden' }}>
           <Box sx={{ pt: 4, height: "100%" }}>
-            <ReactDataGrid
-              theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
-              idProperty="id"
-              showCellBorders="horizontal"
-              checkboxColumn
-              checkboxOnlyRowSelect
-              showZebraRows={false}
+            <DataGrid
+              viewSettingKey="reservations"
+              rowData={gridData || []}
+              columnDefs={columns}
+              onRowSelectionChanged={onRowSelectionChanged}
               multiSelect={true}
-              showActiveRowIndicator={false}
-              enableColumnAutosize={false}
-              showColumnMenuGroupOptions={false}
-              showColumnMenuLockOptions={false}
-              updateMenuPositionOnColumnsChange={false}
-              renderColumnContextMenu={renderColumnContextMenu}
-              onBatchColumnResize={onBatchColumnResize}
-              onSortInfoChange={onSortInfoChange}
-              onColumnOrderChange={onColumnOrderChange}
-              onColumnVisibleChange={onColumnVisibleChange}
-              reservedViewportWidth={0}
-              columns={columnState || []}
-              columnOrder={columnOrderState}
-              loading={sending || refreshing}
-              loadingText={sending ? <Update>Updating</Update> : "Loading"}
-              dataSource={gridData || []}
-              selected={selectionModel}
-              onSelectionChange={({selected}) => setSelectionModel(selected)}
-              onCellDoubleClick={onCellDoubleClick}
-              sortInfo={columnSortState}
-              filterTypes={filterTypes}
-              defaultFilterValue={filterValue}
-              emptyText={NoRowsOverlay}
-              style={gridStyle}
+              checkboxSelect={true}
+              extraMenuItems={extraMenuItems}
+              isLoading={sending || refreshing}
+              noRowsOverlayComponent={NoRowsOverlay}
+              actionsCellRenderer={actionsCellRenderer}
             />
           </Box>
         </Box>
