@@ -337,7 +337,7 @@ const opt = {
             </div>
           </div>
         `;
-        
+
         return y;
       }
     }
@@ -425,23 +425,23 @@ function parseNets(data, subscriptions) {
     if(!visibleNets.includes(peer.remote_network)) {
       const vNetPattern = "/Microsoft.Network/virtualNetworks/";
       const vHubPattern = "/Microsoft.Network/virtualHubs/";
-  
+
       const resourceGroupPattern = "(?<=/resourceGroups/).+?(?=/)";
       const subscriptionPattern = "(?<=/subscriptions/).+?(?=/)";
-  
+
       var vNetName = '';
-  
+
       if(peer.remote_network.includes(vNetPattern)) {
         vNetName = peer.remote_network.substr(peer.remote_network.indexOf(vNetPattern) + vNetPattern.length, peer.remote_network.length);
       }
-  
+
       if(peer.remote_network.includes(vHubPattern)) {
         vNetName = peer.remote_network.substr(peer.remote_network.indexOf(vHubPattern) + vHubPattern.length, peer.remote_network.length);
       }
-  
+
       const resourceGroup = peer.remote_network.match(resourceGroupPattern)[0];
       const subscriptionId = peer.remote_network.match(subscriptionPattern)[0];
-  
+
       const subscriptionName = subscriptions.find(sub => sub.subscription_id === subscriptionId)?.name || 'Unknown';
 
       let node = {
@@ -539,7 +539,7 @@ function parseNets(data, subscriptions) {
   }).flat();
 
   const links = linkArr.reduce(
-    (acc, curr) => 
+    (acc, curr) =>
       acc.find((v) => (v.source === curr.target && v.target === curr.source)) ? acc : [...acc, curr],
     []
   );
@@ -639,8 +639,7 @@ const Reset = (props) => {
   );
 };
 
-const Search = React.forwardRef((props, ref) => {
-  const { options, setDataFocus } = props;
+const Search = ({ ref, options, setDataFocus }) => {
 
   const [value, setValue] = React.useState(null);
   const [inputValue, setInputValue] = React.useState('');
@@ -740,7 +739,7 @@ const Search = React.forwardRef((props, ref) => {
       }}
     />
   );
-});
+};
 
 const Peering = () => {
   const [options, setOptions] = React.useState(opt);
