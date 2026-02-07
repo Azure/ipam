@@ -16,8 +16,6 @@ import {
   DialogContent,
 } from "@mui/material";
 
-import LoadingButton from "@mui/lab/LoadingButton";
-
 import { updateSpaceAsync } from "../../../../ipam/ipamSlice";
 
 import {
@@ -210,13 +208,13 @@ export default function EditSpace(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={onCancel}>Cancel</Button>
-          <LoadingButton
+          <Button
             onClick={onSubmit}
             loading={sending}
             disabled={invalidForm || unchanged}
           >
             Update
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

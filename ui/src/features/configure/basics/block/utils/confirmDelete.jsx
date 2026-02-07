@@ -19,8 +19,6 @@ import {
   DialogContentText,
 } from "@mui/material";
 
-import LoadingButton from "@mui/lab/LoadingButton";
-
 import { deleteBlockAsync } from "../../../../ipam/ipamSlice";
 
 const Spotlight = styled("span")(({ theme }) => ({
@@ -106,13 +104,13 @@ export default function ConfirmDelete(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancel}>Cancel</Button>
-          <LoadingButton
+          <Button
             onClick={checkForce}
             color={verify ? "error" : "primary" }
             loading={sending}
           >
             Delete
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

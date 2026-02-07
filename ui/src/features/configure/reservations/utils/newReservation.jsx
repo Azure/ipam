@@ -22,8 +22,6 @@ import {
   Switch,
 } from "@mui/material";
 
-import LoadingButton from "@mui/lab/LoadingButton";
-
 import {
   createBlockResvAsync
 } from "../../../ipam/ipamSlice";
@@ -402,13 +400,13 @@ export default function NewReservation(props) {
           >
             Cancel
           </Button>
-          <LoadingButton
+          <Button
             onClick={onSubmit}
             loading={sending}
             disabled={invalidForm}
           >
             Create
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

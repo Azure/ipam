@@ -27,8 +27,6 @@ import {
   DarkModeOutlined,
 } from "@mui/icons-material";
 
-import LoadingButton from '@mui/lab/LoadingButton';
-
 import {
   getMeAsync,
   getRefreshInterval,
@@ -185,9 +183,9 @@ export default function UserSettings(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
-          <LoadingButton onClick={onSubmit} loading={sending} disabled={!changed}>
+          <Button onClick={onSubmit} loading={sending} disabled={!changed}>
             Apply
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

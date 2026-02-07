@@ -9,6 +9,7 @@ import { isEqual, sortBy, pick } from "lodash";
 
 import {
   Box,
+  Button,
   TextField,
   Menu,
   MenuItem,
@@ -27,8 +28,6 @@ import {
   Popper,
   CircularProgress
 } from "@mui/material";
-
-import LoadingButton from "@mui/lab/LoadingButton";
 
 import {
   MenuOpenOutlined,
@@ -692,14 +691,14 @@ const Generator = () => {
                     }
                   }}
                 />
-                <LoadingButton
+                <Button
                   disabled={ showSubnets ? (!selectedSubscription || !selectedNetwork || !selectedMask) : (!selectedSpace || !selectedBlock || !selectedMask) }
                   variant="contained"
                   loading={sending}
                   onClick={onSubmit}
                 >
                   Generate
-                </LoadingButton>
+                </Button>
               </Box>
             </Box>
           </Box>
