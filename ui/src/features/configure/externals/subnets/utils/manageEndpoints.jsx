@@ -286,7 +286,7 @@ export default function ManageExtEndpoints(props) {
   const dispatch = useDispatch();
   const gridRef = React.useRef(null);
 
-  const saveTimer = React.useRef();
+  const saveTimer = React.useRef(null);
 
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';

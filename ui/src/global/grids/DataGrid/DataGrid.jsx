@@ -510,7 +510,7 @@ const DataGrid = ({
   const [sendResults, setSendResults] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null);
-  const gridRef = useRef();
+  const gridRef = useRef(null);
   const initialSelectionApplied = useRef(false);
 
   // Memoized column definitions with actions column appended

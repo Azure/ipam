@@ -223,7 +223,7 @@ const Reservations = () => {
   const spaces = useSelector(selectSpaces);
   const blocks = useSelector(selectBlocks);
 
-  const msgTimer = React.useRef();
+  const msgTimer = React.useRef(null);
 
   const dispatch = useDispatch();
 

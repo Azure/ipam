@@ -13,7 +13,7 @@ import {
 function Refresh() {
   const intervalAll = React.useRef(null);
   const intervalMe = React.useRef(null);
-  const refreshAllRef = React.useRef();
+  const refreshAllRef = React.useRef(null);
   const refreshMeRef = React.useRef(null);
   const refreshLoadedRef = React.useRef(false);
   const inProgressRef = React.useRef(InteractionStatus.None);

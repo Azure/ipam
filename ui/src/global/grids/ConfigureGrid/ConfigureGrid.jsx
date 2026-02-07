@@ -45,7 +45,7 @@ const ConfigureGrid = ({
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
-  const gridRef = useRef();
+  const gridRef = useRef(null);
 
   // Set theme mode on body for AG Grid CSS variables
   useEffect(() => {
