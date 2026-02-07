@@ -3,7 +3,7 @@ import { useDispatch } from "react-redux";
 
 import { useSnackbar } from "notistack";
 
-import Draggable from "react-draggable";
+import DraggablePaper from "../../../../../global/DraggablePaper";
 
 import {
   Box,
@@ -14,7 +14,6 @@ import {
   DialogTitle,
   DialogActions,
   DialogContent,
-  Paper
 } from "@mui/material";
 
 import LoadingButton from "@mui/lab/LoadingButton";
@@ -25,21 +24,6 @@ import {
   BLOCK_NAME_REGEX,
   CIDR_REGEX
 } from "../../../../../global/globals";
-
-function DraggablePaper(props) {
-  const nodeRef = React.useRef(null);
-
-  return (
-    <Draggable
-      nodeRef={nodeRef}
-      handle="#draggable-dialog-title"
-      cancel={'[class*="MuiDialogContent-root"]'}
-      bounds="parent"
-    >
-      <Paper {...props} ref={nodeRef}/>
-    </Draggable>
-  );
-}
 
 export default function EditBlock(props) {
   const { open, handleClose, space, blocks, block } = props;

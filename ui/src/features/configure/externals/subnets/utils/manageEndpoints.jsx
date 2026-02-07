@@ -9,7 +9,7 @@ import { useSnackbar } from "notistack";
 import { AgGridReact } from "ag-grid-react";
 import { themeQuartz } from "ag-grid-community";
 
-import Draggable from "react-draggable";
+import DraggablePaper from "../../../../../global/DraggablePaper";
 
 import { useTheme } from "@mui/material/styles";
 
@@ -30,7 +30,6 @@ import {
   ListItemIcon,
   OutlinedInput,
   Tooltip,
-  Paper,
   Autocomplete,
   TextField
 } from "@mui/material";
@@ -250,21 +249,6 @@ function HeaderMenu(props) {
         </React.Fragment>
       }
     </Box>
-  );
-}
-
-function DraggablePaper(props) {
-  const nodeRef = React.useRef(null);
-
-  return (
-    <Draggable
-      nodeRef={nodeRef}
-      handle="#draggable-dialog-title"
-      cancel={'[class*="MuiDialogContent-root"]'}
-      bounds="parent"
-    >
-      <Paper {...props} ref={nodeRef}/>
-    </Draggable>
   );
 }
 

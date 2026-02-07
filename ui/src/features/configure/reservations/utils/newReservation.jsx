@@ -4,7 +4,7 @@ import { useLocation } from "react-router";
 
 import { useSnackbar } from "notistack";
 
-import Draggable from "react-draggable";
+import DraggablePaper from "../../../../global/DraggablePaper";
 
 import {
   Box,
@@ -20,7 +20,6 @@ import {
   Autocomplete,
   Radio,
   Switch,
-  Paper
 } from "@mui/material";
 
 import LoadingButton from "@mui/lab/LoadingButton";
@@ -61,21 +60,6 @@ const cidrMasks = [
   { name: '/31', value: 31},
   { name: '/32', value: 32}
 ];
-
-function DraggablePaper(props) {
-  const nodeRef = React.useRef(null);
-
-  return (
-    <Draggable
-      nodeRef={nodeRef}
-      handle="#draggable-dialog-title"
-      cancel={'[class*="MuiDialogContent-root"]'}
-      bounds="parent"
-    >
-      <Paper {...props} ref={nodeRef}/>
-    </Draggable>
-  );
-}
 
 export default function NewReservation(props) {
   const { open, handleClose, selectedSpace, selectedBlock } = props;

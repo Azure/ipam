@@ -8,7 +8,7 @@ import { useSnackbar } from "notistack";
 import { useMsal } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 
-import Draggable from 'react-draggable';
+import DraggablePaper from '../../../global/DraggablePaper';
 
 import {
   Box,
@@ -20,7 +20,6 @@ import {
   Typography,
   ToggleButton,
   ToggleButtonGroup,
-  Paper
 } from "@mui/material";
 
 import {
@@ -38,21 +37,6 @@ import {
 } from "../../ipam/ipamSlice";
 
 import { updateMe } from "../../ipam/ipamAPI";
-
-function DraggablePaper(props) {
-  const nodeRef = React.useRef(null);
-
-  return (
-    <Draggable
-      nodeRef={nodeRef}
-      handle="#draggable-dialog-title"
-      cancel={'[class*="MuiDialogContent-root"]'}
-      bounds="parent"
-    >
-      <Paper {...props} ref={nodeRef}/>
-    </Draggable>
-  );
-}
 
 export default function UserSettings(props) {
   const { open, handleClose } = props;
