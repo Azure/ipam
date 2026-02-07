@@ -17,7 +17,7 @@ import {
   Paper
 } from "@mui/material";
 
-import LoadingButton from "@mui/lab/LoadingButton";
+
 
 import {
   selectNetworks,
@@ -349,13 +349,13 @@ export default function EditExtNetwork(props) {
           >
             Cancel
           </Button>
-          <LoadingButton
+          <Button
             onClick={onSubmit}
             loading={sending}
             disabled={hasError || unchanged}
           >
             Update
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

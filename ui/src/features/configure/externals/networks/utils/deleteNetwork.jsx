@@ -20,7 +20,7 @@ import {
   Paper
 } from "@mui/material";
 
-import LoadingButton from "@mui/lab/LoadingButton";
+
 
 import { deleteBlockExternalAsync } from "../../../../ipam/ipamSlice";
 
@@ -122,13 +122,13 @@ export default function DeleteExtNetwork(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancel}>Cancel</Button>
-          <LoadingButton
+          <Button
             onClick={checkForce}
             color={verify ? "error" : "primary" }
             loading={sending}
           >
             Delete
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

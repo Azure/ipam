@@ -19,7 +19,7 @@ import {
   Paper
 } from "@mui/material";
 
-import LoadingButton from "@mui/lab/LoadingButton";
+
 
 import {
   createBlockExtSubnetAsync
@@ -360,13 +360,13 @@ export default function AddExtSubnet(props) {
           >
             Cancel
           </Button>
-          <LoadingButton
+          <Button
             onClick={onSubmit}
             loading={sending}
             disabled={hasError}
           >
             Add
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>
