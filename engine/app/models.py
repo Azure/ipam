@@ -245,7 +245,7 @@ class ReservationExpand(BaseModel):
         if isinstance(data, dict):
             if 'id' in data:
                 data["tag"] = { "X-IPAM-RES-ID": data["id"]}
-          
+
                 return data
 
 class BlockBasic(BaseModel):
@@ -570,9 +570,12 @@ Exclusions = Annotated[List[UUID], None]
 ###################
 
 class ViewSettings(BaseModel):
-    values: Dict[str, dict]
-    order: List[str]
+    # Legacy format (Inovua)
+    values: Optional[Dict[str, dict]] = None
+    order: Optional[List[str]] = None
     sort: Union[dict, None] = None
+    # AG Grid format
+    columnState: Optional[List[dict]] = None
 
 class User(BaseModel):
     """DOCSTRING"""
