@@ -36,7 +36,7 @@ const TopSection = styled("div")(({ theme }) => ({
   height: "50%",
   width: "100%",
   border: "1px solid rgba(224, 224, 224, 1)",
-  borderRadius: "4px",
+  // borderRadius: "4px",
   marginBottom: theme.spacing(1.5)
 }));
 
@@ -46,7 +46,7 @@ const BottomSection = styled("div")(({ theme }) => ({
   height: "50%",
   width: "100%",
   border: "1px solid rgba(224, 224, 224, 1)",
-  borderRadius: "4px",
+  // borderRadius: "4px",
   marginTop: theme.spacing(1.5)
 }));
 
