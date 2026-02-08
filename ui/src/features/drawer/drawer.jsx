@@ -651,7 +651,7 @@ export default function NavDrawer() {
           token = response.accessToken;
         } catch (e) {
           if (e instanceof InteractionRequiredAuthError ||
-              (e instanceof BrowserAuthError && e.errorCode === "monitor_window_timeout")) {
+              (e instanceof BrowserAuthError && (e.errorCode === "monitor_window_timeout" || e.errorCode === "timed_out"))) {
 
             await msalInstance.acquireTokenRedirect(tokenRequest);
             return; // Exit since redirect will happen

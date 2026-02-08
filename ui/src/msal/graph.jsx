@@ -12,7 +12,6 @@ async function generateToken() {
 
   const request = {
     scopes: ["User.Read", "Directory.Read.All"],
-    forceRefresh: true,
   };
 
   const tokenRequest = {

@@ -12,6 +12,7 @@ const INTERACTION_REQUIRED_ERROR_CODES = new Set([
   "no_tokens_found",
   "refresh_token_expired",
   "monitor_window_timeout",
+  "timed_out",
 ]);
 
 function isInteractionRequiredError(error) {
