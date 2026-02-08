@@ -53,6 +53,7 @@ const Associations = () => {
 
   const [prevBlock, setPrevBlock] = React.useState({});
   const [vNets, setVNets] = React.useState(null);
+  const [initialSelection, setInitialSelection] = React.useState([]);
   const [selectedRows, setSelectedRows] = React.useState([]);
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -214,15 +215,9 @@ const Associations = () => {
           setVNets(newVNetData);
 
           // Set initial selection based on block vnets
-          setSelectedRows(prev => {
-            if(prev && prev.length > 0) {
-              // Keep existing selection that's still valid
-              return prev.filter(row => newVNetData.some(vnet => vnet.id === row.id));
-            } else {
-              // Initialize with block vnets
-              return newVNetData.filter(vnet => blockVnets.some(bv => bv.id === vnet.id));
-            }
-          });
+          const selection = newVNetData.filter(vnet => blockVnets.some(bv => bv.id === vnet.id));
+          setInitialSelection(selection);
+          setSelectedRows(selection);
         } catch (e) {
           console.log("ERROR");
           console.log("------------------");
@@ -274,6 +269,7 @@ const Associations = () => {
           setPrevBlock(newBlock);
         }
       } else {
+        setInitialSelection([]);
         setSelectedRows([]);
         setVNets(null);
         refreshData();
@@ -282,6 +278,7 @@ const Associations = () => {
     }
 
     if(!selectedBlock && !isEmpty(prevBlock)) {
+      setInitialSelection([]);
       setSelectedRows([]);
       setVNets(null);
       setPrevBlock({});
@@ -479,11 +476,10 @@ const Associations = () => {
               pt: 4,
               height: "100%",
               // Stale row styling (vNets no longer present)
+              // Override selection background to prevent AG Grid's blue tint
               '& .ag-row.ipam-block-vnet-stale': {
-                backgroundColor: theme.palette.mode === 'dark' ? 'rgb(120, 40, 40)' : 'rgb(255, 235, 235)',
-                '&.ag-row-hover': {
-                  backgroundColor: theme.palette.mode === 'dark' ? 'rgb(140, 60, 60)' : 'rgb(255, 220, 220)',
-                }
+                '--ag-selected-row-background-color': theme.palette.mode === 'dark' ? 'rgb(120, 40, 40)' : 'rgb(255, 210, 210)',
+                backgroundColor: theme.palette.mode === 'dark' ? 'rgb(120, 40, 40) !important' : 'rgb(255, 210, 210) !important',
               },
             }}
           >
@@ -495,7 +491,7 @@ const Associations = () => {
               multiSelect={true}
               checkboxSelect={isAdmin}
               isLoading={sending || refreshing}
-              initialSelectedRows={selectedRows}
+              initialSelectedRows={initialSelection}
               onRowSelectionChanged={handleSelectionChanged}
               rowClassRules={rowClassRules}
               noRowsOverlayComponent={NoRowsOverlay}
