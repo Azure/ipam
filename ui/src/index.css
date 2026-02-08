@@ -53,3 +53,17 @@ code {
   scrollbar-width: thin;
   scrollbar-color: rgba(128, 128, 128, 0.5) transparent;
 }
+
+/* AG Grid hover: darken existing row color instead of replacing it */
+.ag-theme-quartz .ag-row {
+  --ag-row-hover-color: transparent;
+}
+
+.ag-theme-quartz .ag-row-hover {
+  filter: brightness(0.96);
+}
+
+[data-ag-theme-mode="dark"] .ag-theme-quartz .ag-row-hover,
+.ag-theme-quartz-dark .ag-row-hover {
+  filter: brightness(1.12);
+}
