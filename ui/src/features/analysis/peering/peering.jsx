@@ -686,6 +686,8 @@ const Search = ({ ref, options, setDataFocus }) => {
         return newOption;
       });
 
+      optionData.sort((a, b) => a.name.localeCompare(b.name));
+
       setSearchOptions(optionData);
     }
   }, [options]);
@@ -741,6 +743,54 @@ const Search = ({ ref, options, setDataFocus }) => {
   );
 };
 
+function filterByVnet(options, target, previousTarget, currentMembers) {
+  const members = [];
+
+  let filteredLinks = options.series[0].links.filter((item) => {
+    if(item.source === target) {
+      members.push(item.target);
+      return item;
+    } else if(item.target === target) {
+      members.push(item.source);
+      return item;
+    }
+
+    return false;
+  });
+
+  let uniqueMembers = [...new Set(members)];
+
+  var indexOfPrevious = uniqueMembers.indexOf(previousTarget);
+
+  if (indexOfPrevious !== -1) {
+    uniqueMembers.splice(indexOfPrevious, 1);
+  }
+
+  let filteredData = options.series[0].data.filter((item) => {
+    if (uniqueMembers.includes(item.name) || item.name === target) {
+      return item;
+    }
+
+    return false;
+  });
+
+  if(uniqueMembers.length > 0) {
+    uniqueMembers.forEach((member) => {
+      if(!currentMembers.includes(member)) {
+        const results = filterByVnet(options, member, target, [...new Set(currentMembers.concat(uniqueMembers))]);
+
+        filteredData = filteredData.concat(results.data);
+        filteredLinks = filteredLinks.concat(results.links);
+      }
+    });
+  }
+
+  return {
+    data: [...new Set(filteredData)],
+    links: [...new Set(filteredLinks)]
+  };
+}
+
 const Peering = () => {
   const [options, setOptions] = React.useState(opt);
   const [eChartsRef, setEChartsRef] = React.useState(null);
@@ -770,54 +820,6 @@ const Peering = () => {
       setOptions(vnetOptions);
     }
   }, [subscriptions, networks, theme]);
-
-  function filterByVnet(options, target, previousTarget, currentMembers) {
-    const members = [];
-
-    let filteredLinks = options.series[0].links.filter((item) => {
-      if(item.source === target) {
-        members.push(item.target);
-        return item;
-      } else if(item.target === target) {
-        members.push(item.source);
-        return item;
-      }
-
-      return false;
-    });
-
-    let uniqueMembers = [...new Set(members)];
-
-    var indexOfPrevious = uniqueMembers.indexOf(previousTarget);
-
-    if (indexOfPrevious !== -1) {
-      uniqueMembers.splice(indexOfPrevious, 1);
-    }
-
-    let filteredData = options.series[0].data.filter((item) => {
-      if (uniqueMembers.includes(item.name) || item.name === target) {
-        return item;
-      }
-
-      return false;
-    });
-
-    if(uniqueMembers.length > 0) {
-      uniqueMembers.forEach((member) => {
-        if(!currentMembers.includes(member)) {
-          const results = filterByVnet(options, member, target, [...new Set(currentMembers.concat(uniqueMembers))]);
-
-          filteredData = filteredData.concat(results.data);
-          filteredLinks = filteredLinks.concat(results.links);
-        }
-      });
-    }
-
-    return {
-      data: [...new Set(filteredData)],
-      links: [...new Set(filteredLinks)]
-    };
-  }
 
   const onEvents = React.useMemo(() => ({
     click: onClick
