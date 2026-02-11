@@ -82,12 +82,17 @@ function Refresh() {
     }
   }, []);
 
-  React.useEffect(()=>{
-    if(!refreshLoadedRef.current) {
+  React.useEffect(() => {
+    // Wait until MSAL is idle (inProgress === None) before triggering the
+    // initial data fetch.  After a redirect-based re-auth, inProgress starts
+    // as "handleRedirect" and only transitions to "none" once the auth code
+    // exchange is complete.  Without this guard the initial call would bail
+    // out (because refreshMeRef checks inProgressRef) and never retry.
+    if (!refreshLoadedRef.current && inProgress === InteractionStatus.None) {
       refreshLoadedRef.current = true;
       refreshMeRef.current();
     }
-  }, []);
+  }, [inProgress]);
 
   React.useEffect(()=>{
     const env = { ...import.meta.env, ...window['env'] }

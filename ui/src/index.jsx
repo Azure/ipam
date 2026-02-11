@@ -13,6 +13,15 @@ const container = document.getElementById('root');
 const root = createRoot(container);
 
 /**
+ * Detect if the app is loaded inside a hidden iframe (e.g. MSAL silent token acquisition).
+ * When acquireTokenSilent falls back to an iframe flow, AAD redirects the iframe back to
+ * the app's origin. Without this guard the full React app boots inside the iframe and every
+ * component that calls acquireTokenSilent triggers a cascading "block_iframe_reload" error.
+ * Skipping the render lets MSAL read the iframe hash response without interference.
+ */
+const isInHiddenIframe = window !== window.parent;
+
+/**
  * MSAL should be instantiated outside of the component tree to prevent it from being re-instantiated on re-renders.
  * For more, visit: https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-react/docs/getting-started.md
  */
@@ -23,6 +32,11 @@ export const msalInstance = new PublicClientApplication(msalConfig);
  * This is required for msal-browser v3+ to properly set up the library.
  */
 msalInstance.initialize().then(() => {
+  // Do not render the full application inside MSAL's hidden iframe.
+  if (isInHiddenIframe) {
+    return;
+  }
+
   root.render(
     <React.StrictMode>
       <MsalProvider instance={msalInstance}>

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { CacheLookupPolicy } from '@azure/msal-browser';
 
 import { msalInstance } from '../../index';
 import { apiRequest } from '../../msal/authConfig';
@@ -15,7 +16,8 @@ async function generateToken() {
 
   const tokenRequest = {
     ...apiRequest,
-    account: accounts[0]
+    account: accounts[0],
+    cacheLookupPolicy: CacheLookupPolicy.AccessTokenAndRefreshToken,
   };
 
   const response = await msalInstance.acquireTokenSilent(tokenRequest);
