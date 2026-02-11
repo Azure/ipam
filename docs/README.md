@@ -1,6 +1,6 @@
 # Welcome to Azure IPAM
 
-<!-- 
+<!--
 Guidelines on README format: https://review.docs.microsoft.com/help/onboard/admin/samples/concepts/readme-template?branch=master
 
 Guidance on onboarding samples to docs.microsoft.com/samples: https://review.docs.microsoft.com/help/onboard/admin/samples/process/onboarding?branch=master
@@ -61,7 +61,8 @@ Azure IPAM has been designed as such to radically simplify the often daunting ta
 - Organize
   - Group Azure networks into *Spaces* and *Blocks* aligned to internal lines of business and enterprise CIDR assignments
   - Track IP and CIDR consumption
-  - Map external (non-Azure) networks to Azure CIDR ranges
+  - Map [external (non-Azure) networks](./how-to/README.md#external-networks) to Azure CIDR ranges, including on-premises datacenters, co-location facilities, and other cloud providers
+  - Track external subnets and individual endpoints for complete IP address visibility
 - Plan
   - Explore "what if" cases such as how may subnets of a given mask are available within a given CIDR block
 - Self-Service

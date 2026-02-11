@@ -8,5 +8,6 @@
 - [Troubleshooting](/troubleshooting/README.md)
 - [How-To](/how-to/README.md)
 - [API](/api/README.md)
+- [Automation](/automation/README.md)
 - [Questions/Comments](/questions-comments/README.md)
 - [Contributing](/contributing/README.md)

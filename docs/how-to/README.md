@@ -64,7 +64,7 @@ Place a checkmark next to the virtual networks you'd like to associate to the ta
 
 ## Reservations
 
-Currently, IP CIDR block reservations are not supported via the UI, but are supported programmatically via the API. Please see the **Example API Calls** section for more information on how to create IP address block reservations.
+Currently, IP CIDR block reservations are not supported via the UI, but are supported programmatically via the API. Please see the [CIDR Reservations](/api/README.md#cidr-reservations) section of the API documentation for more information on how to create IP address block reservations.
 
 ## vNETs, Subnets, and Endpoints
 
@@ -99,3 +99,181 @@ For **Endpoints**, you can find the name, view the parent **vNET** and **Subnet*
 By clicking to expand the **Endpoint** details, you can find more granular **Endpoint** information (which varies based on the endpoint type) and are presented the option to view the **Endpoint** resource directly in the Azure Portal by clicking on **VIEW IN PORTAL**.
 
 ![IPAM Endpoints Details](./images/discover_endpoints_details.png)
+
+## External Networks
+
+Azure IPAM is primarily designed to discover and manage IP address space within Azure. However, many organizations also need to track IP address utilization for networks that exist **outside of Azure**. This could include on-premises datacenter networks, co-location facilities, other cloud providers, or any IP space that is part of your overall enterprise addressing scheme but is not natively managed by Azure.
+
+**External Networks** in Azure IPAM were designed to address this need. They allow you to:
+
+- **Map non-Azure CIDR ranges** within your existing Blocks to indicate that the address space is allocated elsewhere
+- **Define subnets** within those external networks to represent the various network segments where endpoints reside
+- **Track individual endpoints** within those subnets, including their names, descriptions, and IP addresses
+- **Prevent address conflicts** by accounting for externally managed IP space when planning new Azure network deployments or creating CIDR reservations
+
+> **Note:** External Network management is an **IPAM Administrator** function. Only users designated as IPAM admins can create, modify, or delete External Networks, Subnets, and Endpoints. However, all users with access to IPAM can view the Manage Endpoints dialog for external subnets.
+
+### How External Networks Fit Into the IPAM Hierarchy
+
+External Networks live within the existing **Space → Block** hierarchy. A **Block** represents a CIDR range and can contain Azure virtual networks, CIDR reservations, *and* External Networks. The full hierarchy looks like this:
+
+```
+Space
+└── Block (e.g. 10.0.0.0/16)
+    ├── Azure Virtual Networks
+    ├── CIDR Reservations
+    └── External Networks (e.g. 10.0.100.0/24)
+        └── External Subnets (e.g. 10.0.100.0/26)
+            └── External Endpoints (e.g. 10.0.100.5)
+```
+
+When Azure IPAM calculates available address space within a Block (for example, when creating a new CIDR reservation or evaluating utilization), it accounts for External Networks alongside Azure virtual networks and existing reservations. This ensures that externally allocated space is never accidentally double-assigned.
+
+### Managing External Networks via the UI
+
+External Networks are managed from the **Configure** section of the IPAM menu blade. Navigate to **Configure → Externals** to access the External Networks management interface.
+
+![External Networks Navigation](./images/ext_nav_configure_externals.png)
+
+#### The Externals Configuration Page
+
+The Externals page presents a split-pane view. The upper half displays **External Networks** for the selected Block, and the lower half displays **Subnets** for the currently selected External Network.
+
+At the top of the page, you'll find selectors for **Space** and **Block**. You must select both a Space and a Block before you can view or manage External Networks.
+
+![Externals Configuration Page](./images/ext_configure_page.png)
+
+#### Adding an External Network
+
+To add a new External Network, first select the target **Space** and **Block** using the dropdowns at the top. Then, open the action menu (3 ellipses) on the External Networks grid and select **Add Network**.
+
+![Add External Network Menu](./images/ext_add_network_menu.png)
+
+You will be presented with a dialog to define the new External Network:
+
+- **Name**: A unique name for the external network (up to 64 characters; alphanumerics, underscores, hyphens, and periods are allowed)
+- **Description**: A description of the external network (up to 128 characters; alphanumerics, spaces, underscores, hyphens, slashes, and periods are allowed)
+- **CIDR**: You can specify the network size in one of two ways:
+  - **Add by Size**: Select a subnet mask size, and IPAM will automatically assign the next available CIDR within the Block
+  - **Add by CIDR**: Specify an exact CIDR range (must be within the parent Block and cannot overlap existing virtual networks, reservations, or other external networks)
+
+![Add External Network Dialog](./images/ext_add_network_dialog.png)
+
+Once created, the External Network will appear in the grid, and its CIDR range will be accounted for in the Block's utilization metrics.
+
+#### Editing an External Network
+
+To edit an existing External Network, select the network in the grid, then open the action menu and select **Edit Network**.
+
+![Edit External Network Menu](./images/ext_edit_network_menu.png)
+
+You can update the **Name**, **Description**, and **CIDR** of the External Network. The same validation rules apply as when creating a new network — the updated CIDR must remain within the parent Block and cannot overlap other allocated space.
+
+![Edit External Network Dialog](./images/ext_edit_network_dialog.png)
+
+#### Deleting an External Network
+
+To delete an External Network, select it in the grid, open the action menu, and select **Delete Network**.
+
+![Delete External Network Menu](./images/ext_delete_network_menu.png)
+
+You will be asked to confirm the deletion. If the External Network contains subnets, you will need to enable the **Force Delete** option and confirm a second time before the deletion proceeds.
+
+![Delete External Network Dialog](./images/ext_delete_network_dialog.png)
+
+### Managing External Subnets
+
+External Subnets represent the individual network segments within an External Network. These could correspond to physical subnets in an on-premises datacenter, VLANs, or any other logical network division.
+
+#### Viewing External Subnets
+
+When you select an External Network in the upper grid, the lower grid will populate with its associated Subnets. Each subnet displays its **Name**, **Description**, and **Address Range** (CIDR).
+
+![External Subnets Grid](./images/ext_subnets_grid.png)
+
+#### Adding an External Subnet
+
+With an External Network selected, open the action menu on the Subnets grid and select **Add Subnet**.
+
+![Add External Subnet Menu](./images/ext_add_subnet_menu.png)
+
+Define the subnet with the following details:
+
+- **Name**: A unique name within the parent External Network (up to 64 characters)
+- **Description**: A description of the subnet (up to 128 characters)
+- **CIDR**: Specify either by **size** (automatic assignment) or by **exact CIDR** (must fall within the parent External Network's CIDR range and cannot overlap sibling subnets)
+
+![Add External Subnet Dialog](./images/ext_add_subnet_dialog.png)
+
+#### Editing an External Subnet
+
+Select a Subnet in the lower grid, open the action menu, and select **Edit Subnet** to modify its name, description, or CIDR.
+
+![Edit External Subnet Dialog](./images/ext_edit_subnet_dialog.png)
+
+#### Deleting an External Subnet
+
+Select a Subnet, open the action menu, and choose **Remove Subnet**. If the subnet contains endpoints, you will need to use the **Force Delete** option.
+
+![Delete External Subnet Dialog](./images/ext_delete_subnet_dialog.png)
+
+### Managing External Endpoints
+
+External Endpoints represent individual hosts or devices within an External Subnet. This is where you can track specific machines, appliances, or services along with their IP assignments.
+
+#### Opening the Manage Endpoints View
+
+Select a Subnet in the lower grid, then open the action menu and select **Manage Endpoints**. This opens a full-width dialog for managing all endpoints within the selected subnet.
+
+![Manage Endpoints Menu](./images/ext_manage_endpoints_menu.png)
+
+#### The Manage Endpoints Dialog
+
+The Manage Endpoints dialog is divided into two sections:
+
+1. **Add/Edit Form** (top): Fields for **Name**, **Description**, and **IP Address** with an action button to add or update an endpoint
+2. **Existing Endpoints Grid** (bottom): A data grid showing all current endpoints with their names, descriptions, and IP addresses
+
+![Manage Endpoints Dialog](./images/ext_manage_endpoints_dialog.png)
+
+#### Adding an Endpoint
+
+Fill in the endpoint details in the form at the top of the dialog:
+
+- **Name**: A unique name for the endpoint (up to 64 characters)
+- **Description**: A description of the endpoint (up to 128 characters)
+- **IP Address**: Select an available IP address from the dropdown, or choose **\<auto\>** to have IPAM assign the next available IP within the subnet
+
+Click **Add** to stage the endpoint. You can add multiple endpoints before saving.
+
+![Add Endpoint Form](./images/ext_add_endpoint_form.png)
+
+> **Tip:** The IP Address dropdown automatically shows only the available (unassigned) IP addresses within the subnet's CIDR range.
+
+#### Editing an Endpoint
+
+Click on an existing endpoint row in the grid to load it into the form at the top. Modify the desired fields, then click **Update** to stage the change.
+
+#### Deleting Endpoints
+
+Each endpoint row in the grid has a delete action. Click the delete icon on the row you want to remove to stage it for deletion.
+
+#### Saving Endpoint Changes
+
+All endpoint changes (additions, updates, and deletions) are staged locally in the dialog. Once you are satisfied with the changes, click **Save** to commit them all at once. This replaces the full endpoint list for the subnet in a single operation.
+
+![Save Endpoints](./images/ext_save_endpoints.png)
+
+### Managing External Networks via the API
+
+All External Network operations are also exposed via the Azure IPAM REST API. You can manage External Networks, Subnets, and Endpoints programmatically just as you would any other IPAM resource. For the full list of available API endpoints and example calls, please see the [External Networks](/api/README.md#external-networks) section of the API documentation.
+
+Additionally, for guidance on integrating External Network management into automated workflows, see the [Automation](/automation/README.md) documentation.
+
+### Tips and Best Practices
+
+- **Use descriptive names**: Name your External Networks and Subnets in a way that makes their physical or logical location immediately clear (e.g., `DC1-Floor2-ServerVLAN`, `AWS-US-East-1-VPC`)
+- **Keep it current**: External Networks are only as useful as they are accurate. Consider automating synchronization with your existing network management tools
+- **Leverage auto-assignment**: When adding endpoints, use the auto-assign IP feature (`ip: null` in the API, or `<auto>` in the UI) to let IPAM track the next available address
+- **Plan before you allocate**: Since External Network CIDRs are accounted for in Block utilization calculations, adding them *before* creating new Azure virtual networks ensures you won't accidentally overlap
+- **Use force delete judiciously**: The force delete option on External Networks and Subnets will remove all child objects. Use it carefully, especially in production environments
