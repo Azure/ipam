@@ -1,35 +1,13 @@
 import axios from 'axios';
-import { CacheLookupPolicy } from '@azure/msal-browser';
 
-import { msalInstance } from '../index';
+import { getGraphToken } from "./tokenService";
 import { graphConfig } from "./authConfig";
-
-async function generateToken() {
-  const accounts = msalInstance.getAllAccounts();
-
-  if (accounts.length === 0) {
-    throw new Error("No user accounts found. Please login or re-authenticate first.");
-  }
-
-  const request = {
-    scopes: ["User.Read", "Directory.Read.All"],
-  };
-
-  const tokenRequest = {
-    ...request,
-    account: accounts[0],
-    cacheLookupPolicy: CacheLookupPolicy.AccessTokenAndRefreshToken,
-  };
-
-  const response = await msalInstance.acquireTokenSilent(tokenRequest);
-  return response.accessToken;
-}
 
 const graph = axios.create();
 
 graph.interceptors.request.use(
   async config => {
-    const token = await generateToken();
+    const token = await getGraphToken();
 
     config.headers['Authorization'] = `Bearer ${token}`;
 
@@ -45,23 +23,9 @@ export function callMsGraph() {
   return graph
     .get(url)
     .then(response => response.data)
-    .catch(async error => {
+    .catch(error => {
       console.log("ERROR CALLING MSGRAPH");
       console.log(error);
-
-      // If we get a 401, the token might be invalid - try to get a fresh token
-      if (error.response?.status === 401) {
-        console.log("401 error - attempting to refresh Graph token");
-        try {
-          // Force a fresh token acquisition for Graph API
-          await generateToken();
-          // The generateToken function will trigger a redirect if needed
-        } catch (tokenError) {
-          console.log("Token refresh failed:", tokenError);
-          throw tokenError;
-        }
-      }
-
       throw error;
     });
 }

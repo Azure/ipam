@@ -37,6 +37,15 @@ msalInstance.initialize().then(() => {
     return;
   }
 
+  // Set the active account so acquireTokenSilent can resolve it
+  // automatically without every caller passing account explicitly.
+  if (!msalInstance.getActiveAccount()) {
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) {
+      msalInstance.setActiveAccount(accounts[0]);
+    }
+  }
+
   root.render(
     <React.StrictMode>
       <MsalProvider instance={msalInstance}>

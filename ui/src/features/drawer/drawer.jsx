@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 
 import { useMsal } from "@azure/msal-react";
-import { InteractionStatus, InteractionRequiredAuthError, BrowserAuthError } from "@azure/msal-browser";
+import { InteractionStatus } from "@azure/msal-browser";
 
 import { useSnackbar } from "notistack";
 
@@ -15,7 +15,7 @@ import { plural, singular } from 'pluralize';
 import { Routes, Route, Link, Navigate, useNavigate } from "react-router";
 
 import { callMsGraph, callMsGraphPhoto } from "../../msal/graph";
-import { msalInstance } from "../../index";
+import { getApiToken } from "../../msal/tokenService";
 
 import {
   AppBar,
@@ -113,7 +113,7 @@ import {
   selectEndpoints
 } from "../ipam/ipamSlice";
 
-import { apiRequest } from "../../msal/authConfig";
+
 
 const Search = styled("div")(({ theme }) => ({
   display: "flex",
@@ -173,7 +173,7 @@ const Search = styled("div")(({ theme }) => ({
 // }));
 
 export default function NavDrawer() {
-  const { instance, accounts, inProgress } = useMsal();
+  const { instance, inProgress } = useMsal();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
 
   const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
@@ -626,7 +626,6 @@ export default function NavDrawer() {
   );
 
   function RequestToken() {
-    // Check if there's already an interaction in progress before starting new one
     if (inProgress !== InteractionStatus.None) {
       enqueueSnackbar("Authentication in progress, please wait and try again", { variant: "info" });
       return;
@@ -634,37 +633,10 @@ export default function NavDrawer() {
 
     (async () => {
       try {
-        const accounts = msalInstance.getAllAccounts();
-
-        if (accounts.length === 0) {
-          throw new Error("No user accounts found. Please login first.");
-        }
-
-        const tokenRequest = {
-          ...apiRequest,
-          account: accounts[0]
-        };
-
-        let token;
-        try {
-          const response = await msalInstance.acquireTokenSilent(tokenRequest);
-          token = response.accessToken;
-        } catch (e) {
-          if (e instanceof InteractionRequiredAuthError ||
-              (e instanceof BrowserAuthError && (e.errorCode === "monitor_window_timeout" || e.errorCode === "timed_out"))) {
-
-            await msalInstance.acquireTokenRedirect(tokenRequest);
-            return; // Exit since redirect will happen
-          } else {
-            throw e;
-          }
-        }
-
-        if (token) {
-          navigator.clipboard.writeText(token);
-          handleMenuClose();
-          enqueueSnackbar('Token copied to clipboard!', { variant: 'success' });
-        }
+        const token = await getApiToken();
+        navigator.clipboard.writeText(token);
+        handleMenuClose();
+        enqueueSnackbar('Token copied to clipboard!', { variant: 'success' });
       } catch (e) {
         console.log("ERROR REQUESTING TOKEN");
         console.log("------------------");

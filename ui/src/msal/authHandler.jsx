@@ -57,6 +57,12 @@ function AuthHandler() {
         event.eventType === EventType.ACQUIRE_TOKEN_SUCCESS ||
         event.eventType === EventType.LOGIN_SUCCESS
       ) {
+        // Ensure the active account is set after a successful login so
+        // acquireTokenSilent can resolve it automatically.
+        if (event.eventType === EventType.LOGIN_SUCCESS && event.payload?.account) {
+          instance.setActiveAccount(event.payload.account);
+        }
+
         resetInteraction();
         return;
       }

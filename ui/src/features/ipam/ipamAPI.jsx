@@ -1,34 +1,15 @@
 import axios from 'axios';
-import { CacheLookupPolicy } from '@azure/msal-browser';
 
-import { msalInstance } from '../../index';
-import { apiRequest } from '../../msal/authConfig';
+import { getApiToken } from '../../msal/tokenService';
 import { getEngineURL } from '../../global/globals';
 
 const ENGINE_URL = getEngineURL();
-
-async function generateToken() {
-  const accounts = msalInstance.getAllAccounts();
-
-  if (accounts.length === 0) {
-    throw new Error("No user accounts found. Please login first.");
-  }
-
-  const tokenRequest = {
-    ...apiRequest,
-    account: accounts[0],
-    cacheLookupPolicy: CacheLookupPolicy.AccessTokenAndRefreshToken,
-  };
-
-  const response = await msalInstance.acquireTokenSilent(tokenRequest);
-  return response.accessToken;
-}
 
 const api = axios.create();
 
 api.interceptors.request.use(
   async config => {
-    const token = await generateToken();
+    const token = await getApiToken();
 
     config.headers['Authorization'] = `Bearer ${token}`;
 
