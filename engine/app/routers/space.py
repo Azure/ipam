@@ -66,7 +66,7 @@ async def valid_space_name_update(name, space_name, tenant_id):
 
     if name.lower() in space_names:
         raise HTTPException(status_code=400, detail="Updated Space name must be unique.")
-    
+
     if re.match(SPACE_NAME_REGEX, name):
         return True
 
@@ -114,7 +114,7 @@ async def valid_block_name_update(name, space_name, block_name, tenant_id):
 
     if name.lower() in other_blocks:
         raise HTTPException(status_code=400, detail="Updated Block name cannot match existing Blocks within the Space.")
-    
+
     if re.match(BLOCK_NAME_REGEX, name):
         return True
 
@@ -147,7 +147,7 @@ async def valid_block_cidr_update(cidr, space_name, block_name, tenant_id):
         else:
             for vnet in block['vnets']:
                 target_net = next((i for i in net_list if i['id'] == vnet['id']), None)
-                
+
                 if target_net:
                     block_cidrs += target_net['prefixes']
 
@@ -163,10 +163,10 @@ async def valid_block_cidr_update(cidr, space_name, block_name, tenant_id):
 
     if space_set & update_set:
         raise HTTPException(status_code=400, detail="Updated CIDR cannot overlap other Block CIDRs within the Space.")
-    
+
     if not block_set.issubset(update_set):
         return False
-    
+
     return True
 
 async def scrub_block_patch(patch, space_name, block_name, tenant_id):
@@ -211,7 +211,7 @@ async def valid_ext_network_name_update(name, space_name, block_name, external_n
 
     if name.lower() in other_networks:
         raise HTTPException(status_code=400, detail="Updated External Network name cannot match existing External Networks within the Block.")
-    
+
     if re.match(EXTERNAL_NAME_REGEX, name):
         return True
 
@@ -238,7 +238,7 @@ async def valid_ext_network_cidr_update(cidr, space_name, block_name, external_n
 
         if(str(external_network.cidr) != cidr):
             raise HTTPException(status_code=400, detail="Invalid CIDR value, try '{}' instead.".format(external_network.cidr))
-        
+
         if not external_network in IPNetwork(target_block['cidr']):
             raise HTTPException(status_code=400, detail="Updated External Network CIDR must be contained within the Block CIDR.")
 
@@ -246,7 +246,7 @@ async def valid_ext_network_cidr_update(cidr, space_name, block_name, external_n
 
     for vnet in target_block['vnets']:
         target_net = next((i for i in net_list if i['id'] == vnet['id']), None)
-        
+
         if target_net:
             block_cidrs += target_net['prefixes']
 
@@ -266,10 +266,10 @@ async def valid_ext_network_cidr_update(cidr, space_name, block_name, external_n
 
     if block_set & update_set:
         raise HTTPException(status_code=400, detail="Updated CIDR cannot overlap other Virtual Networks, External Networks, or unfulfilled Reservations within the Block.")
-    
+
     if not external_set.issubset(update_set):
         return False
-    
+
     return True
 
 async def scrub_ext_network_patch(patch, space_name, block_name, external_name, tenant_id):
@@ -320,7 +320,7 @@ async def valid_ext_subnet_name_update(name, space_name, block_name, external_na
 
     if name.lower() in other_subnets:
         raise HTTPException(status_code=400, detail="Updated External Subnet name cannot match existing External Subnets within the External Network.")
-    
+
     if re.match(EXTSUBNET_NAME_REGEX, name):
         return True
 
@@ -347,7 +347,7 @@ async def valid_ext_subnet_cidr_update(cidr, space_name, block_name, external_na
 
         if(str(subnet_network.cidr) != cidr):
             raise HTTPException(status_code=400, detail="Invalid CIDR value, try '{}' instead.".format(subnet_network.cidr))
-        
+
         if not subnet_network in IPNetwork(target_external['cidr']):
             raise HTTPException(status_code=400, detail="Updated External Subnet CIDR must be contained within the External Network CIDR.")
 
@@ -418,7 +418,7 @@ async def valid_ext_endpoint_name_update(name, space_name, block_name, external_
 
     if name.lower() in other_endpoints:
         raise HTTPException(status_code=400, detail="Updated External Endpoint name cannot match existing External Endpoints within the External Subnet.")
-    
+
     if re.match(EXTENDPOINT_NAME_REGEX, name):
         return True
 
@@ -1519,9 +1519,9 @@ async def create_block_net(
     if not target_net:
         raise HTTPException(status_code=400, detail="Invalid network ID.")
 
-    target_cidr = next((x for x in target_net['prefixes'] if IPNetwork(x) in IPNetwork(target_block['cidr'])), None)
+    target_cidrs = [x for x in target_net['prefixes'] if IPNetwork(x) in IPNetwork(target_block['cidr'])]
 
-    if not target_cidr:
+    if not target_cidrs:
         raise HTTPException(status_code=400, detail="Network CIDR not within block CIDR.")
 
     block_net_cidrs = []
@@ -1539,7 +1539,7 @@ async def create_block_net(
             prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target['prefixes']))
             block_net_cidrs += prefixes
 
-    cidr_overlap = IPSet(block_net_cidrs) & IPSet([target_cidr])
+    cidr_overlap = IPSet(block_net_cidrs) & IPSet(target_cidrs)
 
     if cidr_overlap:
         raise HTTPException(status_code=400, detail="Block already contains network(s) and/or reservation(s) within the CIDR range of target network.")
@@ -1611,13 +1611,15 @@ async def update_block_vnets(
         if not target_net:
             invalid_nets.append(v)
         else:
-            target_cidr = next((x for x in target_net['prefixes'] if IPNetwork(x) in IPNetwork(target_block['cidr'])), None)
+            target_cidrs = [x for x in target_net['prefixes'] if IPNetwork(x) in IPNetwork(target_block['cidr'])]
 
-            if not target_cidr:
+            if not target_cidrs:
                 outside_block_cidr.append(v)
             else:
-                if not net_ipset & IPSet([target_cidr]):
-                    net_ipset.add(target_cidr)
+                target_ipset = IPSet(target_cidrs)
+
+                if not net_ipset & target_ipset:
+                    net_ipset.update(target_ipset)
                 else:
                     net_overlap = True
 
@@ -1836,7 +1838,7 @@ async def create_external_network(
 
         if IPSet([req.cidr]) & resv_set:
             raise HTTPException(status_code=400, detail="Block contains unfulfilled reservation(s) which overlap the target external network.")
-        
+
         if IPSet([req.cidr]) & block_set:
             raise HTTPException(status_code=400, detail="Block contains a virtual network(s) or hub(s) which overlap the target external network.")
     else:
@@ -1846,7 +1848,7 @@ async def create_external_network(
             raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block.")
 
         next_cidr = list(available_network.subnet(req.size))[0]
-    
+
     new_external = {
         "name": req.name,
         "desc": req.desc,
@@ -2053,7 +2055,7 @@ async def get_external_subnets(
 
     if not target_block:
         raise HTTPException(status_code=400, detail="Invalid block name.")
-    
+
     target_external = next((x for x in target_block['externals'] if x['name'].lower() == external.lower()), None)
 
     if not target_external:
@@ -2129,7 +2131,7 @@ async def create_external_subnet(
             next_cidr = IPNetwork(req.cidr)
         except:
             raise HTTPException(status_code=400, detail="Invalid CIDR, please ensure CIDR is in valid IPv4 CIDR notation (x.x.x.x/x).")
-        
+
         if str(next_cidr.cidr) != req.cidr:
             raise HTTPException(status_code=400, detail="External subnet CIDR invalid, should be {}".format(IPNetwork(req.cidr).cidr))
 
@@ -2263,7 +2265,7 @@ async def update_ext_subnet(
 
     if not external_network:
         raise HTTPException(status_code=400, detail="Invalid external network name.")
-    
+
     update_ext_subnet = next((x for x in external_network['subnets'] if x['name'].lower() == subnet.lower()), None)
 
     if not update_ext_subnet:
@@ -2372,7 +2374,7 @@ async def get_external_subnet_endpoints(
 
     if not target_block:
         raise HTTPException(status_code=400, detail="Invalid block name.")
-    
+
     target_ext_network = next((x for x in target_block['externals'] if x['name'].lower() == external.lower()), None)
 
     if not target_ext_network:
@@ -2636,12 +2638,12 @@ async def delete_external_subnet_endpoints(
 
     if not target_block:
         raise HTTPException(status_code=400, detail="Invalid block name.")
-    
+
     target_ext_network = next((x for x in target_block['externals'] if x['name'].lower() == external.lower()), None)
 
     if not target_ext_network:
         raise HTTPException(status_code=400, detail="Invalid external network name.")
-    
+
     target_ext_subnet = next((x for x in target_ext_network['subnets'] if x['name'].lower() == subnet.lower()), None)
 
     if not target_ext_subnet:
@@ -2713,7 +2715,7 @@ async def get_external_subnet_endpoint(
 
     if not target_ext_subnet:
         raise HTTPException(status_code=400, detail="Invalid external subnet name.")
-    
+
     target_ext_endpoint = next((x for x in target_ext_subnet['endpoints'] if x['name'].lower() == endpoint.lower()), None)
 
     if not target_ext_endpoint:
@@ -2776,7 +2778,7 @@ async def update_ext_endpoint(
 
     if not external_network:
         raise HTTPException(status_code=400, detail="Invalid external network name.")
-    
+
     external_subnet = next((x for x in external_network['subnets'] if x['name'].lower() == subnet.lower()), None)
 
     if not external_subnet:
