@@ -922,12 +922,17 @@ async def match_resv_to_vnets():
                         if resv['status'] == "wait":
                             # print("vNET is being added to IP Block...")
                             # logging.info("vNET is being added to IP Block...")
-                            block['vnets'].append(
-                                {
-                                    "id": net['id'],
-                                    "active": True
-                                }
-                            )
+                            existing_vnet = next((x for x in block['vnets'] if x['id'].lower() == net['id'].lower()), None)
+
+                            if existing_vnet:
+                                existing_vnet['active'] = True
+                            else:
+                                block['vnets'].append(
+                                    {
+                                        "id": net['id'],
+                                        "active": True
+                                    }
+                                )
 
                             # del block['resv'][index]
 
