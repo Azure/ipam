@@ -409,7 +409,7 @@ async def get_vnet(
         for subnet in vnet['subnets']:
             subnet['size'] = IPNetwork(subnet['prefix']).size
             total_used += IPNetwork(subnet['prefix']).size
-        
+
         vnet['used'] = total_used
 
         # Python 3.9+
@@ -422,7 +422,7 @@ async def get_vnet(
         vnet['parent_block'] = parent_blocks or None
 
         updated_vnet_list.append(vnet)
-  
+
     return updated_vnet_list
 
 @router.get(
@@ -912,10 +912,12 @@ async def match_resv_to_vnets():
 
                                 existing_block_cidrs += target_cidrs
 
-                        if IPNetwork(resv['cidr']) in IPSet(existing_block_cidrs):
+                        cidr_overlap = IPSet([resv['cidr']]) & IPSet(existing_block_cidrs)
+
+                        if cidr_overlap:
                             # print("A vNET with the assigned CIDR has already been associated with the target IP Block.")
                             # logging.info("A vNET with the assigned CIDR has already been associated with the target IP Block.")
-                            resv['status'] = "errCIDRExists"
+                            resv['status'] = "errCIDROverlap"
 
                         if resv['status'] == "wait":
                             # print("vNET is being added to IP Block...")
