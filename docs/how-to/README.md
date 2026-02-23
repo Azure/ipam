@@ -64,7 +64,135 @@ Place a checkmark next to the virtual networks you'd like to associate to the ta
 
 ## Reservations
 
-Currently, IP CIDR block reservations are not supported via the UI, but are supported programmatically via the API. Please see the [CIDR Reservations](/api/README.md#cidr-reservations) section of the API documentation for more information on how to create IP address block reservations.
+A **Reservation** allows you to claim a CIDR range within a **Block** before you actually create an Azure virtual network. Think of it like placing a hold on address space — the reserved CIDR is excluded from future allocations (including new reservations, virtual network associations, and External Networks) until the reservation is either fulfilled or cancelled.
+
+Reservations are useful when you need to coordinate network creation across teams or processes. For example, a platform team might reserve a /24 for a project team that isn't ready to deploy their virtual network yet. The reserved space is guaranteed to be available when they need it.
+
+### How Reservations Work
+
+When you create a reservation, IPAM finds the next available CIDR range of the requested size within the target Block and marks it as reserved. The reservation is assigned a unique **Reservation ID** and a status of **Waiting**. From there, the reservation follows a lifecycle:
+
+1. **Waiting** — The reservation is active and the CIDR is held. IPAM is watching for a virtual network tagged with the reservation ID.
+2. **Fulfilled** — A virtual network with the reservation's `X-IPAM-RES-ID` tag was discovered, its address space matches the reserved CIDR, and it has been automatically associated with the Block.
+3. **Cancelled by User** — An administrator or the user who created the reservation manually cancelled it.
+4. **Cancelled by Timeout** — The reservation expired based on the configured timeout policy.
+5. **Warning: CIDR Mismatch** — A virtual network with the reservation's tag was found, but its address space does not match the reserved CIDR.
+6. **Error: CIDR Overlap** — A virtual network with an overlapping CIDR has already been associated with the Block through another path. (Legacy status value: `errCIDRExists`; new status value: `errCIDROverlap`.)
+
+> **Tip:** When a reservation is fulfilled, the response includes a `tag` object containing `X-IPAM-RES-ID`. Apply this tag to your new virtual network and IPAM will automatically detect it, associate the vNET with the Block, and mark the reservation as fulfilled.
+
+### Reservation Permissions
+
+Both IPAM administrators and regular users can create and manage reservations. However, non-admin users can only see and manage reservations they created themselves. Administrators can view and manage all reservations across all users.
+
+### Managing Reservations via the UI
+
+Reservations are managed from the **Configure** section of the IPAM menu blade. Navigate to **Configure → Reservations** to access the Reservations management interface.
+
+![Reservations Navigation](./images/resv_nav_configure_reservations.png)
+
+#### The Reservations Page
+
+The Reservations page displays a data grid of all reservations for the selected Block. At the top of the page, you'll find selectors for **Space**, **Block**, and a read-only **Network** field that shows the Block's CIDR range.
+
+![Reservations Page](./images/resv_configure_page.png)
+
+You must select both a **Space** and a **Block** before you can view or manage reservations.
+
+> **Shortcut:** You can also navigate directly to Reservations from the **Basics** tab. Select a Block, open the action menu (3 ellipses), and choose **Reservations**. This will take you to the Reservations tab with the Space and Block pre-selected.
+
+#### Viewing Reservations
+
+The data grid shows the following information for each reservation:
+
+- **CIDR** — The reserved CIDR range
+- **Created By** — The user or service principal that created the reservation
+- **Description** — An optional description provided at creation time
+- **Creation Date** — When the reservation was created
+- **Settled Date** — When the reservation was fulfilled or cancelled (hidden by default)
+- **Settled By** — Who or what settled the reservation (hidden by default)
+- **Status** — A status icon indicating the current state of the reservation
+
+![Reservations Grid](./images/resv_grid_with_data.png)
+
+#### Filtering Active vs. Settled Reservations
+
+By default, the grid shows only **active** (unsettled) reservations. To view all reservations including those that have been fulfilled or cancelled, open the action menu (3 ellipses) and click **Showing Active** to toggle to **Showing All**. Click it again to switch back to active-only view.
+
+![Toggle Reservation Filter](./images/resv_toggle_filter.png)
+
+#### Creating a Reservation
+
+To create a new reservation, open the action menu (3 ellipses) and select **New Reservation**. You must have a Space and Block selected before this option becomes available.
+
+![New Reservation Menu](./images/resv_new_reservation_menu.png)
+
+The **Create Reservation** dialog gives you two ways to specify the CIDR range:
+
+**By Size (default):**
+
+Select this option to have IPAM automatically find the next available CIDR of the requested size. Choose a subnet **Mask** from the dropdown (available masks are based on the Block's CIDR range). You can also configure two optional search behaviors:
+
+- **Reverse Search** — When enabled, IPAM allocates from the *end* of the Block rather than the beginning. This is useful when you want to keep the beginning of the Block available for larger allocations.
+- **Smallest CIDR** — When enabled, IPAM uses the smallest available contiguous block that fits the requested size, rather than the first one it finds. This helps avoid fragmenting large open ranges.
+
+![Create Reservation By Size](./images/resv_create_by_size.png)
+
+**By CIDR:**
+
+Select this option to request a specific CIDR range. Enter the CIDR in standard notation (e.g., `10.1.5.0/24`). The CIDR must be within the Block's range and cannot overlap any existing virtual networks, reservations, or External Networks.
+
+![Create Reservation By CIDR](./images/resv_create_by_cidr.png)
+
+Optionally, you can add a **Description** to help identify the purpose of the reservation.
+
+Click **Create** to submit the reservation. On success, you'll see a confirmation notification and the new reservation will appear in the grid.
+
+#### Copying a Reservation ID
+
+Each active reservation has a copy icon in the actions column. Click it to copy the **Reservation ID** to your clipboard. You'll need this ID to tag your virtual network so IPAM can automatically associate it with the Block when the vNET is created.
+
+![Copy Reservation ID](./images/resv_copy_id.png)
+
+> **Tip:** The copy icon is only available for unsettled reservations. Once a reservation is fulfilled or cancelled, the ID is no longer actionable.
+
+#### Cancelling Reservations
+
+To cancel one or more reservations, select them using the checkboxes in the grid, then click the **Remove** button (red X icon) in the upper-right corner of the page.
+
+![Cancel Reservations](./images/resv_cancel_selected.png)
+
+Cancelled reservations are not hard-deleted — they are marked as **Cancelled by User** and remain visible when viewing all reservations. This provides an audit trail of reservation activity.
+
+### Using the Reservation Tag
+
+The key to the reservation workflow is the `X-IPAM-RES-ID` tag. When you create a reservation, IPAM returns a tag value in the response. Apply this tag to the Azure virtual network you create with the reserved CIDR:
+
+```
+Tag Key:   X-IPAM-RES-ID
+Tag Value: <reservation-id>
+```
+
+IPAM's background reconciliation process periodically scans for virtual networks with this tag. When it finds a match, it:
+
+1. Verifies the vNET's address space against the reserved CIDR
+2. Associates the vNET with the Block
+3. Marks the reservation as **Fulfilled**
+
+This tag-based approach means you can create the reservation through IPAM and then create the virtual network through any mechanism you prefer — Azure Portal, CLI, PowerShell, Terraform, Bicep, or any other IaC tool.
+
+### Managing Reservations via the API
+
+All reservation operations are also available through the Azure IPAM REST API. For the full list of available endpoints and example calls, please see the [CIDR Reservations](/api/README.md#cidr-reservations) section of the API documentation.
+
+### Tips and Best Practices
+
+- **Use descriptions**: Always add a description when creating a reservation so it's clear what the reservation is for, especially in environments with multiple teams
+- **Copy the tag immediately**: After creating a reservation, copy the Reservation ID right away and store it somewhere accessible. You'll need it to tag your virtual network.
+- **Match your CIDR exactly**: When creating a vNET to fulfill a reservation, make sure the vNET's address space matches the reserved CIDR exactly. A mismatch will result in a warning status.
+- **Monitor reservation status**: Check in on your reservations periodically. A reservation stuck in "Waiting" may indicate the vNET was created without the proper tag.
+- **Use Reverse Search for large Blocks**: If you have a large Block and want to avoid fragmenting the beginning of the range, enable **Reverse Search** to allocate from the end.
+- **Use Smallest CIDR to reduce fragmentation**: Enable **Smallest CIDR** when you want to preserve larger contiguous ranges for future use
 
 ## vNETs, Subnets, and Endpoints
 

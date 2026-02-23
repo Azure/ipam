@@ -1,8 +1,37 @@
-# Placeholder Screenshots for External Networks Documentation
+# Placeholder Screenshots for Documentation
 
-The following screenshots are needed for the External Networks documentation page. Each filename corresponds to an image reference in `../README.md`.
+The following screenshots are needed for various documentation pages. Each filename corresponds to an image reference in `../README.md`.
 
-## Navigation & Page Layout
+---
+
+## Reservations
+
+### Navigation & Page Layout
+- [ ] `resv_nav_configure_reservations.png` — IPAM sidebar showing Configure → Reservations navigation path
+- [ ] `resv_configure_page.png` — Full Reservations page with Space/Block/Network selectors and empty grid (showing "Please Select a Space & Block")
+
+### Viewing Reservations
+- [ ] `resv_grid_with_data.png` — Reservations grid populated with several reservations in various states (waiting, fulfilled, cancelled)
+- [ ] `resv_toggle_filter.png` — Action menu showing the "Showing Active" / "Showing All" toggle option
+
+### Creating Reservations
+- [ ] `resv_new_reservation_menu.png` — Action menu showing the "New Reservation" option
+- [ ] `resv_create_by_size.png` — Create Reservation dialog with the "By Size" radio selected, showing the Mask dropdown, Reverse Search toggle, and Smallest CIDR toggle
+- [ ] `resv_create_by_cidr.png` — Create Reservation dialog with the "By CIDR" radio selected, showing the CIDR text field
+
+### Managing Reservations
+- [ ] `resv_copy_id.png` — Reservation row showing the copy icon in the actions column (ideally with the tooltip visible)
+- [ ] `resv_cancel_selected.png` — Reservations grid with one or more rows selected via checkboxes, showing the red Remove (X) button in the upper-right
+
+### Suggested Screenshot Tips
+- Use realistic data (e.g., reservations like "10.1.5.0/24" with descriptions like "Project Alpha vNET")
+- Include reservations in multiple statuses if possible (Waiting, Fulfilled, Cancelled) for the grid screenshot
+- For the Create dialog screenshots, show both radio options clearly — one with "By Size" selected and one with "By CIDR" selected
+- Make sure the Space/Block selectors are populated so users can see the full context
+
+---
+
+## External Networks
 - [ ] `ext_nav_configure_externals.png` — IPAM sidebar showing Configure → Externals navigation path
 - [ ] `ext_configure_page.png` — Full Externals configuration page with Space/Block selectors, External Networks grid (top), and Subnets grid (bottom)
 

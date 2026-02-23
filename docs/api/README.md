@@ -30,13 +30,33 @@ $accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://e3ff
 
 ## CIDR Reservations
 
+CIDR Reservations allow you to claim address space within a Block before creating an Azure virtual network. For more information on what reservations are, how the lifecycle works, and how to manage them via the UI, please see the [Reservations](/how-to/README.md#reservations) section of the How-To documentation.
+
+The API supports creating reservations against a specific Block, or against a list of Blocks (IPAM will use the first Block with available space).
+
+### Reservation Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/spaces/{space}/reservations` | List reservations across all Blocks in a Space |
+| `POST` | `/spaces/{space}/reservations` | Create a reservation from a list of Blocks |
+| `GET` | `/spaces/{space}/blocks/{block}/reservations` | List reservations for a specific Block |
+| `POST` | `/spaces/{space}/blocks/{block}/reservations` | Create a reservation in a specific Block |
+| `GET` | `/spaces/{space}/blocks/{block}/reservations/{reservation}` | Get a specific reservation |
+| `DELETE` | `/spaces/{space}/blocks/{block}/reservations` | Delete (cancel) multiple reservations |
+| `DELETE` | `/spaces/{space}/blocks/{block}/reservations/{reservation}` | Delete (cancel) a single reservation |
+
+> **Note:** The `GET` endpoints accept a `settled` query parameter (default: `false`). Set it to `true` to include fulfilled and cancelled reservations in the results. Non-admin users will only see reservations they created.
+
+### Example API Calls
+
 You'll need to provide the following for each API call:
 
 * Bearer Token
 * HTTP Method
 * API Request URL
 * HTTP Headers
-* Request Body (PUT/PATCH/POST)
+* Request Body (POST/DELETE)
 
 Here is an example of how to create an IP address CIDR reservation in order to create a new vNET. We'll be performing a POST to the following request URL:
 
@@ -60,7 +80,7 @@ Click **Send** and you will receive a response of type **201 Created** with key 
 
 ![Postman CIDR Reservation Response](./images/postman_response.png)
 
-Here is the same example performed via Azure PowerShell.
+Here is the same example performed via Azure PowerShell. First, set up the common variables and authentication:
 
 ```ps1
 $engineClientId = '<Engine App Registration Client ID>'
@@ -70,38 +90,166 @@ $block = 'TestBlock'
 
 $accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token -AsPlainText
 
-$requestUrl = "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations"
-
-$body = @{
-    'size' = 24
-} | ConvertTo-Json
-
 $headers = @{
-  'Accept' = 'application/json'
-  'Content-Type' = 'application/json'
+    'Accept'       = 'application/json'
+    'Content-Type' = 'application/json'
 }
-
-$response = Invoke-RestMethod `
- -Method 'Post' `
- -Uri $requestUrl `
- -Authentication 'Bearer' `
- -Token $accessToken `
- -Headers $headers `
- -Body $body
 ```
 
-The call will return key information regarding your CIDR block reservation. Again, make note of the *tag* information in the response.
+#### Create a Reservation by Size
+
+The simplest way to create a reservation is by specifying a mask size. IPAM will find the next available CIDR of that size within the Block.
+
+```ps1
+$body = @{
+    size = 24
+    desc = 'Reservation for Project Alpha vNET'
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Post' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+The call will return key information regarding your CIDR block reservation. Make note of the *tag* information in the response — you'll need to apply it to your virtual network.
 
 ```ps1
 $response
 
 id        : ABNsJjXXyTRDTRCdJEJThu
 cidr      : 10.1.5.0/24
-userId    : user@ipam.onmicrosoft.com
+desc      : Reservation for Project Alpha vNET
 createdOn : 1662514052.26623
 status    : wait
 tag       : @{X-IPAM-RES-ID=ABNsJjXXyTRDTRCdJEJThu}
 ```
+
+You can also control how IPAM selects the available range:
+
+```ps1
+# Allocate from the end of the Block and use the smallest fitting range
+$body = @{
+    size           = 24
+    desc           = 'Reservation at end of block'
+    reverse_search = $true
+    smallest_cidr  = $true
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Post' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+#### Create a Reservation by CIDR
+
+If you need a specific CIDR range, provide it directly instead of a size. The CIDR must be within the Block and cannot overlap existing allocations.
+
+```ps1
+$body = @{
+    cidr = '10.1.10.0/24'
+    desc = 'Specific range for DMZ network'
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Post' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+> **Note:** The `cidr` and `size` parameters cannot be used together. The `reverse_search` and `smallest_cidr` options are only available when using `size`.
+
+#### Create a Reservation from Multiple Blocks
+
+If you're flexible about which Block the reservation comes from, you can provide a list of Block names. IPAM will evaluate them in order and create the reservation in the first Block with available space.
+
+```ps1
+$body = @{
+    blocks = @('PrimaryBlock', 'SecondaryBlock', 'OverflowBlock')
+    size   = 24
+    desc   = 'Flexible reservation across blocks'
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Post' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/reservations" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+Note the different request URL — this uses the Space-level endpoint (`/spaces/{space}/reservations`) rather than the Block-level endpoint.
+
+#### List Reservations
+
+You can retrieve all active reservations for a Block, or across all Blocks in a Space.
+
+```ps1
+# Get active reservations for a specific Block
+$reservations = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+
+# Include settled (fulfilled/cancelled) reservations
+$allReservations = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations?settled=true" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+
+# Get reservations across all Blocks in a Space
+$spaceReservations = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/reservations" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+```
+
+#### Cancel a Reservation
+
+Cancelling a reservation releases the held CIDR range so it can be used for other allocations. You can cancel a single reservation or multiple at once.
+
+```ps1
+# Cancel a single reservation by ID
+Invoke-RestMethod `
+    -Method 'Delete' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations/ABNsJjXXyTRDTRCdJEJThu" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+
+# Cancel multiple reservations at once
+$body = @(
+    'ABNsJjXXyTRDTRCdJEJThu',
+    'CDPtKkYYzUSEUSdKFKUViv'
+) | ConvertTo-Json
+
+Invoke-RestMethod `
+    -Method 'Delete' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+> **Note:** Cancelling a reservation does not hard-delete it. The reservation remains in the system with a status of `cancelledByUser` and is visible when querying with `settled=true`. Non-admin users can only cancel reservations they created.
 
 Take a look at our **Azure Landing Zone integration** example found under the `deploy` directory in the repository for a real work example of how to automate vNET creation by means of Bicep and leveraging the Azure IPAM API.
 
