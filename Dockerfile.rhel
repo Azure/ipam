@@ -1,5 +1,5 @@
-ARG BUILD_IMAGE=registry.access.redhat.com/ubi8/nodejs-22
-ARG SERVE_IMAGE=registry.access.redhat.com/ubi8/python-311
+ARG BUILD_IMAGE=registry.access.redhat.com/ubi9/nodejs-22
+ARG SERVE_IMAGE=registry.access.redhat.com/ubi9/python-311
 
 # Set Production Build Flag
 ARG PROD_BUILD=true
@@ -60,16 +60,15 @@ WORKDIR /tmp
 # Switch to Root User
 USER root
 
-# Disable Subscription Manager YUM Plugin
-RUN sed -i s/enabled=./enabled=0/g /etc/yum/pluginconf.d/subscription-manager.conf
+# Disable Subscription Manager DNF Plugin
+RUN sed -i s/enabled=./enabled=0/g /etc/dnf/plugins/subscription-manager.conf
 
 # Install OpenSSH and set the password for root to "Docker!"
-RUN yum update -y \
-  && yum install -y openssh-server \
+RUN dnf update -y \
+  && dnf install -y openssh-server \
   && echo "root:Docker!" | chpasswd \
-  && systemctl enable sshd \
-  && yum clean all \
-  && rm -rf /var/cache/yum
+  && dnf clean all \
+  && rm -rf /var/cache/dnf
 
 # Enable SSH root login with Password Authentication
 # RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config

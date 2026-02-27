@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi8/python-311
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/python-311
 FROM $BASE_IMAGE
 
 # Set Default Port

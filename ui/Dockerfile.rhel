@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi8/nodejs-22
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/nodejs-22
 FROM $BASE_IMAGE
 
 # Set Default Port

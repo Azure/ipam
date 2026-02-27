@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi8/nginx-124
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/nginx-126
 FROM $BASE_IMAGE
 
 # Create File Links
