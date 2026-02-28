@@ -1,6 +1,9 @@
 ARG BASE_IMAGE=node:22-slim
 FROM $BASE_IMAGE
 
+# Set Production Build Flag
+ARG PROD_BUILD=true
+
 # Set Default Port
 ARG PORT=80
 
@@ -20,7 +23,11 @@ WORKDIR /ipam
 ADD . .
 
 # Install Dependencies
-RUN npm ci
+RUN if [ "${PROD_BUILD}" = true ]; then \
+  npm ci; \
+else \
+  npm install; \
+fi
 
 # Build Application
 RUN npm run build

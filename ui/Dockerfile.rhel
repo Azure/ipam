@@ -1,6 +1,9 @@
 ARG BASE_IMAGE=registry.access.redhat.com/ubi9/nodejs-22
 FROM $BASE_IMAGE
 
+# Set Production Build Flag
+ARG PROD_BUILD=true
+
 # Set Default Port
 ARG PORT=8080
 
@@ -20,7 +23,11 @@ USER root
 ADD . .
 
 # Install Dependencies
-RUN npm ci
+RUN if [ "${PROD_BUILD}" = true ]; then \
+  npm ci; \
+else \
+  npm install; \
+fi
 
 # Build Application
 RUN npm run build
