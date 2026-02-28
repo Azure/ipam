@@ -204,6 +204,34 @@ resources
 | project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes
 """
 
+NETWORK_INTERFACE = """
+resources
+| where type =~ 'microsoft.network/networkinterfaces'
+| where subscriptionId !in~ {}
+| where isempty(properties.virtualMachine)
+| where isempty(properties.privateEndpoint)
+| mv-expand ipconfig = properties.ipConfigurations
+| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, private_ip = ipconfig.properties.privateIPAddress, private_ip_alloc_method = ipconfig.properties.privateIPAllocationMethod, subnet_id = tostring(ipconfig.properties.subnet.id), public_ip_id = tostring(ipconfig.properties.publicIPAddress.id)
+| extend subnet_id_lower = tolower(subnet_id)
+| extend public_ip_id_lower = tolower(public_ip_id)
+| join kind = leftouter (
+    resources
+    | where type =~ 'microsoft.network/virtualnetworks'
+    | extend subnets = array_length(properties.subnets)
+    | mv-expand subnet = properties.subnets
+    | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
+    | extend subnet_id_lower = tolower(subnet_id)
+) on subnet_id_lower
+| join kind = leftouter (
+    resources
+    | where type =~ 'Microsoft.Network/PublicIpAddresses'
+    | project public_ip_id = tostring(id), public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
+    | extend public_ip_id_lower = tolower(public_ip_id)
+) on public_ip_id_lower
+| extend metadata = pack('kind', 'Network Interface', 'orphaned', true, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
+"""
+
 PRIVATE_ENDPOINT = """
 resources
 | where type =~ 'microsoft.network/networkinterfaces'
@@ -325,7 +353,7 @@ ComputeResources
 | extend vmss_vm_num = todynamic(replace(@'.*\/virtualMachines/', '', id))
 | extend vmss_id = replace(@'/virtualMachines.*', '', id)
 | extend metadata = pack('kind', 'VM Scale Set', 'vmss_name', vmss_name, 'vmss_vm_num', vmss_vm_num, 'vmss_id', vmss_id)
-| project name = strcat(vmss_name, '_', vmss_vm_num), id, private_ips, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata 
+| project name = strcat(vmss_name, '_', vmss_vm_num), id, private_ips, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
 FIREWALL_VNET = """

@@ -817,6 +817,22 @@ async def vhub_ep(
 
     return results
 
+@router.get(
+    "/nic",
+    summary = "Get All Standalone Network Interfaces"
+)
+async def nic(
+    authorization: str = Header(None),
+    admin: str = Depends(get_admin)
+):
+    """
+    Get a list of standalone Azure Network Interfaces (not attached to a VM or Private Endpoint).
+    """
+
+    results = await arg_query(authorization, admin, argquery.NETWORK_INTERFACE)
+
+    return results
+
 async def multi_helper(func, list, *args):
     """DOCSTRING"""
 
@@ -847,6 +863,7 @@ async def multi(
     tasks.append(asyncio.create_task(multi_helper(appgw, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(apim, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(lb, result_list, authorization, admin)))
+    tasks.append(asyncio.create_task(multi_helper(nic, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(vhub_ep, result_list, authorization, admin)))
 
     await asyncio.gather(*tasks)
