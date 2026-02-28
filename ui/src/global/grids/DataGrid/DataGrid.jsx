@@ -971,6 +971,7 @@ const DataGrid = ({
           columnDefs={colDefs}
           defaultColDef={defaultColDef}
           getRowId={getRowId}
+          accentedSort={true}
           suppressMovableColumns={false}
           animateRows={true}
           rowSelection={rowSelection}

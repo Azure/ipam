@@ -171,6 +171,7 @@ const ConfigureGrid = ({
         rowSelection={rowSelection}
         getRowId={getRowId}
         onRowClicked={onRowClicked}
+        accentedSort={true}
         suppressCellFocus={true}
         animateRows={true}
         noRowsOverlayComponent={NoRowsOverlay}

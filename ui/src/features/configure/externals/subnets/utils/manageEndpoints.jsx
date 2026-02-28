@@ -1001,6 +1001,7 @@ export default function ManageExtEndpoints(props) {
                 columnDefs={columns}
                 defaultColDef={defaultColDef}
                 getRowId={(params) => params.data.id}
+                accentedSort={true}
                 rowSelection={{ mode: 'singleRow', checkboxes: false, enableClickSelection: false }}
                 cellSelection={false}
                 suppressCellFocus={true}

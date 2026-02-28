@@ -273,9 +273,10 @@ export const vnets = {
       field: "parent_block",
       headerName: "Block",
       flex: 0.85,
-      cellRenderer: ArrayCellRenderer,
-      cellRendererParams: { fallback: "<Unassigned>" },
-      valueFormatter: (params) => params.value?.join(", ") ?? "<Unassigned>",
+      valueGetter: (params) => {
+        const value = params.data?.parent_block;
+        return Array.isArray(value) ? value.join(", ") : "<Unassigned>";
+      },
       filterValueGetter: (params) => params.data?.parent_block?.join(", ") ?? ""
     },
     { field: "resource_group", headerName: "Resource Group", flex: 0.75, hide: true },
@@ -299,7 +300,10 @@ export const vnets = {
       field: "prefixes",
       headerName: "Address Space",
       flex: 0.75,
-      valueFormatter: (params) => params.value?.join(", ") ?? "",
+      valueGetter: (params) => {
+        const value = params.data?.prefixes;
+        return Array.isArray(value) ? value.join(", ") : "";
+      },
       filterValueGetter: (params) => params.data?.prefixes?.join(", ") ?? ""
     }
   ],
@@ -400,9 +404,10 @@ export const vhubs = {
       field: "parent_block",
       headerName: "Block",
       flex: 0.75,
-      cellRenderer: ArrayCellRenderer,
-      cellRendererParams: { fallback: "<Unassigned>" },
-      valueFormatter: (params) => params.value?.join(", ") ?? "<Unassigned>",
+      valueGetter: (params) => {
+        const value = params.data?.parent_block;
+        return Array.isArray(value) ? value.join(", ") : "<Unassigned>";
+      },
       filterValueGetter: (params) => params.data?.parent_block?.join(", ") ?? ""
     },
     { field: "subscription_name", headerName: "Subscription Name", flex: 0.75, hide: true },
@@ -412,7 +417,10 @@ export const vhubs = {
       field: "prefixes",
       headerName: "Address Space",
       flex: 0.35,
-      valueFormatter: (params) => params.value?.toString() ?? "",
+      valueGetter: (params) => {
+        const value = params.data?.prefixes;
+        return Array.isArray(value) ? value.toString() : "";
+      },
       filterValueGetter: (params) => params.data?.prefixes?.toString() ?? ""
     }
   ],
