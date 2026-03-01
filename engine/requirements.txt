@@ -1,6 +1,5 @@
 fastapi[all]>=0.103.0
 pydantic[email]>=2.3.0
-msal
 pyjwt
 cryptography
 requests
@@ -10,9 +9,10 @@ aiohttp
 jsonpatch
 loguru
 regex
-azure-common
-azure-identity
 azure-core
+azure-identity
+azure-cosmos
+azure-functions
 azure-mgmt-core
 azure-mgmt-compute
 azure-mgmt-network
@@ -21,7 +21,4 @@ azure-mgmt-resource-subscriptions
 azure-mgmt-resourcegraph
 azure-mgmt-managementgroups
 azure-mgmt-datafactory
-azure-keyvault-secrets
-azure-cosmos
-azure-functions
 apscheduler
