@@ -411,7 +411,6 @@ const Reservations = () => {
         setSending(true);
         await dispatch(deleteBlockResvsAsync({ space: selectedBlock.parent_space, block: selectedBlock.name, body: selectedRows.map(r => r.id) }));
         setSelectedRows([]);
-        setFilterActive(true);
         enqueueSnackbar("Successfully removed IP Block reservation(s)", { variant: "success" });
       } catch (e) {
         console.log("ERROR");
