@@ -26,14 +26,13 @@ import {
 
 import {
   fetchBlockAvailable,
-  replaceBlockNetworks
 } from "../../ipam/ipamAPI";
 
 import {
   selectSpaces,
   selectBlocks,
   selectSubscriptions,
-  fetchNetworksAsync,
+  replaceBlockNetworksAsync,
   getAdminStatus
 } from "../../ipam/ipamSlice";
 
@@ -188,11 +187,11 @@ const Associations = () => {
     return mockNet
   }, [subscriptions]);
 
-  const refreshData = React.useCallback(() => {
+  const refreshData = React.useCallback((silent = false) => {
     (async () => {
       if(selectedBlock) {
         try {
-          setRefreshing(true);
+          if (!silent) setRefreshing(true);
 
           var missing_data = [];
           var data = await fetchBlockAvailable(selectedBlock.parent_space, selectedBlock.name);
@@ -225,7 +224,7 @@ const Associations = () => {
           console.log("------------------");
           enqueueSnackbar("Error fetching available IP Block networks", { variant: "error" });
         } finally {
-          setRefreshing(false);
+          if (!silent) setRefreshing(false);
         }
       }
     })();
@@ -235,9 +234,12 @@ const Associations = () => {
     (async () => {
       try {
         setSending(true);
-        await replaceBlockNetworks(selectedBlock.parent_space, selectedBlock.name, selectedRows.map(row => row.id));
+        await dispatch(replaceBlockNetworksAsync({
+          space: selectedBlock.parent_space,
+          block: selectedBlock.name,
+          body: selectedRows.map(row => row.id)
+        })).unwrap();
         enqueueSnackbar("Successfully updated IP Block vNets", { variant: "success" });
-        dispatch(fetchNetworksAsync());
       } catch (e) {
         console.log("ERROR");
         console.log("------------------");
@@ -265,7 +267,7 @@ const Associations = () => {
 
       if(isEqual(prevBlock.identity, newBlock.identity)) {
         if(!isEqual(prevBlock.data, newBlock.data)) {
-          refreshData();
+          refreshData(true);
           setPrevBlock(newBlock);
         }
       } else {
@@ -461,7 +463,7 @@ const Associations = () => {
                 <IconButton
                   color="primary"
                   size="small"
-                  onClick={refreshData}
+                  onClick={() => refreshData()}
                   disabled={sending || refreshing || !selectedSpace || !selectedBlock }
                 >
                   <Refresh />

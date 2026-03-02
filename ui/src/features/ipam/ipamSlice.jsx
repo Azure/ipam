@@ -12,6 +12,7 @@ import {
   createBlock,
   updateBlock,
   deleteBlock,
+  replaceBlockNetworks,
   createBlockExternal,
   updateBlockExternal,
   deleteBlockExternal,
@@ -159,6 +160,19 @@ export const deleteBlockAsync = createAsyncThunk(
   async (args, { rejectWithValue }) => {
     try {
       const response = await deleteBlock(args.space, args.block, args.force);
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const replaceBlockNetworksAsync = createAsyncThunk(
+  'ipam/replaceBlockNetworks',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await replaceBlockNetworks(args.space, args.block, args.body);
 
       return response;
     } catch (err) {
@@ -573,6 +587,22 @@ export const ipamSlice = createSlice({
         console.log("deleteBlockAsync Rejected");
         console.log(action);
         // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
+        throw action.payload;
+      })
+      .addCase(replaceBlockNetworksAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const blockName = action.meta.arg.block;
+
+        const spaceIndex = state.spaces.findIndex((space) => space.name === spaceName);
+        const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+
+        if(blockIndex > -1) {
+          state.spaces[spaceIndex].blocks[blockIndex].vnets = action.payload;
+        }
+      })
+      .addCase(replaceBlockNetworksAsync.rejected, (state, action) => {
+        console.log("replaceBlockNetworksAsync Rejected");
+        console.log(action);
         throw action.payload;
       })
       .addCase(createBlockExternalAsync.fulfilled, (state, action) => {
@@ -1176,6 +1206,41 @@ export const selectUpdatedNetworks = createSelector(
       return newNetwork;
     });
   }
+);
+
+// ============================================================================
+// Drill-Down Parent Selectors
+// Pre-computed Sets for O(1) lookups used by DrillDownCellRenderer
+// ============================================================================
+
+export const selectParentSpaceNames = createSelector(
+  [selectBlocks],
+  (blocks) => new Set(blocks?.map((b) => b.parent_space) ?? [])
+);
+
+export const selectBlocksWithVNets = createSelector(
+  [selectVNets],
+  (vnets) => new Set(vnets?.flatMap((v) => v.parent_block ?? []) ?? [])
+);
+
+export const selectBlocksWithVHubs = createSelector(
+  [selectVHubs],
+  (vhubs) => new Set(vhubs?.flatMap((v) => v.parent_block ?? []) ?? [])
+);
+
+export const selectParentVNetNames = createSelector(
+  [selectSubnets],
+  (subnets) => new Set(subnets?.map((s) => s.vnet_name).filter(Boolean) ?? [])
+);
+
+export const selectParentSubnetNames = createSelector(
+  [selectEndpoints],
+  (endpoints) => new Set(endpoints?.map((e) => e.subnet_name).filter(Boolean) ?? [])
+);
+
+export const selectParentNetworkNames = createSelector(
+  [selectEndpoints],
+  (endpoints) => new Set(endpoints?.map((e) => e.vnet_name).filter(Boolean) ?? [])
 );
 
 const getSettingName = (_, settingName) => settingName;
