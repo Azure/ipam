@@ -1,128 +1,21 @@
-import * as React from "react";
-
-import {
-  Box,
-  LinearProgress,
-  Tooltip
-} from "@mui/material";
-
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-
 import {
   selectSpaces,
   selectBlocks,
-  // selectVNets,
   selectUpdatedVNets,
-  // selectVHubs,
   selectUpdatedVHubs,
-  // selectSubnets,
   selectUpdatedSubnets,
-  // selectEndpoints,
-  selectUpdatedEndpoints
+  selectUpdatedEndpoints,
+  selectParentSpaceNames,
+  selectBlocksWithVNets,
+  selectBlocksWithVHubs,
+  selectParentVNetNames,
+  selectParentSubnetNames,
+  selectParentNetworkNames
 } from '../../ipam/ipamSlice';
 
-// ============================================================================
-// Cell Renderers
-// ============================================================================
-
-/**
- * Renders a progress bar with color based on utilization percentage
- */
-function ProgressCellRenderer(props) {
-  const value = props.value;
-  return (
-    <Box sx={{ width: "100%", height: "100%", display: "flex", alignItems: "center" }}>
-      <LinearProgress
-        sx={{ width: "100%" }}
-        variant="determinate"
-        value={value <= 100 ? value : 100}
-        color={
-          value >= 0 && value <= 70
-            ? "success"
-            : value > 70 && value < 90
-            ? "warning"
-            : value >= 90
-            ? "error"
-            : "info"
-        }
-      />
-    </Box>
-  );
-}
-
-/**
- * Renders a cell with an info icon tooltip.
- * Uses cellRendererParams for configuration:
- * - condition: function(data) that returns true if info icon should show
- * - message: tooltip text to display
- * - color: text color when condition is true
- */
-function InfoCellRenderer(props) {
-  const { value, data, colDef } = props;
-  const { condition, message, color } = colDef.cellRendererParams || {};
-
-  // Check if condition is met (defaults to false if no condition provided)
-  const showInfo = condition ? condition(data) : false;
-
-  if (!showInfo) {
-    return value;
-  }
-
-  return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        fontStyle: 'italic',
-        color: color || 'inherit'
-      }}
-    >
-      {value}
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'flex-start',
-          paddingLeft: '3px',
-          height: '30px'
-        }}>
-        <Tooltip
-          arrow
-          title={message || ''}
-          placement="top"
-          PopperProps={{
-            popperOptions: {
-              modifiers: [
-                {
-                  name: 'offset',
-                  options: {
-                    offset: [0, -10]
-                  }
-                }
-              ]
-            }
-          }}
-        >
-          <InfoOutlinedIcon
-            fontSize="small"
-            style={{
-              width: '12px'
-            }}
-          />
-        </Tooltip>
-      </Box>
-    </Box>
-  );
-}
-
-/**
- * Renders array values as comma-separated string with fallback
- */
-function ArrayCellRenderer(props) {
-  const { value, colDef } = props;
-  const fallback = colDef.cellRendererParams?.fallback ?? "";
-  return value?.join(", ") ?? fallback;
-}
+import InfoCellRenderer from '../../DiscoverTable/Utils/InfoCellRenderer';
+import ProgressCellRenderer from '../../DiscoverTable/Utils/ProgressCellRenderer';
+import DrillDownCellRenderer from '../../DiscoverTable/Utils/DrillDownCellRenderer';
 
 /**
  * Value formatter for N/A fallback on empty values
@@ -160,7 +53,17 @@ export const spaces = {
     idProp: "name"
   },
   columns: [
-    { field: "name", headerName: "Space Name", flex: 0.85 },
+    {
+      field: "name",
+      headerName: "Space Name",
+      flex: 0.85,
+      cellRenderer: DrillDownCellRenderer,
+      cellRendererParams: {
+        targets: [
+          { label: 'Blocks', path: '/discover/block', filterField: 'parent_space', hasChildrenSelector: selectParentSpaceNames }
+        ]
+      }
+    },
     {
       field: "utilization",
       headerName: "Utilization",
@@ -209,7 +112,18 @@ export const blocks = {
     idProp: "id"
   },
   columns: [
-    { field: "name", headerName: "Block Name", flex: 0.85 },
+    {
+      field: "name",
+      headerName: "Block Name",
+      flex: 0.85,
+      cellRenderer: DrillDownCellRenderer,
+      cellRendererParams: {
+        targets: [
+          { label: 'Virtual Networks', path: '/discover/vnet', filterField: 'parent_block', hasChildrenSelector: selectBlocksWithVNets },
+          { label: 'Virtual Hubs', path: '/discover/vhub', filterField: 'parent_block', hasChildrenSelector: selectBlocksWithVHubs }
+        ]
+      }
+    },
     {
       field: "utilization",
       headerName: "Utilization",
@@ -260,7 +174,17 @@ export const vnets = {
     idProp: "id"
   },
   columns: [
-    { field: "name", headerName: "vNet Name", flex: 0.85 },
+    {
+      field: "name",
+      headerName: "vNet Name",
+      flex: 0.85,
+      cellRenderer: DrillDownCellRenderer,
+      cellRendererParams: {
+        targets: [
+          { label: 'Subnets', path: '/discover/subnet', filterField: 'vnet_name', hasChildrenSelector: selectParentVNetNames }
+        ]
+      }
+    },
     {
       field: "utilization",
       headerName: "Utilization",
@@ -338,7 +262,17 @@ export const subnets = {
     idProp: "id"
   },
   columns: [
-    { field: "name", headerName: "Subnet Name", flex: 0.85 },
+    {
+      field: "name",
+      headerName: "Subnet Name",
+      flex: 0.85,
+      cellRenderer: DrillDownCellRenderer,
+      cellRendererParams: {
+        targets: [
+          { label: 'Endpoints', path: '/discover/endpoint', filterField: 'subnet_name', hasChildrenSelector: selectParentSubnetNames }
+        ]
+      }
+    },
     {
       field: "utilization",
       headerName: "Utilization",
@@ -398,7 +332,17 @@ export const vhubs = {
     idProp: "id"
   },
   columns: [
-    { field: "name", headerName: "vHub Name", flex: 0.6 },
+    {
+      field: "name",
+      headerName: "vHub Name",
+      flex: 0.6,
+      cellRenderer: DrillDownCellRenderer,
+      cellRendererParams: {
+        targets: [
+          { label: 'Endpoints', path: '/discover/endpoint', filterField: 'vnet_name', hasChildrenSelector: selectParentNetworkNames }
+        ]
+      }
+    },
     { field: "vwan_name", headerName: "Parent vWAN", flex: 0.6 },
     {
       field: "parent_block",
@@ -467,7 +411,7 @@ export const endpoints = {
     },
     {
       field: "vnet_name",
-      headerName: "Parent vNet",
+      headerName: "Parent Network",
       flex: 0.75,
       valueFormatter: naValueFormatter
     },
@@ -495,7 +439,7 @@ export const endpoints = {
       { name: "Endpoint Name", value: "name" },
       { name: "Kind", value: "metadata.kind" },
       { name: "Type", value: "metadata.type" },
-      { name: "Parent vNet", value: "vnet_name" },
+      { name: "Parent Network", value: "vnet_name" },
       { name: "Parent Subnet", value: "subnet_name" },
       { name: "Private IP", value: "private_ip" },
       { name: "Public IP", value: "metadata.public_ip" },
