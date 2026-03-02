@@ -266,7 +266,7 @@ export default function AddExtSubnet(props) {
                   sx={{ pl: 0 }}
                 />
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'end', justifyContent: 'center', pb: 1, mr: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'end', justifyContent: 'center', pb: 0.5, mr: 1 }}>
                 <Autocomplete
                   forcePopupIcon={false}
                   disabled={!addBySize}
