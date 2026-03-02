@@ -9,6 +9,7 @@ import DraggablePaper from "../../../../global/DraggablePaper";
 import {
   Box,
   Button,
+  Divider,
   Tooltip,
   TextField,
   Dialog,
@@ -18,8 +19,10 @@ import {
   FormGroup,
   FormControlLabel,
   Autocomplete,
-  Radio,
   Switch,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
 } from "@mui/material";
 
 import {
@@ -28,40 +31,12 @@ import {
 
 import {
   SPACE_DESC_REGEX,
-  CIDR_REGEX
+  CIDR_REGEX,
+  cidrMasks
 } from "../../../../global/globals";
-
-const cidrMasks = [
-  { name: '/8', value: 8},
-  { name: '/9', value: 9},
-  { name: '/10', value: 10},
-  { name: '/11', value: 11},
-  { name: '/12', value: 12},
-  { name: '/13', value: 13},
-  { name: '/14', value: 14},
-  { name: '/15', value: 15},
-  { name: '/16', value: 16},
-  { name: '/17', value: 17},
-  { name: '/18', value: 18},
-  { name: '/19', value: 19},
-  { name: '/20', value: 20},
-  { name: '/21', value: 21},
-  { name: '/22', value: 22},
-  { name: '/23', value: 23},
-  { name: '/24', value: 24},
-  { name: '/25', value: 25},
-  { name: '/26', value: 26},
-  { name: '/27', value: 27},
-  { name: '/28', value: 28},
-  { name: '/29', value: 29},
-  { name: '/30', value: 30},
-  { name: '/31', value: 31},
-  { name: '/32', value: 32}
-];
 
 export default function NewReservation(props) {
   const { open, handleClose, selectedSpace, selectedBlock } = props;
-  const spaces = [];
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -80,19 +55,27 @@ export default function NewReservation(props) {
 
   const [invalidForm, setInvalidForm] = React.useState(false);
 
-  const [checked, setChecked] = React.useState(location.state?.cidr ? false : true);
+  const [mode, setMode] = React.useState(location.state?.cidr ? "manual" : "auto");
+
+  const checked = mode === "auto";
 
   const dispatch = useDispatch();
+
+  function onModeChange(_, newMode) {
+    if (newMode !== null) {
+      setMode(newMode);
+    }
+  }
 
   function onCancel() {
     handleClose();
 
-    setChecked(true);
+    setMode("auto");
     setDescription({ value: "", error: false });
-    setMask(maskOptions[0]);
+    setMask(maskOptions?.[0] ?? null);
     setReverseSearch(false);
     setSmallestCIDR(false);
-    setCidr({ value: "", error: false });
+    setCidr({ value: "", error: true });
   }
 
   function onSubmit() {
@@ -149,15 +132,15 @@ export default function NewReservation(props) {
       CIDR_REGEX
     );
 
-    return cidr ? !regex.test(cidr) : false;
+    return cidr ? !regex.test(cidr) : true;
   }
 
   React.useEffect(() => {
-    const descError = description.error
-    const maskError = checked ? !mask : false
-    const cidrError = !checked ? cidr.error : false
+    const descError = description.error;
+    const maskError = checked ? !mask : false;
+    const cidrError = !checked ? cidr.error : false;
 
-    setInvalidForm( descError || maskError || cidrError);
+    setInvalidForm(descError || maskError || cidrError);
   }, [checked, description, mask, cidr]);
 
   React.useEffect(() => {
@@ -175,240 +158,164 @@ export default function NewReservation(props) {
   }, [selectedBlock]);
 
   return (
-    <div>
-      <Dialog
-        open={open}
-        onClose={onCancel}
-        PaperComponent={DraggablePaper}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
-          Create Reservation
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', width: '90%' }}>
-            <Tooltip
-              arrow
-              disableFocusListener
-              placement="right"
-              title={
-                <>
-                  - Optional
-                  <br />- Max of 128 characters
-                  <br />- Can contain alphnumerics
-                  <br />- Can contain spaces
-                  <br />- Can contain underscore, hypen, slash and period
-                  <br />- Cannot start/end with underscore, hypen, slash or period
-                </>
-              }
+    <Dialog
+      open={open}
+      onClose={onCancel}
+      PaperComponent={DraggablePaper}
+      maxWidth="xs"
+      fullWidth
+    >
+      <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
+        Create Reservation
+      </DialogTitle>
+      <DialogContent>
+        <Box display="flex" flexDirection="column" alignItems="center">
+          <Tooltip
+            arrow
+            disableFocusListener
+            placement="right"
+            title={
+              <>
+                - Optional
+                <br />- Max of 128 characters
+                <br />- Can contain alphnumerics
+                <br />- Can contain spaces
+                <br />- Can contain underscore, hypen, slash and period
+                <br />- Cannot start/end with underscore, hypen, slash or period
+              </>
+            }
+          >
+            <TextField
+              error={description.error}
+              margin="dense"
+              id="description"
+              label="Description"
+              type="description"
+              variant="standard"
+              value={description.value}
+              onChange={(event) => onDescriptionChange(event)}
+              inputProps={{ spellCheck: false }}
+              sx={{ width: "80%" }}
+            />
+          </Tooltip>
+          <Box sx={{ width: "80%", mt: 2, mb: 0.5, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: 'block', mb: 0.75, width: '100%', textAlign: 'center' }}
             >
-              <TextField
-                error={description.error}
-                margin="dense"
-                id="name"
-                label="Description"
-                type="description"
-                variant="standard"
-                value={description.value}
-                onChange={(event) => onDescriptionChange(event)}
-                inputProps={{ spellCheck: false }}
-                sx={{ width: "100%" }}
-              />
-            </Tooltip>
-            <Box
-              sx={{
-                p: 3,
-                display: 'flex',
-                flexDirection: 'row',
-                gap: '24px',
-              }}
+              Allocation Mode
+            </Typography>
+            <ToggleButtonGroup
+              color="primary"
+              value={mode}
+              exclusive
+              onChange={onModeChange}
+              size="small"
             >
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '24px'
-                }}
-              >
-                <Radio
-                  checked={checked}
-                  onChange={() => setChecked(true)}
-                  value={true}
-                />
-              </Box>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Box
-                  sx={{
-                    p: 2,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    justifyContent: 'center',
-                    height: '160px',
-                    width: '250px',
-                    gap: '16px',
-                    border: 'solid 1px rgba(0, 0, 0, 0.12)'
-                  }}
-                >
-                  <Autocomplete
-                    forcePopupIcon={false}
-                    disabled={!checked}
-                    id="cidr-mask-max"
-                    size="small"
-                    options={maskOptions || []}
-                    getOptionLabel={(option) => option.name}
-                    inputValue={maskInput}
-                    onInputChange={(event, newInputValue) => setMaskInput(newInputValue)}
-                    value={mask}
-                    onChange={(event, newValue) => setMask(newValue)}
-                    sx={{ width: '8ch' }}
-                    ListboxProps={{
-                      style: {
-                        maxHeight: "15rem"
-                      },
-                      position: "bottom-start"
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Mask"
-                        placeholder="Mask"
-                      />
-                    )}
-                  />
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column'
-                    }}
-                  >
-                    <FormGroup
-                      sx={{
-                        pl: 1
-                      }}
-                    >
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            disabled={!checked}
-                            size='small'
-                            checked={reverseSearch}
-                            onChange={() => setReverseSearch(prev => !prev)}
-                          />
-                        }
-                        label="Reverse Search"
-                        sx={{ pb: 1 }}
-                      />
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            disabled={!checked}
-                            size='small'
-                            checked={smallestCIDR}
-                            onChange={() => setSmallestCIDR(prev => !prev)}
-                          />
-                        }
-                        label="Smallest CIDR"
-                      />
-                    </FormGroup>
-                  </Box>
-                </Box>
-              </Box>
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '24px'
-                }}
-              >
-                <Radio
-                  checked={!checked}
-                  onChange={() => setChecked(false)}
-                  value={false}
-                />
-              </Box>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Box
-                  sx={{
-                    p: 2,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '160px',
-                    width: '250px',
-                    gap: '16px',
-                    border: 'solid 1px rgba(0, 0, 0, 0.12)'
-                  }}
-                >
-                  <Tooltip
-                    arrow
-                    disableFocusListener
-                    placement="right"
-                    title={
-                      <>
-                        - Must be in valid CIDR notation format
-                        <br />- Example: 1.2.3.4/5
-                      </>
-                    }
-                  >
-                    <div
-                      style={checked ? { pointerEvents: 'none' } : {}}
-                    >
-                      <TextField
-                        error={!checked ? (cidr.value ? cidr.error : false) : false}
-                        disabled={checked}
-                        size="small"
-                        label="CIDR"
-                        placeholder="x.x.x.x/x"
-                        value={cidr.value}
-                        onChange={(event) => onCidrChange(event)}
-                        sx={{
-                          width: '21ch',
-                        }}
-                      />
-                    </div>
-                  </Tooltip>
-                </Box>
-              </Box>
-            </Box>
-            </Box>
+              <ToggleButton value="auto" sx={{ px: 4 }}>Auto</ToggleButton>
+              <ToggleButton value="manual" sx={{ px: 4 }}>Manual</ToggleButton>
+            </ToggleButtonGroup>
           </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            disabled={sending}
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={onSubmit}
-            loading={sending}
-            disabled={invalidForm}
-          >
-            Create
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </div>
+          <Divider sx={{ width: "80%", my: 1.5 }} />
+          <Box sx={{ width: "80%", minHeight: 80 }}>
+          {mode === "auto" ? (
+            <Box sx={{ display: "flex", flexDirection: "row", alignItems: "flex-end", justifyContent: "center", gap: 3 }}>
+              <Autocomplete
+                forcePopupIcon={false}
+                id="cidr-mask-max"
+                size="small"
+                options={maskOptions || []}
+                getOptionLabel={(option) => option.name}
+                inputValue={maskInput}
+                onInputChange={(_, newInputValue) => setMaskInput(newInputValue)}
+                value={mask}
+                onChange={(_, newValue) => setMask(newValue)}
+                sx={{ width: '7ch', flexShrink: 0 }}
+                ListboxProps={{
+                  style: { maxHeight: "15rem" },
+                  position: "bottom-start"
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Mask"
+                    placeholder="Mask"
+                    variant="standard"
+                  />
+                )}
+              />
+              <FormGroup>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      size="small"
+                      checked={reverseSearch}
+                      onChange={() => setReverseSearch(prev => !prev)}
+                    />
+                  }
+                  label={<Typography variant="body2">Reverse Search</Typography>}
+                  sx={{ mb: 0.5 }}
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      size="small"
+                      checked={smallestCIDR}
+                      onChange={() => setSmallestCIDR(prev => !prev)}
+                    />
+                  }
+                  label={<Typography variant="body2">Smallest CIDR</Typography>}
+                />
+              </FormGroup>
+            </Box>
+          ) : (
+            <Box sx={{ display: "flex", justifyContent: "center" }}>
+              <Tooltip
+                arrow
+                disableFocusListener
+                placement="right"
+                title={
+                  <>
+                    - Must be in valid CIDR notation format
+                    <br />- Example: 1.2.3.4/5
+                  </>
+                }
+              >
+                <TextField
+                  autoFocus
+                  error={cidr.value ? cidr.error : false}
+                  margin="dense"
+                  id="cidr"
+                  label="CIDR"
+                  placeholder="x.x.x.x/x"
+                  variant="standard"
+                  value={cidr.value}
+                  onChange={(event) => onCidrChange(event)}
+                  inputProps={{ spellCheck: false }}
+                  sx={{ width: "20ch" }}
+                />
+              </Tooltip>
+            </Box>
+          )}
+          </Box>
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button
+          disabled={sending}
+          onClick={onCancel}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={onSubmit}
+          loading={sending}
+          disabled={invalidForm}
+        >
+          Create
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
