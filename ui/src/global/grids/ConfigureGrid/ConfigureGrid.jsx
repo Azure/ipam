@@ -3,9 +3,50 @@ import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
 import { useTheme } from '@mui/material/styles';
 import { Box, Typography } from "@mui/material";
+import { SpinnerDotted } from 'spinners-react';
 
 // Register AG Grid modules once at module level
 ModuleRegistry.registerModules([AllCommunityModule]);
+
+// ============================================================================
+// Custom Loading Overlay Component
+// ============================================================================
+const CustomLoadingOverlay = React.memo(() => {
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        gap: 2,
+      }}
+    >
+      <SpinnerDotted
+        size={40}
+        thickness={100}
+        speed={100}
+        color={isDarkMode ? '#90caf9' : '#1976d2'}
+      />
+      <Box
+        component="span"
+        sx={{
+          fontSize: '0.875rem',
+          color: 'text.secondary',
+          fontWeight: 500,
+        }}
+      >
+        Loading data...
+      </Box>
+    </Box>
+  );
+});
+
+CustomLoadingOverlay.displayName = 'CustomLoadingOverlay';
 
 /**
  * ConfigureGrid - A lightweight AG Grid wrapper for simple configuration panels.
@@ -29,6 +70,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
  * @param {string} props.idProperty - Property to use as row identifier (default: 'name')
  * @param {string} props.noRowsMessage - Message to show when no rows (optional)
  * @param {React.Component} props.noRowsOverlayComponent - Custom no rows overlay (optional)
+ * @param {boolean} props.isLoading - Show loading overlay (default: false)
  * @param {Object} props.gridOptions - Additional AG Grid options
  */
 const ConfigureGrid = ({
@@ -39,6 +81,7 @@ const ConfigureGrid = ({
   idProperty = 'name',
   noRowsMessage,
   noRowsOverlayComponent: CustomNoRowsOverlay,
+  isLoading = false,
   gridOptions = {},
 }) => {
   // Get MUI theme to determine light/dark mode
@@ -156,9 +199,20 @@ const ConfigureGrid = ({
     };
 
     return themeQuartz
-      .withParams(baseParams, 'light')
-      .withParams(baseParams, 'dark');
+      .withParams({ ...baseParams, modalOverlayBackgroundColor: 'rgba(255, 255, 255, 0.66)' }, 'light')
+      .withParams({ ...baseParams, modalOverlayBackgroundColor: 'rgba(0, 0, 0, 0.2)' }, 'dark');
   }, []);
+
+  // Overlay component selector (replaces legacy noRowsOverlayComponent)
+  const overlayComponentSelector = useCallback((params) => {
+    if (params.overlayType === 'loading') {
+      return { component: CustomLoadingOverlay };
+    }
+    if (params.overlayType === 'noRows' || params.overlayType === 'noMatchingRows') {
+      return { component: NoRowsOverlay };
+    }
+    return undefined;
+  }, [NoRowsOverlay]);
 
   return (
     <div style={gridStyle} className="ag-theme-quartz">
@@ -174,7 +228,8 @@ const ConfigureGrid = ({
         accentedSort={true}
         suppressCellFocus={true}
         animateRows={true}
-        noRowsOverlayComponent={NoRowsOverlay}
+        loading={isLoading}
+        overlayComponentSelector={overlayComponentSelector}
         // Simplified grid - no advanced features
         suppressMovableColumns={true}
         suppressColumnVirtualisation={true}

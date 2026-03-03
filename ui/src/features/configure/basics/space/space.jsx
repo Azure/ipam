@@ -262,9 +262,7 @@ export default function SpaceDataGrid(props) {
           selectedRow={selectedSpace}
           idProperty="name"
           noRowsOverlayComponent={NoRowsOverlay}
-          gridOptions={{
-            loading: spaces ? false : true,
-          }}
+          isLoading={!spaces}
         />
       </GridBody>
     </React.Fragment>

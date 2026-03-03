@@ -10,6 +10,7 @@ import {
   ListItemIcon,
   CircularProgress,
   Divider,
+  Typography,
 } from "@mui/material";
 import {
   TaskAltOutlined,
@@ -400,7 +401,6 @@ const CustomLoadingOverlay = React.memo(() => {
         justifyContent: 'center',
         height: '100%',
         gap: 2,
-        backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.8)',
       }}
     >
       <SpinnerDotted
@@ -501,9 +501,44 @@ const DataGrid = ({
     };
 
     return themeQuartz
-      .withParams(baseParams, 'light')
-      .withParams(baseParams, 'dark');
+      .withParams({ ...baseParams, modalOverlayBackgroundColor: 'rgba(255, 255, 255, 0.66)' }, 'light')
+      .withParams({ ...baseParams, modalOverlayBackgroundColor: 'rgba(0, 0, 0, 0.2)' }, 'dark');
   }, [noBorder]);
+
+  // Resolve no-rows overlay: use provided component, or fall back to a default
+  const NoRowsOverlay = useMemo(() => {
+    if (noRowsOverlayComponent) {
+      return noRowsOverlayComponent;
+    }
+
+    return () => (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          padding: 2,
+        }}
+      >
+        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+          {noRowsOverlayText || 'No data available'}
+        </Typography>
+      </Box>
+    );
+  }, [noRowsOverlayComponent, noRowsOverlayText]);
+
+  // Overlay component selector (replaces legacy loadingOverlayComponent / noRowsOverlayComponent)
+  const overlayComponentSelector = useCallback((params) => {
+    if (params.overlayType === 'loading') {
+      return { component: CustomLoadingOverlay };
+    }
+    if (params.overlayType === 'noRows' || params.overlayType === 'noMatchingRows') {
+      return { component: NoRowsOverlay };
+    }
+    return undefined;
+  }, [NoRowsOverlay]);
 
   // Component state
   const [saving, setSaving] = useState(false);
@@ -986,9 +1021,8 @@ const DataGrid = ({
           onSelectionChanged={onSelectionChanged}
           onCellDoubleClicked={handleCellDoubleClick}
           rowClassRules={rowClassRules}
-          loadingOverlayComponent={CustomLoadingOverlay}
+          overlayComponentSelector={overlayComponentSelector}
           loading={isLoading}
-          noRowsOverlayComponent={noRowsOverlayComponent}
         />
         <StandaloneHeaderMenu viewSettingKey={viewSettingKey} extraMenuItems={extraMenuItems} />
       </div>

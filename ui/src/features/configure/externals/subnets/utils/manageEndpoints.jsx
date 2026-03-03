@@ -8,6 +8,7 @@ import { useSnackbar } from "notistack";
 
 import { AgGridReact } from "ag-grid-react";
 import { themeQuartz } from "ag-grid-community";
+import { SpinnerDotted } from 'spinners-react';
 
 import DraggablePaper from "../../../../../global/DraggablePaper";
 
@@ -81,6 +82,47 @@ const Update = styled("span")(({ theme }) => ({
   color: theme.palette.error.light,
   textShadow: '-1px 0 white, 0 1px white, 1px 0 white, 0 -1px white'
 }));
+
+// ============================================================================
+// Custom Loading Overlay Component
+// ============================================================================
+const CustomLoadingOverlay = React.memo((props) => {
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
+  const message = props.loadingMessage || 'Loading data...';
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        gap: 2,
+      }}
+    >
+      <SpinnerDotted
+        size={40}
+        thickness={100}
+        speed={100}
+        color={isDarkMode ? '#90caf9' : '#1976d2'}
+      />
+      <Box
+        component="span"
+        sx={{
+          fontSize: '0.875rem',
+          color: 'text.secondary',
+          fontWeight: 500,
+        }}
+      >
+        {message}
+      </Box>
+    </Box>
+  );
+});
+
+CustomLoadingOverlay.displayName = 'CustomLoadingOverlay';
 
 function DeleteCellRenderer(props) {
   const { data } = props;
@@ -317,8 +359,8 @@ export default function ManageExtEndpoints(props) {
     };
 
     return themeQuartz
-      .withParams(baseParams, 'light')
-      .withParams(baseParams, 'dark');
+      .withParams({ ...baseParams, modalOverlayBackgroundColor: 'rgba(255, 255, 255, 0.66)' }, 'light')
+      .withParams({ ...baseParams, modalOverlayBackgroundColor: 'rgba(0, 0, 0, 0.2)' }, 'dark');
   }, []);
 
   // Default column definitions
@@ -1009,11 +1051,15 @@ export default function ManageExtEndpoints(props) {
                 onCellDoubleClicked={onCellDoubleClicked}
                 onGridReady={onGridReady}
                 loading={sending || !endpoints || refreshing}
-                loadingOverlayComponent={() => (
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                    {sending ? <Update>Updating</Update> : "Loading..."}
-                  </Box>
-                )}
+                overlayComponentSelector={(params) => {
+                  if (params.overlayType === 'loading') {
+                    return {
+                      component: CustomLoadingOverlay,
+                      params: { loadingMessage: sending ? 'Updating...' : 'Loading data...' }
+                    };
+                  }
+                  return undefined;
+                }}
               />
             </Box>
           </Box>
