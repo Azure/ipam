@@ -4,8 +4,8 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@azure/msal-browser": "^5.3.0",
-    "@azure/msal-react": "^5.0.5",
+    "@azure/msal-browser": "^5.4.0",
+    "@azure/msal-react": "^5.0.6",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.8",
@@ -30,7 +30,8 @@
   },
   "scripts": {
     "start": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "lint": "eslint src/"
   },
   "browserslist": {
     "production": [
@@ -52,7 +53,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "globals": "^17.4.0",
-    "serve": "^14.2.5",
+    "serve": "^14.2.6",
     "vite": "^7.3.1",
     "vite-plugin-eslint2": "^5.0.5"
   }
