@@ -48,11 +48,22 @@ export default [
     },
   },
 
+  // React recommended rules (scoped to JSX files)
+  {
+    ...react.configs.flat.recommended,
+    files: ["src/**/*.jsx"],
+  },
+
+  // JSX runtime rules — disables rules not needed with React 17+ automatic JSX transform
+  {
+    ...react.configs.flat["jsx-runtime"],
+    files: ["src/**/*.jsx"],
+  },
+
   // Configuration for React JSX files
   {
     files: ["src/**/*.jsx"],
     plugins: {
-      react,
       "react-hooks": reactHooks,
       jest,
     },
@@ -81,11 +92,10 @@ export default [
       "no-prototype-builtins": "off",
       "no-constant-binary-expression": "off",
 
-      // React rules
-      "react/react-in-jsx-scope": "off", // Not needed with React 17+ JSX transform
+      // React rules — relax some recommended rules for this codebase
       "react/prop-types": "off",
       "react/display-name": "off",
-      "react/no-unescaped-entities": "off",
+      "react/no-unescaped-entities": "error",
 
       // React Hooks rules - CRITICAL for catching hooks-related bugs
       "react-hooks/rules-of-hooks": "error", // Enforces Rules of Hooks
