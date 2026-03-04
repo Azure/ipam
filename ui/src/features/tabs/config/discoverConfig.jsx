@@ -269,7 +269,15 @@ export const subnets = {
       cellRenderer: DrillDownCellRenderer,
       cellRendererParams: {
         targets: [
-          { label: 'Endpoints', path: '/discover/endpoint', filterField: 'subnet_name', hasChildrenSelector: selectParentSubnetNames }
+          {
+            label: 'Endpoints',
+            path: '/discover/endpoint',
+            filterField: [
+              { field: 'vnet_name', valueFrom: 'vnet_name' },
+              { field: 'subnet_name', valueFrom: 'name' }
+            ],
+            hasChildrenSelector: selectParentSubnetNames
+          }
         ]
       }
     },

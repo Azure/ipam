@@ -21,7 +21,10 @@ import { SubdirectoryArrowRight } from "@mui/icons-material";
  *   targets: Array<{
  *     label: string,          - Menu item label (e.g. "Blocks")
  *     path: string,           - Route path (e.g. "/discover/block")
- *     filterField: string,    - Field name to filter on (e.g. "parent_space")
+ *     filterField: string | Array<{ field: string, valueFrom: string }>,
+ *       - string: single filter using the cell value (e.g. "parent_space")
+ *       - array:  multi-field filter; each entry maps a target column (field)
+ *                 to a source row field (valueFrom) resolved from props.data
  *     hasChildrenSelector: Function - Redux selector returning a Set of parent names
  *   }>
  */
@@ -43,7 +46,7 @@ const emptySet = new Set();
 const selectNone = () => emptySet;
 
 export default function DrillDownCellRenderer(props) {
-  const { value, colDef } = props;
+  const { value, data, colDef } = props;
   const { targets = [] } = colDef.cellRendererParams || {};
 
   const navigate = useNavigate();
@@ -52,14 +55,27 @@ export default function DrillDownCellRenderer(props) {
   const activeTargets = useActiveTargets(targets, value);
 
   const handleNavigate = (target) => {
-    navigate(target.path, {
-      state: {
-        name: target.filterField,
+    const { filterField, path } = target;
+
+    // Support single-field (string) or multi-field (array) filter definitions
+    if (Array.isArray(filterField)) {
+      const filters = filterField.map((entry) => ({
+        name: entry.field,
         operator: "contains",
         type: "string",
-        value: value,
-      },
-    });
+        value: data?.[entry.valueFrom] ?? "",
+      }));
+      navigate(path, { state: filters });
+    } else {
+      navigate(path, {
+        state: {
+          name: filterField,
+          operator: "contains",
+          type: "string",
+          value: value,
+        },
+      });
+    }
   };
 
   const handleIconClick = (e) => {

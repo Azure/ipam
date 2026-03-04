@@ -43,18 +43,11 @@ const closedStyle = {
 // ============================================================================
 
 /**
- * Maps Inovua-style filter state from URL to AG Grid filter model format
- * @param {Object} filterState - Filter state from location.state (e.g., { name: 'private_ip', operator: 'contains', type: 'string', value: '10.0.0.1' })
- * @returns {Object} AG Grid filter model
+ * Converts a single filter entry to its AG Grid filter model fragment.
  */
-function mapFilterStateToAgGridModel(filterState) {
-  if (!filterState || !filterState.name || !filterState.value) {
-    return null;
-  }
+function toAgGridFilter(entry) {
+  const { name, type, value } = entry;
 
-  const { name, type, value } = filterState;
-
-  // Map to AG Grid filter model format
   if (type === 'number') {
     return {
       [name]: {
@@ -65,7 +58,6 @@ function mapFilterStateToAgGridModel(filterState) {
     };
   }
 
-  // Default to text filter with contains
   return {
     [name]: {
       filterType: 'text',
@@ -73,6 +65,32 @@ function mapFilterStateToAgGridModel(filterState) {
       filter: value
     }
   };
+}
+
+/**
+ * Maps filter state from location.state to AG Grid filter model format.
+ * Accepts a single filter object or an array of filter objects.
+ *
+ * @param {Object|Array} filterState
+ * @returns {Object|null} AG Grid filter model
+ */
+function mapFilterStateToAgGridModel(filterState) {
+  if (!filterState) return null;
+
+  // Array of filters (multi-field drill-down)
+  if (Array.isArray(filterState)) {
+    if (filterState.length === 0) return null;
+    return filterState.reduce((model, entry) => {
+      if (entry?.name && entry?.value) {
+        Object.assign(model, toAgGridFilter(entry));
+      }
+      return model;
+    }, {});
+  }
+
+  // Single filter object (search bar / simple drill-down)
+  if (!filterState.name || !filterState.value) return null;
+  return toAgGridFilter(filterState);
 }
 
 // ============================================================================
