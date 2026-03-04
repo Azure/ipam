@@ -321,7 +321,7 @@ export default function BlockDataGrid(props) {
           onRowClick={handleRowClick}
           selectedRow={selectedBlock}
           idProperty="name"
-          noRowsOverlayComponent={NoRowsOverlay}
+          noRowsOverlay={NoRowsOverlay}
         />
       </GridBody>
     </React.Fragment>

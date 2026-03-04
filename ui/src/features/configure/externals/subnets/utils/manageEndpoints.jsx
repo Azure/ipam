@@ -32,7 +32,8 @@ import {
   OutlinedInput,
   Tooltip,
   Autocomplete,
-  TextField
+  TextField,
+  Typography
 } from "@mui/material";
 
 import {
@@ -84,12 +85,55 @@ const Update = styled("span")(({ theme }) => ({
 }));
 
 // ============================================================================
-// Custom Loading Overlay Component
+// Combined Overlay Component (AG Grid v35+)
 // ============================================================================
-const CustomLoadingOverlay = React.memo((props) => {
+
+// Context for passing reactive overlay config to CombinedOverlay.
+const OverlayContext = React.createContext(null);
+
+const CombinedOverlay = React.memo(({ overlayType }) => {
+  const overlayConfig = React.useContext(OverlayContext);
+  const loadingMessage = overlayConfig?.loadingMessage;
+  const NoRowsContent = overlayConfig?.noRowsOverlay;
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
-  const message = props.loadingMessage || 'Loading data...';
+
+  if (overlayType === 'loading') {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          gap: 2,
+        }}
+      >
+        <SpinnerDotted
+          size={40}
+          thickness={100}
+          speed={100}
+          color={isDarkMode ? '#90caf9' : '#1976d2'}
+        />
+        <Box
+          component="span"
+          sx={{
+            fontSize: '0.875rem',
+            color: 'text.secondary',
+            fontWeight: 500,
+          }}
+        >
+          {loadingMessage || 'Loading data...'}
+        </Box>
+      </Box>
+    );
+  }
+
+  // noRows / noMatchingRows
+  if (NoRowsContent) {
+    return <NoRowsContent />;
+  }
 
   return (
     <Box
@@ -99,30 +143,17 @@ const CustomLoadingOverlay = React.memo((props) => {
         alignItems: 'center',
         justifyContent: 'center',
         height: '100%',
-        gap: 2,
+        padding: 2,
       }}
     >
-      <SpinnerDotted
-        size={40}
-        thickness={100}
-        speed={100}
-        color={isDarkMode ? '#90caf9' : '#1976d2'}
-      />
-      <Box
-        component="span"
-        sx={{
-          fontSize: '0.875rem',
-          color: 'text.secondary',
-          fontWeight: 500,
-        }}
-      >
-        {message}
-      </Box>
+      <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+        No endpoints found
+      </Typography>
     </Box>
   );
 });
 
-CustomLoadingOverlay.displayName = 'CustomLoadingOverlay';
+CombinedOverlay.displayName = 'CombinedOverlay';
 
 function DeleteCellRenderer(props) {
   const { data } = props;
@@ -312,7 +343,7 @@ export default function ManageExtEndpoints(props) {
   const [endpoints, setEndpoints] = React.useState(null);
   const [addressOptions, setAddressOptions] = React.useState([]);
   const [changes, setChanges] = React.useState([]);
-  const [gridData, setGridData] = React.useState(null);
+
   const [sending, setSending] = React.useState(false);
   const [selectedRow, setSelectedRow] = React.useState(null);
 
@@ -362,6 +393,11 @@ export default function ManageExtEndpoints(props) {
       .withParams({ ...baseParams, modalOverlayBackgroundColor: 'rgba(255, 255, 255, 0.66)' }, 'light')
       .withParams({ ...baseParams, modalOverlayBackgroundColor: 'rgba(0, 0, 0, 0.2)' }, 'dark');
   }, []);
+
+  // Overlay context value for CombinedOverlay
+  const overlayContextValue = React.useMemo(() => ({
+    loadingMessage: sending ? 'Updating...' : 'Loading data...',
+  }), [sending]);
 
   // Default column definitions
   const defaultColDef = React.useMemo(() => ({
@@ -497,10 +533,7 @@ export default function ManageExtEndpoints(props) {
     }
   }, [saveTimer, sendResults]);
 
-  // Update grid data when endpoints change
-  React.useEffect(() => {
-    setGridData(endpoints);
-  }, [endpoints]);
+
 
   function onAddExternal() {
     if(!hasError) {
@@ -1036,10 +1069,11 @@ export default function ManageExtEndpoints(props) {
               sx={{ height: '100%', width: '100%' }}
               data-ag-theme-mode={isDarkMode ? 'dark' : 'light'}
             >
+              <OverlayContext.Provider value={overlayContextValue}>
               <AgGridReact
                 ref={gridRef}
                 theme={gridTheme}
-                rowData={gridData || []}
+                rowData={endpoints}
                 columnDefs={columns}
                 defaultColDef={defaultColDef}
                 getRowId={(params) => params.data.id}
@@ -1051,16 +1085,9 @@ export default function ManageExtEndpoints(props) {
                 onCellDoubleClicked={onCellDoubleClicked}
                 onGridReady={onGridReady}
                 loading={sending || !endpoints || refreshing}
-                overlayComponentSelector={(params) => {
-                  if (params.overlayType === 'loading') {
-                    return {
-                      component: CustomLoadingOverlay,
-                      params: { loadingMessage: sending ? 'Updating...' : 'Loading data...' }
-                    };
-                  }
-                  return undefined;
-                }}
+                overlayComponent={CombinedOverlay}
               />
+              </OverlayContext.Provider>
             </Box>
           </Box>
         </DialogContent>

@@ -40,8 +40,6 @@ const Subnets = (props) => {
   } = props;
   const { refreshing } = React.useContext(ExternalContext);
 
-  const [gridData, setGridData] = React.useState(null);
-
   const [addExtSubOpen, setAddExtSubOpen] = React.useState(false);
   const [editExtSubOpen, setEditExtSubOpen] = React.useState(false);
   const [delExtSubOpen, setDelExtSubOpen] = React.useState(false);
@@ -89,29 +87,25 @@ const Subnets = (props) => {
     setSelectedSubnet(row);
   }, [setSelectedSubnet]);
 
-  // Update grid data when external network changes
+  // Derive grid data synchronously from selectedExternal to prevent
+  // a flash of the no-rows overlay between selection and data display.
+  const gridData = React.useMemo(() => {
+    if (!selectedExternal) return [];
+
+    const newSubnets = cloneDeep(selectedExternal['subnets']);
+
+    return newSubnets.reduce((acc, curr) => {
+      curr['id'] = `${selectedExternal.name}@${curr.name}}`;
+      acc.push(curr);
+
+      return acc;
+    }, []);
+  }, [selectedExternal]);
+
+  // Sync enriched subnets data to parent state (for dialogs, selection tracking, etc.)
   React.useEffect(() => {
-    if (selectedExternal) {
-      var newSubnets = cloneDeep(selectedExternal['subnets']);
-
-      const newData = newSubnets.reduce((acc, curr) => {
-        curr['id'] = `${selectedExternal.name}@${curr.name}}`;
-
-        acc.push(curr);
-
-        return acc;
-      }, []);
-
-      setSubnets(newData);
-    } else {
-      setSubnets(null);
-    }
-  }, [selectedExternal, setSubnets]);
-
-  // Update grid data when subnets change
-  React.useEffect(() => {
-    setGridData(subnets);
-  }, [subnets]);
+    setSubnets(gridData);
+  }, [gridData, setSubnets]);
 
   // Clear selection when subnets change
   React.useEffect(() => {
@@ -183,12 +177,12 @@ const Subnets = (props) => {
           <DataGrid
             viewSettingKey="extsubnets"
             idProperty="id"
-            rowData={gridData || []}
+            rowData={gridData}
             columnDefs={columns}
             isLoading={selectedExternal && refreshing}
             onRowSelectionChanged={handleRowSelectionChanged}
             extraMenuItems={extraMenuItems}
-            noRowsOverlayComponent={NoRowsOverlay}
+            noRowsOverlay={NoRowsOverlay}
             noBorder={true}
           />
         </Box>

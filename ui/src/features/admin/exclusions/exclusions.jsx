@@ -218,7 +218,7 @@ export default function ManageExclusions() {
     });
   }
 
-  function NoRowsOverlay() {
+  const NoRowsOverlay = React.useCallback(() => {
     return (
       <React.Fragment>
         <Shrug />
@@ -227,7 +227,7 @@ export default function ManageExclusions() {
         </Typography>
       </React.Fragment>
     );
-  }
+  }, []);
 
   return (
     <ExclusionContext.Provider value={{}}>
@@ -260,7 +260,7 @@ export default function ManageExclusions() {
                 rowData={gridData}
                 columnDefs={columns}
                 isLoading={loading || sending || !subscriptions || !loadedExclusions}
-                noRowsOverlayComponent={NoRowsOverlay}
+                noRowsOverlay={NoRowsOverlay}
                 extraMenuItems={extraMenuItems}
                 rowClassRules={rowClassRules}
                 onRowClicked={(event) => onRowClick(event.data)}

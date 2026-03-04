@@ -191,7 +191,7 @@ export default function DiscoverTable(props) {
   }
 
   // No rows overlay component
-  function NoRowsOverlay() {
+  const NoRowsOverlay = React.useCallback(() => {
     return (
       <React.Fragment>
         <Shrug />
@@ -200,7 +200,7 @@ export default function DiscoverTable(props) {
         </Typography>
       </React.Fragment>
     );
-  }
+  }, []);
 
   return (
     <TableContext.Provider value={{ stateData, rowData, menuExpand }}>
@@ -208,11 +208,11 @@ export default function DiscoverTable(props) {
       <Box sx={{ flexGrow: 1, height: "100%" }}>
         <DataGrid
           viewSettingKey={config.setting}
-          rowData={stateData || []}
+          rowData={stateData}
           columnDefs={columns}
           idProperty={config.idProp}
           isLoading={loading}
-          noRowsOverlayComponent={NoRowsOverlay}
+          noRowsOverlay={NoRowsOverlay}
           actionsCellRenderer={actionsCellRenderer}
           onGridReady={handleGridReady}
         />

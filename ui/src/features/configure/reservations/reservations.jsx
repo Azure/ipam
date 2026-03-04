@@ -218,7 +218,6 @@ const Reservations = () => {
   const [refreshing, setRefreshing] = React.useState(false);
   const [filterActive, setFilterActive] = React.useState(true);
   const [reservations, setReservations] = React.useState([]);
-  const [gridData, setGridData] = React.useState(null);
   const [selectedRows, setSelectedRows] = React.useState([]);
   const [copied, setCopied] = React.useState("");
   const [sending, setSending] = React.useState(false);
@@ -308,9 +307,10 @@ const Reservations = () => {
     setSelectedRows(rows);
   }, []);
 
-  React.useEffect(() => {
-    const newReservations = filterActive ? reservations.filter(x => x.settledOn === null) : reservations;
-    setGridData(newReservations);
+  // Derive filtered grid data synchronously to prevent a flash of
+  // the no-rows overlay when reservations or filter state changes.
+  const gridData = React.useMemo(() => {
+    return filterActive ? reservations.filter(x => x.settledOn === null) : reservations;
   }, [reservations, filterActive]);
 
   React.useEffect(() => {
@@ -424,7 +424,7 @@ const Reservations = () => {
     })();
   }
 
-  function NoRowsOverlay() {
+  const NoRowsOverlay = React.useCallback(() => {
     return (
       <React.Fragment>
         { selectedBlock
@@ -441,7 +441,7 @@ const Reservations = () => {
         }
       </React.Fragment>
     );
-  }
+  }, [selectedBlock, filterActive]);
 
   return (
     <ReservationContext.Provider value={{ copied, setCopied }}>
@@ -601,14 +601,14 @@ const Reservations = () => {
           <Box sx={{ pt: 4, height: "100%" }}>
             <DataGrid
               viewSettingKey="reservations"
-              rowData={gridData || []}
+              rowData={gridData}
               columnDefs={columns}
               onRowSelectionChanged={onRowSelectionChanged}
               multiSelect={true}
               checkboxSelect={true}
               extraMenuItems={extraMenuItems}
               isLoading={sending || refreshing}
-              noRowsOverlayComponent={NoRowsOverlay}
+              noRowsOverlay={NoRowsOverlay}
               actionsCellRenderer={actionsCellRenderer}
             />
           </Box>

@@ -256,12 +256,12 @@ export default function SpaceDataGrid(props) {
       </GridHeader>
       <GridBody>
         <ConfigureGrid
-          rowData={spaces || []}
+          rowData={spaces}
           columnDefs={columns}
           onRowClick={handleRowClick}
           selectedRow={selectedSpace}
           idProperty="name"
-          noRowsOverlayComponent={NoRowsOverlay}
+          noRowsOverlay={NoRowsOverlay}
           isLoading={!spaces}
         />
       </GridBody>

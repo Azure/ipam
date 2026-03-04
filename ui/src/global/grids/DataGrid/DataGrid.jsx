@@ -386,11 +386,67 @@ const StandaloneHeaderMenu = React.memo(({ viewSettingKey = DEFAULT_VIEW_SETTING
 StandaloneHeaderMenu.displayName = 'StandaloneHeaderMenu';
 
 // ============================================================================
-// Custom Loading Overlay Component
+// Combined Overlay Component (AG Grid v35+)
 // ============================================================================
-const CustomLoadingOverlay = React.memo(() => {
+
+// Context for passing reactive overlay config to CombinedOverlay.
+// React context changes bypass React.memo, ensuring overlays re-render
+// when parent state changes — even when AG Grid itself doesn't propagate
+// updated overlayComponentParams to an already-visible overlay.
+const OverlayContext = React.createContext(null);
+
+/**
+ * CombinedOverlay - Single overlay component for both loading and no-rows states.
+ *
+ * Reads the consumer-provided noRowsOverlay component from OverlayContext
+ * rather than from AG Grid props, so that React context reactivity drives
+ * re-renders independently of AG Grid's overlay lifecycle.
+ *
+ * @param {Object} props - Props from AG Grid
+ * @param {'loading'|'noRows'|'noMatchingRows'} props.overlayType - Overlay type determined by AG Grid
+ */
+const CombinedOverlay = React.memo(({ overlayType }) => {
+  const overlayConfig = React.useContext(OverlayContext);
+  const NoRowsContent = overlayConfig?.noRowsOverlay;
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+
+  if (overlayType === 'loading') {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          gap: 2,
+        }}
+      >
+        <SpinnerDotted
+          size={40}
+          thickness={100}
+          speed={100}
+          color={isDarkMode ? '#90caf9' : '#1976d2'}
+        />
+        <Box
+          component="span"
+          sx={{
+            fontSize: '0.875rem',
+            color: 'text.secondary',
+            fontWeight: 500,
+          }}
+        >
+          Loading data...
+        </Box>
+      </Box>
+    );
+  }
+
+  // noRows / noMatchingRows
+  if (NoRowsContent) {
+    return <NoRowsContent />;
+  }
 
   return (
     <Box
@@ -400,30 +456,17 @@ const CustomLoadingOverlay = React.memo(() => {
         alignItems: 'center',
         justifyContent: 'center',
         height: '100%',
-        gap: 2,
+        padding: 2,
       }}
     >
-      <SpinnerDotted
-        size={40}
-        thickness={100}
-        speed={100}
-        color={isDarkMode ? '#90caf9' : '#1976d2'}
-      />
-      <Box
-        component="span"
-        sx={{
-          fontSize: '0.875rem',
-          color: 'text.secondary',
-          fontWeight: 500,
-        }}
-      >
-        Loading data...
-      </Box>
+      <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+        No data available
+      </Typography>
     </Box>
   );
 });
 
-CustomLoadingOverlay.displayName = 'CustomLoadingOverlay';
+CombinedOverlay.displayName = 'CombinedOverlay';
 
 // ============================================================================
 // Main DataGrid Component
@@ -450,8 +493,7 @@ CustomLoadingOverlay.displayName = 'CustomLoadingOverlay';
  * @param {Array} props.initialSelectedRows - Rows to select initially
  * @param {Object} props.rowClassRules - AG Grid row class rules for conditional row styling
  * @param {boolean} props.isLoading - Show loading overlay (default: false)
- * @param {React.Component} props.noRowsOverlayComponent - Custom component to display when grid has no rows
- * @param {string} props.noRowsOverlayText - Text for default no rows overlay
+ * @param {React.Component} props.noRowsOverlay - Custom component to display when grid has no rows (reactive via OverlayContext)
  * @param {boolean} props.copyOnDoubleClick - Copy cell value to clipboard on double-click (default: true)
  * @param {string} props.idProperty - Property to use as row ID (default: 'id')
  * @param {boolean} props.noBorder - Remove grid wrapper border (default: false) - useful when grid is inside a bordered container
@@ -470,8 +512,7 @@ const DataGrid = ({
   initialSelectedRows = [],
   rowClassRules = {},
   isLoading = false,
-  noRowsOverlayComponent,
-  noRowsOverlayText,
+  noRowsOverlay = null,
   copyOnDoubleClick = true,
   idProperty = 'id',
   noBorder = false,
@@ -505,40 +546,12 @@ const DataGrid = ({
       .withParams({ ...baseParams, modalOverlayBackgroundColor: 'rgba(0, 0, 0, 0.2)' }, 'dark');
   }, [noBorder]);
 
-  // Resolve no-rows overlay: use provided component, or fall back to a default
-  const NoRowsOverlay = useMemo(() => {
-    if (noRowsOverlayComponent) {
-      return noRowsOverlayComponent;
-    }
-
-    return () => (
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          padding: 2,
-        }}
-      >
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-          {noRowsOverlayText || 'No data available'}
-        </Typography>
-      </Box>
-    );
-  }, [noRowsOverlayComponent, noRowsOverlayText]);
-
-  // Overlay component selector (replaces legacy loadingOverlayComponent / noRowsOverlayComponent)
-  const overlayComponentSelector = useCallback((params) => {
-    if (params.overlayType === 'loading') {
-      return { component: CustomLoadingOverlay };
-    }
-    if (params.overlayType === 'noRows' || params.overlayType === 'noMatchingRows') {
-      return { component: NoRowsOverlay };
-    }
-    return undefined;
-  }, [NoRowsOverlay]);
+  // Overlay context value — consumed by CombinedOverlay via React context.
+  // Context changes bypass React.memo, guaranteeing overlay re-renders
+  // when the consumer's noRowsOverlay reference changes.
+  const overlayContextValue = useMemo(() => ({
+    noRowsOverlay,
+  }), [noRowsOverlay]);
 
   // Component state
   const [saving, setSaving] = useState(false);
@@ -998,6 +1011,7 @@ const DataGrid = ({
 
   return (
     <DataGridContext.Provider value={gridContextValue}>
+      <OverlayContext.Provider value={overlayContextValue}>
       <div style={{ width: "100%", height: "100%" }} className="ag-theme-quartz">
         <AgGridReact
           ref={gridRef}
@@ -1021,11 +1035,12 @@ const DataGrid = ({
           onSelectionChanged={onSelectionChanged}
           onCellDoubleClicked={handleCellDoubleClick}
           rowClassRules={rowClassRules}
-          overlayComponentSelector={overlayComponentSelector}
+          overlayComponent={CombinedOverlay}
           loading={isLoading}
         />
         <StandaloneHeaderMenu viewSettingKey={viewSettingKey} extraMenuItems={extraMenuItems} />
       </div>
+      </OverlayContext.Provider>
     </DataGridContext.Provider>
   );
 };

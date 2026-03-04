@@ -9,11 +9,64 @@ import { SpinnerDotted } from 'spinners-react';
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 // ============================================================================
-// Custom Loading Overlay Component
+// Combined Overlay Component (AG Grid v35+)
 // ============================================================================
-const CustomLoadingOverlay = React.memo(() => {
+
+// Context for passing reactive overlay config to CombinedOverlay.
+// React context changes bypass React.memo, ensuring overlays re-render
+// when parent state changes — even when AG Grid itself doesn't propagate
+// updated overlayComponentParams to an already-visible overlay.
+const OverlayContext = React.createContext(null);
+
+/**
+ * CombinedOverlay - Single overlay component for both loading and no-rows states.
+ *
+ * Reads the consumer-provided noRowsOverlay component from OverlayContext
+ * rather than from AG Grid props, so that React context reactivity drives
+ * re-renders independently of AG Grid's overlay lifecycle.
+ */
+const CombinedOverlay = React.memo(({ overlayType }) => {
+  const overlayConfig = React.useContext(OverlayContext);
+  const NoRowsContent = overlayConfig?.noRowsOverlay;
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+
+  if (overlayType === 'loading') {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          gap: 2,
+        }}
+      >
+        <SpinnerDotted
+          size={40}
+          thickness={100}
+          speed={100}
+          color={isDarkMode ? '#90caf9' : '#1976d2'}
+        />
+        <Box
+          component="span"
+          sx={{
+            fontSize: '0.875rem',
+            color: 'text.secondary',
+            fontWeight: 500,
+          }}
+        >
+          Loading data...
+        </Box>
+      </Box>
+    );
+  }
+
+  // noRows / noMatchingRows
+  if (NoRowsContent) {
+    return <NoRowsContent />;
+  }
 
   return (
     <Box
@@ -23,30 +76,17 @@ const CustomLoadingOverlay = React.memo(() => {
         alignItems: 'center',
         justifyContent: 'center',
         height: '100%',
-        gap: 2,
+        padding: 2,
       }}
     >
-      <SpinnerDotted
-        size={40}
-        thickness={100}
-        speed={100}
-        color={isDarkMode ? '#90caf9' : '#1976d2'}
-      />
-      <Box
-        component="span"
-        sx={{
-          fontSize: '0.875rem',
-          color: 'text.secondary',
-          fontWeight: 500,
-        }}
-      >
-        Loading data...
-      </Box>
+      <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+        No data available
+      </Typography>
     </Box>
   );
 });
 
-CustomLoadingOverlay.displayName = 'CustomLoadingOverlay';
+CombinedOverlay.displayName = 'CombinedOverlay';
 
 /**
  * ConfigureGrid - A lightweight AG Grid wrapper for simple configuration panels.
@@ -68,8 +108,7 @@ CustomLoadingOverlay.displayName = 'CustomLoadingOverlay';
  * @param {Function} props.onRowClick - Callback when a row is clicked, receives row data
  * @param {Object} props.selectedRow - Currently selected row (controlled selection)
  * @param {string} props.idProperty - Property to use as row identifier (default: 'name')
- * @param {string} props.noRowsMessage - Message to show when no rows (optional)
- * @param {React.Component} props.noRowsOverlayComponent - Custom no rows overlay (optional)
+ * @param {React.Component} props.noRowsOverlay - Custom no rows overlay component (reactive via OverlayContext)
  * @param {boolean} props.isLoading - Show loading overlay (default: false)
  * @param {Object} props.gridOptions - Additional AG Grid options
  */
@@ -79,8 +118,7 @@ const ConfigureGrid = ({
   onRowClick,
   selectedRow,
   idProperty = 'name',
-  noRowsMessage,
-  noRowsOverlayComponent: CustomNoRowsOverlay,
+  noRowsOverlay = null,
   isLoading = false,
   gridOptions = {},
 }) => {
@@ -155,30 +193,12 @@ const ConfigureGrid = ({
     }
   }, [selectedRow, idProperty, rowData]);
 
-  // Custom no rows overlay
-  const NoRowsOverlay = useMemo(() => {
-    if (CustomNoRowsOverlay) {
-      return CustomNoRowsOverlay;
-    }
-
-    // Default no rows overlay with optional message
-    return () => (
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          padding: 2,
-        }}
-      >
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
-          {noRowsMessage || 'No data available'}
-        </Typography>
-      </Box>
-    );
-  }, [CustomNoRowsOverlay, noRowsMessage]);
+  // Overlay context value — consumed by CombinedOverlay via React context.
+  // Context changes bypass React.memo, guaranteeing overlay re-renders
+  // when the consumer's noRowsOverlay reference changes.
+  const overlayContextValue = useMemo(() => ({
+    noRowsOverlay,
+  }), [noRowsOverlay]);
 
   // Grid style
   const gridStyle = useMemo(() => ({
@@ -203,18 +223,8 @@ const ConfigureGrid = ({
       .withParams({ ...baseParams, modalOverlayBackgroundColor: 'rgba(0, 0, 0, 0.2)' }, 'dark');
   }, []);
 
-  // Overlay component selector (replaces legacy noRowsOverlayComponent)
-  const overlayComponentSelector = useCallback((params) => {
-    if (params.overlayType === 'loading') {
-      return { component: CustomLoadingOverlay };
-    }
-    if (params.overlayType === 'noRows' || params.overlayType === 'noMatchingRows') {
-      return { component: NoRowsOverlay };
-    }
-    return undefined;
-  }, [NoRowsOverlay]);
-
   return (
+    <OverlayContext.Provider value={overlayContextValue}>
     <div style={gridStyle} className="ag-theme-quartz">
       <AgGridReact
         ref={gridRef}
@@ -229,13 +239,14 @@ const ConfigureGrid = ({
         suppressCellFocus={true}
         animateRows={true}
         loading={isLoading}
-        overlayComponentSelector={overlayComponentSelector}
+        overlayComponent={CombinedOverlay}
         // Simplified grid - no advanced features
         suppressMovableColumns={true}
         suppressColumnVirtualisation={true}
         {...gridOptions}
       />
     </div>
+    </OverlayContext.Provider>
   );
 };
 

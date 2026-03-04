@@ -140,14 +140,14 @@ export default function Externals() {
           }
         } else {
           setSelectedBlock(null);
-          setExternals(null);
+          setExternals([]);
         }
       } else {
-        setExternals(null);
+        setExternals([]);
       }
     } else {
       setSelectedBlock(null);
-      setExternals(null);
+      setExternals([]);
     }
   }, [blocks, selectedBlock]);
 
@@ -174,7 +174,7 @@ export default function Externals() {
       }
     } else {
       setSelectedExternal(null);
-      setSubnets(null);
+      setSubnets([]);
     }
   }, [externals, selectedExternal]);
 
@@ -215,7 +215,7 @@ export default function Externals() {
                   (option, value) => {
                     const newOption = pick(option, ['name']);
                     const newValue = pick(value, ['name']);
-  
+
                     return isEqual(newOption, newValue);
                   }
                 }
@@ -267,7 +267,7 @@ export default function Externals() {
                   (option, value) => {
                     const newOption = pick(option, ['id', 'name']);
                     const newValue = pick(value, ['id', 'name']);
-  
+
                     return isEqual(newOption, newValue);
                   }
                 }

@@ -273,7 +273,8 @@ const Associations = () => {
       } else {
         setInitialSelection([]);
         setSelectedRows([]);
-        setVNets(null);
+        setVNets([]);
+        setRefreshing(true);
         refreshData();
         setPrevBlock(newBlock);
       }
@@ -282,7 +283,7 @@ const Associations = () => {
     if(!selectedBlock && !isEmpty(prevBlock)) {
       setInitialSelection([]);
       setSelectedRows([]);
-      setVNets(null);
+      setVNets([]);
       setPrevBlock({});
     }
   }, [selectedBlock, subscriptions, prevBlock, refreshData]);
@@ -488,7 +489,7 @@ const Associations = () => {
             <DataGrid
               viewSettingKey="networks"
               idProperty="id"
-              rowData={vNets || []}
+              rowData={vNets}
               columnDefs={columns}
               multiSelect={true}
               checkboxSelect={isAdmin}
@@ -496,7 +497,7 @@ const Associations = () => {
               initialSelectedRows={initialSelection}
               onRowSelectionChanged={handleSelectionChanged}
               rowClassRules={rowClassRules}
-              noRowsOverlayComponent={NoRowsOverlay}
+              noRowsOverlay={NoRowsOverlay}
             />
           </Box>
         </Box>

@@ -37,8 +37,6 @@ const Networks = (props) => {
   } = props;
   const { refreshing } = React.useContext(ExternalContext);
 
-  const [gridData, setGridData] = React.useState(null);
-
   const [addExtOpen, setAddExtOpen] = React.useState(false);
   const [editExtOpen, setEditExtOpen] = React.useState(false);
   const [delExtOpen, setDelExtOpen] = React.useState(false);
@@ -79,29 +77,25 @@ const Networks = (props) => {
     setSelectedExternal(row);
   }, [setSelectedExternal]);
 
-  // Update grid data when block changes
+  // Derive grid data synchronously from selectedBlock to prevent
+  // a flash of the no-rows overlay between selection and data display.
+  const gridData = React.useMemo(() => {
+    if (!selectedBlock) return [];
+
+    const newExternals = cloneDeep(selectedBlock['externals']);
+
+    return newExternals.reduce((acc, curr) => {
+      curr['id'] = `${selectedSpace}@${selectedBlock.name}@${curr.name}}`;
+      acc.push(curr);
+
+      return acc;
+    }, []);
+  }, [selectedSpace, selectedBlock]);
+
+  // Sync enriched externals data to parent state (for dialogs, selection tracking, etc.)
   React.useEffect(() => {
-    if (selectedBlock) {
-      var newExternals = cloneDeep(selectedBlock['externals']);
-
-      const newData = newExternals.reduce((acc, curr) => {
-        curr['id'] = `${selectedSpace}@${selectedBlock.name}@${curr.name}}`;
-
-        acc.push(curr);
-
-        return acc;
-      }, []);
-
-      setExternals(newData);
-    } else {
-      setExternals(null);
-    }
-  }, [selectedSpace, selectedBlock, setExternals]);
-
-  // Update grid data when externals change
-  React.useEffect(() => {
-    setGridData(externals);
-  }, [externals]);
+    setExternals(gridData);
+  }, [gridData, setExternals]);
 
   // Clear selection when externals change
   React.useEffect(() => {
@@ -162,12 +156,12 @@ const Networks = (props) => {
           <DataGrid
             viewSettingKey="extnetworks"
             idProperty="id"
-            rowData={gridData || []}
+            rowData={gridData}
             columnDefs={columns}
             isLoading={refreshing}
             onRowSelectionChanged={handleRowSelectionChanged}
             extraMenuItems={extraMenuItems}
-            noRowsOverlayComponent={NoRowsOverlay}
+            noRowsOverlay={NoRowsOverlay}
             noBorder={true}
           />
         </Box>

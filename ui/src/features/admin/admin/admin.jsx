@@ -326,7 +326,7 @@ export default function Administration() {
     setSelectedId(prevId => prevId === data.id ? null : data.id);
   }, []);
 
-  function NoRowsOverlay() {
+  const NoRowsOverlay = React.useCallback(() => {
     return (
       <React.Fragment>
         <Shrug />
@@ -335,7 +335,7 @@ export default function Administration() {
         </Typography>
       </React.Fragment>
     );
-  }
+  }, []);
 
   return (
     <AdminContext.Provider value={{ admins, setAdmins, selectedId }}>
@@ -449,10 +449,10 @@ export default function Administration() {
             <GridBody>
               <DataGrid
                 viewSettingKey="admins"
-                rowData={admins || []}
+                rowData={admins}
                 columnDefs={columns}
                 isLoading={loading || sending}
-                noRowsOverlayComponent={NoRowsOverlay}
+                noRowsOverlay={NoRowsOverlay}
                 onRowClicked={handleRowClicked}
                 actionsCellRenderer={actionsCellRenderer}
               />
