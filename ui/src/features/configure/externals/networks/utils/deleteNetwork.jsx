@@ -86,7 +86,7 @@ export default function DeleteExtNetwork(props) {
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Please confirm you want to delete External Network <Spotlight>'{external}'</Spotlight>
+            Please confirm you want to delete External Network <Spotlight>{"'"}{external}{"'"}</Spotlight>
           </DialogContentText>
           <Box sx={{ display: "flex", justifyContent: "center", width: "100%", pt: 3 }}>
             <FormGroup sx={{ pl: 2.5, pr: 1, border: "1px solid rgba(224, 224, 224, 1)", borderRadius: "4px" }}>

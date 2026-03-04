@@ -761,7 +761,7 @@ export default function ManageExtEndpoints(props) {
           sx={{ overflowY: "unset" }}
         >
           <DialogContentText>
-            Define the Endpoints below which should be associated with the Subnet <Spotlight>'{subnet && subnet.name}'</Spotlight>
+            Define the Endpoints below which should be associated with the Subnet <Spotlight>{"'"}{subnet && subnet.name}{"'"}</Spotlight>
           </DialogContentText>
           { isAdmin &&
           <React.Fragment>
