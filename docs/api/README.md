@@ -24,7 +24,7 @@ You can also retrieve an Azure AD token from Azure IPAM via Azure PowerShell by 
 
 ![IPAM API Resource URL](./images/ipam_api_resource_url.png)
 
-```ps1
+```powershell
 $accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://e3ff2k34-2271-58b5-9g2g-5004145608b3).Token -AsPlainText
 ```
 
@@ -61,7 +61,7 @@ You'll need to provide the following for each API call:
 Here is an example of how to create an IP address CIDR reservation in order to create a new vNET. We'll be performing a POST to the following request URL:
 
 ```text
-https://ipmadev.azurewebsites.net/api/spaces/TestSpace/blocks/TestBlock/reservations
+https://ipamdev.azurewebsites.net/api/spaces/TestSpace/blocks/TestBlock/reservations
 ```
 
 The body contains a bit mask size of **/24**. Based on this, IPAM will provide the next available **/24** CIDR block available in the **TestBlock** found within our **TestSpace** (as denoted in our request URL).
@@ -82,7 +82,7 @@ Click **Send** and you will receive a response of type **201 Created** with key 
 
 Here is the same example performed via Azure PowerShell. First, set up the common variables and authentication:
 
-```ps1
+```powershell
 $engineClientId = '<Engine App Registration Client ID>'
 $appName = 'ipamdev'
 $space = 'TestSpace'
@@ -100,7 +100,7 @@ $headers = @{
 
 The simplest way to create a reservation is by specifying a mask size. IPAM will find the next available CIDR of that size within the Block.
 
-```ps1
+```powershell
 $body = @{
     size = 24
     desc = 'Reservation for Project Alpha vNET'
@@ -117,7 +117,7 @@ $response = Invoke-RestMethod `
 
 The call will return key information regarding your CIDR block reservation. Make note of the *tag* information in the response — you'll need to apply it to your virtual network.
 
-```ps1
+```text
 $response
 
 id        : ABNsJjXXyTRDTRCdJEJThu
@@ -130,7 +130,7 @@ tag       : @{X-IPAM-RES-ID=ABNsJjXXyTRDTRCdJEJThu}
 
 You can also control how IPAM selects the available range:
 
-```ps1
+```powershell
 # Allocate from the end of the Block and use the smallest fitting range
 $body = @{
     size           = 24
@@ -152,7 +152,7 @@ $response = Invoke-RestMethod `
 
 If you need a specific CIDR range, provide it directly instead of a size. The CIDR must be within the Block and cannot overlap existing allocations.
 
-```ps1
+```powershell
 $body = @{
     cidr = '10.1.10.0/24'
     desc = 'Specific range for DMZ network'
@@ -173,7 +173,7 @@ $response = Invoke-RestMethod `
 
 If you're flexible about which Block the reservation comes from, you can provide a list of Block names. IPAM will evaluate them in order and create the reservation in the first Block with available space.
 
-```ps1
+```powershell
 $body = @{
     blocks = @('PrimaryBlock', 'SecondaryBlock', 'OverflowBlock')
     size   = 24
@@ -195,7 +195,7 @@ Note the different request URL — this uses the Space-level endpoint (`/spaces/
 
 You can retrieve all active reservations for a Block, or across all Blocks in a Space.
 
-```ps1
+```powershell
 # Get active reservations for a specific Block
 $reservations = Invoke-RestMethod `
     -Method 'Get' `
@@ -225,7 +225,7 @@ $spaceReservations = Invoke-RestMethod `
 
 Cancelling a reservation releases the held CIDR range so it can be used for other allocations. You can cancel a single reservation or multiple at once.
 
-```ps1
+```powershell
 # Cancel a single reservation by ID
 Invoke-RestMethod `
     -Method 'Delete' `
@@ -301,7 +301,7 @@ The API base path for External Networks is:
 
 The following examples demonstrate common External Network operations using Azure PowerShell. As with the CIDR Reservation examples above, you'll need to obtain an Azure AD token and set up your common variables first.
 
-```ps1
+```powershell
 $engineClientId = '<Engine App Registration Client ID>'
 $appName = 'ipamdev'
 $space = 'MySpace'
@@ -323,7 +323,7 @@ Here we'll create an External Network with a specific CIDR range. We'll be perfo
 https://ipamdev.azurewebsites.net/api/spaces/MySpace/blocks/MyBlock/externals
 ```
 
-```ps1
+```powershell
 $body = @{
     name = 'OnPrem-DC1'
     desc = 'On-premises datacenter 1 network'
@@ -341,7 +341,7 @@ $response = Invoke-RestMethod `
 
 If you don't have a specific CIDR in mind, you can request a network by size and IPAM will allocate the next available range within the Block:
 
-```ps1
+```powershell
 $body = @{
     name = 'OnPrem-DC2'
     desc = 'On-premises datacenter 2 network'
@@ -361,7 +361,7 @@ $response = Invoke-RestMethod `
 
 Once you have an External Network, you can add Subnets to it. The CIDR for the Subnet must fall within the parent External Network's CIDR range.
 
-```ps1
+```powershell
 $external = 'OnPrem-DC1'
 
 $body = @{
@@ -383,7 +383,7 @@ $response = Invoke-RestMethod `
 
 With a Subnet in place, you can add individual Endpoints. You can provide a specific IP address, or pass `$null` to have IPAM automatically assign the next available IP within the Subnet.
 
-```ps1
+```powershell
 $subnet = 'ServerSubnet'
 
 # Create an endpoint with a specific IP
@@ -421,7 +421,7 @@ $response = Invoke-RestMethod `
 
 You can update External Network properties using a JSON Patch. The same approach works for updating External Subnets and Endpoints by adjusting the request URL accordingly.
 
-```ps1
+```powershell
 $external = 'OnPrem-DC1'
 
 $body = @(
@@ -445,7 +445,7 @@ $response = Invoke-RestMethod `
 
 You can replace the entire endpoint list for a Subnet in a single operation using the `PUT` method. This is particularly useful for automation scenarios where an external system produces a complete inventory.
 
-```ps1
+```powershell
 $body = @(
     @{
         name = 'db-server-01'
@@ -477,7 +477,7 @@ $response = Invoke-RestMethod `
 
 You can remove one or more Endpoints from a Subnet by passing an array of endpoint names.
 
-```ps1
+```powershell
 $body = @(
     'db-server-01',
     'app-server-01'
@@ -496,7 +496,7 @@ $response = Invoke-RestMethod `
 
 Deleting an External Network will fail if it contains Subnets unless you pass the `force` query parameter.
 
-```ps1
+```powershell
 # Delete (will fail if subnets exist)
 Invoke-RestMethod `
     -Method 'Delete' `
