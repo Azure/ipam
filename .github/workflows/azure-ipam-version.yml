@@ -6,6 +6,18 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '.vscode/**'
+      - 'docs/**'
+      - 'examples/**'
+      - 'migrate/**'
+      - 'tests/**'
+      - '.dockerignore'
+      - '.env.example'
+      - '.gitattributes'
+      - '.gitignore'
+      - 'LICENSE'
+      - '*.md'
 
 permissions:
   id-token: write

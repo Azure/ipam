@@ -6,6 +6,17 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - '.vscode/**'
+      - 'docs/**'
+      - 'examples/**'
+      - 'migrate/**'
+      - '.dockerignore'
+      - '.env.example'
+      - '.gitattributes'
+      - '.gitignore'
+      - 'LICENSE'
+      - '*.md'
 
 env:
   ACR_NAME: ${{ vars.IPAM_TEST_ACR }}
