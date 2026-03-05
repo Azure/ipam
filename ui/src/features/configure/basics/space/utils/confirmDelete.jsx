@@ -85,7 +85,7 @@ export default function ConfirmDelete(props) {
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Please confirm you want to delete Space <Spotlight>{"'"}{space}{"'"}</Spotlight>
+            Please confirm you want to delete Space <Spotlight>{`'${space}'`}</Spotlight>
           </DialogContentText>
           <Box sx={{ display: "flex", justifyContent: "center", width: "100%", pt: 3 }}>
             <FormGroup sx={{ pl: 2.5, pr: 1, border: "1px solid rgba(224, 224, 224, 1)", borderRadius: "4px" }}>
