@@ -185,6 +185,7 @@ export default function NavDrawer() {
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [aboutOpen, setAboutOpen] = React.useState(false);
   const [searchData, setSearchData] = React.useState([]);
+  const [dataLoaded, setDataLoaded] = React.useState(false);
   const [searchInput, setSearchInput] = React.useState('');
   const [searchValue, setSearchValue] = React.useState(null);
 
@@ -539,6 +540,10 @@ export default function NavDrawer() {
     }
 
     setSearchData(newSearchData);
+
+    if(vNets !== null && vHubs !== null && endpoints !== null) {
+      setDataLoaded(true);
+    }
   }, [vNets, vHubs, subnets, endpoints]);
 
   const filterOptions = createFilterOptions({
@@ -882,7 +887,7 @@ export default function NavDrawer() {
                 options={searchData ? orderBy(searchData, 'category', 'asc') : []}
                 groupBy={(option) => option.category}
                 getOptionLabel={(option) => option.phrase}
-                disabled={searchData.length > 0 ? false : true}
+                disabled={!dataLoaded || searchData.length === 0}
                 inputValue={searchInput}
                 onInputChange={(event, newSearchInput) => {
                   setSearchInput(newSearchInput);
@@ -896,7 +901,7 @@ export default function NavDrawer() {
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    placeholder={searchData.length > 0 ? "Search..." : "Loading..."}
+                    placeholder={dataLoaded ? (searchData.length > 0 ? "Search..." : "No Resources...") : "Loading..."}
                     fullWidth
                     variant="standard"
                     InputProps={{
