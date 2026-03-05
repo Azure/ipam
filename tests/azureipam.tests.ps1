@@ -85,7 +85,7 @@ BeforeAll {
 	    [object[]]$body
     )
 
-    $jsonBody = $body | ConvertTo-Json
+    $jsonBody = $body | ConvertTo-Json -AsArray
     $response = Invoke-RestMethod `
       -Method Put `
       -Authentication Bearer `
@@ -109,7 +109,7 @@ BeforeAll {
 	    [hashtable[]]$body
     )
 
-    $jsonBody = $body | ConvertTo-Json
+    $jsonBody = $body | ConvertTo-Json -AsArray
     $response = Invoke-RestMethod `
       -Method Patch `
       -Authentication Bearer `
@@ -584,7 +584,7 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
         -Name 'TestVNet04' `
         -ResourceGroupName $env:IPAM_RESOURCE_GROUP `
         -Location 'westus3' `
-        -AddressPrefix @('10.1.4.0/24', '10.1.1.0/24')
+        -AddressPrefix @('10.1.4.0/24', '10.1.0.0/24')
 
       Start-Sleep -Seconds 60
 
@@ -1910,7 +1910,7 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
 
       $newNet, $newNetStatus = New-ApiResource '/tools/nextAvailableVNet' $body
 
-      $newNetStatus | Should -Be 201
+      $newNetStatus | Should -Be 200
 
       $newNet.Space | Should -Be 'ToolsSpace'
       $newNet.Block | Should -Be 'ToolsBlock'
@@ -1951,7 +1951,7 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
 
       $subscriptionId = ($script:toolsNet.Id | Select-String -Pattern '(?<=subscriptions/).*(?=/resourceGroups)').Matches.Value
 
-      $newSubnetStatus | Should -Be 201
+      $newSubnetStatus | Should -Be 200
 
       $newSubnet.vnet_name | Should -Be $script:toolsNet.Name
       $newSubnet.resource_group | Should -Be $script:toolsNet.ResourceGroupName
@@ -1976,7 +1976,7 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
 
       $subscriptionId = ($script:toolsNet.Id | Select-String -Pattern '(?<=subscriptions/).*(?=/resourceGroups)').Matches.Value
 
-      $cidrCheckStatus | Should -Be 201
+      $cidrCheckStatus | Should -Be 200
 
       $cidrCheck.name | Should -Be $script:toolsNet.Name
       $cidrCheck.id | Should -Be $script:toolsNet.Id
