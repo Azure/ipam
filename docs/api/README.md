@@ -261,7 +261,7 @@ For more information on what External Networks are, how they fit into the IPAM h
 
 The API base path for External Networks is:
 
-```
+```text
 /api/spaces/{space}/blocks/{block}/externals
 ```
 

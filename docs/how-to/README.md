@@ -168,7 +168,7 @@ Cancelled Reservations are not completely removed, instead they are marked as **
 
 The key to automating the Reservation workflow is the `X-IPAM-RES-ID` tag. When you create a Reservation, Azure IPAM returns a tag value in the response. Apply this tag to the Azure virtual network you create with the reserved CIDR:
 
-```
+```text
 Tag Key:   X-IPAM-RES-ID
 Tag Value: <reservation-id>
 ```
@@ -185,14 +185,14 @@ This tag-based approach means you can create the Reservation through Azure IPAM 
 
 Azure Virtual Networks support multiple address spaces (prefixes). If your virtual network has more than one address space, each address space that falls within a Block must have its own Reservation. The `X-IPAM-RES-ID` tag supports this by accepting a **comma-separated list** of Reservation IDs in a single tag value:
 
-```
+```text
 Tag Key:   X-IPAM-RES-ID
 Tag Value: <reservation-id-1>,<reservation-id-2>,<reservation-id-3>
 ```
 
 The reconciliation engine strips all whitespace from the tag value before parsing, so spaces around the commas are harmless, but the canonical format is no spaces:
 
-```
+```text
 Tag Key:   X-IPAM-RES-ID
 Tag Value: ABNsJjXXyTRDTRCdJEJThu,XKp7mQeNvLCsWbYdFgHiRZ
 ```
@@ -273,7 +273,7 @@ Azure IPAM is primarily designed to discover and manage IP address space within 
 
 External Networks live within the existing **Space → Block** hierarchy. A **Block** represents a CIDR range and can contain Azure virtual networks, CIDR reservations, *and* External Networks. The full hierarchy looks like this:
 
-```
+```text
 Space
 └── Block (e.g. 10.0.0.0/16)
     ├── Azure Virtual Networks
