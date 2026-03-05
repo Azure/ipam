@@ -93,6 +93,23 @@ function mapFilterStateToAgGridModel(filterState) {
   return toAgGridFilter(filterState);
 }
 
+/**
+ * Ensures any columns targeted by the filter model are visible in the grid.
+ * This prevents the confusing UX of hidden columns being silently filtered.
+ */
+function showFilteredColumns(api, filterModel) {
+  if (!api || !filterModel) return;
+
+  const hiddenFiltered = Object.keys(filterModel).filter((field) => {
+    const col = api.getColumn(field);
+    return col && !col.isVisible();
+  });
+
+  if (hiddenFiltered.length > 0) {
+    api.setColumnsVisible(hiddenFiltered, true);
+  }
+}
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -122,6 +139,7 @@ export default function DiscoverTable(props) {
       if (filterModel) {
         // Small delay to ensure grid is fully initialized
         setTimeout(() => {
+          showFilteredColumns(params.api, filterModel);
           params.api.setFilterModel(filterModel);
           filterApplied.current = true;
         }, 100);
@@ -137,6 +155,7 @@ export default function DiscoverTable(props) {
     if (gridApiRef.current && location.state) {
       const filterModel = mapFilterStateToAgGridModel(location.state);
       if (filterModel) {
+        showFilteredColumns(gridApiRef.current, filterModel);
         gridApiRef.current.setFilterModel(filterModel);
         filterApplied.current = true;
       }
