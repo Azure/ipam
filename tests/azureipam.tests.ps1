@@ -1724,6 +1724,96 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
       $available | Should -Not -Contain $script:newNetAvailB.Id
     }
 
+    # GET /api/spaces/{space}/blocks/{block}/available
+    It 'Exclude vNET Whose Prefix Overlaps Unfulfilled Reservation' -Tag @('LongRunning') {
+      $script:newNetAvailResv = New-AzVirtualNetwork `
+        -Name 'TestVNetAvailResv' `
+        -ResourceGroupName $env:IPAM_RESOURCE_GROUP `
+        -Location 'westus3' `
+        -AddressPrefix $script:reservationC.Cidr
+
+      Start-Sleep -Seconds 60
+
+      $available, $availableStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/available'
+
+      $availableStatus | Should -Be 200
+
+      $available | Should -Not -Contain $script:newNetAvailResv.Id
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}/available
+    It 'Exclude vNET Already Associated Within Same Space via CIDR Containment' -Tag @('LongRunning') {
+      # newNetA (10.1.0.0/24) is already associated with TestBlockA and its prefix
+      # falls under TestBlockA (10.1.0.0/16). It should not appear as available for
+      # TestBlockOverlap (100.65.0.0/24) either, since the prefix doesn't fit that block.
+      $available, $availableStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockOverlap/available'
+
+      $availableStatus | Should -Be 200
+
+      $available | Should -Not -Contain $script:newNetA.Id
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}/available
+    It 'Allow Multi-Prefix vNET Across Blocks in Same Space' -Tag @('LongRunning') {
+      # Create a second block with a non-overlapping CIDR in the same space
+      $blockMultiPrefix = @{
+        name = 'TestBlockMultiPfx'
+        cidr = '172.16.0.0/16'
+      }
+
+      New-ApiResource '/spaces/TestSpaceA/blocks' $blockMultiPrefix
+
+      # Create a vNET with two prefixes: one in TestBlockA, one in TestBlockMultiPfx
+      $script:newNetMultiPfx = New-AzVirtualNetwork `
+        -Name 'TestVNetMultiPfx' `
+        -ResourceGroupName $env:IPAM_RESOURCE_GROUP `
+        -Location 'westus3' `
+        -AddressPrefix @('10.1.201.0/24', '172.16.1.0/24')
+
+      Start-Sleep -Seconds 60
+
+      # Associate the vNET with TestBlockA
+      $body = @{
+        id = $script:newNetMultiPfx.Id
+      }
+
+      New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks' $body
+
+      # It should still appear as available for TestBlockMultiPfx (different prefix fits there)
+      $available, $availableStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockMultiPfx/available'
+
+      $availableStatus | Should -Be 200
+
+      $available | Should -Contain $script:newNetMultiPfx.Id
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}/available
+    It 'Allow Cross-Space vNET Association' -Tag @('LongRunning') {
+      # Create a second space with a block whose CIDR overlaps TestBlockA
+      $spaceB = @{
+        name = 'TestSpaceB'
+        desc = 'Test Space B'
+      }
+
+      New-ApiResource '/spaces' $spaceB
+
+      $blockB = @{
+        name = 'TestBlockB'
+        cidr = '10.1.0.0/16'
+      }
+
+      New-ApiResource '/spaces/TestSpaceB/blocks' $blockB
+
+      # newNetA (10.1.0.0/24) is already associated with TestSpaceA/TestBlockA.
+      # It should still appear as available for TestSpaceB/TestBlockB since
+      # Spaces are independent logical boundaries.
+      $available, $availableStatus = Get-ApiResource '/spaces/TestSpaceB/blocks/TestBlockB/available'
+
+      $availableStatus | Should -Be 200
+
+      $available | Should -Contain $script:newNetA.Id
+    }
+
     # Create an Azure Virtual Network w/ Reservation ID Tag and Verify it's Automatically Imported into IPAM
     It 'Import Virtual Network via Reservation ID' -Tag @('LongRunning') {
       $script:newNetResvC = New-AzVirtualNetwork `
