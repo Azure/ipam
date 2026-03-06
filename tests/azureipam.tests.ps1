@@ -1817,7 +1817,7 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
     # Create an Azure Virtual Network w/ Reservation ID Tag and Verify it's Automatically Imported into IPAM
     It 'Import Virtual Network via Reservation ID' -Tag @('LongRunning') {
       $script:newNetResvC = New-AzVirtualNetwork `
-        -Name 'TestVNetResv03' `
+        -Name 'TestVNetResv' `
         -ResourceGroupName $env:IPAM_RESOURCE_GROUP `
         -Location 'westus3' `
         -AddressPrefix $script:reservationA.Cidr `
@@ -1946,9 +1946,10 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
       $spaces, $spacesStatus = Get-ApiResource '/spaces'
 
       $spacesStatus | Should -Be 200
-      $spaces.Count | Should -Be 2
+      $spaces.Count | Should -Be 3
 
       $spaces.Name | Should -Contain 'TestSpaceA'
+      $spaces.Name | Should -Contain 'TestSpaceB'
       $spaces.Name | Should -Contain 'ToolsSpace'
     }
 
