@@ -1402,18 +1402,14 @@ async def available_block_nets(
             net['prefixes'] = valid
             available_vnets.append(net)
 
-    # ADD CHECK TO MAKE SURE VNET ISN'T ASSIGNED TO ANOTHER BLOCK
-    # assigned_vnets = [''.join(vnet) for space in item['spaces'] for block in space['blocks'] for vnet in block['vnets']]
-    # unassigned_vnets = list(set(available_vnets) - set(assigned_vnets)) + list(set(assigned_vnets) - set(available_vnets))
-
-    for space_iter in space_query:
-        for block_iter in space_iter['blocks']:
-            for net_iter in block_iter['vnets']:
-                if space_iter['name'] != space and block_iter['name'] != block:
-                    net_index = next((i for i, item in enumerate(available_vnets) if item['id'] == net_iter['id']), None)
-
-                    if net_index:
-                        del available_vnets[net_index]
+    # for space_iter in space_query:
+    #     for block_iter in space_iter['blocks']:
+    #         for net_iter in block_iter['vnets']:
+    #             if space_iter['name'] != space and block_iter['name'] != block:
+    #                 net_index = next((i for i, item in enumerate(available_vnets) if item['id'] == net_iter['id']), None)
+    #
+    #                 if net_index is not None:
+    #                     del available_vnets[net_index]
 
     if expand:
         return available_vnets
