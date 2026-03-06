@@ -52,15 +52,128 @@ Give the new **Block** a name a valid CIDR range, then click **Create** to creat
 
 ![IPAM Add Block Details](./images/add_block_details.png)
 
-## Virtual Network Association
+## Virtual Network Associations
 
-As an IPAM Administrator, you can associate Azure virtual networks to **Blocks**. To associate a virtual network to a **Block**, select the **Block** you want to associate the virtual network to, then click on the 3 ellipses to bring up a menu of **Block** operations. Select **Virtual Networks**.
+Virtual Network Associations are the mechanism by which Azure virtual networks (vNETs) and virtual hubs (vHUBs) are mapped to **Blocks** in Azure IPAM. Associating a virtual network with a Block tells Azure IPAM that the network's address space is allocated from that Block's CIDR range. This is the foundation of how Azure IPAM tracks IP address utilization — without associations, Azure IPAM has no way of knowing which networks belong to which Blocks.
+
+Associations serve several important purposes:
+
+- **Utilization tracking** — Associated virtual networks are counted toward a Block's used address space, giving you an accurate picture of how much of the Block is consumed
+- **Overlap prevention** — When creating new CIDR Reservations, External Networks, or additional associations, Azure IPAM checks against all currently associated virtual networks to prevent address collisions
+- **Network visibility** — Once associated, a virtual network's subnets and endpoints become visible under their parent Block in the **Discover** section of Azure IPAM
+
+> **Note:** Virtual Network Association management is an **IPAM Administrator** function. Only users designated as Azure IPAM admins can create or modify associations. However, all users with access to Azure IPAM can view the current associations for a Block in a read-only capacity.
+
+### How Associations Work
+
+Each **Block** maintains a list of associated virtual networks. An association is simply a mapping between an Azure virtual network resource ID and the Block. When Azure IPAM calculates utilization for a Block, it sums the address prefixes of all associated virtual networks that fall within the Block's CIDR range.
+
+The association data is stored within the Block itself, alongside CIDR Reservations and External Networks:
+
+```text
+Space
+└── Block (e.g. 10.0.0.0/16)
+    ├── Virtual Network Associations  ← You are here
+    ├── CIDR Reservations
+    └── External Networks
+```
+
+Azure IPAM's background reconciliation process runs every minute and checks each associated virtual network against Azure to confirm it still exists and still has address space within the Block's CIDR range. If the network has been deleted or its address space no longer falls within the Block, it is marked as stale. Stale associations are highlighted in the UI so administrators can clean them up.
+
+### Availability and Eligibility Rules
+
+Not every virtual network in your Azure environment is eligible for association with a given Block. When you open the associations page for a Block, Azure IPAM queries for all virtual networks and virtual hubs across your subscriptions that meet the following requirements:
+
+1. **CIDR containment** — The virtual network must have at least one address prefix that falls within the Block's CIDR range
+2. **No CIDR overlap with Reservations** — The virtual network's address prefixes must not overlap with any unsettled (active) CIDR Reservations in the Block
+3. **No CIDR overlap with External Networks** — The virtual network's address prefixes must not overlap with any External Network CIDRs in the Block
+
+Virtual networks that are already associated with the Block are included in the available list (they appear as pre-selected in the table). Overlap with existing associations is validated when you save your changes.
+
+Spaces are independent logical boundaries — a virtual network associated with a Block in one Space can still appear as available for Blocks in other Spaces. Within the same Space, a virtual network with multiple address prefixes can be associated with different Blocks, since Blocks in a Space cannot have overlapping CIDRs and each prefix is evaluated independently.
+
+> **Tip:** If a virtual network or virtual hub you expect to see is missing from the available list, check whether its address space falls within the Block's CIDR range and whether it overlaps with an existing Reservation or External Network in the target Block.
+
+### Managing Associations via the UI
+
+Virtual Network Associations are managed from the **Configure** section of the Azure IPAM menu blade. There are two ways to get there:
+
+**Option 1: Direct navigation** — Expand the **Configure** section of the menu blade and select **Associations**. This takes you to the Associations page where you can select a Space and Block.
+
+**Option 2: From the Block configuration** — Navigate to **Configure → Basics**, select a Space and Block, then open the action menu (3 ellipses) and select **Block Networks**. This takes you to the Associations page with the Space and Block pre-selected.
 
 ![IPAM Associate vNETs](./images/virtual_network_association.png)
 
-Place a checkmark next to the virtual networks you'd like to associate to the target **Block**, or un-check virtual networks you'd like to disassociate from the target **Block**, then click **Apply**.
+#### The Associations Page
+
+The Associations page displays a toolbar at the top with selectors for **Space** and **Block**, a read-only **Network** field showing the Block's CIDR, and a selection counter showing how many virtual networks are currently selected out of the total available.
+
+Below the toolbar is a data grid showing all eligible virtual networks for the selected Block. The grid displays the following columns:
+
+- **Name** — The name of the virtual network or virtual hub
+- **Type** — Whether the network is a **vNET** or a **vHUB**
+- **Resource Group** — The Azure resource group containing the network
+- **Subscription Name** — The Azure subscription containing the network
+- **Subscription ID** — The Azure subscription ID (hidden by default)
+- **Prefixes** — The address space(s) assigned to the virtual network
 
 ![IPAM Associate vNETs Details](./images/virtual_network_association_details.png)
+
+Virtual networks that are currently associated with the Block are pre-selected (checked) when the page loads.
+
+#### Associating Virtual Networks
+
+To associate virtual networks with a Block, place a checkmark next to each virtual network you'd like to associate. The selection counter in the toolbar updates in real time as you make changes. Once your selection differs from the current associations, a **Save** button (disk icon) appears in the toolbar.
+
+Click **Save** to apply your changes. On success, you'll see a confirmation notification and the Block's virtual network list has been updated. Note that saving performs a **full replacement** — the Block's entire list of associated networks is replaced with whatever is currently selected in the grid.
+
+#### Disassociating Virtual Networks
+
+To disassociate a virtual network from a Block, simply un-check it in the grid and click **Save**. Disassociating a virtual network releases its address prefixes from the Block's utilization calculations, making that space available for new allocations.
+
+#### Stale Associations
+
+A virtual network can become stale if it is deleted from Azure or if its address space is changed so that it no longer falls within the Block's CIDR range. Azure IPAM's background reconciliation process detects these changes and marks the associations as inactive.
+
+Stale associations are displayed at the top of the grid with a **red background** to draw attention. Their prefixes column will display `ErrNotFound` to indicate the network could not be located in Azure.
+
+To clean up stale associations, un-check the stale entries and click **Save** to remove them from the Block.
+
+#### Admin vs. Non-Admin View
+
+Non-admin users can navigate to the Associations page and view the current associations for any Block. However, the grid is displayed in **read-only mode** — checkboxes are not shown and the Save button is never visible. This allows everyone to see which virtual networks are associated with a Block without being able to modify the associations.
+
+> **Important:** Administrators see networks across the entire tenant. Non-admin users only see networks in subscriptions they have Azure RBAC read access to, so their available network list may be smaller.
+
+### Automatic Association via Reservations
+
+Virtual networks created through the CIDR Reservation workflow are **automatically associated** with their Block — no manual step is needed. Azure IPAM's background reconciliation detects the tagged network, verifies its address space, and creates the association for you. See the [Reservations](#reservations) section for details on how this works.
+
+### How Associations Affect Utilization
+
+When Azure IPAM calculates utilization for a Block, it considers the address prefixes of all associated virtual networks. Only prefixes that actually fall within the Block's CIDR range are counted — if a virtual network has multiple address spaces and only one falls within the Block, only that one is included in the utilization calculation.
+
+The utilization formula for a Block is:
+
+```text
+Utilization = (Associated vNET Prefixes + External Network CIDRs) / Block Total Size
+```
+
+For example, a Block of `10.0.0.0/16` (65,536 addresses) with two associated virtual networks of `10.0.1.0/24` (256 addresses) and `10.0.2.0/24` (256 addresses) would show a utilization of 512 / 65,536 = ~1%.
+
+> **Note:** Unsettled CIDR Reservations are excluded from the utilization percentage but are still accounted for when determining available space for new allocations.
+
+### Managing Associations via the API
+
+All Virtual Network Association operations are also available through the Azure IPAM REST API. For the full list of available endpoints and example calls, please see the [Virtual Network Associations](/api/README.md#virtual-network-associations) section of the API documentation.
+
+### Tips and Best Practices
+
+- **Associate before you plan**: Associate your existing virtual networks with their corresponding Blocks as soon as you set up Azure IPAM. This gives you an accurate utilization baseline from day one.
+- **Use Reservations for new networks**: Rather than creating a virtual network in Azure and then manually associating it, use the Reservation workflow. This ensures the address space is held for you and the association happens automatically.
+- **Clean up stale associations**: Periodically check for stale (red) associations and remove them. These represent virtual networks that no longer exist in Azure and inflate your association count.
+- **Multi-prefix virtual networks**: Azure virtual networks can have multiple address prefixes. Because Blocks within a Space cannot have overlapping CIDRs, each prefix naturally falls under at most one Block. A virtual network with prefixes spanning multiple Blocks can be associated with each Block independently — only the prefix(es) within each Block's CIDR range will count toward that Block's utilization.
+- **Watch for overlap**: If you can't associate a virtual network, check the Block's Reservations and External Networks for CIDR overlaps. An unsettled Reservation holding the same address space will block the association.
 
 ## Reservations
 
