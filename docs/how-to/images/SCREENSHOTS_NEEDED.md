@@ -70,3 +70,9 @@ The following screenshots are needed for various documentation pages. Each filen
 - Use a realistic-looking dataset (e.g., "OnPrem-DC1" with subnets like "ServerVLAN", "DesktopVLAN" and endpoints like "db-server-01")
 - Ensure the Space/Block selectors are populated in all screenshots so users can see the full context
 - For the Force Delete screenshots, show both the initial state and the confirmed state if possible
+
+---
+
+## Virtual Hubs (vHubs)
+
+- [ ] `discover_vhubs.png` — Discover → vHubs tab showing the vHubs data grid with columns: Name, Virtual WAN, Block, Prefixes, Resource Group (ideally with at least one vHub associated to a Block)

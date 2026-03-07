@@ -28,6 +28,288 @@ You can also retrieve an Azure AD token from Azure IPAM via Azure PowerShell by 
 $accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://e3ff2k34-2271-58b5-9g2g-5004145608b3).Token -AsPlainText
 ```
 
+## Spaces
+
+Spaces are the top-level organizational unit in Azure IPAM. Each Space represents a logical grouping of non-overlapping IP address Blocks. For more on what Spaces are and how to manage them via the UI, see the [Spaces](/how-to/README.md#spaces) section of the How-To documentation.
+
+All Space management endpoints (create, update, delete) are restricted to Azure IPAM administrators.
+
+### Space Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/spaces` | List all Spaces |
+| `POST` | `/spaces` | Create a new Space |
+| `GET` | `/spaces/{space}` | Get details of a specific Space |
+| `PATCH` | `/spaces/{space}` | Update a Space (JSON Patch) |
+| `DELETE` | `/spaces/{space}` | Delete a Space |
+
+> **Note:** The `GET` endpoints accept optional `expand` (admin-only) and `utilization` query parameters. Setting `utilization=true` includes size and used address counts. Setting `expand=true` expands all nested network references.
+
+### Example API Calls
+
+```powershell
+$engineClientId = '<Engine App Registration Client ID>'
+$appName = 'ipamdev'
+
+$accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token -AsPlainText
+
+$headers = @{
+    'Accept'       = 'application/json'
+    'Content-Type' = 'application/json'
+}
+```
+
+#### List All Spaces
+
+```powershell
+# Get all Spaces
+$spaces = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+
+# Get all Spaces with utilization data
+$spacesUtil = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces?utilization=true" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+```
+
+#### Get a Specific Space
+
+```powershell
+$space = 'TestSpace'
+
+$spaceDetails = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+```
+
+#### Create a Space
+
+Creating a Space requires a name and description. The name must be 1–64 characters and can contain alphanumerics, underscores, hyphens, and periods.
+
+```powershell
+$body = @{
+    name = 'ProductionSpace'
+    desc = 'Production environment IP address space'
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Post' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+#### Update a Space
+
+You can update a Space's name or description using a JSON Patch. Only the `replace` operation is supported, and allowed paths are `/name` and `/desc`.
+
+```powershell
+$space = 'ProductionSpace'
+
+$body = @(
+    @{
+        op    = 'replace'
+        path  = '/desc'
+        value = 'Updated production IP space description'
+    }
+) | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Patch' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+#### Delete a Space
+
+Deleting a Space will fail if it contains Blocks unless you pass the `force` query parameter.
+
+```powershell
+$space = 'ProductionSpace'
+
+# Delete (will fail if Blocks exist)
+Invoke-RestMethod `
+    -Method 'Delete' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+
+# Force delete (removes the Space and all its Blocks)
+Invoke-RestMethod `
+    -Method 'Delete' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space`?force=true" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+```
+
+## Blocks
+
+Blocks represent IPv4 CIDR ranges within a Space. Each Block can contain virtual network associations, CIDR reservations, and external networks. For more on what Blocks are and how to manage them via the UI, see the [Blocks](/how-to/README.md#blocks) section of the How-To documentation.
+
+All Block management endpoints (create, update, delete) are restricted to Azure IPAM administrators.
+
+### Block Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/spaces/{space}/blocks` | List all Blocks in a Space |
+| `POST` | `/spaces/{space}/blocks` | Create a new Block |
+| `GET` | `/spaces/{space}/blocks/{block}` | Get details of a specific Block |
+| `PATCH` | `/spaces/{space}/blocks/{block}` | Update a Block (JSON Patch) |
+| `DELETE` | `/spaces/{space}/blocks/{block}` | Delete a Block |
+| `GET` | `/spaces/{space}/blocks/{block}/available` | List virtual networks eligible for association |
+
+> **Note:** The `GET` endpoints accept optional `expand` (admin-only) and `utilization` query parameters. Setting `utilization=true` includes size and used address counts. Setting `expand=true` expands virtual network references to full network objects. Non-admin users receive a filtered view — only reservations they created are included.
+
+### Example API Calls
+
+```powershell
+$engineClientId = '<Engine App Registration Client ID>'
+$appName = 'ipamdev'
+$space = 'TestSpace'
+
+$accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token -AsPlainText
+
+$headers = @{
+    'Accept'       = 'application/json'
+    'Content-Type' = 'application/json'
+}
+```
+
+#### List All Blocks in a Space
+
+```powershell
+# Get all Blocks
+$blocks = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+
+# Get all Blocks with utilization data
+$blocksUtil = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks?utilization=true" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+```
+
+#### Get a Specific Block
+
+```powershell
+$block = 'TestBlock'
+
+$blockDetails = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+```
+
+#### Create a Block
+
+Creating a Block requires a name and a valid IPv4 CIDR range. The CIDR cannot overlap with existing Blocks in the same Space.
+
+```powershell
+$block = @{
+    name = 'ProductionBlock'
+    cidr = '10.0.0.0/16'
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Post' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $block
+```
+
+#### Update a Block
+
+You can update a Block's name or CIDR using a JSON Patch. Only the `replace` operation is supported, and allowed paths are `/name` and `/cidr`. When updating the CIDR, the new range must still contain all currently associated virtual networks, reservations, and external networks.
+
+```powershell
+$block = 'ProductionBlock'
+
+$body = @(
+    @{
+        op    = 'replace'
+        path  = '/cidr'
+        value = '10.0.0.0/15'
+    }
+) | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Patch' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+#### Delete a Block
+
+Deleting a Block will fail if it contains virtual network associations or active reservations unless you pass the `force` query parameter.
+
+```powershell
+$block = 'ProductionBlock'
+
+# Delete (will fail if associations or reservations exist)
+Invoke-RestMethod `
+    -Method 'Delete' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+
+# Force delete (removes the Block and all its data)
+Invoke-RestMethod `
+    -Method 'Delete' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block`?force=true" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+```
+
+#### List Available Networks for a Block
+
+Query which virtual networks are eligible for association with a given Block. This is useful before creating associations.
+
+```powershell
+$block = 'ProductionBlock'
+
+# Get available networks with full details
+$available = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/available?expand=true" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+```
+
 ## CIDR Reservations
 
 CIDR Reservations allow you to claim address space within a Block before creating an Azure virtual network. For more information on what reservations are, how the lifecycle works, and how to manage them via the UI, please see the [Reservations](/how-to/README.md#reservations) section of the How-To documentation.

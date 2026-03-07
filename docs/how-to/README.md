@@ -24,33 +24,137 @@ From this screen, you can select Subscriptions which are to be <u>**excluded**</
 
 ![IPAM Admin Subscriptions Config](./images/ipam_admin_subscriptions_config.png)
 
+## Navigating the Discover Section
+
+The **Discover** section of the Azure IPAM menu blade provides a read-only view of your IP address space and Azure network resources. It is organized into six tabs: **Spaces**, **Blocks**, **vNets**, **Subnets**, **vHubs**, and **Endpoints**. Each tab presents a data grid with sortable and filterable columns.
+
+Several interaction patterns are shared across all Discover tabs:
+
+- **Utilization bars** — Where applicable, a color-coded utilization bar shows how much of the address space is consumed. The bar displays <span style="color: green">**green**</span> at 70% or below, <span style="color: goldenrod">**yellow**</span> between 71–89%, and <span style="color: red">**red**</span> at 90% or above.
+- **Details panel** — Click the expand chevron (▶) on any row to slide open a details panel on the right side. The panel shows additional information about the selected resource, a utilization gauge (where applicable), and a **VIEW IN PORTAL** button that opens the resource directly in the Azure Portal.
+- **Drill-down navigation** — Some columns display an arrow icon (→) next to the value. Clicking the arrow navigates to a related tab, pre-filtered to show only child or associated resources. For example, clicking the arrow on a Space name takes you to the Blocks tab filtered to that Space.
+- **Hidden columns** — Some columns (such as Subscription ID) are hidden by default to keep the grid readable. You can reveal them through the column menu.
+
+> **Tip:** The Discover section reflects what you have access to. Non-admin users see resources based on their Azure RBAC permissions, while IPAM administrators see resources across the entire tenant.
+
 ## Spaces
 
-A **Space** represents a logical grouping of *unique* IP address space. **Spaces** can contain both contiguous and non-contiguous IP address CIDR blocks. A **Space** cannot contain any overlapping CIDR blocks. As an IPAM user, you can get to the **Spaces** tab via the **Discover** section of the menu blade. From the **Spaces** tab, you can see utilization metrics for each **Space**.
+A **Space** represents a logical grouping of *unique* IP address space. Spaces can contain both contiguous and non-contiguous IP address CIDR blocks, but cannot contain overlapping blocks. They are the top-level organizational unit in Azure IPAM's hierarchy.
+
+### Viewing Spaces
+
+Navigate to **Discover → Spaces** to see all Spaces. The grid shows each Space's **Name** (with a drill-down arrow to its Blocks), **Description**, **Utilization** bar, total **Size**, and **Used** address count.
 
 ![IPAM Spaces](./images/discover_spaces.png)
 
-As an IPAM Administrator, you can add **Spaces** via the **Configure** section of the menu blade. Clicking on the 3 ellipses will bring up a menu of **Space** operations. Select **Add Space**.
+### Managing Spaces
+
+Spaces are managed from the **Configure → Basics** page. The upper portion of the page shows the Space data grid.
+
+> **Note:** Space management (creating, editing, and deleting) is an **IPAM Administrator** function.
+
+**Adding a Space** — Click the action menu (down chevron) and select **Add Space**. Provide a name and description, then click **Create**.
 
 ![IPAM Add Space](./images/add_space.png)
 
-Give the new **Space** a name and a description, then click **Create** to create a new **Space**.
-
 ![IPAM Add Space Details](./images/add_space_details.png)
+
+**Editing a Space** — Select a Space in the grid, then choose **Edit Space** from the action menu. You can update the name or description.
+
+**Deleting a Space** — Select a Space and choose **Delete Space** from the action menu. If the Space contains Blocks, you will need to enable **Force Delete** to confirm the deletion. Force-deleting a Space removes all of its Blocks and their associated data (virtual network associations, reservations, and external networks).
+
+Space names must be 1–64 characters and can contain alphanumeric characters, underscores, hyphens, and periods. They cannot start or end with a period, underscore, or hyphen.
+
+### Managing Spaces via the API
+
+Space operations are also available through the Azure IPAM REST API. For the full list of available endpoints and example calls, please see the [Spaces](/api/README.md#spaces) section of the API documentation.
 
 ## Blocks
 
-A **Block** represents an IP address CIDR range. It can contain vNETs whose address space resides within the defined CIDR range of the **Block**. **Blocks** cannot contain vNETs with overlapping address space. As an IPAM user, you can get to the **Blocks** tab via the **Discover** section of the menu blade. From the **Blocks** tab, you can see utilization metrics for each **Block**.
+A **Block** represents an IPv4 CIDR range within a Space. It can contain Azure virtual networks and virtual hubs whose address space falls within the Block's CIDR range, along with CIDR Reservations and External Networks. Blocks within the same Space cannot have overlapping CIDR ranges.
+
+### Viewing Blocks
+
+Navigate to **Discover → Blocks** to see all Blocks. The grid shows each Block's **Name** (with a drill-down arrow to its vNets and vHubs), parent **Space**, **CIDR** range, **Utilization** bar, total **Size**, and **Used** address count.
 
 ![IPAM Blocks](./images/discover_blocks.png)
 
-As an IPAM Administrator, you can add **Blocks** via the **Configure** section of the menu blade. After selecting which **Space** you want to add a **Block** to, clicking on the 3 ellipses will bring up a menu of **Block** operations. Select **Add Block**.
+### Managing Blocks
+
+Blocks are managed from the **Configure → Basics** page. Select a Space in the upper grid to populate the Block data grid in the lower half of the page.
+
+> **Note:** Block management (creating, editing, and deleting) is an **IPAM Administrator** function.
+
+**Adding a Block** — Click the action menu (down chevron) on the Block grid and select **Add Block**. Provide a name and a valid IPv4 CIDR range, then click **Create**.
 
 ![IPAM Add Block](./images/add_block.png)
 
-Give the new **Block** a name a valid CIDR range, then click **Create** to create add a new **Block** to the target **Space**.
-
 ![IPAM Add Block Details](./images/add_block_details.png)
+
+**Editing a Block** — Select a Block and choose **Edit Block** from the action menu. You can update the name or CIDR range. When changing the CIDR, the new range must still contain all currently associated virtual networks, reservations, and external networks.
+
+**Deleting a Block** — Select a Block and choose **Delete Block** from the action menu. If the Block contains any virtual network associations or active reservations, you will need to enable **Force Delete** to proceed.
+
+Block names follow the same naming rules as Spaces (1–64 characters, alphanumerics, underscores, hyphens, and periods).
+
+> **Shortcut:** The Block action menu also provides quick links to **Block Networks** (Associations), **Reservations**, and **External Networks**. Selecting one of these navigates to the corresponding Configure tab with the Space and Block pre-selected.
+
+### Managing Blocks via the API
+
+Block operations are also available through the Azure IPAM REST API. For the full list of available endpoints and example calls, please see the [Blocks](/api/README.md#blocks) section of the API documentation.
+
+## Azure Network Resources
+
+As an Azure IPAM user, you can view IP address utilization information and detailed Azure resource data for **vNets**, **Subnets**, **Virtual Hubs (vHubs)**, and **Endpoints** that you have existing Azure RBAC access to. Each resource type has its own tab in the **Discover** section.
+
+### Virtual Networks
+
+The **vNets** tab shows all Azure virtual networks visible to you. The grid displays the **Name** (with a drill-down arrow to Subnets), parent **Block** (if associated), **Utilization** bar, total **Size**, **Used** address count, and **Prefixes** (address spaces). Additional columns such as **Resource Group**, **Subscription Name**, and **Subscription ID** are available but hidden by default.
+
+![IPAM vNETs](./images/discover_vnets.png)
+
+Click the expand chevron on any row to open the details panel with more granular vNet information and a **VIEW IN PORTAL** link.
+
+![IPAM vNETs Details](./images/discover_vnets_details.png)
+
+### Subnets
+
+The **Subnets** tab shows all subnets across your visible virtual networks. The grid shows the **Name** (with a drill-down arrow to Endpoints), parent **vNet**, **Utilization** bar, **Size**, **Used** count, and **Prefix**. Additional columns for Resource Group, Subscription Name, and Subscription ID are hidden by default.
+
+![IPAM Subnets](./images/discover_subnets.png)
+
+Click the expand chevron to view additional details and the **VIEW IN PORTAL** link.
+
+![IPAM Subnets Details](./images/discover_subnets_details.png)
+
+### Virtual Hubs
+
+The **vHubs** tab shows Azure Virtual WAN hubs that have been associated with a Block. Virtual Hubs are a component of [Azure Virtual WAN](https://learn.microsoft.com/azure/virtual-wan/virtual-wan-about) and serve as the central networking point for branch, site-to-site, and point-to-site connectivity.
+
+The grid displays the **Name** (with a drill-down arrow to Endpoints), parent **Virtual WAN** name, parent **Block** (if associated), **Prefixes**, and **Resource Group**. Additional columns for Subscription Name and Subscription ID are hidden by default.
+
+<!-- TODO: Screenshot needed -->
+![IPAM vHubs](./images/discover_vhubs.png)
+
+Click the expand chevron to view additional details and the **VIEW IN PORTAL** link.
+
+![IPAM vHubs Details](./images/discover_vhubs_details.png)
+
+> **Note:** Unlike vNets and Subnets, vHubs do not display a utilization bar in the Discover grid. Virtual hubs are associated with Blocks via the same [Virtual Network Associations](#virtual-network-associations) mechanism as vNets.
+
+### Endpoints
+
+The **Endpoints** tab shows individual network endpoints (NICs and private endpoints) across your visible virtual networks. The grid shows the **Name**, parent **vNet** and **Subnet**, **Resource Group**, and **Private IP**. Additional columns for Subscription Name and Subscription ID are hidden by default.
+
+![IPAM Endpoints](./images/discover_endpoints.png)
+
+Endpoints that are no longer attached to a subnet (orphaned) are flagged with an informational indicator next to their name.
+
+Click the expand chevron to view additional details. The information shown varies by endpoint type and includes a **VIEW IN PORTAL** link.
+
+![IPAM Endpoints Details](./images/discover_endpoints_details.png)
+
+> **Note:** Unlike vNets and Subnets, Endpoints do not display a utilization bar.
 
 ## Virtual Network Associations
 
@@ -127,6 +231,8 @@ To associate virtual networks with a Block, place a checkmark next to each virtu
 
 Click **Save** to apply your changes. On success, you'll see a confirmation notification and the Block's virtual network list has been updated. Note that saving performs a **full replacement** — the Block's entire list of associated networks is replaced with whatever is currently selected in the grid.
 
+![IPAM Associate vNETs Update](./images/virtual_network_association_update.png)
+
 #### Disassociating Virtual Networks
 
 To disassociate a virtual network from a Block, simply un-check it in the grid and click **Save**. Disassociating a virtual network releases its address prefixes from the Block's utilization calculations, making that space available for new allocations.
@@ -136,6 +242,8 @@ To disassociate a virtual network from a Block, simply un-check it in the grid a
 A virtual network can become stale if it is deleted from Azure or if its address space is changed so that it no longer falls within the Block's CIDR range. Azure IPAM's background reconciliation process detects these changes and marks the associations as inactive.
 
 Stale associations are displayed at the top of the grid with a **red background** to draw attention. Their prefixes column will display `ErrNotFound` to indicate the network could not be located in Azure.
+
+![IPAM Associate vNETs Stale](./images/virtual_network_association_stale.png)
 
 To clean up stale associations, un-check the stale entries and click **Save** to remove them from the Block.
 
@@ -334,40 +442,6 @@ All Reservation operations are also available through the Azure IPAM REST API. F
 - **Use Reverse Search for large Blocks**: If you have a large Block and want to avoid fragmenting the beginning of the range, enable **Reverse Search** to allocate from the end.
 - **Use Smallest CIDR to reduce fragmentation**: Enable **Smallest CIDR** when you want to preserve larger contiguous ranges for future use
 - **Multiple address spaces require multiple Reservations**: If your virtual network will have more than one address space, create a separate Reservation for each prefix and set the `X-IPAM-RES-ID` tag value to a comma-separated list of all Reservation IDs (e.g., `id1,id2`)
-
-## vNETs, Subnets, and Endpoints
-
-As an IPAM user, you can view IP address utilization information and detailed Azure resource related information for **vNETs**, **Subnets**, and **Endpoints** you have existing Azure RBAC access to.
-
-### Virtual Networks
-
-For **vNETs**, you can find the name, view the parent **Block** (if assigned), utilization metrics, and the **vNET** address space(s).
-
-![IPAM vNETs](./images/discover_vnets.png)
-
-By clicking to expand the **vNET** details, you can find more granular **vNET** information and are presented the option to view the **vNET** resource directly in the Azure Portal by clicking on **VIEW IN PORTAL**.
-
-![IPAM vNETs Details](./images/discover_vnets_details.png)
-
-### Subnets
-
-For **Subnets**, you can find the name, view the parent **vNET**, utilization metrics, and the **Subnet** address range.
-
-![IPAM Subnets](./images/discover_subnets.png)
-
-By clicking to expand the **Subnet** details, you can find more granular **Subnet** information and are presented the option to view the **Subnet** resource directly in the Azure Portal by clicking on **VIEW IN PORTAL**.
-
-![IPAM Subnets Details](./images/discover_subnets_details.png)
-
-### Endpoints
-
-For **Endpoints**, you can find the name, view the parent **vNET** and **Subnet**, Resource Group, and the private IP of the **Endpoint**
-
-![IPAM Endpoints](./images/discover_endpoints.png)
-
-By clicking to expand the **Endpoint** details, you can find more granular **Endpoint** information (which varies based on the endpoint type) and are presented the option to view the **Endpoint** resource directly in the Azure Portal by clicking on **VIEW IN PORTAL**.
-
-![IPAM Endpoints Details](./images/discover_endpoints_details.png)
 
 ## External Networks
 
