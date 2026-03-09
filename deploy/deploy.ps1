@@ -398,6 +398,32 @@ process {
     return $validLocations.Contains($Location)
   }
 
+  Function Get-AccessToken {
+    Param(
+      [Parameter(Mandatory = $false)]
+      [string]$Resource,
+      [Parameter(Mandatory = $false)]
+      [switch]$AsPlainText
+    )
+
+    $params = @{}
+    if ($Resource) { $params['Resource'] = $Resource }
+
+    $token = (Get-AzAccessToken @params).Token
+
+    if ($AsPlainText) {
+      if ($token -is [System.Security.SecureString]) {
+        return ConvertFrom-SecureString $token -AsPlainText -Force
+      }
+      return $token
+    } else {
+      if ($token -isnot [System.Security.SecureString]) {
+        return ConvertTo-SecureString $token -AsPlainText -Force
+      }
+      return $token
+    }
+  }
+
   Function Get-BuildLogs {
     Param(
       [Parameter(Mandatory = $true)]
@@ -420,11 +446,7 @@ process {
       AZURE_CHINA         = "management.chinacloudapi.cn"
     }
 
-    $accessToken = (Get-AzAccessToken).Token
-
-    if ($accessToken -isnot [System.Security.SecureString]) {
-      $accessToken = ConvertTo-SecureString $accessToken -AsPlainText -Force
-    }
+    $accessToken = Get-AccessToken
 
     $response = Invoke-RestMethod `
       -Method POST `
@@ -700,19 +722,7 @@ process {
     )
 
     # Get Microsoft Graph Access Token
-    $accesstoken = (Get-AzAccessToken -Resource "https://$($msGraphMap[$AzureCloud].Endpoint)/").Token
-
-    # Switch Access Token to SecureString if Graph Version is 2.x
-    $graphVersion = [System.Version](Get-InstalledModule -Name Microsoft.Graph -ErrorAction SilentlyContinue | Sort-Object -Property Version | Select-Object -Last 1).Version `
-      ?? (Get-Module -Name Microsoft.Graph -ErrorAction SilentlyContinue | Sort-Object -Property Version | Select-Object -Last 1).Version `
-      ?? (Get-Module -Name Microsoft.Graph -ListAvailable -ErrorAction SilentlyContinue | Sort-Object -Property Version | Select-Object -Last 1).Version `
-      ?? [System.Version]([array](Get-InstalledModule | Where-Object { $_.Name -like "Microsoft.Graph.*" } | Select-Object -ExpandProperty Version | Sort-Object | Get-Unique))[0]
-
-    if ($graphVersion.Major -gt 1) {
-      if ($accesstoken -isnot [System.Security.SecureString]) {
-        $accesstoken = ConvertTo-SecureString $accesstoken -AsPlainText -Force
-      }
-    }
+    $accesstoken = Get-AccessToken -Resource "https://$($msGraphMap[$AzureCloud].Endpoint)/"
 
     Write-Host "INFO: Logging in to Microsoft Graph" -ForegroundColor Green
 
@@ -996,11 +1006,7 @@ process {
     $publishSuccess = $False
 
     if ($UseAPI) {
-      $accessToken = (Get-AzAccessToken).Token
-
-      if ($accessToken -is [System.Security.SecureString]) {
-        $accessToken = ConvertFrom-SecureString $accessToken -AsPlainText -Force
-      }
+      $accessToken = Get-AccessToken -AsPlainText
 
       $zipContents = Get-Item -Path $ZipFilePath
 

@@ -139,6 +139,32 @@ $azureCloud = $null    # Azure cloud environment (AZURE_PUBLIC, AZURE_US_GOV, et
 $privateAcr = $false   # Flag indicating if private ACR is used vs public registry
 
 # Helper Functions
+function Get-AccessToken {
+  Param(
+    [Parameter(Mandatory = $false)]
+    [string]$Resource,
+    [Parameter(Mandatory = $false)]
+    [switch]$AsPlainText
+  )
+
+  $params = @{}
+  if ($Resource) { $params['Resource'] = $Resource }
+
+  $token = (Get-AzAccessToken @params).Token
+
+  if ($AsPlainText) {
+    if ($token -is [System.Security.SecureString]) {
+      return ConvertFrom-SecureString $token -AsPlainText -Force
+    }
+    return $token
+  } else {
+    if ($token -isnot [System.Security.SecureString]) {
+      return ConvertTo-SecureString $token -AsPlainText -Force
+    }
+    return $token
+  }
+}
+
 function Get-UserConfirmation {
   param(
     [Parameter(Mandatory = $true)]
@@ -263,7 +289,7 @@ Function Get-BuildLogs {
     AZURE_CHINA          = "management.chinacloudapi.cn"
   };
 
-  $accessToken = (Get-AzAccessToken).Token
+  $accessToken = Get-AccessToken
 
   $response = Invoke-RestMethod `
     -Method POST `

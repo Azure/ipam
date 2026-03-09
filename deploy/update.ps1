@@ -106,6 +106,32 @@ $containerBuildError = $false
 
 $TempFolderObj = $null
 
+Function Get-AccessToken {
+  Param(
+    [Parameter(Mandatory = $false)]
+    [string]$Resource,
+    [Parameter(Mandatory = $false)]
+    [switch]$AsPlainText
+  )
+
+  $params = @{}
+  if ($Resource) { $params['Resource'] = $Resource }
+
+  $token = (Get-AzAccessToken @params).Token
+
+  if ($AsPlainText) {
+    if ($token -is [System.Security.SecureString]) {
+      return ConvertFrom-SecureString $token -AsPlainText -Force
+    }
+    return $token
+  } else {
+    if ($token -isnot [System.Security.SecureString]) {
+      return ConvertTo-SecureString $token -AsPlainText -Force
+    }
+    return $token
+  }
+}
+
 Function Get-BuildLogs {
   Param(
     [Parameter(Mandatory=$true)]
@@ -126,7 +152,7 @@ Function Get-BuildLogs {
     AZURE_CHINA          = "management.chinacloudapi.cn"
   };
 
-  $accessToken = (Get-AzAccessToken).Token | ConvertTo-SecureString -AsPlainText
+  $accessToken = Get-AccessToken
 
   $response = Invoke-RestMethod `
     -Method POST `
@@ -280,7 +306,7 @@ Function Publish-ZipFile {
   $publishSuccess = $False
 
   if ($UseAPI) {
-    $accessToken = (Get-AzAccessToken).Token
+    $accessToken = Get-AccessToken -AsPlainText
     $zipContents = Get-Item -Path $ZipFilePath
 
     $publishProfile = Get-AzWebAppPublishingProfile -Name $AppName -ResourceGroupName $ResourceGroupName
