@@ -1,38 +1,66 @@
-# How to Use IPAM
+# How to Use Azure IPAM
 
 ## Authentication and Authorization
 
-![IPAM Homepage](./images/home_page.png)
+![Azure IPAM Homepage](./images/home_page.png)
 
-IPAM leverages the [Microsoft Authentication Library (MSAL)](https://docs.microsoft.com/azure/active-directory/develop/msal-overview) in order to authenticate users. It uses your existing Azure AD credentials to authenticate you and leverages your existing Azure RBAC permissions to authorize what information is visible from within the IPAM tool.
+Azure IPAM leverages the [Microsoft Authentication Library (MSAL)](https://docs.microsoft.com/azure/active-directory/develop/msal-overview) to authenticate users with your existing Microsoft Entra ID credentials. Authorization is determined by whether the signed-in user is an **IPAM Administrator**:
 
-IPAM has the concept of an **IPAM Administrator**. While using the IPAM tool as an administrator, you are viewing Azure resources through the permissions of the Engine Service Principal which, by default, has [Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#reader) at the [Tenant Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) level (unless specified otherwise at deployment time). Upon initial deployment, no IPAM administrators are set which has the effect of **all** users having administrative rights. You can define who within your Azure AD Tenant should be designated as an IPAM administrator via the **Admin** section of the menu blade.
+- **Administrators** view Azure resources through the Engine Service Principal, which by default has [Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#reader) at the [Tenant Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) (unless overridden during deployment). Administrators can also create and update [Spaces](#spaces) and [Blocks](#blocks), manage [subscription exclusions](#subscription-exclusioninclusion), and control who else is an admin.
+- **Non-administrators** see only the resources they already have access to in the Azure Portal, based on their own Azure RBAC permissions. Administrative functions such as the **Configure** and **Admin** menu sections are not available to them.
 
-![IPAM Admins](./images/ipam_admin_admins.png)
+> **Note:** Upon initial deployment, no administrators are defined. When the admin list is empty, **all** users are treated as administrators. This grants full access so you can complete initial setup, but you should designate at least one administrator promptly to restrict administrative functions.
 
-IPAM administrators have the ability to configure create/update [Spaces](#spaces) and [Blocks](#blocks) via the **Configure** section of the menu blade (more on that below). Once at least one IPAM administrator is set, non-admin users will only see resources in IPAM they already have access to from the Azure Portal, and the administrative functions of the IPAM tool will no longer be available to them.
+### Managing Administrators
 
-![IPAM Admins Config](./images/ipam_administrators_config.png)
+To manage Azure IPAM administrators, expand the **Admin** section of the menu blade and select **Admins**.
+
+![Azure IPAM Admins](./images/ipam_admin_admins.png)
+
+The page displays a table of current administrators along with a search bar at the top. Azure IPAM supports two types of administrators:
+
+- **Users** — Microsoft Entra ID user accounts, searchable by display name.
+- **Principals** — Microsoft Entra ID Service Principals (application identities), searchable by display name.
+
+Click the toggle button to the left of the search bar to switch between **User** and **Principal** search.
+
+![Azure IPAM Admin User Search](./images/ipam_admin_user_search.png)
+
+![Azure IPAM Admin Principal Search](./images/ipam_admin_principal_search.png)
+
+Type a name into the search bar to find matching entries via Microsoft Graph, then select one to add it to the admin list.
+
+![Azure IPAM Admin Search Results](./images/ipam_admin_search_results.png)
+
+To remove an administrator, click the **delete** icon on its row. The **save** icon in the upper-right corner appears only when you have unsaved changes. Click it to commit the updated admin list.
+
+![Azure IPAM Admins Config](./images/ipam_administrators_config.png)
 
 ## Subscription Exclusion/Inclusion
 
-As an IPAM administrator, you have the ability to include/exclude subscriptions from the IPAM view. To do so, expand the **Admin** section of the menu blade and select **Subscriptions**.
+As an IPAM administrator, you can exclude specific Azure subscriptions from IPAM. Excluded subscriptions are filtered out of all Azure Resource Graph queries, meaning their virtual networks, subnets, virtual hubs, and endpoints will not appear anywhere in the Discover or Configure views. This is useful for omitting subscriptions that contain irrelevant networks (such as sandbox or lab environments) so they don't clutter your IP address management view or skew utilization calculations.
+
+To manage exclusions, expand the **Admin** section of the menu blade and select **Subscriptions**.
 
 ![IPAM Admin Subscriptions](./images/ipam_admin_subscriptions.png)
 
-From this screen, you can select Subscriptions which are to be <u>**excluded**</u> from IPAM by clicking on them. Once selected for exclusion, the subscription will be highlighted in **red**. Don't forget to click **save** in the upper-right once complete.
+The subscription list displays all subscriptions visible to IPAM, along with their type and management group. Click a subscription row to toggle it between included and excluded. Excluded subscriptions are highlighted in **red**. Click the same row again to re-include it.
+
+The **save** icon in the upper-right corner appears only when you have unsaved changes. Click it to commit your selections. You can also use the action menu to toggle between viewing all subscriptions or only the currently excluded ones.
 
 ![IPAM Admin Subscriptions Config](./images/ipam_admin_subscriptions_config.png)
 
+> **Note:** Excluding a subscription does not affect any existing Space or Block configurations. If a virtual network from an excluded subscription is already associated with a Block, the association record is preserved but the network will appear as [stale](#managing-associations-via-the-ui) since it can no longer be resolved through Azure Resource Graph.
+
 ## Navigating the Discover Section
 
-The **Discover** section of the Azure IPAM menu blade provides a read-only view of your IP address space and Azure network resources. It is organized into six tabs: **Spaces**, **Blocks**, **vNets**, **Subnets**, **vHubs**, and **Endpoints**. Each tab presents a data grid with sortable and filterable columns.
+The **Discover** section of the Azure IPAM menu blade provides a read-only view of your IP address space and Azure network resources. It is organized into six tabs: **Spaces**, **Blocks**, **vNets**, **Subnets**, **vHubs**, and **Endpoints**. Each tab presents a table with sortable and filterable columns.
 
 Several interaction patterns are shared across all Discover tabs:
 
 - **Utilization bars** — Where applicable, a color-coded utilization bar shows how much of the address space is consumed. The bar displays <span style="color: green">**green**</span> at 70% or below, <span style="color: goldenrod">**yellow**</span> between 71–89%, and <span style="color: red">**red**</span> at 90% or above.
-- **Details panel** — Click the expand chevron (▶) on any row to slide open a details panel on the right side. The panel shows additional information about the selected resource, a utilization gauge (where applicable), and a **VIEW IN PORTAL** button that opens the resource directly in the Azure Portal.
-- **Drill-down navigation** — Some columns display an arrow icon (→) next to the value. Clicking the arrow navigates to a related tab, pre-filtered to show only child or associated resources. For example, clicking the arrow on a Space name takes you to the Blocks tab filtered to that Space.
+- **Details panel** — Click the expand chevron (❭) on any row to slide open a details panel on the right side. The panel shows additional information about the selected resource, a utilization gauge (where applicable), and a **VIEW IN PORTAL** button that opens the resource directly in the Azure Portal.
+- **Drill-down navigation** — Some columns display an arrow icon (⤷) next to the value. Clicking the arrow navigates to a related tab, pre-filtered to show only child or associated resources. For example, clicking the arrow on a Space name takes you to the Blocks tab filtered to that Space.
 - **Hidden columns** — Some columns (such as Subscription ID) are hidden by default to keep the grid readable. You can reveal them through the column menu.
 
 > **Tip:** The Discover section reflects what you have access to. Non-admin users see resources based on their Azure RBAC permissions, while IPAM administrators see resources across the entire tenant.
@@ -81,7 +109,7 @@ Navigate to **Discover → Blocks** to see all Blocks. The grid shows each Block
 
 ### Managing Blocks
 
-Blocks are managed from the **Configure → Basics** page. Select a Space in the upper grid to populate the Block data grid in the lower half of the page.
+Blocks are managed from the **Configure → Basics** page. Select a Space in the upper table to populate the Block table in the lower half of the page.
 
 > **Note:** Block management (creating, editing, and deleting) is an **IPAM Administrator** function.
 
@@ -107,13 +135,13 @@ Block operations are also available through the Azure IPAM REST API. For the ful
 
 As an Azure IPAM user, you can view IP address utilization information and detailed Azure resource data for **vNets**, **Subnets**, **Virtual Hubs (vHubs)**, and **Endpoints** that you have existing Azure RBAC access to. Each resource type has its own tab in the **Discover** section.
 
+> **Tip:** Every resource tab supports the expand chevron (❭) on each row. Expanding a row slides open a details panel with in-depth information about the selected resource — such as additional properties, a utilization gauge (where applicable), and a **VIEW IN PORTAL** button to jump straight to the resource in the Azure Portal.
+
 ### Virtual Networks
 
-The **vNets** tab shows all Azure virtual networks visible to you. The grid displays the **Name** (with a drill-down arrow to Subnets), parent **Block** (if associated), **Utilization** bar, total **Size**, **Used** address count, and **Prefixes** (address spaces). Additional columns such as **Resource Group**, **Subscription Name**, and **Subscription ID** are available but hidden by default.
+The **vNets** tab shows all Azure virtual networks visible to you. The table displays the **Name** (with a drill-down arrow to Subnets), parent **Block** (if associated), **Utilization** bar, total **Size**, **Used** address count, and **Prefixes** (address spaces). Additional columns such as **Resource Group**, **Subscription Name**, and **Subscription ID** are available but hidden by default.
 
 ![IPAM vNETs](./images/discover_vnets.png)
-
-Click the expand chevron on any row to open the details panel with more granular vNet information and a **VIEW IN PORTAL** link.
 
 ![IPAM vNETs Details](./images/discover_vnets_details.png)
 
@@ -122,8 +150,6 @@ Click the expand chevron on any row to open the details panel with more granular
 The **Subnets** tab shows all subnets across your visible virtual networks. The grid shows the **Name** (with a drill-down arrow to Endpoints), parent **vNet**, **Utilization** bar, **Size**, **Used** count, and **Prefix**. Additional columns for Resource Group, Subscription Name, and Subscription ID are hidden by default.
 
 ![IPAM Subnets](./images/discover_subnets.png)
-
-Click the expand chevron to view additional details and the **VIEW IN PORTAL** link.
 
 ![IPAM Subnets Details](./images/discover_subnets_details.png)
 
@@ -136,11 +162,9 @@ The grid displays the **Name** (with a drill-down arrow to Endpoints), parent **
 <!-- TODO: Screenshot needed -->
 ![IPAM vHubs](./images/discover_vhubs.png)
 
-Click the expand chevron to view additional details and the **VIEW IN PORTAL** link.
-
 ![IPAM vHubs Details](./images/discover_vhubs_details.png)
 
-> **Note:** Unlike vNets and Subnets, vHubs do not display a utilization bar in the Discover grid. Virtual hubs are associated with Blocks via the same [Virtual Network Associations](#virtual-network-associations) mechanism as vNets.
+> **Note:** Unlike vNets and Subnets, vHubs do not display a utilization bar in the Discover grid. Azure manages the internal address allocation within a Virtual Hub (for gateway subnets, routing infrastructure, firewall, etc.) and does not expose IP address utilization data through its APIs. Because of this, IPAM can track a hub's address prefix and its Block association but cannot report how much of that space is consumed. Virtual hubs are associated with Blocks via the same [Virtual Network Associations](#virtual-network-associations) mechanism as vNets.
 
 ### Endpoints
 
@@ -148,13 +172,9 @@ The **Endpoints** tab shows individual network endpoints (NICs and private endpo
 
 ![IPAM Endpoints](./images/discover_endpoints.png)
 
-Endpoints that are no longer attached to a subnet (orphaned) are flagged with an informational indicator next to their name.
-
-Click the expand chevron to view additional details. The information shown varies by endpoint type and includes a **VIEW IN PORTAL** link.
+> **Note:** Endpoints whose parent or target resource no longer exists are considered *orphaned* and are flagged with an informational indicator next to their name. For example, a private endpoint is orphaned when the resource it was created to connect to has been deleted, and a network interface is orphaned when it is no longer associated with a virtual machine or other compute resource.
 
 ![IPAM Endpoints Details](./images/discover_endpoints_details.png)
-
-> **Note:** Unlike vNets and Subnets, Endpoints do not display a utilization bar.
 
 ## Virtual Network Associations
 
@@ -204,7 +224,7 @@ Virtual Network Associations are managed from the **Configure** section of the A
 
 **Option 1: Direct navigation** — Expand the **Configure** section of the menu blade and select **Associations**. This takes you to the Associations page where you can select a Space and Block.
 
-**Option 2: From the Block configuration** — Navigate to **Configure → Basics**, select a Space and Block, then open the action menu (3 ellipses) and select **Block Networks**. This takes you to the Associations page with the Space and Block pre-selected.
+**Option 2: From the Block configuration** — Navigate to **Configure → Basics**, select a Space and Block, then open the action menu (⋮) and select **Block Networks**. This takes you to the Associations page with the Space and Block pre-selected.
 
 ![IPAM Associate vNETs](./images/virtual_network_association.png)
 
@@ -223,11 +243,11 @@ Below the toolbar is a data grid showing all eligible virtual networks for the s
 
 ![IPAM Associate vNETs Details](./images/virtual_network_association_details.png)
 
-Virtual networks that are currently associated with the Block are pre-selected (checked) when the page loads.
+> **Note:** Virtual networks that are currently associated with the Block are pre-selected (checked) when the page loads.
 
 #### Associating Virtual Networks
 
-To associate virtual networks with a Block, place a checkmark next to each virtual network you'd like to associate. The selection counter in the toolbar updates in real time as you make changes. Once your selection differs from the current associations, a **Save** button (disk icon) appears in the toolbar.
+To associate virtual networks with a Block, place a checkmark next to each virtual network you'd like to associate. The selection counter in the toolbar updates in real time as you make changes. Once your selection differs from the current associations, a **Save** button appears near the upper right in the toolbar.
 
 Click **Save** to apply your changes. On success, you'll see a confirmation notification and the Block's virtual network list has been updated. Note that saving performs a **full replacement** — the Block's entire list of associated networks is replaced with whatever is currently selected in the grid.
 
@@ -239,9 +259,12 @@ To disassociate a virtual network from a Block, simply un-check it in the grid a
 
 #### Stale Associations
 
-A virtual network can become stale if it is deleted from Azure or if its address space is changed so that it no longer falls within the Block's CIDR range. Azure IPAM's background reconciliation process detects these changes and marks the associations as inactive.
+A virtual network association can become stale for two reasons:
 
-Stale associations are displayed at the top of the grid with a **red background** to draw attention. Their prefixes column will display `ErrNotFound` to indicate the network could not be located in Azure.
+- **Deleted network** — The virtual network or virtual hub has been removed from Azure entirely. In this case, the prefixes column displays `ErrNotFound` because IPAM can no longer retrieve information about the resource.
+- **Address space mismatch** — The virtual network still exists in Azure, but its address space has been changed so that it no longer overlaps with the Block's CIDR range. In this case, the prefixes column shows the network's **current address space**, making it easier to understand what changed.
+
+Azure IPAM's background reconciliation process detects both conditions and marks the affected associations as inactive. Stale associations are displayed at the top of the grid with a **red background** to draw attention.
 
 ![IPAM Associate vNETs Stale](./images/virtual_network_association_stale.png)
 
@@ -259,17 +282,37 @@ Virtual networks created through the CIDR Reservation workflow are **automatical
 
 ### How Associations Affect Utilization
 
-When Azure IPAM calculates utilization for a Block, it considers the address prefixes of all associated virtual networks. Only prefixes that actually fall within the Block's CIDR range are counted — if a virtual network has multiple address spaces and only one falls within the Block, only that one is included in the utilization calculation.
+Azure IPAM calculates utilization at three levels of the hierarchy — Block, virtual network, and subnet — each answering a different question about how your address space is being consumed.
 
-The utilization formula for a Block is:
+#### Block Utilization
+
+Block utilization shows how much of a Block's total CIDR range has been allocated to virtual networks and external networks. Only vNet address prefixes that fall within the Block's CIDR are counted — if a virtual network has multiple address spaces and only one falls within the Block, only that one is included.
 
 ```text
-Utilization = (Associated vNET Prefixes + External Network CIDRs) / Block Total Size
+Block Utilization = (Associated vNet Prefixes + External Network CIDRs) / Block CIDR Size
 ```
 
 For example, a Block of `10.0.0.0/16` (65,536 addresses) with two associated virtual networks of `10.0.1.0/24` (256 addresses) and `10.0.2.0/24` (256 addresses) would show a utilization of 512 / 65,536 = ~1%.
 
 > **Note:** Unsettled CIDR Reservations are excluded from the utilization percentage but are still accounted for when determining available space for new allocations.
+
+#### Virtual Network Utilization
+
+Virtual network utilization shows how much of a vNet's address space has been divided into subnets. A vNet with a large address prefix but only a few small subnets will show low utilization, indicating room for additional subnets.
+
+```text
+vNet Utilization = Sum of Subnet Prefix Sizes / vNet Address Space Size
+```
+
+#### Subnet Utilization
+
+Subnet utilization shows how many IP addresses within a subnet are actually in use. This is calculated by counting the number of IP configurations (endpoints such as NICs, private endpoints, and other attached resources) plus the 5 addresses that Azure reserves in every subnet.
+
+```text
+Subnet Utilization = (IP Configurations + 5 Reserved Addresses) / Subnet Prefix Size
+```
+
+The 5 reserved addresses account for the network address, default gateway, Azure DNS addresses, and the broadcast address, which Azure reserves in every subnet regardless of size.
 
 ### Managing Associations via the API
 
@@ -324,7 +367,7 @@ You must select both a **Space** and a **Block** before you can view or manage r
 
 #### Viewing Reservations
 
-The data grid shows the following information for each Reservation:
+The table shows the following information for each Reservation:
 
 - **CIDR** — The reserved CIDR range
 - **Created By** — The user or service principal that created the Reservation
@@ -334,11 +377,9 @@ The data grid shows the following information for each Reservation:
 - **Settled By** — Who or what settled the Reservation (hidden by default)
 - **Status** — A status icon indicating the current state of the Reservation
 
-![Reservations Grid](./images/resv_grid_with_data.png)
-
 #### Filtering Active vs. Settled Reservations
 
-By default, the table shows only **active** (unsettled) Reservations. To view all Reservations, including those that have been fulfilled or cancelled, open the action menu (down chevron) and click **Showing Active** to toggle to **Showing All**. Click it again to switch back to active-only view.
+By default, the table shows only **active** (unsettled) Reservations. To view all Reservations, including those that have been fulfilled or cancelled, open the action menu and click **Showing Active** to toggle to **Showing All**. Click it again to switch back to active-only view.
 
 ![Toggle Reservation Filter](./images/resv_toggle_filter.png)
 
@@ -367,7 +408,7 @@ Enter a specific CIDR range in standard notation (e.g., `10.1.5.0/24`). The CIDR
 
 Optionally, you can add a **Description** to help identify the purpose of the Reservation.
 
-Click **Create** to submit the Reservation. On success, you'll see a confirmation notification and the new Reservation will appear in the grid.
+Click **Create** to submit the Reservation. On success, you'll see a confirmation notification and the new Reservation will appear in the table.
 
 #### Copying a Reservation ID
 
@@ -431,7 +472,7 @@ Because each Reservation ID is processed separately, a virtual network with two 
 
 ### Managing Reservations via the API
 
-All Reservation operations are also available through the Azure IPAM REST API. For the full list of available endpoints and example calls, please see the [CIDR Reservations](/api/README.md#cidr-reservations) section of the API documentation.
+All Reservation operations are also available through the Azure IPAM REST API. For the full list of available endpoints and example calls, please see the [Reservations](/api/README.md#reservations) section of the API documentation.
 
 ### Tips and Best Practices
 
@@ -510,7 +551,7 @@ To edit an existing External Network, select the network in the table, then open
 
 ![Edit External Network Menu](./images/ext_edit_network_menu.png)
 
-You can update the **Name**, **Description**, and **CIDR** of the External Network. The same validation rules apply as when creating a new network, the updated CIDR must remain within the parent Block and cannot overlap other allocated space.
+You can update the **Name**, **Description**, and **CIDR** of the External Network. The same validation rules apply as when creating a new network: the updated CIDR must remain within the parent Block and cannot overlap other Virtual Networks, External Networks, or unfulfilled Reservations. Additionally, if the External Network contains any External Subnets, the updated CIDR must be large enough to encompass all of those as well.
 
 ![Edit External Network Dialog](./images/ext_edit_network_dialog.png)
 
@@ -550,7 +591,7 @@ Define the subnet with the following details:
 
 #### Editing an External Subnet
 
-Select a Subnet in the lower table, open the action menu, and select **Edit Subnet** to modify its name, description, or CIDR.
+Select a Subnet in the lower table, open the action menu, and select **Edit Subnet** to modify its name, description, or CIDR. The updated CIDR must remain within the parent External Network, cannot overlap other External Subnets, and must be large enough to contain all existing Endpoints within the subnet.
 
 ![Edit External Subnet Dialog](./images/ext_edit_subnet_dialog.png)
 
@@ -566,7 +607,7 @@ External Endpoints represent individual hosts or devices within an External Subn
 
 #### Opening the Manage Endpoints View
 
-Select a Subnet in the lower table, then open the action menu and select **Manage Endpoints**. This opens a full-width dialog for managing all endpoints within the selected subnet.
+Select a Subnet in the lower table, then open the action menu and select **Manage Endpoints**. This opens a dialog box for managing all endpoints within the selected subnet.
 
 ![Manage Endpoints Menu](./images/ext_manage_endpoints_menu.png)
 
@@ -595,7 +636,7 @@ Click **Add** to stage the endpoint. You can add multiple endpoints before savin
 
 #### Editing an Endpoint
 
-Click on an existing endpoint row in the table to load it into the form at the top. Modify the desired fields, then click **Update** to stage the change.
+Click on an existing endpoint row in the table to load it into the form at the top. Modify the desired fields, then click **Update** to stage the change. If updating the IP address, the new address must still fall within the parent subnet's CIDR and cannot duplicate another endpoint's IP in the same subnet.
 
 #### Deleting Endpoints
 
