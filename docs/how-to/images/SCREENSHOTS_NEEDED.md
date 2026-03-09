@@ -4,6 +4,14 @@ The following screenshots are needed for various documentation pages. Each filen
 
 ---
 
+## Administration
+
+- [ ] `ipam_admin_user_search.png` — Admin page with the User/Principal toggle set to **User**, showing the "User Search" label in the search bar
+- [ ] `ipam_admin_principal_search.png` — Admin page with the toggle set to **Principal**, showing the "Principal Search" label in the search bar
+- [ ] `ipam_admin_search_results.png` — Admin search bar with a name typed and the autocomplete dropdown showing matching results
+
+---
+
 ## Reservations
 
 ### Navigation & Page Layout
