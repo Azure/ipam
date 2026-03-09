@@ -553,8 +553,6 @@ To edit an existing External Network, select the network in the table, then open
 
 You can update the **Name**, **Description**, and **CIDR** of the External Network. The same validation rules apply as when creating a new network: the updated CIDR must remain within the parent Block and cannot overlap other Virtual Networks, External Networks, or unfulfilled Reservations. Additionally, if the External Network contains any External Subnets, the updated CIDR must be large enough to encompass all of those as well.
 
-![Edit External Network Dialog](./images/ext_edit_network_dialog.png)
-
 #### Deleting an External Network
 
 To delete an External Network, select it in the table, open the action menu, and select **Delete Network**.
@@ -599,6 +597,10 @@ Select a Subnet in the lower table, open the action menu, and select **Edit Subn
 
 Select a Subnet, open the action menu, and choose **Remove Subnet**. If the subnet contains endpoints, you will need to use the **Force Delete** option.
 
+![Delete External Subnet Menu](./images/ext_delete_subnet_menu.png)
+
+You will be asked to confirm the deletion. If the External Subnet contains endpoints, you will need to enable the **Force Delete** option and confirm a second time before the deletion proceeds.
+
 ![Delete External Subnet Dialog](./images/ext_delete_subnet_dialog.png)
 
 ### Managing External Endpoints
@@ -630,7 +632,11 @@ Fill in the endpoint details in the form at the top of the dialog:
 
 Click **Add** to stage the endpoint. You can add multiple endpoints before saving.
 
-![Add Endpoint Form](./images/ext_add_endpoint_form.png)
+![Add Endpoint Dialog](./images/ext_add_endpoint_dialog.png)
+
+You can review all staged additional endpoints before clicking **Save** to commit them.
+
+![Add Endpoint Dialog Save](./images/ext_add_endpoint_dialog_save.png)
 
 > **Tip:** The IP Address dropdown automatically shows only the available (unassigned) IP addresses within the subnet's CIDR range.
 
@@ -638,15 +644,25 @@ Click **Add** to stage the endpoint. You can add multiple endpoints before savin
 
 Click on an existing endpoint row in the table to load it into the form at the top. Modify the desired fields, then click **Update** to stage the change. If updating the IP address, the new address must still fall within the parent subnet's CIDR and cannot duplicate another endpoint's IP in the same subnet.
 
+![Update External Endpoint Dialog](./images/ext_update_endpoint_dialog.png)
+
+You can review all staged endpoints updates before clicking **Save** to commit them.
+
+![Update External Endpoint Dialog Save](./images/ext_update_endpoint_dialog_save.png)
+
 #### Deleting Endpoints
 
 To delete an endpoint, first click the row in the table to select it. The delete icon will appear in that row once it is selected. Click the delete icon to stage the endpoint for deletion.
 
+![Delete External Endpoint Dialog](./images/ext_delete_endpoint_dialog.png)
+
+You can review all staged endpoint deletions before clicking **Save** to commit them.
+
+![Delete External Endpoint Dialog Save](./images/ext_delete_endpoint_dialog_save.png)
+
 #### Saving Endpoint Changes
 
-All endpoint changes (additions, updates, and deletions) are staged locally in the dialog. Once you are satisfied with the changes, click **Save** to commit them all at once. This replaces the full endpoint list for the subnet in a single operation.
-
-![Save Endpoints](./images/ext_save_endpoints.png)
+All endpoint changes (additions, updates, and deletions) are staged locally in the dialog before being committed. This allows you to perform multiple operations in a single batch — for example, you can add new endpoints, update existing ones, and delete others all in the same dialog session. Once you are satisfied with all your changes, click **Save** to commit them all at once. This replaces the full endpoint list for the subnet in a single operation.
 
 ### Managing External Networks via the API
 
