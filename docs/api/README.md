@@ -310,9 +310,184 @@ $available = Invoke-RestMethod `
     -Headers $headers
 ```
 
-## CIDR Reservations
+## Virtual Network Associations
 
-CIDR Reservations allow you to claim address space within a Block before creating an Azure virtual network. For more information on what reservations are, how the lifecycle works, and how to manage them via the UI, please see the [Reservations](/how-to/README.md#reservations) section of the How-To documentation.
+Virtual Network Associations map Azure virtual networks (and virtual hubs) to Blocks within Azure IPAM. Associating a network tells Azure IPAM that its address space is allocated from the Block's CIDR range, which drives utilization tracking and overlap prevention. All association management endpoints are restricted to Azure IPAM administrators.
+
+For more information on what Virtual Network Associations are, how eligibility rules work, and how to manage them via the UI, please see the [Virtual Network Associations](/how-to/README.md#virtual-network-associations) section of the How-To documentation.
+
+The API base path for Virtual Network Association operations is:
+
+```text
+/api/spaces/{space}/blocks/{block}
+```
+
+### Association Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/spaces/{space}/blocks/{block}/available` | List virtual networks eligible for association |
+| `GET` | `/spaces/{space}/blocks/{block}/networks` | List currently associated virtual networks |
+| `POST` | `/spaces/{space}/blocks/{block}/networks` | Add a single virtual network association |
+| `PUT` | `/spaces/{space}/blocks/{block}/networks` | Replace all associations (full replacement) |
+| `DELETE` | `/spaces/{space}/blocks/{block}/networks` | Remove one or more associations |
+
+> **Note:** The `GET /available` endpoint is accessible to all authenticated users. All other association endpoints (`GET /networks`, `POST`, `PUT`, `DELETE`) are restricted to Azure IPAM administrators and will return `403 Forbidden` for non-admin users.
+>
+> When an administrator calls `GET /available`, the Azure Resource Graph query runs with the application's service principal credentials, returning networks across the entire tenant. When a non-admin user calls the same endpoint, the query runs on behalf of the user (OBO), so only networks in Azure subscriptions the user has RBAC read access to are returned.
+
+### Query Parameters
+
+The `GET /available` and `GET /networks` endpoints accept an optional `expand` query parameter (default: `false`). When set to `true`, the response includes full network details (name, resource group, subscription, prefixes) rather than just resource IDs.
+
+### Example API Calls
+
+The following examples demonstrate common Virtual Network Association operations using Azure PowerShell. As with the other examples, you'll need to obtain an Azure AD token and set up your common variables first.
+
+```powershell
+$engineClientId = '<Engine App Registration Client ID>'
+$appName = 'ipamdev'
+$space = 'TestSpace'
+$block = 'TestBlock'
+
+$accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token -AsPlainText
+
+$headers = @{
+    'Accept'       = 'application/json'
+    'Content-Type' = 'application/json'
+}
+```
+
+#### List Available Virtual Networks
+
+Before associating virtual networks, you can query which networks are eligible for a given Block. This returns only networks whose address space falls within the Block's CIDR range and does not overlap unfulfilled Reservations or External Networks. For non-admin users, the results are further scoped to networks in Azure subscriptions the caller has RBAC read access to (see note above).
+
+```powershell
+# Get available networks (IDs only)
+$available = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/available" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+
+# Get available networks with full details
+$availableExpanded = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/available?expand=true" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+```
+
+The expanded response includes the following fields for each network:
+
+```text
+$availableExpanded[0]
+
+name            : my-vnet-01
+id              : /subscriptions/.../providers/Microsoft.Network/virtualNetworks/my-vnet-01
+prefixes        : {10.1.0.0/24}
+resource_group  : rg-networking
+subscription_id : xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+tenant_id       : xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```
+
+#### List Current Associations
+
+Retrieve the virtual networks currently associated with a Block.
+
+```powershell
+# Get current associations (IDs and active status)
+$networks = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+
+# Get current associations with full details
+$networksExpanded = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks?expand=true" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+```
+
+#### Add a Single Virtual Network
+
+Associate a single virtual network with a Block by providing its Azure resource ID.
+
+```powershell
+$body = @{
+    id = '/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/rg-networking/providers/Microsoft.Network/virtualNetworks/my-vnet-01'
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Post' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+The virtual network must meet all eligibility requirements: its address space must fall within the Block's CIDR, it must not overlap existing associations, Reservations, or External Networks, and it must not already be associated with the Block.
+
+#### Replace All Associations
+
+This is the same operation the UI performs when you click **Save**. It replaces the Block's entire association list with the provided array of resource IDs. This is useful when you want to set the exact list of associated networks in a single call.
+
+```powershell
+$body = @(
+    '/subscriptions/.../providers/Microsoft.Network/virtualNetworks/my-vnet-01',
+    '/subscriptions/.../providers/Microsoft.Network/virtualNetworks/my-vnet-02',
+    '/subscriptions/.../providers/Microsoft.Network/virtualHubs/my-vhub-01'
+) | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Put' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+The following validations are enforced:
+
+- No duplicate IDs in the list
+- Every ID must resolve to a valid Azure virtual network or virtual hub
+- Every network must have at least one address prefix within the Block's CIDR
+- No CIDR overlap between networks in the list
+- No CIDR overlap with unsettled Reservations or External Networks in the Block
+
+> **Note:** This is a full replacement operation. Any previously associated virtual networks that are not included in the new list will be disassociated.
+
+#### Remove Associations
+
+Remove one or more virtual network associations by providing an array of resource IDs to disassociate.
+
+```powershell
+$body = @(
+    '/subscriptions/.../providers/Microsoft.Network/virtualNetworks/my-vnet-01'
+) | ConvertTo-Json
+
+Invoke-RestMethod `
+    -Method 'Delete' `
+    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+All IDs in the list must currently exist in the Block's association list. Attempting to remove an ID that is not associated will result in an error.
+
+## Reservations
+
+Reservations allow you to claim address space within a Block before creating an Azure virtual network. For more information on what reservations are, how the lifecycle works, and how to manage them via the UI, please see the [Reservations](/how-to/README.md#reservations) section of the How-To documentation.
 
 The API supports creating reservations against a specific Block, or against a list of Blocks (IPAM will use the first Block with available space).
 
@@ -334,11 +509,11 @@ The API supports creating reservations against a specific Block, or against a li
 
 You'll need to provide the following for each API call:
 
-* Bearer Token
-* HTTP Method
-* API Request URL
-* HTTP Headers
-* Request Body (POST/DELETE)
+- Bearer Token
+- HTTP Method
+- API Request URL
+- HTTP Headers
+- Request Body (POST/DELETE)
 
 Here is an example of how to create an IP address CIDR reservation in order to create a new vNET. We'll be performing a POST to the following request URL:
 
@@ -534,181 +709,6 @@ Invoke-RestMethod `
 > **Note:** Cancelling a reservation does not hard-delete it. The reservation remains in the system with a status of `cancelledByUser` and is visible when querying with `settled=true`. Non-admin users can only cancel reservations they created.
 
 Take a look at our **Azure Landing Zone integration** example found under the `deploy` directory in the repository for a real work example of how to automate vNET creation by means of Bicep and leveraging the Azure IPAM API.
-
-## Virtual Network Associations
-
-Virtual Network Associations map Azure virtual networks (and virtual hubs) to Blocks within Azure IPAM. Associating a network tells Azure IPAM that its address space is allocated from the Block's CIDR range, which drives utilization tracking and overlap prevention. All association management endpoints are restricted to Azure IPAM administrators.
-
-For more information on what Virtual Network Associations are, how eligibility rules work, and how to manage them via the UI, please see the [Virtual Network Associations](/how-to/README.md#virtual-network-associations) section of the How-To documentation.
-
-The API base path for Virtual Network Association operations is:
-
-```text
-/api/spaces/{space}/blocks/{block}
-```
-
-### Association Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/spaces/{space}/blocks/{block}/available` | List virtual networks eligible for association |
-| `GET` | `/spaces/{space}/blocks/{block}/networks` | List currently associated virtual networks |
-| `POST` | `/spaces/{space}/blocks/{block}/networks` | Add a single virtual network association |
-| `PUT` | `/spaces/{space}/blocks/{block}/networks` | Replace all associations (full replacement) |
-| `DELETE` | `/spaces/{space}/blocks/{block}/networks` | Remove one or more associations |
-
-> **Note:** The `GET /available` endpoint is accessible to all authenticated users. All other association endpoints (`GET /networks`, `POST`, `PUT`, `DELETE`) are restricted to Azure IPAM administrators and will return `403 Forbidden` for non-admin users.
->
-> When an administrator calls `GET /available`, the Azure Resource Graph query runs with the application's service principal credentials, returning networks across the entire tenant. When a non-admin user calls the same endpoint, the query runs on behalf of the user (OBO), so only networks in Azure subscriptions the user has RBAC read access to are returned.
-
-### Query Parameters
-
-The `GET /available` and `GET /networks` endpoints accept an optional `expand` query parameter (default: `false`). When set to `true`, the response includes full network details (name, resource group, subscription, prefixes) rather than just resource IDs.
-
-### Example API Calls
-
-The following examples demonstrate common Virtual Network Association operations using Azure PowerShell. As with the other examples, you'll need to obtain an Azure AD token and set up your common variables first.
-
-```powershell
-$engineClientId = '<Engine App Registration Client ID>'
-$appName = 'ipamdev'
-$space = 'TestSpace'
-$block = 'TestBlock'
-
-$accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token -AsPlainText
-
-$headers = @{
-    'Accept'       = 'application/json'
-    'Content-Type' = 'application/json'
-}
-```
-
-#### List Available Virtual Networks
-
-Before associating virtual networks, you can query which networks are eligible for a given Block. This returns only networks whose address space falls within the Block's CIDR range and does not overlap unfulfilled Reservations or External Networks. For non-admin users, the results are further scoped to networks in Azure subscriptions the caller has RBAC read access to (see note above).
-
-```powershell
-# Get available networks (IDs only)
-$available = Invoke-RestMethod `
-    -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/available" `
-    -Authentication 'Bearer' `
-    -Token $accessToken `
-    -Headers $headers
-
-# Get available networks with full details
-$availableExpanded = Invoke-RestMethod `
-    -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/available?expand=true" `
-    -Authentication 'Bearer' `
-    -Token $accessToken `
-    -Headers $headers
-```
-
-The expanded response includes the following fields for each network:
-
-```text
-$availableExpanded[0]
-
-name            : my-vnet-01
-id              : /subscriptions/.../providers/Microsoft.Network/virtualNetworks/my-vnet-01
-prefixes        : {10.1.0.0/24}
-resource_group  : rg-networking
-subscription_id : xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-tenant_id       : xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-```
-
-#### List Current Associations
-
-Retrieve the virtual networks currently associated with a Block.
-
-```powershell
-# Get current associations (IDs and active status)
-$networks = Invoke-RestMethod `
-    -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks" `
-    -Authentication 'Bearer' `
-    -Token $accessToken `
-    -Headers $headers
-
-# Get current associations with full details
-$networksExpanded = Invoke-RestMethod `
-    -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks?expand=true" `
-    -Authentication 'Bearer' `
-    -Token $accessToken `
-    -Headers $headers
-```
-
-#### Add a Single Virtual Network
-
-Associate a single virtual network with a Block by providing its Azure resource ID.
-
-```powershell
-$body = @{
-    id = '/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/rg-networking/providers/Microsoft.Network/virtualNetworks/my-vnet-01'
-} | ConvertTo-Json
-
-$response = Invoke-RestMethod `
-    -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks" `
-    -Authentication 'Bearer' `
-    -Token $accessToken `
-    -Headers $headers `
-    -Body $body
-```
-
-The virtual network must meet all eligibility requirements: its address space must fall within the Block's CIDR, it must not overlap existing associations, Reservations, or External Networks, and it must not already be associated with the Block.
-
-#### Replace All Associations
-
-This is the same operation the UI performs when you click **Save**. It replaces the Block's entire association list with the provided array of resource IDs. This is useful when you want to set the exact list of associated networks in a single call.
-
-```powershell
-$body = @(
-    '/subscriptions/.../providers/Microsoft.Network/virtualNetworks/my-vnet-01',
-    '/subscriptions/.../providers/Microsoft.Network/virtualNetworks/my-vnet-02',
-    '/subscriptions/.../providers/Microsoft.Network/virtualHubs/my-vhub-01'
-) | ConvertTo-Json
-
-$response = Invoke-RestMethod `
-    -Method 'Put' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks" `
-    -Authentication 'Bearer' `
-    -Token $accessToken `
-    -Headers $headers `
-    -Body $body
-```
-
-The following validations are enforced:
-
-- No duplicate IDs in the list
-- Every ID must resolve to a valid Azure virtual network or virtual hub
-- Every network must have at least one address prefix within the Block's CIDR
-- No CIDR overlap between networks in the list
-- No CIDR overlap with unsettled Reservations or External Networks in the Block
-
-> **Note:** This is a full replacement operation. Any previously associated virtual networks that are not included in the new list will be disassociated.
-
-#### Remove Associations
-
-Remove one or more virtual network associations by providing an array of resource IDs to disassociate.
-
-```powershell
-$body = @(
-    '/subscriptions/.../providers/Microsoft.Network/virtualNetworks/my-vnet-01'
-) | ConvertTo-Json
-
-Invoke-RestMethod `
-    -Method 'Delete' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks" `
-    -Authentication 'Bearer' `
-    -Token $accessToken `
-    -Headers $headers `
-    -Body $body
-```
-
-All IDs in the list must currently exist in the Block's association list. Attempting to remove an ID that is not associated will result in an error.
 
 ## External Networks
 
