@@ -28,9 +28,7 @@ $block           = 'ExampleBlock'
 $reservationSize = 24  # CIDR mask size (e.g. 24 = /24)
 
 # --- Authenticate ---
-$accessToken = ConvertTo-SecureString `
-    (Get-AzAccessToken -ResourceUrl "api://$engineClientId").Token `
-    -AsPlainText
+$accessToken = (Get-AzAccessToken -ResourceUrl "api://$engineClientId").Token
 
 $headers = @{
     'Accept'       = 'application/json'

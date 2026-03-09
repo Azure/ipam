@@ -17,6 +17,8 @@ Standalone scripts for interacting with the Azure IPAM API. These are not used b
 - [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell) (Az module)
 - An authenticated session (`Connect-AzAccount`)
 
+> **Note:** As of [Azure PowerShell v14](https://learn.microsoft.com/powershell/azure/release-notes-azureps#1400---may-2025), `Get-AzAccessToken` returns the `.Token` property as a `SecureString`. The PowerShell examples in this folder use the v14+ syntax. If you are using an earlier version, wrap the result with `ConvertTo-SecureString ... -AsPlainText -Force`.
+
 **Bash scripts** require:
 
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
