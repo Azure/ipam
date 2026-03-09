@@ -58,19 +58,19 @@ When authenticating to Azure IPAM for the first time, you are presented with a *
 
 ### <u>Verify</u>
 
-The role of [Global Administrator](https://learn.microsoft.com/azure/active-directory/roles/permissions-reference#global-administrator) is required to deploy the Azure IPAM solution. This role is needed to [grant admin consent](https://learn.microsoft.com/azure/active-directory/manage-apps/grant-admin-consent?pivots=portal) for the API permissions used by the Azure IPAM [App Registrations](https://learn.microsoft.com/azure/active-directory/develop/app-objects-and-service-principals#application-registration).
+The role of [Global Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#global-administrator) is required to deploy the Azure IPAM solution. This role is needed to [grant admin consent](https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent?pivots=portal) for the API permissions used by the Azure IPAM [App Registrations](https://learn.microsoft.com/entra/identity-platform/app-objects-and-service-principals#application-registration).
 
-Navigate to your user in Azure Active Directory and check your current [Role Assignments](https://learn.microsoft.com/azure/active-directory/fundamentals/active-directory-users-assign-role-azure-portal).
+Navigate to your user in Microsoft Entra ID and check your current [Role Assignments](https://learn.microsoft.com/entra/identity/role-based-access-control/manage-roles-portal).
 
 ![Global Admin Missing](./images/global_admin_role_missing.png)
 
-You can see from the image above that the [Global Administrator](https://learn.microsoft.com/azure/active-directory/roles/permissions-reference#global-administrator) role is not present.
+You can see from the image above that the [Global Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#global-administrator) role is not present.
 
 ### <u>Resolve</u>
 
-Contact your Azure Active Directory Administrator (or equivalent) to request the [Global Administrator](https://learn.microsoft.com/azure/active-directory/roles/permissions-reference#global-administrator) role.
+Contact your Microsoft Entra ID Administrator (or equivalent) to request the [Global Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#global-administrator) role.
 
-Alternatively, if your organization (like many) has separate groups whom manage Azure Active Directory permissions and Azure infrastructure, you can leverage the two-step deployment method for Azure IPAM where a member of the [Global Administrators](https://learn.microsoft.com/azure/active-directory/roles/permissions-reference#global-administrator) can deploy the required [App Registrations](https://learn.microsoft.com/azure/active-directory/develop/app-objects-and-service-principals#application-registration), then pass the generated [Parameters](https://learn.microsoft.com/azure/azure-resource-manager/templates/parameter-files) file to the Azure Infrastructure team to complete the deployment.
+Alternatively, if your organization (like many) has separate groups who manage Microsoft Entra ID permissions and Azure infrastructure, you can leverage the two-step deployment method for Azure IPAM where a member of the [Global Administrators](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#global-administrator) can deploy the required [App Registrations](https://learn.microsoft.com/entra/identity-platform/app-objects-and-service-principals#application-registration), then pass the generated [Parameters](https://learn.microsoft.com/azure/azure-resource-manager/templates/parameter-files) file to the Azure Infrastructure team to complete the deployment.
 
 Here are the steps from the [Deployment](/deployment/README) section:
 
@@ -92,7 +92,7 @@ You can read more about the requirements for deploying Azure IPAM in the [Prereq
 
 - An error in the Application Log for the App Service stating that the *Operation...is not allow through the Azure Cosmos DB endpoint*.
 
-![Cosmos DB Not Allowed Though Endpoint](./images/cosmos_db_not_allowed.png)
+![Cosmos DB Not Allowed Through Endpoint](./images/cosmos_db_not_allowed.png)
 
 ### <u>Verify</u>
 
