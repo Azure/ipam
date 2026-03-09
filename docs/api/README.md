@@ -25,8 +25,10 @@ You can also retrieve an Azure AD token from Azure IPAM via Azure PowerShell by 
 ![IPAM API Resource URL](./images/ipam_api_resource_url.png)
 
 ```powershell
-$accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://e3ff2k34-2271-58b5-9g2g-5004145608b3).Token -AsPlainText
+$accessToken = (Get-AzAccessToken -ResourceUrl api://e3ff2k34-2271-58b5-9g2g-5004145608b3).Token
 ```
+
+> **Note:** As of [Azure PowerShell v14](https://learn.microsoft.com/powershell/azure/release-notes-azureps#1400---may-2025), `Get-AzAccessToken` returns the `.Token` property as a `SecureString`, which is the expected type for `Invoke-RestMethod -Token`. If you are using an earlier version, wrap the result with `ConvertTo-SecureString ... -AsPlainText -Force`.
 
 ## Spaces
 
@@ -52,7 +54,7 @@ All Space management endpoints (create, update, delete) are restricted to Azure 
 $engineClientId = '<Engine App Registration Client ID>'
 $appName = 'ipamdev'
 
-$accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token -AsPlainText
+$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
 
 $headers = @{
     'Accept'       = 'application/json'
@@ -186,7 +188,7 @@ $engineClientId = '<Engine App Registration Client ID>'
 $appName = 'ipamdev'
 $space = 'TestSpace'
 
-$accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token -AsPlainText
+$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
 
 $headers = @{
     'Accept'       = 'application/json'
@@ -350,7 +352,7 @@ $appName = 'ipamdev'
 $space = 'TestSpace'
 $block = 'TestBlock'
 
-$accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token -AsPlainText
+$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
 
 $headers = @{
     'Accept'       = 'application/json'
@@ -545,7 +547,7 @@ $appName = 'ipamdev'
 $space = 'TestSpace'
 $block = 'TestBlock'
 
-$accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token -AsPlainText
+$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
 
 $headers = @{
     'Accept'       = 'application/json'
@@ -764,7 +766,7 @@ $appName = 'ipamdev'
 $space = 'MySpace'
 $block = 'MyBlock'
 
-$accessToken = ConvertTo-SecureString (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token -AsPlainText
+$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
 
 $headers = @{
     'Accept'       = 'application/json'
