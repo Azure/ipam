@@ -11,24 +11,24 @@ To successfully deploy the solution, the following prerequisites must be met:
     - [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner)
     - [User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#user-access-administrator)
     - [Custom Role](https://learn.microsoft.com/azure/role-based-access-control/custom-roles) with *allow* permissions of `Microsoft.Authorization/roleAssignments/write`
-  - [Global Administrator](https://learn.microsoft.com/azure/active-directory/roles/permissions-reference#global-administrator) (needed to grant admin consent for the App Registration API permissions)
+  - [Global Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#global-administrator) (needed to grant admin consent for the App Registration API permissions)
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
   - Required to clone the Azure IPAM GitHub repository
 - [PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
-- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 8.0.0 or later installed (11.4.0 or later recommended)
+- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 11.0.0 or later installed
 - [Microsoft Graph PowerShell SDK](https://learn.microsoft.com/powershell/microsoftgraph/installation) version 2.0.0 or later installed
-  - Required for *Full* or *Identities Only* deployments to grant [Admin Consent](https://learn.microsoft.com/azure/active-directory/manage-apps/grant-admin-consent) to the App Registrations
+  - Required for *Full* or *Identities Only* deployments to grant [Admin Consent](https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent) to the App Registrations
 - [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install) version 0.21.1 or later installed
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) version 2.35.0 or later installed (optional)
   - Required only if you are building your own container image and pushing it to a private Azure Container Registry (Private ACR)
 - [Docker (Linux)](https://docs.docker.com/engine/install/) / [Docker Desktop (Windows)](https://docs.docker.com/desktop/install/windows-install/) installed (optional)
   - Required only if you are building your own container image and running it locally for development/testing purposes
 
-> **NOTE:** An alternate [Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview) can be specific, but is **highly discouraged** as it will limit the visibility of the Azure IPAM platform. This option should only be used for testing or proof-of-concept deployments.
+> **NOTE:** An alternate [Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview) can be specified, but is **highly discouraged** as it will limit the visibility of the Azure IPAM platform. This option should only be used for testing or proof-of-concept deployments.
 
 ## Deployment Overview
 
-The Azure IPAM solution is deployed via a PowerShell deployment script, `deploy.ps1`,  found in the `deploy` directory of the project. The infrastructure stack is defined via Azure Bicep files. The deployment can be performed via your local machine or from the development container found in the project. You have the following options for deployment:
+The Azure IPAM solution is deployed via a PowerShell deployment script, `deploy.ps1`, found in the `deploy` directory of the project. The infrastructure stack is defined via Azure Bicep files. The deployment can be performed via your local machine or from the development container found in the project. You have the following options for deployment:
 
 - Two-part deployment *(Azure Identities and Permissions Only)*
   - Part 1: Azure Identities only
@@ -45,7 +45,7 @@ The Azure IPAM solution is deployed via a PowerShell deployment script, `deploy.
   - Azure infrastructure components are deployed
   - Azure App Service is pointed to public or private Azure Container Registry
 
-The two-part deployment option is provided in the event that a single team within your organization doesn't have the necessary permissions to deploy both the Azure identities within Entra ID, and the Azure infrastructure stack. If a single group does have all of the the necessary permissions in Entra ID and on the Azure infrastructure side, then you have the option to deploy the complete solution all at once.
+The two-part deployment option is provided in the event that a single team within your organization doesn't have the necessary permissions to deploy both the Azure identities within Entra ID, and the Azure infrastructure stack. If a single group does have all of the necessary permissions in Entra ID and on the Azure infrastructure side, then you have the option to deploy the complete solution all at once.
 
 ## Authenticate to Azure PowerShell
 
@@ -140,8 +140,10 @@ You have the ability to pass optional flags to the deployment script:
 | `-NamePrefix <prefix>`                                             | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>3</sup>**    |
 | `-Function`                                                        | Deploys the engine container only to an Azure Function                                        |
 | `-PrivateACR`                                                      | Deploys a private Azure Container Registry and builds the IPAM containers                     |
+| `-Native`                                                          | Deploys the application natively via zip-deploy instead of using containers                    |
+| `-ContainerType <type>`                                            | Specifies the container base image: `Debian` (default) or `RHEL` **<sup>4</sup>**             |
 | `-DisableUI`                                                       | Solution will be deployed without a UI, no UI identities will be created                      |
-| `-MgmtGroupId`                                                     | Specifies an alternate Management Group instead of the Root Management Group **<sup>4</sup>** |
+| `-MgmtGroupId`                                                     | Specifies an alternate Management Group instead of the Root Management Group **<sup>5</sup>** |
 
 > **NOTE 1:** The required values will vary based on the deployment type.
 
@@ -149,7 +151,9 @@ You have the ability to pass optional flags to the deployment script:
 
 > **NOTE 3:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
 
-> **NOTE 4:** It is **highly discouraged** to use a [Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview) other than the [Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) as it will limit the visibility of the Azure IPAM platform. This option should only be used for testing or proof-of-concept deployments.
+> **NOTE 4:** The `RHEL` option is intended for environments that require Red Hat Enterprise Linux, such as government, DoD, or other controlled environments. In most cases the default `Debian` image is sufficient.
+
+> **NOTE 5:** It is **highly discouraged** to use a [Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview) other than the [Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) as it will limit the visibility of the Azure IPAM platform. This option should only be used for testing or proof-of-concept deployments.
 
 **Customize the name of the App Registrations:**
 
@@ -252,7 +256,7 @@ $ResourceNames = @{
 
 ./deploy.ps1 `
   -Location "westus3" `
-  -ResourceNames $ResourceNames
+  -ResourceNames $ResourceNames `
   -Function
 ```
 
@@ -314,6 +318,8 @@ You have the ability to pass optional flags to the deployment script:
 | `-ResourceNames @{​​​​​​<resource1> = '​<name>'; ​<resource2> = '​<name>'}` | Overrides default resource names with custom names **<sup>1,2</sup>**                      |
 | `-NamePrefix <prefix>`                                             | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>3</sup>** |
 | `-PrivateACR`                                                      | Deploys a private Azure Container Registry and builds the IPAM containers                  |
+| `-Native`                                                          | Deploys the application natively via zip-deploy instead of using containers                 |
+| `-ContainerType <type>`                                            | Specifies the container base image: `Debian` (default) or `RHEL` **<sup>4</sup>**          |
 | `-Function`                                                        | Deploys the engine container only to an Azure Function                                     |
 
 > **NOTE 1:** The required values will vary based on the deployment type.
@@ -321,6 +327,8 @@ You have the ability to pass optional flags to the deployment script:
 > **NOTE 2:** This must include ALL required resource names as shown below. Please review the [Naming Rules And Restrictions For Azure Resources](https://learn.microsoft.com/azure/azure-resource-manager/management/resource-name-rules) documentation to ensure your custom names are compliant and unique.
 
 > **NOTE 3:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
+
+> **NOTE 4:** The `RHEL` option is intended for environments that require Red Hat Enterprise Linux, such as government, DoD, or other controlled environments. In most cases the default `Debian` image is sufficient.
 
 **Change the name prefix for the Azure resources:**
 
@@ -406,8 +414,8 @@ $ResourceNames = @{
 
 ```powershell
 $ResourceNames = @{
-  functionName = 'myappservice01'
-  appServicePlanName = 'myappserviceplan01'
+  functionName = 'myfunction01'
+  functionPlanName = 'myfunctionplan01'
   cosmosAccountName = 'mycosmosaccount01'
   cosmosContainerName = 'mycontainer01'
   cosmosDatabaseName = 'mydatabase01'
