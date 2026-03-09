@@ -42,6 +42,7 @@ To successfully migrate your Azure IPAM deployment, the following prerequisites 
   - Required to clone the Azure IPAM GitHub repository
 - [PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
 - [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 11.4.0 or later installed
+- [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install) version 0.21.1 or later installed
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) version 2.35.0 or later installed (optional)
   - Required only if your deployment uses a private Azure Container Registry (Private ACR)
 
@@ -95,7 +96,7 @@ If you want to configure custom backups with your own storage account and schedu
 5. Optionally you can setup a custom back schedule by selecting the **Set Schedule** checkbox
    - **Repeats Every**: Set frequency (at least Daily recommended)
    - **Start Time**: Start time of the backup schedule
-   - **Time Zone**: UTC or local (poral) time zone
+   - **Time Zone**: UTC or local (portal) time zone
    - **Retention**: Set retention period (at least 30 days recommended)
 6. Click **Configure** to enable custom backups
 
@@ -107,7 +108,7 @@ If you want to run an on-demand backup, you must first configure **Custom Backup
 
 1. **Navigate to your App Service** in the Azure Portal
 2. Go to **Settings** → **Backups**
-3. Click **Backup Now** to create an immediate backupstart the backup process
+3. Click **Backup Now** to start the backup process
 4. Monitor the backup status until it shows **Succeeded**
 
 ![Create On-Demand Backup](./images/create_on_demand_backup.png)
@@ -174,7 +175,7 @@ az account set --subscription "<Target Subscription Name/GUID>"
 
 > **Important**: Ensure both Azure PowerShell and Azure CLI are authenticated to the **same subscription**. Mismatched subscription contexts can cause deployment failures during the migration process.
 
-## Clone the Github Repo
+## Clone the GitHub Repo
 
 ```powershell
 # Example using PowerShell for Windows
@@ -341,7 +342,7 @@ After migration completes, verify your Azure IPAM deployment:
 
 1. **Check Application Health**:
    - Verify the App Service is healthy
-   - ![Check App Service Helath](./images/app_service_health.png)
+   - ![Check App Service Health](./images/app_service_health.png)
 
 2. **Check Container Configuration**:
    - Verify the App Service is no longer using Docker Compose
@@ -381,11 +382,11 @@ az account show
 4. Manually build & push new containers to ACR
 
 ```shell
-# App Services Container
+# App Container (Debian-based)
 az acr build -r <ACR Name> -t ipam:latest -f ./Dockerfile.deb .
 
-# Function Container
-az acr build -r <ACR Name> -t ipamfunc:latest -f ./Dockerfile.func .
+# App Container (RHEL-based)
+az acr build -r <ACR Name> -t ipam:latest -f ./Dockerfile.rhel .
 ```
 
 #### Issue: App Service fails to start after migration
@@ -407,11 +408,11 @@ If you encounter issues during migration:
 
 ## Rollback Procedures
 
-In the evant a migration issue should occur, you can rollback to your previous configuration:
+In the event a migration issue should occur, you can rollback to your previous configuration:
 
 1. **Navigate to your App Service** in the Azure Portal
 2. Go to **Settings** → **Backups**
-3. Locate a backup from **brefore** the Migration script was run
+3. Locate a backup from **before** the Migration script was run
 4. Click **Restore** icon associated with the target backup timestamp
 5. Make sure to select the **existing** deployment slot, and select **Restore Site Configuration**
 6. The restoration process can take *up to 30 minutes*, and will stop/start the App Service during that time
