@@ -15,8 +15,10 @@ To successfully update your Azure IPAM deployment, ensure the following prerequi
 - An Azure Subscription containing your existing Azure IPAM deployment
 - The following Azure RBAC Roles:
   - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner) at the Resource Group scope containing your Azure IPAM resources
+- [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
+  - Required to clone the Azure IPAM GitHub repository
 - [PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
-- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 2.13.0 or later installed
+- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 10.3.0 or later installed
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) version 2.35.0 or later installed (required only for Private ACR deployments)
 
 > **NOTE:** The update script requires access to your existing Azure IPAM resources. Ensure you have the necessary permissions to both read the current configuration and restart/redeploy the App Service.
@@ -258,6 +260,7 @@ The update script follows this automated process and will automatically determin
 - Verifies Azure CLI version (minimum `2.35.0`) and authentication status
 - Ensures Azure PowerShell and Azure CLI contexts match
 - Detects container distribution type (Debian/RHEL) by querying application `/api/status` endpoint
+  - App Service containers only; Function containers use a fixed Dockerfile
 - Builds new container images using `az acr build` with appropriate Dockerfile
 - Tags and pushes updated images to private registry (`ipam:latest` or `ipamfunc:latest`)
 - Restarts the application
@@ -313,7 +316,7 @@ After the update completes, verify your Azure IPAM deployment:
 
 Verify the application is running and healthy:
 
-![Check App Service Helath](./images/app_service_health.png)
+![Check App Service Health](./images/app_service_health.png)
 
 ### 2. Version Verification
 
@@ -407,7 +410,7 @@ az account set --subscription "your-subscription-id"
 2. Verify ACR permissions and storage capacity
 3. Review Azure Container Registry task logs in Azure Portal
 4. Ensure the application's `/api/status` endpoint is accessible for container type detection
-5. For manual container build instructions, see the [Contributing Guide](/contributing/README.md#manual-container-builds)
+5. For manual container build instructions, see the [Contributing Guide](/contributing/README.md#building--updating-production-containers-images-using-a-private-acr)
 
 #### ZIP Deploy Failures
 
