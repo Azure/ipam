@@ -2,7 +2,7 @@
 
 ## Authentication and Authorization
 
-![Azure IPAM Homepage](./images/home_page.png)
+![Azure IPAM Homepage](./images/ipam_home_page.png)
 
 Azure IPAM leverages the [Microsoft Authentication Library (MSAL)](https://docs.microsoft.com/azure/active-directory/develop/msal-overview) to authenticate users with your existing Microsoft Entra ID credentials. Authorization is determined by whether the signed-in user is an **IPAM Administrator**:
 
@@ -34,7 +34,7 @@ Type a name into the search bar to find matching entries via Microsoft Graph, th
 
 To remove an administrator, click the **delete** icon on its row. The **save** icon in the upper-right corner appears only when you have unsaved changes. Click it to commit the updated admin list.
 
-![Azure IPAM Admins Config](./images/ipam_administrators_config.png)
+![Azure IPAM Admins Config](./images/ipam_admin_user_delete.png)
 
 ## Subscription Exclusion/Inclusion
 
