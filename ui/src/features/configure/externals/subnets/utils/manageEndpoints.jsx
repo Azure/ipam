@@ -957,6 +957,7 @@ export default function ManageExtEndpoints(props) {
                 value={endAddr}
                 onChange={(event, newValue) => setEndAddr(newValue)}
                 isOptionEqualToValue={(option, value) => isEqual(option, value)}
+                ListboxProps={{ style: { maxHeight: 375 } }}
                 sx={{ width: 300 }}
                 renderInput={(params) => (
                   <TextField
