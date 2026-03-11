@@ -60,7 +60,7 @@ jobs:
       - name: Build Azure IPAM Container
         id: buildContainer
         run: |
-          az acr build -r $ACR_NAME -t ipam:${{ github.run_id }}-${{ github.run_attempt }} -f ./Dockerfile.deb .
+          az acr build -r $ACR_NAME -t ipam:${{ github.run_id }}-${{ github.run_attempt }} -f ./Dockerfile.deb . --build-arg PROD_BUILD=false
 
       - name: Update Bicep File
         id: updateBicep
