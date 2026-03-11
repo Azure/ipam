@@ -594,10 +594,13 @@ export const ipamSlice = createSlice({
         const blockName = action.meta.arg.block;
 
         const spaceIndex = state.spaces.findIndex((space) => space.name === spaceName);
-        const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
 
-        if(blockIndex > -1) {
-          state.spaces[spaceIndex].blocks[blockIndex].vnets = action.payload;
+        if(spaceIndex > -1) {
+          const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+
+          if(blockIndex > -1) {
+            state.spaces[spaceIndex].blocks[blockIndex].vnets = action.payload;
+          }
         }
       })
       .addCase(replaceBlockNetworksAsync.rejected, (state, action) => {
@@ -611,10 +614,12 @@ export const ipamSlice = createSlice({
         const blockName = action.meta.arg.block;
         const newExternal = action.payload
 
-        const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+        if(spaceIndex > -1) {
+          const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
 
-        if(blockIndex > -1) {
-          state.spaces[spaceIndex].blocks[blockIndex].externals.push(newExternal);
+          if(blockIndex > -1) {
+            state.spaces[spaceIndex].blocks[blockIndex].externals.push(newExternal);
+          }
         }
       })
       .addCase(createBlockExternalAsync.rejected, (state, action) => {
