@@ -115,7 +115,7 @@ Function Get-AccessToken {
   )
 
   $params = @{}
-  if ($Resource) { $params['Resource'] = $Resource }
+  if ($Resource) { $params['ResourceUrl'] = $Resource }
 
   $token = (Get-AzAccessToken @params).Token
 
