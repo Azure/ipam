@@ -14,7 +14,11 @@ terraform {
 }
 
 # Obtain an access token for the Azure IPAM Engine API.
-# Alternatively, set the AZUREIPAM_TOKEN environment variable and remove this block.
+#
+# NOTE: The token value will be stored in Terraform state. If this is a concern
+# for your environment, set the AZUREIPAM_TOKEN environment variable instead and
+# remove this block (and the 'token' argument from the azureipam provider below).
+# Environment variables are not persisted to state.
 data "external" "ipam_token" {
   program = ["az", "account", "get-access-token",
     "--resource", "api://${var.ipam_api_scope}",

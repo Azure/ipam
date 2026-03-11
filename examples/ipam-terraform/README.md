@@ -52,7 +52,16 @@ terraform apply
 
 ## Authentication
 
-The provider obtains an access token via `az account get-access-token`. This requires an active Azure CLI session. For CI/CD pipelines, you can set the `AZUREIPAM_TOKEN` environment variable instead and remove the `data "external"` block and `token` argument from the provider configuration in `providers.tf`.
+The provider obtains an access token via `az account get-access-token`. This requires an active Azure CLI session.
+
+> **Security note:** When using the `data "external"` block, the access token is stored in Terraform state. The token is short-lived (~1 hour) which limits its exposure, but if storing credentials in state is a concern for your environment you should use the environment variable approach described below instead. Always ensure your state backend is appropriately secured (e.g. encrypted storage, restricted access).
+
+For CI/CD pipelines or environments where you prefer to keep credentials out of state, set the `AZUREIPAM_TOKEN` environment variable and remove the `data "external"` block and `token` argument from the provider configuration in `providers.tf`:
+
+```bash
+export AZUREIPAM_TOKEN=$(az account get-access-token --resource "api://<your-api-scope>" --query accessToken -o tsv)
+terraform apply
+```
 
 ## Files
 
