@@ -14,13 +14,14 @@ import {
  * - 90%+:   red    (error)
  */
 export default function ProgressCellRenderer(props) {
-  const value = props.value;
+  const raw = props.value;
+  const value = Number.isFinite(raw) ? Math.max(0, Math.min(raw, 100)) : 0;
   return (
     <Box sx={{ width: "100%", height: "100%", display: "flex", alignItems: "center" }}>
       <LinearProgress
         sx={{ width: "100%" }}
         variant="determinate"
-        value={value <= 100 ? value : 100}
+        value={value}
         color={
           value >= 0 && value <= 70
             ? "success"
