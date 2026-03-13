@@ -207,11 +207,8 @@ export default function EditExtNetwork(props) {
   }, [selectedExternal, extName, extDesc, extCidr]);
 
   const hasError = React.useMemo(() => {
-    var emptyCheck = false;
-    var errorCheck = false;
-
-    errorCheck = (extName.error || extDesc.error || extCidr.error);
-    emptyCheck = (extName.value.length === 0 || extDesc.value.length === 0 || extCidr.value.length === 0);
+    const errorCheck = (extName.error || extDesc.error || extCidr.error);
+    const emptyCheck = (extName.value.length === 0 || extDesc.value.length === 0 || extCidr.value.length === 0);
 
     return (errorCheck || emptyCheck);
   }, [extName, extDesc, extCidr]);

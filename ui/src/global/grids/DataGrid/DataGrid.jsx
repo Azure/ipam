@@ -81,7 +81,6 @@ const ColumnVisibilityMenu = React.memo(({ anchorEl, open, onClose }) => {
       console.warn('Error getting column order:', error);
       return filter(columnDefs, col => col.field !== ACTIONS_COLUMN_FIELD);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnDefs]);
 
   const dataColumns = useMemo(() => getColumnsInGridOrder(), [getColumnsInGridOrder]);

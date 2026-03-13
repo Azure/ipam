@@ -151,6 +151,16 @@ function RenderType(props) {
   );
 }
 
+const popperStyle = {
+  popper: {
+    width: "fit-content"
+  }
+};
+
+function MyPopper(props) {
+  return <Popper {...props} style={{ popperStyle }} placement="bottom-start" />;
+}
+
 export default function Administration() {
   const { enqueueSnackbar } = useSnackbar();
 
@@ -309,16 +319,6 @@ export default function Administration() {
 
   const toggleAppSearch = () => {
     setAppSearch((current) => !current);
-  };
-
-  const popperStyle = {
-    popper: {
-      width: "fit-content"
-    }
-  };
-
-  const MyPopper = function (props) {
-    return <Popper {...props} style={{ popperStyle }} placement="bottom-start" />;
   };
 
   const handleRowClicked = React.useCallback((event) => {

@@ -179,11 +179,8 @@ export default function EditExtSubnet(props) {
   }, [selectedSubnet, subName, subDesc, subCidr]);
 
   const hasError = React.useMemo(() => {
-    var emptyCheck = false;
-    var errorCheck = false;
-
-    errorCheck = (subName.error || subDesc.error || subCidr.error);
-    emptyCheck = (subName.value.length === 0 || subDesc.value.length === 0 || subCidr.value.length === 0);
+    const errorCheck = (subName.error || subDesc.error || subCidr.error);
+    const emptyCheck = (subName.value.length === 0 || subDesc.value.length === 0 || subCidr.value.length === 0);
 
     return (errorCheck || emptyCheck);
   }, [subName, subDesc, subCidr]);

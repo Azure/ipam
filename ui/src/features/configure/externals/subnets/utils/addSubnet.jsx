@@ -167,8 +167,7 @@ export default function AddExtSubnet(props) {
   }
 
   const hasError = React.useMemo(() => {
-    var emptyCheck = false;
-    var errorCheck = false;
+    let emptyCheck, errorCheck;
 
     if (addBySize) {
       errorCheck = (subName.error || subDesc.error);

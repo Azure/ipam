@@ -195,8 +195,7 @@ export default function AddExtNetwork(props) {
   }
 
   const hasError = React.useMemo(() => {
-    var emptyCheck = false;
-    var errorCheck = false;
+    let emptyCheck, errorCheck;
 
     if (addBySize) {
       errorCheck = (extName.error || extDesc.error);

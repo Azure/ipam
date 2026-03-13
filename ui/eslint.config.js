@@ -1,11 +1,13 @@
 import js from "@eslint/js";
 import globals from "globals";
 
-import react from "eslint-plugin-react";
-import reactHooks from "eslint-plugin-react-hooks";
-import jest from "eslint-plugin-jest";
+import eslintReact from "@eslint-react/eslint-plugin";
+import reactCompiler from "eslint-plugin-react-compiler";
 
 export default [
+  // Ignore build output
+  { ignores: ["dist/"] },
+
   // Base ESLint recommended rules
   js.configs.recommended,
 
@@ -29,16 +31,12 @@ export default [
   // Configuration for source JS files (non-JSX)
   {
     files: ["src/**/*.js"],
-    plugins: {
-      jest,
-    },
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
       globals: {
         ...globals.node,
         ...globals.browser,
-        ...globals.jest,
       },
     },
     rules: {
@@ -50,28 +48,31 @@ export default [
 
   // React recommended rules (scoped to JSX files)
   {
-    ...react.configs.flat.recommended,
+    ...eslintReact.configs.recommended,
     files: ["src/**/*.jsx"],
   },
 
-  // JSX runtime rules — disables rules not needed with React 17+ automatic JSX transform
+  // Disable RSC rules (Vite SPA, not using React Server Components)
   {
-    ...react.configs.flat["jsx-runtime"],
     files: ["src/**/*.jsx"],
+    rules: {
+      "@eslint-react/rsc/function-definition": "off",
+      "@eslint-react/no-nested-component-definitions": "warn",
+    },
+  },
+
+  // React Compiler rules (replaces eslint-plugin-react-hooks)
+  {
+    ...reactCompiler.configs.recommended,
+    files: ["src/**/*.jsx"],
+    rules: {
+      "react-compiler/react-compiler": "warn",
+    },
   },
 
   // Configuration for React JSX files
   {
     files: ["src/**/*.jsx"],
-    plugins: {
-      "react-hooks": reactHooks,
-      jest,
-    },
-    settings: {
-      react: {
-        version: "detect",
-      },
-    },
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
@@ -83,23 +84,12 @@ export default [
       globals: {
         ...globals.node,
         ...globals.browser,
-        ...globals.jest,
       },
     },
     rules: {
-      // ESLint core rules
       "no-unused-vars": "off",
       "no-prototype-builtins": "off",
       "no-constant-binary-expression": "off",
-
-      // React rules — relax some recommended rules for this codebase
-      "react/prop-types": "off",
-      "react/display-name": "off",
-      "react/no-unescaped-entities": "error",
-
-      // React Hooks rules - CRITICAL for catching hooks-related bugs
-      "react-hooks/rules-of-hooks": "error", // Enforces Rules of Hooks
-      "react-hooks/exhaustive-deps": "warn",  // Checks effect dependencies
     },
   },
 ];
