@@ -272,9 +272,14 @@ try {
     Copy-Item -Path ..\engine\app -Destination $tempFolder -Recurse
     Copy-Item -Path ..\engine\host.json -Destination $tempFolder
     Copy-Item -Path ..\engine\function_app.py -Destination $tempFolder
-    Copy-Item -Path ..\engine\requirements.txt -Destination $tempFolder
     Copy-Item -Path ..\ui\dist -Destination $tempFolder -Recurse
     Copy-Item -Path ..\init.sh -Destination $tempFolder
+
+    if ($ManifestOnly) {
+      Copy-Item -Path ..\engine\requirements.txt -Destination $tempFolder
+    } else {
+      Copy-Item -Path ..\engine\requirements.lock.txt -Destination (Join-Path -Path $tempFolder -ChildPath "requirements.txt")
+    }
 
     Get-ChildItem -Path (Join-Path -Path $tempFolder -ChildPath "app") -Filter "__pycache__" -Recurse | Remove-Item -Recurse
 
