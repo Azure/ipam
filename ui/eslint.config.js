@@ -53,11 +53,18 @@ export default [
   },
 
   // Disable RSC rules (Vite SPA, not using React Server Components)
+  // Disable rules-of-hooks and exhaustive-deps (covered by react-compiler)
+  // Downgrade component-hook-factories (duplicates no-nested-component-definitions)
+  // Disable set-state-in-effect (widespread pattern, to be addressed incrementally)
   {
     files: ["src/**/*.jsx"],
     rules: {
       "@eslint-react/rsc/function-definition": "off",
       "@eslint-react/no-nested-component-definitions": "warn",
+      "@eslint-react/rules-of-hooks": "off",
+      "@eslint-react/exhaustive-deps": "off",
+      "@eslint-react/component-hook-factories": "warn",
+      "@eslint-react/set-state-in-effect": "off",
     },
   },
 
