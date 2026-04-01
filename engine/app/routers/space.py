@@ -1402,15 +1402,6 @@ async def available_block_nets(
             net['prefixes'] = valid
             available_vnets.append(net)
 
-    # for space_iter in space_query:
-    #     for block_iter in space_iter['blocks']:
-    #         for net_iter in block_iter['vnets']:
-    #             if space_iter['name'] != space and block_iter['name'] != block:
-    #                 net_index = next((i for i, item in enumerate(available_vnets) if item['id'] == net_iter['id']), None)
-    #
-    #                 if net_index is not None:
-    #                     del available_vnets[net_index]
-
     if expand:
         return available_vnets
     else:
