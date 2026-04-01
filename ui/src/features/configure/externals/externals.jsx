@@ -239,7 +239,7 @@ export default function Externals() {
                 )}
                 renderOption={(props, option) => {
                   return (
-                    <li {...props} key={option.name}>
+                    <li key={option.name} {...props}>
                       {option.name}
                     </li>
                   );
@@ -284,7 +284,7 @@ export default function Externals() {
                 )}
                 renderOption={(props, option) => {
                   return (
-                    <li {...props} key={option.id}>
+                    <li key={option.id} {...props}>
                       {option.name}
                     </li>
                   );

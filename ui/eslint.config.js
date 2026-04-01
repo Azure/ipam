@@ -59,7 +59,7 @@ export default [
   {
     files: ["src/**/*.jsx"],
     rules: {
-      "@eslint-react/rsc/function-definition": "off",
+      "@eslint-react/rsc-function-definition": "off",
       "@eslint-react/no-nested-component-definitions": "warn",
       "@eslint-react/rules-of-hooks": "off",
       "@eslint-react/exhaustive-deps": "off",

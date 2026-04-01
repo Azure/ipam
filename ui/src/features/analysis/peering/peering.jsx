@@ -724,7 +724,7 @@ const Search = ({ ref, options, setDataFocus }) => {
       }}
       renderOption={(props, option) => {
         return (
-          <li {...props} key={option.id}>
+          <li key={option.id} {...props}>
             {option.name}
           </li>
         );

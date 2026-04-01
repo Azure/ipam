@@ -602,7 +602,7 @@ const Search = ({ ref, options, setDataFocus }) => {
       }}
       renderOption={(props, option) => {
         return (
-          <li {...props} key={option}>
+          <li key={option} {...props}>
             {option}
           </li>
         );

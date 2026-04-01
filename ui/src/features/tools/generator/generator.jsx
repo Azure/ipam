@@ -370,7 +370,7 @@ const Generator = () => {
             )}
             renderOption={(props, option) => {
               return (
-                <li {...props} key={ showSubnets ? option.id: option.name }>
+                <li key={ showSubnets ? option.id: option.name } {...props}>
                   { showSubnets ? `${option.name} (${option.subscription_id})` : option.name }
                 </li>
               );
@@ -408,7 +408,7 @@ const Generator = () => {
             )}
             renderOption={(props, option) => {
               return (
-                <li {...props} key={option.id}>
+                <li key={option.id} {...props}>
                   {option.name}
                 </li>
               );
