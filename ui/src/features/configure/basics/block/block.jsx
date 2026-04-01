@@ -160,7 +160,7 @@ export default function BlockDataGrid(props) {
 
   // Compute row data for the grid
   const rowData = React.useMemo(() => {
-    return selectedSpace ? blocks.filter((block) => block.parent_space === selectedSpace.name) : [];
+    return (selectedSpace && blocks) ? blocks.filter((block) => block.parent_space === selectedSpace.name) : [];
   }, [selectedSpace, blocks]);
 
   return (
