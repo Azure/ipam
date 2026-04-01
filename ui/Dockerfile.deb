@@ -20,7 +20,7 @@ ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 WORKDIR /ipam
 
 # Add Application Sources
-ADD . .
+COPY . .
 
 # Install Dependencies
 RUN if [ "${PROD_BUILD}" = true ]; then \
@@ -40,4 +40,4 @@ RUN rm -rf src
 EXPOSE $PORT
 
 # Execute Startup Script
-ENTRYPOINT ./init.sh ${PORT}
+ENTRYPOINT ["/bin/sh", "-c", "./init.sh ${PORT}"]

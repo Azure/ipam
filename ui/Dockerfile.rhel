@@ -20,7 +20,7 @@ WORKDIR /ipam
 USER root
 
 # Add Application Sources
-ADD . .
+COPY . .
 
 # Install Dependencies
 RUN if [ "${PROD_BUILD}" = true ]; then \
@@ -44,4 +44,4 @@ USER 1001
 EXPOSE $PORT
 
 # Execute Startup Script
-ENTRYPOINT ./init.sh ${PORT}
+ENTRYPOINT ["/bin/sh", "-c", "./init.sh ${PORT}"]

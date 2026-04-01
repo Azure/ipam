@@ -63,6 +63,8 @@ USER root
 # Disable Subscription Manager DNF Plugin
 RUN sed -i s/enabled=./enabled=0/g /etc/dnf/plugins/subscription-manager.conf
 
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Install OpenSSH and set the password for root to "Docker!"
 RUN dnf update -y \
   && dnf install -y openssh-server \
@@ -111,4 +113,4 @@ USER 1001
 EXPOSE $PORT 2222
 
 # Execute Startup Script
-ENTRYPOINT exec ./init.sh ${PORT}
+ENTRYPOINT ["/bin/sh", "-c", "exec ./init.sh ${PORT}"]

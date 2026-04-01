@@ -60,6 +60,8 @@ ENV PORT=${PORT}
 # Set Working Directory
 WORKDIR /tmp
 
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Install OpenSSH and set the password for root to "Docker!"
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssh-server \
@@ -103,4 +105,4 @@ RUN chmod +x init.sh
 EXPOSE $PORT 2222
 
 # Execute Startup Script
-ENTRYPOINT exec ./init.sh ${PORT}
+ENTRYPOINT ["/bin/sh", "-c", "exec ./init.sh ${PORT}"]

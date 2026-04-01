@@ -9,12 +9,14 @@ ARG PROD_BUILD=true
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     AzureFunctionsJobHost__Logging__Console__IsEnabled=true
 
+WORKDIR /home/site/wwwroot
+
 # Copy Requirements File
-ADD ./requirements.txt .
-ADD ./requirements.lock.txt .
+COPY ./requirements.txt .
+COPY ./requirements.lock.txt .
 
 # Upgrade PIP
-RUN pip install --upgrade pip --progress-bar off
+RUN pip install --no-cache-dir --upgrade pip --progress-bar off
 
 # Install Dependencies
 RUN if [ "${PROD_BUILD}" = true ]; then \

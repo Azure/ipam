@@ -20,11 +20,11 @@ WORKDIR /ipam
 USER root
 
 # Copy Requirements File
-ADD ./requirements.txt /ipam
-ADD ./requirements.lock.txt /ipam
+COPY ./requirements.txt /ipam
+COPY ./requirements.lock.txt /ipam
 
 # Upgrade PIP
-RUN pip install --upgrade pip --progress-bar off
+RUN pip install --no-cache-dir --upgrade pip --progress-bar off
 
 # Install Dependencies
 RUN if [ "${PROD_BUILD}" = true ]; then \
@@ -34,8 +34,8 @@ else \
 fi
 
 # Copy Application Scripts & Sources
-ADD ./app ./app
-ADD ./init.sh .
+COPY ./app ./app
+COPY ./init.sh .
 
 # Set Script Execute Permissions
 RUN chmod +x init.sh
@@ -48,4 +48,4 @@ USER 1001
 EXPOSE $PORT
 
 # Execute Startup Script
-ENTRYPOINT ./init.sh ${PORT}
+ENTRYPOINT ["/bin/sh", "-c", "./init.sh ${PORT}"]
