@@ -1,36 +1,22 @@
-from fastapi import (
-    APIRouter,
-    Depends,
-    Header
-)
-
 import asyncio
+
+from fastapi import APIRouter, Depends, Header
 from netaddr import IPNetwork
 
-from app.dependencies import (
-    api_auth_checks,
-    get_admin,
-    get_tenant_id
-)
-
-from app.models import *
-
-from app.routers.space import (
-    get_spaces
-)
-
+from app.dependencies import api_auth_checks, get_admin, get_tenant_id
 from app.routers.azure import (
-    get_vnet,
+    apim,
+    appgw,
+    bastion,
+    fwvnet,
     get_subnet,
+    get_vnet,
     pe,
     vm,
     vmss,
-    fwvnet,
-    bastion,
     vnetgw,
-    appgw,
-    apim
 )
+from app.routers.space import get_spaces
 
 router = APIRouter(
     prefix="/internal",

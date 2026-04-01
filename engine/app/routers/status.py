@@ -1,12 +1,10 @@
-from fastapi.responses import JSONResponse
-
-from fastapi import APIRouter
-
 import os
 
-from app.models import *
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
 from app.globals import globals
+from app.models import Status
 
 router = APIRouter(
     prefix="/status",
@@ -25,7 +23,7 @@ async def get_status():
         os.environ.get('KUBERNETES_SERVICE_HOST') or
         os.path.exists('/.dockerenv')
     )
-    
+
     status_message = {
         "status": "OK",
         "version": globals.IPAM_VERSION,

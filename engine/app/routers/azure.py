@@ -1,49 +1,39 @@
-from fastapi import (
-    APIRouter,
-    HTTPException,
-    Depends,
-    Header
-)
+import asyncio
+import copy
+import re
+import time
+from typing import List
 
 from azure.core.exceptions import ClientAuthenticationError, HttpResponseError
 from azure.mgmt.compute.aio import ComputeManagementClient
-from azure.mgmt.network.aio import NetworkManagementClient
 from azure.mgmt.datafactory.aio import DataFactoryManagementClient
-from azure.mgmt.resourcegraph.aio import ResourceGraphClient
+from azure.mgmt.network.aio import NetworkManagementClient
 from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
-from azure.mgmt.resourcegraph.models import QueryRequest, QueryRequestOptions, ResultFormat
-
-from typing import  List
-
-import re
-import copy
-import time
-import asyncio
-from netaddr import IPSet, IPNetwork
-
-from app.dependencies import (
-    api_auth_checks,
-    get_admin,
-    get_tenant_id
+from azure.mgmt.resourcegraph.aio import ResourceGraphClient
+from azure.mgmt.resourcegraph.models import (
+    QueryRequest,
+    QueryRequestOptions,
+    ResultFormat,
 )
+from fastapi import APIRouter, Depends, Header, HTTPException
+from netaddr import IPNetwork, IPSet
 
-from app.models import *
-from . import argquery
-
+from app.dependencies import api_auth_checks, get_admin, get_tenant_id
+from app.globals import globals
+from app.logs.logs import ipam_logger as logger
+from app.models import VWanHub
 from app.routers.common.helper import (
-    get_client_credentials,
-    get_obo_credentials,
+    arg_query,
     cosmos_query,
     cosmos_replace,
     cosmos_retry,
-    arg_query,
+    get_client_credentials,
+    get_obo_credentials,
+    subnet_fixup,
     vnet_fixup,
-    subnet_fixup
 )
 
-from app.globals import globals
-
-from app.logs.logs import ipam_logger as logger
+from . import argquery
 
 router = APIRouter(
     prefix="/azure",
@@ -55,7 +45,7 @@ def str_to_list(input):
     try:
         scrubbed = re.sub(r"\s+", "", input, flags = re.UNICODE)
         split = scrubbed.split(",")
-    except:
+    except Exception:
         return []
 
     return split
@@ -876,7 +866,7 @@ async def multi(
 )
 async def match_resv_to_vnets():
     net_list = await get_network(None, globals.TENANT_ID, True)
-    stale_resv = list(i for j in list(str_to_list(x['resv']) for x in net_list if x['resv'] != None) for i in j)
+    stale_resv = list(i for j in list(str_to_list(x['resv']) for x in net_list if x['resv'] is not None) for i in j)
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", globals.TENANT_ID)
 

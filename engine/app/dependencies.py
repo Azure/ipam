@@ -1,21 +1,17 @@
-from fastapi import Request, HTTPException
-# from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-
-from requests import Session, adapters
-from urllib3.util.retry import Retry
-from cryptography.hazmat.primitives import serialization
-
-import jwt
 import copy
 import json
 
-from app.routers.common.helper import (
-    cosmos_query
-)
+import jwt
+from cryptography.hazmat.primitives import serialization
+from fastapi import HTTPException, Request
+from requests import Session, adapters
+from urllib3.util.retry import Retry
 
 from app.globals import globals
-
 from app.logs.logs import ipam_logger as logger
+from app.routers.common.helper import cosmos_query
+
+# from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 # class IPAMToken(HTTPBearer):
 #     _session = None
@@ -39,7 +35,7 @@ from app.logs.logs import ipam_logger as logger
 #             raise HTTPException(status_code=403, detail="Invalid authorization code.")
 
 #     async def fetch_jwks_keys(self):
-#         if self._session is None:  
+#         if self._session is None:
 #             self._session = Session()
 
 #             retries = Retry(
@@ -104,7 +100,7 @@ from app.logs.logs import ipam_logger as logger
 #         if rsa_key:
 #             rsa_pem_key = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(rsa_key))
 #             rsa_pem_key_bytes = rsa_pem_key.public_bytes(
-#                 encoding=serialization.Encoding.PEM, 
+#                 encoding=serialization.Encoding.PEM,
 #                 format=serialization.PublicFormat.SubjectPublicKeyInfo
 #             )
 
@@ -141,7 +137,7 @@ _session = None
 async def fetch_jwks_keys():
     global _session
 
-    if _session is None:  
+    if _session is None:
         _session = Session()
 
         retries = Retry(
@@ -196,8 +192,8 @@ async def validate_token(request: Request):
                     "e": key["e"]
                 }
     except Exception as e:
-        logger.error("Unable to parse authorization token.");
-        logger.error(e);
+        logger.error("Unable to parse authorization token.")
+        logger.error(e)
         raise HTTPException(status_code=401, detail="Unable to parse authorization token.")
 
     try:
@@ -213,7 +209,7 @@ async def validate_token(request: Request):
     if rsa_key:
         rsa_pem_key = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(rsa_key))
         rsa_pem_key_bytes = rsa_pem_key.public_bytes(
-            encoding=serialization.Encoding.PEM, 
+            encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
 

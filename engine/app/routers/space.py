@@ -1,59 +1,75 @@
-from fastapi.responses import PlainTextResponse
-from fastapi.encoders import jsonable_encoder
-
-from fastapi import (
-    APIRouter,
-    HTTPException,
-    status,
-    Depends,
-    Header,
-    Query,
-    Path
-)
-
-from typing import Optional, List, Union
-
+import copy
 import re
-import jwt
 import time
 import uuid
-import copy
-import shortuuid
+from typing import List, Optional, Union
+
 import jsonpatch
-from netaddr import IPSet, IPNetwork, IPAddress
+import jwt
+import shortuuid
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import PlainTextResponse
+from netaddr import IPAddress, IPNetwork, IPSet
 
-from app.dependencies import (
-    api_auth_checks,
-    get_admin,
-    get_tenant_id
+from app.dependencies import api_auth_checks, get_admin, get_tenant_id
+from app.models import (
+    Block,
+    BlockBasic,
+    BlockBasicUtil,
+    BlockCIDRReq,
+    BlockExpand,
+    BlockExpandUtil,
+    BlockReq,
+    BlockUpdate,
+    BlockUtil,
+    DeleteExtEndpointsReq,
+    DeleteResvReq,
+    ExtEndpoint,
+    ExtEndpointReq,
+    ExtEndpointUpdate,
+    ExtNet,
+    ExtNetExpand,
+    ExtNetReq,
+    ExtNetUpdate,
+    ExtSubnet,
+    ExtSubnetExpand,
+    ExtSubnetReq,
+    ExtSubnetUpdate,
+    Network,
+    NetworkExpand,
+    ReservationExpand,
+    Space,
+    SpaceBasic,
+    SpaceBasicUtil,
+    SpaceCIDRReq,
+    SpaceExpand,
+    SpaceExpandUtil,
+    SpaceReq,
+    SpaceUpdate,
+    SpaceUtil,
+    VNet,
+    VNetsUpdate,
 )
-
-from app.models import *
-
+from app.routers.azure import get_network
 from app.routers.common.helper import (
-    get_username_from_jwt,
-    cosmos_query,
-    cosmos_upsert,
-    cosmos_replace,
     cosmos_delete,
-    cosmos_retry
+    cosmos_query,
+    cosmos_replace,
+    cosmos_retry,
+    cosmos_upsert,
+    get_username_from_jwt,
 )
 
-from app.routers.azure import (
-    get_network
-)
-
-from app.logs.logs import ipam_logger as logger
-
-SPACE_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9\._-]){1,64}(?<![\._-])$"
-SPACE_DESC_REGEX = "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$"
-BLOCK_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9\._-]){1,64}(?<![\._-])$"
-EXTERNAL_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9\._-]){1,64}(?<![\._-])$"
-EXTERNAL_DESC_REGEX = "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$"
-EXTSUBNET_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9\._-]){1,64}(?<![\._-])$"
-EXTSUBNET_DESC_REGEX = "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$"
-EXTENDPOINT_NAME_REGEX = "^(?![\._-])([a-zA-Z0-9\._-]){1,64}(?<![\._-])$"
-EXTENDPOINT_DESC_REGEX = "^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$"
+SPACE_NAME_REGEX = r"^(?![\._-])([a-zA-Z0-9\._-]){1,64}(?<![\._-])$"
+SPACE_DESC_REGEX = r"^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$"
+BLOCK_NAME_REGEX = r"^(?![\._-])([a-zA-Z0-9\._-]){1,64}(?<![\._-])$"
+EXTERNAL_NAME_REGEX = r"^(?![\._-])([a-zA-Z0-9\._-]){1,64}(?<![\._-])$"
+EXTERNAL_DESC_REGEX = r"^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$"
+EXTSUBNET_NAME_REGEX = r"^(?![\._-])([a-zA-Z0-9\._-]){1,64}(?<![\._-])$"
+EXTSUBNET_DESC_REGEX = r"^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$"
+EXTENDPOINT_NAME_REGEX = r"^(?![\._-])([a-zA-Z0-9\._-]){1,64}(?<![\._-])$"
+EXTENDPOINT_DESC_REGEX = r"^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$"
 
 router = APIRouter(
     prefix="/spaces",
@@ -239,7 +255,7 @@ async def valid_ext_network_cidr_update(cidr, space_name, block_name, external_n
         if(str(external_network.cidr) != cidr):
             raise HTTPException(status_code=400, detail="Invalid CIDR value, try '{}' instead.".format(external_network.cidr))
 
-        if not external_network in IPNetwork(target_block['cidr']):
+        if external_network not in IPNetwork(target_block['cidr']):
             raise HTTPException(status_code=400, detail="Updated External Network CIDR must be contained within the Block CIDR.")
 
     net_list = await get_network(None, True)
@@ -348,7 +364,7 @@ async def valid_ext_subnet_cidr_update(cidr, space_name, block_name, external_na
         if(str(subnet_network.cidr) != cidr):
             raise HTTPException(status_code=400, detail="Invalid CIDR value, try '{}' instead.".format(subnet_network.cidr))
 
-        if not subnet_network in IPNetwork(target_external['cidr']):
+        if subnet_network not in IPNetwork(target_external['cidr']):
             raise HTTPException(status_code=400, detail="Updated External Subnet CIDR must be contained within the External Network CIDR.")
 
     for subnet in subnets:
@@ -442,7 +458,7 @@ async def valid_ext_endpoint_ip_update(ip, space_name, block_name, external_name
         except Exception:
             raise HTTPException(status_code=400, detail="Updated External Endpoint IP must be in valid IPv4 notation (x.x.x.x).")
 
-        if not endpoint_ip in IPNetwork(target_subnet['cidr']):
+        if endpoint_ip not in IPNetwork(target_subnet['cidr']):
             raise HTTPException(status_code=400, detail="Updated External Endpoint IP must be contained within the External Subnet CIDR.")
 
     for endpoint in endpoints:
@@ -677,7 +693,7 @@ async def get_space(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     if expand or utilization:
@@ -777,7 +793,7 @@ async def update_space(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     try:
@@ -819,7 +835,7 @@ async def delete_space(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     if not force:
@@ -853,7 +869,7 @@ async def get_multi_block_reservations(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     resv_list = []
@@ -913,7 +929,7 @@ async def create_multi_block_reservation(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     request_blocks = set(req.blocks)
@@ -1025,7 +1041,7 @@ async def get_blocks(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     block_list = target_space['blocks']
@@ -1114,7 +1130,7 @@ async def create_block(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     if not re.match(BLOCK_NAME_REGEX, block.name, re.IGNORECASE):
@@ -1122,7 +1138,7 @@ async def create_block(
 
     try:
         block_network = IPNetwork(str(block.cidr))
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid CIDR, please ensure CIDR is in valid IPv4 CIDR notation (x.x.x.x/x).")
 
     if str(block_network.cidr) != str(block.cidr):
@@ -1183,7 +1199,7 @@ async def get_block(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -1282,7 +1298,7 @@ async def update_block(
     try:
         target_space = copy.deepcopy(space_query[0])
         update_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     update_block = next((x for x in update_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -1330,7 +1346,7 @@ async def delete_block(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -1438,7 +1454,7 @@ async def get_block_nets(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -1488,7 +1504,7 @@ async def create_block_net(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -1570,7 +1586,7 @@ async def update_block_vnets(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -1671,7 +1687,7 @@ async def delete_block_nets(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -1732,7 +1748,7 @@ async def get_external_networks(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -1781,7 +1797,7 @@ async def create_external_network(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -1811,7 +1827,7 @@ async def create_external_network(
     if req.cidr is not None:
         try:
             next_cidr = IPNetwork(req.cidr)
-        except:
+        except Exception:
             raise HTTPException(status_code=400, detail="Invalid CIDR, please ensure CIDR is in valid IPv4 CIDR notation (x.x.x.x/x).")
 
         if str(IPNetwork(req.cidr).cidr) != req.cidr:
@@ -1877,7 +1893,7 @@ async def get_external_network(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -1933,7 +1949,7 @@ async def update_ext_network(
     try:
         target_space = copy.deepcopy(space_query[0])
         update_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in update_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -1987,7 +2003,7 @@ async def delete_external_network(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -2035,7 +2051,7 @@ async def get_external_subnets(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -2091,7 +2107,7 @@ async def create_external_subnet(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -2116,7 +2132,7 @@ async def create_external_subnet(
     if req.cidr is not None:
         try:
             next_cidr = IPNetwork(req.cidr)
-        except:
+        except Exception:
             raise HTTPException(status_code=400, detail="Invalid CIDR, please ensure CIDR is in valid IPv4 CIDR notation (x.x.x.x/x).")
 
         if str(next_cidr.cidr) != req.cidr:
@@ -2178,7 +2194,7 @@ async def get_external_subnet(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -2240,7 +2256,7 @@ async def update_ext_subnet(
     try:
         target_space = copy.deepcopy(space_query[0])
         update_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in update_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -2300,7 +2316,7 @@ async def delete_external_subnet(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -2354,7 +2370,7 @@ async def get_external_subnet_endpoints(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -2409,7 +2425,7 @@ async def create_external_subnet_endpoint(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -2530,7 +2546,7 @@ async def update_external_subnet_enpoints(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -2618,7 +2634,7 @@ async def delete_external_subnet_endpoints(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -2685,7 +2701,7 @@ async def get_external_subnet_endpoint(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -2753,7 +2769,7 @@ async def update_ext_endpoint(
     try:
         target_space = copy.deepcopy(space_query[0])
         update_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in update_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -2818,7 +2834,7 @@ async def delete_external_subnet_endpoint(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -2871,7 +2887,7 @@ async def get_block_reservations(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -2973,7 +2989,7 @@ async def create_block_reservation(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -3005,7 +3021,7 @@ async def create_block_reservation(
     if req.cidr is not None:
         try:
             next_cidr = IPNetwork(req.cidr)
-        except:
+        except Exception:
             raise HTTPException(status_code=400, detail="Invalid network CIDR format.")
 
         if IPNetwork(req.cidr) not in available_set:
@@ -3081,7 +3097,7 @@ async def delete_block_reservations(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -3131,7 +3147,7 @@ async def delete_block_reservations(
     response_model = ReservationExpand,
     status_code = 200
 )
-async def get_block_reservations(
+async def get_block_reservation(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     reservation: str = Path(..., description="ID of the target Reservation"),
@@ -3149,7 +3165,7 @@ async def get_block_reservations(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)
@@ -3184,7 +3200,7 @@ async def get_block_reservations(
     max_retry = 5,
     error_msg = "Error removing reservation, please try again."
 )
-async def delete_block_reservations(
+async def delete_block_reservation(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     reservation: str = Path(..., description="ID of the target Reservation"),
@@ -3203,7 +3219,7 @@ async def delete_block_reservations(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     target_block = next((x for x in target_space['blocks'] if x['name'].lower() == block.lower()), None)

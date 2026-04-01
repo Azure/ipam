@@ -11,8 +11,8 @@ from datetime import datetime, timezone
 
 import azure.functions as func
 
-from app.main import app as ipam
 from app.logs.logs import ipam_logger as logger
+from app.main import app as ipam
 from app.routers.azure import match_resv_to_vnets
 
 azureLogger = logging.getLogger('azure')

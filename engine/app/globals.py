@@ -1,7 +1,7 @@
-import os
 import json
-import aiohttp
+import os
 
+import aiohttp
 from azure.core.pipeline.transport import AioHttpTransport
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -110,11 +110,11 @@ class Globals:
         ctr_name =  os.environ.get('CONTAINER_NAME')
 
         return ctr_name if ctr_name else 'ipam-ctr'
-    
+
     @property
     def SHARED_TRANSPORT(self):
         return self.shared_transport
-    
+
     @property
     def DEPLOYMENT_STACK(self):
         ipam_stack = ""

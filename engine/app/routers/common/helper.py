@@ -1,20 +1,28 @@
-from fastapi import HTTPException
-
-from azure.identity.aio import OnBehalfOfCredential, ManagedIdentityCredential, ClientSecretCredential
-
-from azure.core import MatchConditions
-from azure.core.exceptions import ClientAuthenticationError, HttpResponseError, ServiceRequestError
-
-from azure.mgmt.resourcegraph.aio import ResourceGraphClient
-from azure.mgmt.resourcegraph.models import QueryRequest, QueryRequestOptions, ResultFormat
-from azure.mgmt.managementgroups.aio import ManagementGroupsAPI
-
-from azure.cosmos.aio import CosmosClient
-import azure.cosmos.exceptions as exceptions
-
-import jwt
-from netaddr import IPNetwork
 from functools import wraps
+
+import azure.cosmos.exceptions as exceptions
+import jwt
+from azure.core import MatchConditions
+from azure.core.exceptions import (
+    ClientAuthenticationError,
+    HttpResponseError,
+    ServiceRequestError,
+)
+from azure.cosmos.aio import CosmosClient
+from azure.identity.aio import (
+    ClientSecretCredential,
+    ManagedIdentityCredential,
+    OnBehalfOfCredential,
+)
+from azure.mgmt.managementgroups.aio import ManagementGroupsAPI
+from azure.mgmt.resourcegraph.aio import ResourceGraphClient
+from azure.mgmt.resourcegraph.models import (
+    QueryRequest,
+    QueryRequestOptions,
+    ResultFormat,
+)
+from fastapi import HTTPException
+from netaddr import IPNetwork
 
 from app.globals import globals
 
@@ -30,16 +38,16 @@ cosmos_client = CosmosClient(
 
 def valid_ipv4(addr):
     try:
-        ip_net = IPNetwork(addr, version=4)
-    except:
+        IPNetwork(addr, version=4)
+    except Exception:
         return False
 
     return True
 
 def valid_ipv6(addr):
     try:
-        ip_net = IPNetwork(addr, version=6)
-    except:
+        IPNetwork(addr, version=6)
+    except Exception:
         return False
 
     return True
@@ -270,7 +278,7 @@ def cosmos_retry(error_msg, max_retry = 5):
 
                     if _tries == 0:
                         raise HTTPException(status_code=500, detail=error_msg)
-                    
+
         return func_with_retries
     return cosmos_retry_decorator
 

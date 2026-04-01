@@ -1,34 +1,23 @@
-from fastapi import (
-    APIRouter,
-    HTTPException,
-    Depends,
-    Header
-)
-
+import copy
 from typing import List
 
 import regex
-import copy
-from netaddr import IPSet, IPNetwork
+from fastapi import APIRouter, Depends, Header, HTTPException
+from netaddr import IPNetwork, IPSet
 
-from app.dependencies import (
-    api_auth_checks,
-    get_tenant_id
+from app.dependencies import api_auth_checks, get_tenant_id
+from app.models import (
+    CIDRCheckReq,
+    CIDRCheckRes,
+    NewSubnetCIDR,
+    NewVNetCIDR,
+    SubnetCIDRReq,
+    VNetCIDRReq,
 )
+from app.routers.azure import get_network
+from app.routers.common.helper import arg_query, cosmos_query, cosmos_retry, vnet_fixup
 
-from app.models import *
 from . import argquery
-
-from app.routers.common.helper import (
-    cosmos_query,
-    cosmos_retry,
-    arg_query,
-    vnet_fixup
-)
-
-from app.routers.azure import (
-    get_network
-)
 
 router = APIRouter(
     prefix="/tools",
@@ -149,7 +138,7 @@ async def next_available_vnet(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     request_blocks = set(req.blocks)

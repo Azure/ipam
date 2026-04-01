@@ -1,27 +1,18 @@
-from pydantic_core import CoreSchema, core_schema
-from pydantic.json_schema import JsonSchemaValue
+from typing import Annotated, Any, Dict, List, Literal, Optional, Union
+from uuid import UUID
 
+from netaddr import IPAddress, IPNetwork
 from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
     GetCoreSchemaHandler,
     GetJsonSchemaHandler,
-    ConfigDict,
-    BaseModel,
-    EmailStr,
-    model_validator
+    model_validator,
 )
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema, core_schema
 
-from typing import (
-    Annotated,
-    Optional,
-    Union,
-    Literal,
-    List,
-    Dict,
-    Any
-)
-
-from netaddr import IPNetwork, IPAddress
-from uuid import UUID
 
 class IPv4Network(str):
     """
@@ -55,7 +46,7 @@ class IPv4Network(str):
             raise TypeError('string required')
         try:
             m = IPNetwork(input_value)
-        except:
+        except Exception:
             m = None
         if not m:
             raise ValueError('invalid ip network format')
@@ -93,7 +84,7 @@ class IPv4Address(str):
             raise TypeError('string required')
         try:
             m = IPAddress(input_value)
-        except:
+        except Exception:
             m = None
         if not m:
             raise ValueError('invalid ip address format')

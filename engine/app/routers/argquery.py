@@ -1,4 +1,4 @@
-RESERVATION = """
+RESERVATION = r"""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
 | where isnotnull(tags["ipam-res-id"])
@@ -6,7 +6,7 @@ resources
 | project id, prefixes, resv = tags["ipam-res-id"]
 """
 
-# SUBSCRIPTION = """
+# SUBSCRIPTION = r"""
 # resourcecontainers
 # | where type =~ 'microsoft.resources/subscriptions'
 # | extend quotaId = properties.subscriptionPolicies.quotaId
@@ -20,7 +20,7 @@ resources
 # | project name, id, type, subscription_id = subscriptionId, tenant_id = tenantId
 # """
 
-SUBSCRIPTION = """
+SUBSCRIPTION = r"""
 resourcecontainers
 | where type=~ 'microsoft.resources/subscriptions'
 | extend mgParent = properties.managementGroupAncestorsChain
@@ -42,20 +42,20 @@ resourcecontainers
 | project name, id, type, subscription_id = subscriptionId, mg_id = mgId, mg_name = mgDisplayName, tenant_id = tenantId
 """
 
-SPACE = """
+SPACE = r"""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
 | project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes = properties.addressSpace.addressPrefixes
 """
 
-BLOCK = """
+BLOCK = r"""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
 | project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes = properties.addressSpace.addressPrefixes
 """
 
 # This version gets both IPv4 and IPv6 vNET/Subnet address spaces
-# VNET = """
+# VNET = r"""
 # resources
 # | where type =~ 'Microsoft.Network/virtualNetworks'
 # | where subscriptionId !in~ {}
@@ -87,7 +87,7 @@ resources
 # | project name, id, todynamic(prefixes), todynamic(subnets), peerings, resource_group, subscription_id, tenant_id, todynamic(resv)
 # """
 
-VNET = """
+VNET = r"""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
 | where subscriptionId !in~ {}
@@ -123,7 +123,7 @@ resources
 """
 
 # This version gets both the IPv4 and IPv6 Subnet address space
-# SUBNET = """
+# SUBNET = r"""
 # resources
 # | where type =~ 'Microsoft.Network/virtualNetworks'
 # | where subscriptionId !in~ {}
@@ -137,7 +137,7 @@ resources
 # | project name = subnet.name, id = subnet.id, prefix = subnet.properties.addressPrefix, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), type = todynamic(subnetType)
 # """
 
-SUBNET = """
+SUBNET = r"""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
 | where subscriptionId !in~ {}
@@ -153,13 +153,13 @@ resources
 | project name = subnet.name, id = subnet.id, prefix = iff(isnotnull(subnetPrefixes), subnetPrefixes, pack_array(subnetPrefix)), resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), type = todynamic(subnetType)
 """
 
-# VWAN_HUBS = """
+# VWAN_HUBS = r"""
 # resources
 # | where type =~ 'microsoft.network/virtualhubs'
 # | project name, resource_group = resourceGroup, subscription_id = subscriptionId
 # """
 
-# VHUB = """
+# VHUB = r"""
 # resources
 # | where type =~ 'microsoft.network/virtualhubs'
 # | where subscriptionId !in~ {}
@@ -174,7 +174,7 @@ resources
 # | project name, id, prefix, resource_group, subscription_id, tenant_id, metadata = pack('vwan_name', vwan_name, 'vwan_id', vwan_id)
 # """
 
-VHUB = """
+VHUB = r"""
 resources
 | where type =~ 'microsoft.network/virtualhubs'
 | where subscriptionId !in~ {}
@@ -190,7 +190,7 @@ resources
 | project name, id, prefix, vwan_name, vwan_id, resource_group, subscription_id, tenant_id, resv
 """
 
-NET_BASIC = """
+NET_BASIC = r"""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
 | project name, id, resourceGroup, subscriptionId, tenantId, prefixes = properties.addressSpace.addressPrefixes
@@ -204,7 +204,7 @@ resources
 | project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes
 """
 
-NETWORK_INTERFACE = """
+NETWORK_INTERFACE = r"""
 resources
 | where type =~ 'microsoft.network/networkinterfaces'
 | where subscriptionId !in~ {}
@@ -232,7 +232,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-PRIVATE_ENDPOINT = """
+PRIVATE_ENDPOINT = r"""
 resources
 | where type =~ 'microsoft.network/networkinterfaces'
 | where subscriptionId !in~ {}
@@ -260,7 +260,7 @@ resources
 | project name = iff(notempty(name), name, pe_name), id = iff(notempty(id), id, pe_id), private_ip, resource_group = iff(notempty(resource_group), resource_group, pe_rg), subscription_id = iff(notempty(subscription_id), subscription_id, pe_sid), tenant_id = iff(notempty(tenant_id), tenant_id, pe_tid), vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-VIRTUAL_MACHINE = """
+VIRTUAL_MACHINE = r"""
 resources
 | where type =~ 'microsoft.compute/virtualmachines'
 | where subscriptionId !in~ {}
@@ -296,7 +296,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-# VM_SCALE_SET = """
+# VM_SCALE_SET = r"""
 # ComputeResources
 # | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines"
 # | where subscriptionId !in~ {}
@@ -324,7 +324,7 @@ resources
 # | project name = strcat(vmss_name, '_', vmss_vm_num), id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 # """
 
-VM_SCALE_SET = """
+VM_SCALE_SET = r"""
 ComputeResources
 | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines"
 | where subscriptionId !in~ {}
@@ -356,7 +356,7 @@ ComputeResources
 | project name = strcat(vmss_name, '_', vmss_vm_num), id, private_ips, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-FIREWALL_VNET = """
+FIREWALL_VNET = r"""
 resources
 | where type =~ 'Microsoft.Network/azureFirewalls'
 | where subscriptionId !in~ {}
@@ -384,7 +384,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-# FIREWALL_VHUB = """
+# FIREWALL_VHUB = r"""
 # resources
 # | where type =~ 'Microsoft.Network/azureFirewalls'
 # | where subscriptionId !in~ {}
@@ -400,7 +400,7 @@ resources
 # | project-away id1
 # """
 
-BASTION = """
+BASTION = r"""
 resources
 | where type =~ 'Microsoft.Network/bastionHosts'
 | where subscriptionId !in~ {}
@@ -427,7 +427,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-VNET_GATEWAY = """
+VNET_GATEWAY = r"""
 resources
 | where type =~ 'microsoft.Network/virtualNetworkGateways'
 | where subscriptionId !in~ {}
@@ -463,7 +463,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = iff(tolower(type) == 'vpn', metadata_vpn, metadata_exr)
 """
 
-APP_GATEWAY = """
+APP_GATEWAY = r"""
 resources
 | where type =~ 'Microsoft.Network/applicationGateways'
 | where subscriptionId !in~ {}
@@ -499,7 +499,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-APIM = """
+APIM = r"""
 resources
 | where type =~ 'Microsoft.ApiManagement/service'
 | where subscriptionId !in~ {}
@@ -520,7 +520,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-LB = """
+LB = r"""
 resources
 | where type =~ 'microsoft.Network/LoadBalancers'
 | where subscriptionId !in~ {}
@@ -547,7 +547,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-VHUB_ENDPOINT = """
+VHUB_ENDPOINT = r"""
 resources
 | where subscriptionId !in~ {}
 | where isnotnull(properties.virtualHub.id)

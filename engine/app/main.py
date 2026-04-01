@@ -1,50 +1,32 @@
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.exceptions import HTTPException as StarletteHTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.encoders import jsonable_encoder
-
-from azure.identity.aio import ManagedIdentityCredential
-
-from azure.cosmos.aio import CosmosClient
-from azure.cosmos import PartitionKey
-from azure.cosmos.exceptions import CosmosResourceExistsError, CosmosResourceNotFoundError, CosmosHttpResponseError
-
-from app.routers import (
-    azure,
-    internal,
-    admin,
-    user,
-    space,
-    tool,
-    status
-)
-
-from app.logs.logs import ipam_logger as logger
-
-import os
-import re
-import uuid
 import copy
 import json
+import os
 import shutil
 import tempfile
 import traceback
-import requests
+import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlparse
-from contextlib import asynccontextmanager
+
+import requests
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from azure.cosmos import PartitionKey
+from azure.cosmos.aio import CosmosClient
+from azure.cosmos.exceptions import CosmosHttpResponseError, CosmosResourceNotFoundError
+from azure.identity.aio import ManagedIdentityCredential
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import HTTPException as StarletteHTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.globals import globals
-
-from app.routers.common.helper import (
-    cosmos_query,
-    cosmos_upsert,
-    cosmos_replace
-)
+from app.logs.logs import ipam_logger as logger
+from app.routers import admin, azure, internal, space, status, tool, user
+from app.routers.common.helper import cosmos_query, cosmos_replace, cosmos_upsert
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 BUILD_DIR = os.path.join(os.getcwd(), "dist")
@@ -52,7 +34,7 @@ BUILD_DIR = os.path.join(os.getcwd(), "dist")
 try:
     UI_APP_ID = uuid.UUID(os.environ.get('UI_APP_ID'))
     VALID_APP_ID = UI_APP_ID != uuid.UUID(int=0)
-except:
+except Exception:
     UI_APP_ID = None
     VALID_APP_ID = False
 
@@ -124,23 +106,21 @@ async def ipam_init():
     except CosmosHttpResponseError as e:
         logger.error('Cosmos database does not exist, error initializing Azure IPAM!')
         raise e
-        
-    
+
+
     database = cosmos_client.get_database_client(database_name)
 
     container_name = globals.CONTAINER_NAME
 
     try:
         logger.info('Verifying Container Exists...')
-        container = await database.create_container_if_not_exists(
+        await database.create_container_if_not_exists(
             id = container_name,
             partition_key = PartitionKey(path = "/tenant_id")
         )
     except CosmosHttpResponseError as e:
         logger.error('Cosmos container does not exist, error initializing Azure IPAM!')
         raise e
-    
-    container = database.get_container_client(container_name)
 
     await cosmos_client.close()
     await managed_identity_credential.close()
@@ -523,7 +503,7 @@ if os.path.isdir(BUILD_DIR) and UI_APP_ID and VALID_APP_ID:
         response_class = FileResponse,
         include_in_schema = False
     )
-    def read_index(request: Request):
+    def read_root(request: Request):
         return FileResponse(BUILD_DIR + "/index.html")
 
     @app.get(
