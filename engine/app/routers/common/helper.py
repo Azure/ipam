@@ -10,7 +10,7 @@ from azure.core.exceptions import (
 )
 from azure.cosmos.aio import CosmosClient
 from azure.identity.aio import (
-    ClientSecretCredential,
+    ClientAssertionCredential,
     ManagedIdentityCredential,
     OnBehalfOfCredential,
 )
@@ -110,19 +110,26 @@ def get_user_id_from_jwt(token):
 async def get_client_credentials():
     """DOCSTRING"""
 
-    return managed_identity_credential
+    mi_token = await managed_identity_credential.get_token("api://AzureADTokenExchange")
+
+    credential = ClientAssertionCredential(
+        tenant_id=globals.TENANT_ID,
+        client_id=globals.CLIENT_ID,
+        func=lambda: mi_token.token,
+        authority=globals.AUTHORITY_HOST
+    )
+
+    return credential
 
 async def get_obo_credentials(assertion):
     """DOCSTRING"""
 
-    async def client_assertion():
-        token = await managed_identity_credential.get_token("api://AzureADTokenExchange")
-        return token.token
+    mi_token = await managed_identity_credential.get_token("api://AzureADTokenExchange")
 
     credential = OnBehalfOfCredential(
         tenant_id=globals.TENANT_ID,
         client_id=globals.CLIENT_ID,
-        client_assertion_func=client_assertion,
+        client_assertion_func=lambda: mi_token.token,
         user_assertion=assertion,
         authority=globals.AUTHORITY_HOST
     )
