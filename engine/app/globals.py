@@ -53,10 +53,6 @@ class Globals:
         return os.environ.get('CLIENT_ID') or os.environ.get('ENGINE_APP_ID')
 
     @property
-    def CLIENT_SECRET(self):
-        return os.environ.get('CLIENT_SECRET') or os.environ.get('ENGINE_APP_SECRET')
-
-    @property
     def TENANT_ID(self):
         return os.environ.get('TENANT_ID')
 

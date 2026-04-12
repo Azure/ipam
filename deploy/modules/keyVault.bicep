@@ -19,10 +19,6 @@ param uiAppId string
 @description('IPAM-Engine App Registration Client/App ID')
 param engineAppId string
 
-@secure()
-@description('IPAM-Engine App Registration Client Secret')
-param engineAppSecret string
-
 @description('Log Analytics Worskpace ID')
 param workspaceId string
 
@@ -70,14 +66,6 @@ resource engineId 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
   name: 'ENGINE-ID'
   properties: {
     value: engineAppId
-  }
-}
-
-resource engineSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
-  parent: keyVault
-  name: 'ENGINE-SECRET'
-  properties: {
-    value: engineAppSecret
   }
 }
 
