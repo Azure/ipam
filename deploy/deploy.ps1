@@ -1206,7 +1206,7 @@ process {
         -Endpoint $deployment.Outputs["appServiceHostName"].Value
     }
 
-    if ($true) {
+    if ($PSCmdlet.ParameterSetName -notin 'AppsOnly') {
       New-FederatedCredential `
         -EngineAppId $appDetails.EngineAppId `
         -ManagedIdentityPrincipalId $deployment.Outputs["managedIdentityPrincipalId"].Value
