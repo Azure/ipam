@@ -120,10 +120,6 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
             value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-ID/)'
           }
           {
-            name: 'ENGINE_APP_SECRET'
-            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-SECRET/)'
-          }
-          {
             name: 'TENANT_ID'
             value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/TENANT-ID/)'
           }
@@ -248,7 +244,7 @@ resource diagnosticSettingsApp 'Microsoft.Insights/diagnosticSettings@2021-05-01
         enabled: true
         retentionPolicy: {
           days: 0
-          enabled: false 
+          enabled: false
         }
       }
     ]

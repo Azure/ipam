@@ -11,6 +11,7 @@ from azure.core.exceptions import (
 from azure.cosmos.aio import CosmosClient
 from azure.identity.aio import (
     ClientSecretCredential,
+    ClientAssertionCredential,
     ManagedIdentityCredential,
     OnBehalfOfCredential,
 )
@@ -107,44 +108,51 @@ def get_user_id_from_jwt(token):
 
     return decoded['oid']
 
-async def get_obo_token(assertion):
-    """DOCSTRING"""
-
-    azure_arm_url = 'https://{}/user_impersonation'.format(globals.AZURE_ARM_URL)
-
-    credential = OnBehalfOfCredential(
-        tenant_id=globals.TENANT_ID,
-        client_id=globals.CLIENT_ID,
-        client_secret=globals.CLIENT_SECRET,
-        user_assertion=assertion
-    )
-    obo_token = await credential.get_token(azure_arm_url)
-    await credential.close()
-
-    return obo_token
-
 async def get_client_credentials():
     """DOCSTRING"""
 
-    credential = ClientSecretCredential(
-        tenant_id=globals.TENANT_ID,
-        client_id=globals.CLIENT_ID,
-        client_secret=globals.CLIENT_SECRET,
-        authority=globals.AUTHORITY_HOST
-    )
+    # If CLIENT_SECRET is defined, use it for credentials. Otherwise, use the Managed Identity
+    if globals.CLIENT_SECRET:
+        credential = ClientSecretCredential(
+            tenant_id=globals.TENANT_ID,
+            client_id=globals.CLIENT_ID,
+            client_secret=globals.CLIENT_SECRET,
+            authority=globals.AUTHORITY_HOST
+        )
+    else:
+        mi_token = await managed_identity_credential.get_token("api://AzureADTokenExchange")
+
+        credential = ClientAssertionCredential(
+            tenant_id=globals.TENANT_ID,
+            client_id=globals.CLIENT_ID,
+            func=lambda: mi_token.token,
+            authority=globals.AUTHORITY_HOST
+        )
 
     return credential
 
 async def get_obo_credentials(assertion):
     """DOCSTRING"""
 
-    credential = OnBehalfOfCredential(
-        tenant_id=globals.TENANT_ID,
-        client_id=globals.CLIENT_ID,
-        client_secret=globals.CLIENT_SECRET,
-        user_assertion=assertion,
-        authority=globals.AUTHORITY_HOST
-    )
+    # If CLIENT_SECRET is defined, use it for credentials. Otherwise, use the Managed Identity
+    if globals.CLIENT_SECRET:
+        credential = OnBehalfOfCredential(
+            tenant_id=globals.TENANT_ID,
+            client_id=globals.CLIENT_ID,
+            client_secret=globals.CLIENT_SECRET,
+            user_assertion=assertion,
+            authority=globals.AUTHORITY_HOST
+        )
+    else:
+        mi_token = await managed_identity_credential.get_token("api://AzureADTokenExchange")
+
+        credential = OnBehalfOfCredential(
+            tenant_id=globals.TENANT_ID,
+            client_id=globals.CLIENT_ID,
+            client_assertion_func=lambda: mi_token.token,
+            user_assertion=assertion,
+            authority=globals.AUTHORITY_HOST
+        )
 
     return credential
 

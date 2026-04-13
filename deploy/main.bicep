@@ -29,10 +29,6 @@ param uiAppId string = '00000000-0000-0000-0000-000000000000'
 @description('IPAM-Engine App Registration Client/App ID')
 param engineAppId string
 
-@secure()
-@description('IPAM-Engine App Registration Client Secret')
-param engineAppSecret string
-
 @description('Tags')
 param tags object = {}
 
@@ -92,7 +88,6 @@ module keyVault './modules/keyVault.bicep' = {
     identityClientId:  managedIdentity.outputs.clientId
     uiAppId: uiAppId
     engineAppId: engineAppId
-    engineAppSecret: engineAppSecret
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
   }
 }
@@ -186,3 +181,4 @@ output appServiceName string = deployAsFunc ? resourceNames.functionName : resou
 output appServiceHostName string = deployAsFunc ? functionApp!.outputs.functionAppHostName : appService!.outputs.appServiceHostName
 output acrName string = privateAcr ? containerRegistry!.outputs.acrName : ''
 output acrUri string = privateAcr ? containerRegistry!.outputs.acrUri : ''
+output managedIdentityPrincipalId string = managedIdentity.outputs.principalId
