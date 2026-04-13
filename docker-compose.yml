@@ -27,6 +27,7 @@ services:
         PORT: 8080
     environment:
       CLIENT_ID: ${ENGINE_APP_ID}
+      CLIENT_SECRET: ${ENGINE_APP_SECRET}
       TENANT_ID: ${TENANT_ID}
       COSMOS_URL: ${COSMOS_URL}
       COSMOS_KEY: ${COSMOS_KEY}
