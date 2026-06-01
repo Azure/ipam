@@ -633,10 +633,7 @@ process {
 
     Write-Host "INFO: Creating Azure IPAM Engine Application" -ForegroundColor Green
 
-    # Create IPAM Engine Application. When the UI App is referenced as a Known Client Application,
-    # this can intermittently fail with "Property api.knownClientApplications is invalid." while the
-    # newly created UI App is not yet discoverable by AppId. Retrying absorbs that replication
-    # delay; the create is atomic, so a failed attempt leaves no partial object behind.
+    # Create IPAM Engine Application
     $engineApp = Invoke-WithGraphRetry -ScriptBlock {
       New-AzADApplication `
         -DisplayName $EngineAppName `
@@ -646,9 +643,7 @@ process {
 
     Write-Host "INFO: Updating Azure IPAM Engine API Endpoint" -ForegroundColor Green
 
-    # Update IPAM Engine API Endpoint. Retried to absorb replication delay, which can intermittently
-    # cause "Resource '<id>' does not exist or one of its queried reference-property objects are not
-    # present." while the newly created Engine App is not yet discoverable.
+    # Update IPAM Engine API Endpoint
     Invoke-WithGraphRetry -ScriptBlock {
       Update-AzADApplication -ObjectId $engineApp.Id -IdentifierUri "api://$($engineApp.AppId)"
     }
@@ -669,21 +664,23 @@ process {
     if (-not $DisableUI) {
       Write-Host "INFO: Updating Azure IPAM UI Application Resource Access" -ForegroundColor Green
 
-      Update-AzADApplication -ObjectId $uiApp.Id -RequiredResourceAccess $uiResourceAccess
+      Invoke-WithGraphRetry -ScriptBlock {
+        Update-AzADApplication -ObjectId $uiApp.Id -RequiredResourceAccess $uiResourceAccess
+      }
 
-      $uiObject = Get-AzADApplication -ObjectId $uiApp.Id
+      $uiObject = Invoke-WithGraphRetry -ScriptBlock {
+        Get-AzADApplication -ObjectId $uiApp.Id
+      }
     }
 
-    $engineObject = Get-AzADApplication -ObjectId $engineApp.Id
+    $engineObject = Invoke-WithGraphRetry -ScriptBlock {
+      Get-AzADApplication -ObjectId $engineApp.Id
+    }
 
     # Create IPAM UI Service Principal (If DisableUI not specified)
     if (-not $DisableUI) {
       Write-Host "INFO: Creating Azure IPAM UI Service Principal" -ForegroundColor Green
 
-      # Retried to absorb replication delay, which can intermittently cause "When using this
-      # permission, the backing application of the service principal being created must in the
-      # local tenant" while the UI App has not yet fully propagated. The existence check keeps the
-      # retry idempotent so a partial success isn't recreated (the SP create also assigns a role).
       Invoke-WithGraphRetry -ScriptBlock {
         $uiSpnExists = [bool](Get-AzADServicePrincipal -ApplicationId $uiApp.AppId -ErrorAction SilentlyContinue)
 
@@ -697,11 +694,7 @@ process {
 
     Write-Host "INFO: Creating Azure IPAM Engine Service Principal" -ForegroundColor Green
 
-    # Create IPAM Engine Service Principal. Retried to absorb replication delay, which can
-    # intermittently cause "When using this permission, the backing application of the service
-    # principal being created must in the local tenant" while the Engine App has not yet fully
-    # propagated. The existence check keeps the retry idempotent so a partial success (e.g. the SP
-    # is created but the role assignment fails) isn't recreated.
+    # Create IPAM Engine Service Principal
     Invoke-WithGraphRetry -ScriptBlock {
       $engineSpnExists = [bool](Get-AzADServicePrincipal -ApplicationId $engineApp.AppId -ErrorAction SilentlyContinue)
 
@@ -716,7 +709,9 @@ process {
     Write-Host "INFO: Creating Azure IPAM Engine Secret" -ForegroundColor Green
 
     # Create IPAM Engine Secret
-    $engineSecret = New-AzADAppCredential -ApplicationObject $engineObject -StartDate (Get-Date) -EndDate (Get-Date).AddYears(2)
+    $engineSecret = Invoke-WithGraphRetry -ScriptBlock {
+      New-AzADAppCredential -ApplicationObject $engineObject -StartDate (Get-Date) -EndDate (Get-Date).AddYears(2)
+    }
 
     if (-not $DisableUI) {
       Write-Host "INFO: Azure IPAM Engine & UI Applications/Service Principals created successfully" -ForegroundColor Green
@@ -797,13 +792,15 @@ process {
 
     # Fetch Azure IPAM UI Service Principal (If DisableUI not specified)
     if (-not $DisableUI) {
-      $uiSpn = Get-AzADServicePrincipal `
-        -ApplicationId $UIAppId
+      $uiSpn = Invoke-WithGraphRetry -ScriptBlock {
+        Get-AzADServicePrincipal -ApplicationId $UIAppId
+      }
     }
 
     # Fetch Azure IPAM Engine Service Principal
-    $engineSpn = Get-AzADServicePrincipal `
-      -ApplicationId $EngineAppId
+    $engineSpn = Invoke-WithGraphRetry -ScriptBlock {
+      Get-AzADServicePrincipal -ApplicationId $EngineAppId
+    }
 
     # Grant admin consent for Microsoft Graph API permissions assigned to IPAM UI application (If DisableUI not specified)
     if (-not $DisableUI) {
