@@ -470,18 +470,16 @@ process {
       [Parameter(Mandatory = $false)]
       [int]$MaxAttempts = 8,
       [Parameter(Mandatory = $false)]
-      [int]$DelaySeconds = 5
+      [int]$BaseDelaySeconds = 2,
+      [Parameter(Mandatory = $false)]
+      [int]$MaxDelaySeconds = 30
     )
 
-    # Microsoft Graph is eventually consistent and provides no replication-latency SLA. The Azure
-    # PowerShell SDK automatically retries transport faults (timeouts, 5xx, 429 w/ Retry-After) but
-    # deliberately does not retry post-create reference errors (e.g. 400/404) because it cannot
-    # distinguish replication lag from a genuine failure. Retrying the operation here is the
-    # sanctioned pattern for newly created objects that are referenced before they fully propagate.
-    #
-    # Retries are intentionally silent. Transient replication failures are expected and not
-    # actionable, so only the net result is surfaced: a successful operation returns normally, and
-    # an exhausted retry re-throws the last error for the caller's existing error handling to report.
+    # Azure AD/Microsoft Graph is eventually consistent: a freshly created object may not yet be
+    # visible to the endpoint handling a follow-up request. The Az SDK retries transport faults but
+    # not these post-create reference errors, so we retry any thrown error here, backing off
+    # exponentially with jitter (capped at MaxDelaySeconds) to absorb propagation delay without
+    # stampeding the endpoint. Retries are silent; an exhausted retry re-throws the last error.
     $attempt = 0
 
     do {
@@ -495,7 +493,10 @@ process {
           throw $_
         }
 
-        Start-Sleep -Seconds $DelaySeconds
+        $backoff = [Math]::Min($BaseDelaySeconds * [Math]::Pow(2, $attempt - 1), $MaxDelaySeconds)
+        $jitter = Get-Random -Minimum 0.5 -Maximum 1.0
+
+        Start-Sleep -Seconds ([int][Math]::Ceiling($backoff * $jitter))
       }
     } while ($attempt -lt $MaxAttempts)
   }
