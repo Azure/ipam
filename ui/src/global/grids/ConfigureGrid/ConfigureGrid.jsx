@@ -26,7 +26,7 @@ const OverlayContext = React.createContext(null);
  * re-renders independently of AG Grid's overlay lifecycle.
  */
 const CombinedOverlay = React.memo(({ overlayType }) => {
-  const overlayConfig = React.useContext(OverlayContext);
+  const overlayConfig = React.use(OverlayContext);
   const NoRowsContent = overlayConfig?.noRowsOverlay;
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -224,7 +224,7 @@ const ConfigureGrid = ({
   }, []);
 
   return (
-    <OverlayContext.Provider value={overlayContextValue}>
+    <OverlayContext value={overlayContextValue}>
     <div style={gridStyle} className="ag-theme-quartz">
       <AgGridReact
         ref={gridRef}
@@ -246,7 +246,7 @@ const ConfigureGrid = ({
         {...gridOptions}
       />
     </div>
-    </OverlayContext.Provider>
+    </OverlayContext>
   );
 };
 

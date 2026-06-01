@@ -93,7 +93,7 @@ const GridBody = styled("div")({
 
 function RenderDelete(props) {
   const { data } = props;
-  const { admins, setAdmins, selectedId } = React.useContext(AdminContext);
+  const { admins, setAdmins, selectedId } = React.use(AdminContext);
 
   const flexCenter = {
     display: "flex",
@@ -338,7 +338,7 @@ export default function Administration() {
   }, []);
 
   return (
-    <AdminContext.Provider value={{ admins, setAdmins, selectedId }}>
+    <AdminContext value={{ admins, setAdmins, selectedId }}>
       <Wrapper>
         <MainBody>
           <FloatingHeader>
@@ -460,6 +460,6 @@ export default function Administration() {
           </DataSection>
         </MainBody>
       </Wrapper>
-    </AdminContext.Provider>
+    </AdminContext>
   );
 }

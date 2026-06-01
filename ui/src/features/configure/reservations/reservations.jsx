@@ -148,7 +148,7 @@ function ReservationStatus(props) {
 
 function ReservationId(props) {
   const { value } = props;
-  const { copied, setCopied } = React.useContext(ReservationContext);
+  const { copied, setCopied } = React.use(ReservationContext);
 
   const contentCopied = (copied === value.id);
 
@@ -227,7 +227,7 @@ const Reservations = () => {
   const spaces = useSelector(selectSpaces);
   const blocks = useSelector(selectBlocks);
 
-  const msgTimer = React.useRef(null);
+  const msgTimerRef = React.useRef(null);
 
   const dispatch = useDispatch();
 
@@ -315,15 +315,15 @@ const Reservations = () => {
 
   React.useEffect(() => {
     if(copied !== "") {
-      clearTimeout(msgTimer.current);
+      clearTimeout(msgTimerRef.current);
 
-      msgTimer.current = setTimeout(
+      msgTimerRef.current = setTimeout(
         function() {
           setCopied("");
         }, 3000
       );
     }
-  }, [msgTimer, copied]);
+  }, [msgTimerRef, copied]);
 
   React.useEffect(() => {
     if (spaces) {
@@ -444,7 +444,7 @@ const Reservations = () => {
   }, [selectedBlock, filterActive]);
 
   return (
-    <ReservationContext.Provider value={{ copied, setCopied }}>
+    <ReservationContext value={{ copied, setCopied }}>
       <NewReservation
         open={newResvOpen}
         handleClose={() => setNewResvOpen(false)}
@@ -614,7 +614,7 @@ const Reservations = () => {
           </Box>
         </Box>
       </Box>
-    </ReservationContext.Provider>
+    </ReservationContext>
   );
 }
 

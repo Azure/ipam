@@ -7,7 +7,7 @@ import { loginRequest } from "../../msal/authConfig";
 const Login = () => {
   const { instance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
-  const loginAttempted = React.useRef(false);
+  const loginAttemptedRef = React.useRef(false);
 
   React.useEffect(() => {
     const handleAuthentication = async () => {
@@ -18,9 +18,9 @@ const Login = () => {
       if (
         !isAuthenticated &&
         inProgress === InteractionStatus.None &&
-        !loginAttempted.current
+        !loginAttemptedRef.current
       ) {
-        loginAttempted.current = true;
+        loginAttemptedRef.current = true;
 
         try {
           await instance.loginRedirect(loginRequest);
@@ -31,7 +31,7 @@ const Login = () => {
           console.log("--------------");
 
           // Reset the attempt flag on any error to allow retry
-          loginAttempted.current = false;
+          loginAttemptedRef.current = false;
         }
       }
     };
@@ -42,7 +42,7 @@ const Login = () => {
   // Reset login attempt flag when authentication state changes
   React.useEffect(() => {
     if (isAuthenticated) {
-      loginAttempted.current = false;
+      loginAttemptedRef.current = false;
     }
   }, [isAuthenticated]);
 

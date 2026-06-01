@@ -230,7 +230,7 @@ export default function ManageExclusions() {
   }, []);
 
   return (
-    <ExclusionContext.Provider value={{}}>
+    <ExclusionContext value={{}}>
       <Wrapper>
         <MainBody>
           <FloatingHeader>
@@ -269,6 +269,6 @@ export default function ManageExclusions() {
           </DataSection>
         </MainBody>
       </Wrapper>
-    </ExclusionContext.Provider>
+    </ExclusionContext>
   );
 }

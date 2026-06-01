@@ -64,7 +64,7 @@ const columns = [
 
 export default function BlockDataGrid(props) {
   const { selectedSpace, selectedBlock, setSelectedBlock } = props;
-  const { blocks, refreshing, refresh } = React.useContext(BasicContext);
+  const { blocks, refreshing, refresh } = React.use(BasicContext);
 
   const [previousSpace, setPreviousSpace] = React.useState(null);
 

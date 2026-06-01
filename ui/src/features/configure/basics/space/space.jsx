@@ -58,7 +58,7 @@ const columns = [
 
 export default function SpaceDataGrid(props) {
   const { selectedSpace, setSelectedSpace, setSelectedBlock } = props;
-  const { spaces, refresh } = React.useContext(BasicContext);
+  const { spaces, refresh } = React.use(BasicContext);
 
   const [addSpaceOpen, setAddSpaceOpen] = React.useState(false);
   const [editSpaceOpen, setEditSpaceOpen] = React.useState(false);

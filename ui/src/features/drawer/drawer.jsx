@@ -559,7 +559,7 @@ export default function NavDrawer() {
     >
       {navItems.map((navItem, navIndex) => {
         return (
-          <React.Fragment key={`navItem-${navIndex}`}>
+          <React.Fragment key={`navItem-${navItem[0].title}`}>
             <List>
               {navItem.map((item, itemIndex) => {
                 return item.hasOwnProperty('children')

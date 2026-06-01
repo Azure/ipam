@@ -124,7 +124,7 @@ export default function DiscoverTable(props) {
   const stateData = useSelector(config.apiFunc);
 
   const gridApiRef = React.useRef(null);
-  const filterApplied = React.useRef(false);
+  const filterAppliedRef = React.useRef(false);
 
   const location = useLocation();
   const theme = useTheme();
@@ -134,14 +134,14 @@ export default function DiscoverTable(props) {
     gridApiRef.current = params.api;
 
     // Apply filter from URL state if present and not already applied
-    if (location.state && !filterApplied.current) {
+    if (location.state && !filterAppliedRef.current) {
       const filterModel = mapFilterStateToAgGridModel(location.state);
       if (filterModel) {
         // Small delay to ensure grid is fully initialized
         setTimeout(() => {
           showFilteredColumns(params.api, filterModel);
           params.api.setFilterModel(filterModel);
-          filterApplied.current = true;
+          filterAppliedRef.current = true;
         }, 100);
       }
     }
@@ -149,7 +149,7 @@ export default function DiscoverTable(props) {
 
   // Reset filter applied flag when location changes
   React.useEffect(() => {
-    filterApplied.current = false;
+    filterAppliedRef.current = false;
 
     // Apply new filter if grid is ready
     if (gridApiRef.current && location.state) {
@@ -157,7 +157,7 @@ export default function DiscoverTable(props) {
       if (filterModel) {
         showFilteredColumns(gridApiRef.current, filterModel);
         gridApiRef.current.setFilterModel(filterModel);
-        filterApplied.current = true;
+        filterAppliedRef.current = true;
       }
     }
   }, [location.state]);
@@ -240,7 +240,7 @@ export default function DiscoverTable(props) {
   }, []);
 
   return (
-    <TableContext.Provider value={{ stateData, rowData, menuExpand }}>
+    <TableContext value={{ stateData, rowData, menuExpand }}>
       {renderDetails()}
       <Box sx={{ flexGrow: 1, height: "100%" }}>
         <DataGrid
@@ -254,6 +254,6 @@ export default function DiscoverTable(props) {
           onGridReady={handleGridReady}
         />
       </Box>
-    </TableContext.Provider>
+    </TableContext>
   );
 }

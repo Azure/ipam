@@ -35,7 +35,7 @@ const Networks = (props) => {
     setExternals,
     setSelectedExternal
   } = props;
-  const { refreshing } = React.useContext(ExternalContext);
+  const { refreshing } = React.use(ExternalContext);
 
   const [addExtOpen, setAddExtOpen] = React.useState(false);
   const [editExtOpen, setEditExtOpen] = React.useState(false);

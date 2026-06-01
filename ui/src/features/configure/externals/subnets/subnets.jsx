@@ -38,7 +38,7 @@ const Subnets = (props) => {
     setSubnets,
     setSelectedSubnet
   } = props;
-  const { refreshing } = React.useContext(ExternalContext);
+  const { refreshing } = React.use(ExternalContext);
 
   const [addExtSubOpen, setAddExtSubOpen] = React.useState(false);
   const [editExtSubOpen, setEditExtSubOpen] = React.useState(false);

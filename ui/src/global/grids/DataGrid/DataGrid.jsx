@@ -47,7 +47,7 @@ const SUCCESS_INDICATOR_TIMEOUT = 3000;
 // Column Visibility Menu Component
 // ============================================================================
 const ColumnVisibilityMenu = React.memo(({ anchorEl, open, onClose }) => {
-  const { columnDefs, toggleColumnVisibility, getVisibleColumns, gridRef } = React.useContext(DataGridContext);
+  const { columnDefs, toggleColumnVisibility, getVisibleColumns, gridRef } = React.use(DataGridContext);
   const [visibleColumns, setVisibleColumns] = useState([]);
 
   // Update visible columns when menu opens
@@ -151,7 +151,7 @@ ColumnVisibilityMenu.displayName = 'ColumnVisibilityMenu';
 // Header Menu Placeholder Component (renders icon in grid header)
 // ============================================================================
 const HeaderMenuPlaceholder = React.memo(() => {
-  const { saving, sendResults, menuOpen, setMenuOpen, setMenuAnchor } = React.useContext(DataGridContext);
+  const { saving, sendResults, menuOpen, setMenuOpen, setMenuAnchor } = React.use(DataGridContext);
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -219,7 +219,7 @@ const StandaloneHeaderMenu = React.memo(({ viewSettingKey = DEFAULT_VIEW_SETTING
     setMenuOpen,
     menuAnchor,
     viewSetting
-  } = React.useContext(DataGridContext);
+  } = React.use(DataGridContext);
 
   const [columnMenuOpen, setColumnMenuOpen] = useState(false);
   const [columnMenuAnchor, setColumnMenuAnchor] = useState(null);
@@ -405,7 +405,7 @@ const OverlayContext = React.createContext(null);
  * @param {'loading'|'noRows'|'noMatchingRows'} props.overlayType - Overlay type determined by AG Grid
  */
 const CombinedOverlay = React.memo(({ overlayType }) => {
-  const overlayConfig = React.useContext(OverlayContext);
+  const overlayConfig = React.use(OverlayContext);
   const NoRowsContent = overlayConfig?.noRowsOverlay;
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -558,7 +558,7 @@ const DataGrid = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const gridRef = useRef(null);
-  const initialSelectionApplied = useRef(false);
+  const initialSelectionAppliedRef = useRef(false);
 
   // Memoized column definitions with actions column appended
   const colDefs = useMemo(() => {
@@ -855,27 +855,27 @@ const DataGrid = ({
   }, [initialSelectedRows, idProperty]);
 
   // Track if view settings have been applied
-  const viewSettingsApplied = useRef(false);
+  const viewSettingsAppliedRef = useRef(false);
 
   const onGridReady = useCallback((params) => {
     const { api } = params;
 
     // Apply saved view settings when grid is ready
-    if (viewSetting && viewSetting.columnState && !viewSettingsApplied.current) {
+    if (viewSetting && viewSetting.columnState && !viewSettingsAppliedRef.current) {
       try {
         api.applyColumnState({
           state: viewSetting.columnState,
           applyOrder: true,
         });
 
-        viewSettingsApplied.current = true;
+        viewSettingsAppliedRef.current = true;
       } catch (error) {
         console.error('Error applying saved view settings:', error);
       }
     }
 
     // Apply initial selection when grid is ready and has data
-    if (Object.keys(initialRowSelection).length > 0 && !initialSelectionApplied.current) {
+    if (Object.keys(initialRowSelection).length > 0 && !initialSelectionAppliedRef.current) {
       requestAnimationFrame(() => {
         api.deselectAll();
 
@@ -886,7 +886,7 @@ const DataGrid = ({
           }
         });
 
-        initialSelectionApplied.current = true;
+        initialSelectionAppliedRef.current = true;
 
         if (onRowSelectionChanged) {
           const selectedRows = api.getSelectedRows();
@@ -903,13 +903,13 @@ const DataGrid = ({
 
   // Reset selection state when initialSelectedRows changes
   useEffect(() => {
-    initialSelectionApplied.current = false;
+    initialSelectionAppliedRef.current = false;
   }, [initialSelectedRows]);
 
   // Apply saved view settings when they become available (after initial load from Redux)
   useEffect(() => {
     const gridApi = gridRef.current?.api;
-    if (!gridApi || !viewSetting || viewSettingsApplied.current) return;
+    if (!gridApi || !viewSetting || viewSettingsAppliedRef.current) return;
 
     // Only apply if we have the new AG Grid format
     if (viewSetting.columnState) {
@@ -919,7 +919,7 @@ const DataGrid = ({
           applyOrder: true,
         });
 
-        viewSettingsApplied.current = true;
+        viewSettingsAppliedRef.current = true;
       } catch (error) {
         console.error('Error applying saved view settings:', error);
       }
@@ -947,7 +947,7 @@ const DataGrid = ({
         }
       });
 
-      initialSelectionApplied.current = true;
+      initialSelectionAppliedRef.current = true;
     });
   }, [initialRowSelection, idProperty]);
 
@@ -1009,8 +1009,8 @@ const DataGrid = ({
   // ============================================================================
 
   return (
-    <DataGridContext.Provider value={gridContextValue}>
-      <OverlayContext.Provider value={overlayContextValue}>
+    <DataGridContext value={gridContextValue}>
+      <OverlayContext value={overlayContextValue}>
       <div style={{ width: "100%", height: "100%" }} className="ag-theme-quartz">
         <AgGridReact
           ref={gridRef}
@@ -1039,8 +1039,8 @@ const DataGrid = ({
         />
         <StandaloneHeaderMenu viewSettingKey={viewSettingKey} extraMenuItems={extraMenuItems} />
       </div>
-      </OverlayContext.Provider>
-    </DataGridContext.Provider>
+      </OverlayContext>
+    </DataGridContext>
   );
 };
 

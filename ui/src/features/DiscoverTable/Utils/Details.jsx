@@ -121,7 +121,7 @@ function NumberCircularProgress(props) {
 }
 
 export default function ItemDetails(props) {
-  const { rowData } = React.useContext(TableContext);
+  const { rowData } = React.use(TableContext);
   const { title, map, setExpand } = props;
 
   var isTarget = Object.keys(rowData).length;
@@ -152,9 +152,9 @@ export default function ItemDetails(props) {
           </React.Fragment>
         }
         <Fields>
-          {map.fieldMap.map((field, index) => (
+          {map.fieldMap.map((field) => (
             get(rowData, field.value) != null &&
-            <React.Fragment key={index}>
+            <React.Fragment key={field.value}>
               <Typography variant="overline" sx={{ fontSize: 10, fontWeight: "bold", textAlign: "left", pl: 3 }}>
                 {field.name}:&nbsp;
               </Typography>

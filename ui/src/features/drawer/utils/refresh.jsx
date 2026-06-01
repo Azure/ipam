@@ -11,8 +11,8 @@ import {
 } from '../../ipam/ipamSlice';
 
 function Refresh() {
-  const intervalAll = React.useRef(null);
-  const intervalMe = React.useRef(null);
+  const intervalAllRef = React.useRef(null);
+  const intervalMeRef = React.useRef(null);
   const refreshAllRef = React.useRef(null);
   const refreshMeRef = React.useRef(null);
   const refreshLoadedRef = React.useRef(false);
@@ -64,21 +64,21 @@ function Refresh() {
   React.useEffect(() => {
     if(refreshInterval) {
       refreshAllRef.current()
-      clearInterval(intervalAll.current);
-      intervalAll.current = setInterval(() => refreshAllRef.current(), refreshInterval * 60 * 1000);
+      clearInterval(intervalAllRef.current);
+      intervalAllRef.current = setInterval(() => refreshAllRef.current(), refreshInterval * 60 * 1000);
       return () => {
-        clearInterval(intervalAll.current);
-        intervalAll.current = null;
+        clearInterval(intervalAllRef.current);
+        intervalAllRef.current = null;
       }
     }
   }, [refreshInterval]);
 
   React.useEffect(() => {
-    clearInterval(intervalMe.current);
-    intervalMe.current = setInterval(() => refreshMeRef.current(), 60 * 1000);
+    clearInterval(intervalMeRef.current);
+    intervalMeRef.current = setInterval(() => refreshMeRef.current(), 60 * 1000);
     return () => {
-      clearInterval(intervalMe.current);
-      intervalMe.current = null;
+      clearInterval(intervalMeRef.current);
+      intervalMeRef.current = null;
     }
   }, []);
 

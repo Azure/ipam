@@ -92,7 +92,7 @@ const Update = styled("span")(({ theme }) => ({
 const OverlayContext = React.createContext(null);
 
 const CombinedOverlay = React.memo(({ overlayType }) => {
-  const overlayConfig = React.useContext(OverlayContext);
+  const overlayConfig = React.use(OverlayContext);
   const loadingMessage = overlayConfig?.loadingMessage;
   const NoRowsContent = overlayConfig?.noRowsOverlay;
   const theme = useTheme();
@@ -157,7 +157,7 @@ CombinedOverlay.displayName = 'CombinedOverlay';
 
 function DeleteCellRenderer(props) {
   const { data } = props;
-  const { setChanges, selectedRow } = React.useContext(EndpointContext);
+  const { setChanges, selectedRow } = React.use(EndpointContext);
 
   const flexCenter = {
     display: "flex",
@@ -195,7 +195,7 @@ function DeleteCellRenderer(props) {
 
 function HeaderMenu(props) {
   const { setting } = props;
-  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.useContext(EndpointContext);
+  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.use(EndpointContext);
 
   const [menuOpen, setMenuOpen] = React.useState(false);
 
@@ -334,7 +334,7 @@ export default function ManageExtEndpoints(props) {
     external,
     subnet
   } = props;
-  const { refreshing, refresh } = React.useContext(ExternalContext);
+  const { refreshing, refresh } = React.use(ExternalContext);
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -359,7 +359,7 @@ export default function ManageExtEndpoints(props) {
   const dispatch = useDispatch();
   const gridRef = React.useRef(null);
 
-  const saveTimer = React.useRef(null);
+  const saveTimerRef = React.useRef(null);
 
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -523,15 +523,15 @@ export default function ManageExtEndpoints(props) {
 
   React.useEffect(() => {
     if(sendResults !== null) {
-      clearTimeout(saveTimer.current);
+      clearTimeout(saveTimerRef.current);
 
-      saveTimer.current = setTimeout(
+      saveTimerRef.current = setTimeout(
         function() {
           setSendResults(null);
         }, 2000
       );
     }
-  }, [saveTimer, sendResults]);
+  }, [saveTimerRef, sendResults]);
 
 
 
@@ -727,7 +727,7 @@ export default function ManageExtEndpoints(props) {
   }, [subnet, changes, onCancel]);
 
   return (
-    <EndpointContext.Provider value={{ endpoints, setChanges, selectedRow, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+    <EndpointContext value={{ endpoints, setChanges, selectedRow, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
       <Dialog
         open={open}
         onClose={onCancel}
@@ -1070,7 +1070,7 @@ export default function ManageExtEndpoints(props) {
               sx={{ height: '100%', width: '100%' }}
               data-ag-theme-mode={isDarkMode ? 'dark' : 'light'}
             >
-              <OverlayContext.Provider value={overlayContextValue}>
+              <OverlayContext value={overlayContextValue}>
               <AgGridReact
                 ref={gridRef}
                 theme={gridTheme}
@@ -1088,7 +1088,7 @@ export default function ManageExtEndpoints(props) {
                 loading={sending || !endpoints || refreshing}
                 overlayComponent={CombinedOverlay}
               />
-              </OverlayContext.Provider>
+              </OverlayContext>
             </Box>
           </Box>
         </DialogContent>
@@ -1108,6 +1108,6 @@ export default function ManageExtEndpoints(props) {
           </Button>
         </DialogActions>
       </Dialog>
-    </EndpointContext.Provider>
+    </EndpointContext>
   );
 }

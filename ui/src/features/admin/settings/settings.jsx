@@ -122,7 +122,7 @@ export default function AdminSettings() {
   }
 
   return (
-    <ExclusionContext.Provider value={{}}>
+    <ExclusionContext value={{}}>
       <Wrapper>
         <MainBody>
           <FloatingHeader>
@@ -168,6 +168,6 @@ export default function AdminSettings() {
           </DataSection>
         </MainBody>
       </Wrapper>
-    </ExclusionContext.Provider>
+    </ExclusionContext>
   );
 }

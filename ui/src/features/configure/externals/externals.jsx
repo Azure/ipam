@@ -197,7 +197,7 @@ export default function Externals() {
   }, [subnets, selectedSubnet]);
 
   return (
-    <ExternalContext.Provider value={{ externalRef, refreshing, refresh }}>
+    <ExternalContext value={{ externalRef, refreshing, refresh }}>
       <Wrapper ref={externalRef}>
         <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
             <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
@@ -347,6 +347,6 @@ export default function Externals() {
           </BottomSection>
         </MainBody>
       </Wrapper>
-    </ExternalContext.Provider>
+    </ExternalContext>
   );
 }
