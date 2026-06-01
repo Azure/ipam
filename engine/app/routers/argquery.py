@@ -1,9 +1,10 @@
 RESERVATION = r"""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
-| where isnotnull(tags["ipam-res-id"])
+| extend resv = coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id'])
+| where isnotnull(resv)
 | extend prefixes = properties.addressSpace.addressPrefixes
-| project id, prefixes, resv = tags["ipam-res-id"]
+| project id, prefixes, resv = tostring(resv)
 """
 
 # SUBSCRIPTION = r"""
