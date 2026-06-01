@@ -463,6 +463,43 @@ process {
     return $logs
   }
 
+  Function Invoke-WithGraphRetry {
+    Param(
+      [Parameter(Mandatory = $true)]
+      [scriptblock]$ScriptBlock,
+      [Parameter(Mandatory = $false)]
+      [int]$MaxAttempts = 8,
+      [Parameter(Mandatory = $false)]
+      [int]$DelaySeconds = 5
+    )
+
+    # Microsoft Graph is eventually consistent and provides no replication-latency SLA. The Azure
+    # PowerShell SDK automatically retries transport faults (timeouts, 5xx, 429 w/ Retry-After) but
+    # deliberately does not retry post-create reference errors (e.g. 400/404) because it cannot
+    # distinguish replication lag from a genuine failure. Retrying the operation here is the
+    # sanctioned pattern for newly created objects that are referenced before they fully propagate.
+    #
+    # Retries are intentionally silent. Transient replication failures are expected and not
+    # actionable, so only the net result is surfaced: a successful operation returns normally, and
+    # an exhausted retry re-throws the last error for the caller's existing error handling to report.
+    $attempt = 0
+
+    do {
+      $attempt++
+
+      try {
+        return & $ScriptBlock
+      }
+      catch {
+        if ($attempt -ge $MaxAttempts) {
+          throw $_
+        }
+
+        Start-Sleep -Seconds $DelaySeconds
+      }
+    } while ($attempt -lt $MaxAttempts)
+  }
+
   Function Deploy-IPAMApplications {
     Param(
       [Parameter(Mandatory = $false)]
@@ -512,28 +549,6 @@ process {
       $uiApp = New-AzADApplication `
         -DisplayName $UiAppName `
         -SPARedirectUri "https://replace-this-value.azurewebsites.net"
-
-      # Wait for the UI Application to replicate in Microsoft Graph before referencing it as a
-      # Known Client Application on the Engine App. Without this, Engine App creation can
-      # intermittently fail with "Property api.knownClientApplications is invalid." because the
-      # newly created UI App is not yet discoverable by AppId due to replication delay.
-      Write-Host "INFO: Waiting for Azure IPAM UI Application propagation in Microsoft Graph..." -ForegroundColor Green
-
-      $uiAppRetries = 12
-      $uiAppExists = $false
-
-      do {
-        $uiAppExists = [bool](Get-AzADApplication -ApplicationId $uiApp.AppId -ErrorAction SilentlyContinue)
-
-        if (-not $uiAppExists) {
-          Start-Sleep -Seconds 5
-          $uiAppRetries--
-        }
-      } while (-not $uiAppExists -and $uiAppRetries -gt 0)
-
-      if (-not $uiAppExists) {
-        throw [System.Exception]::New("Timed out waiting for the Azure IPAM UI Application to propagate in Microsoft Graph.")
-      }
     }
 
     $engineResourceMap = @{
@@ -618,38 +633,25 @@ process {
 
     Write-Host "INFO: Creating Azure IPAM Engine Application" -ForegroundColor Green
 
-    # Create IPAM Engine Application
-    $engineApp = New-AzADApplication `
-      -DisplayName $EngineAppName `
-      -Api $engineApiSettings `
-      -RequiredResourceAccess $engineResourceAccessList
-
-    # Wait for the Engine Application to replicate in Microsoft Graph before updating it. Without
-    # this, the subsequent Update can intermittently fail with "Resource '<id>' does not exist or
-    # one of its queried reference-property objects are not present." because the newly created
-    # Engine App is not yet discoverable due to replication delay.
-    Write-Host "INFO: Waiting for Azure IPAM Engine Application propagation in Microsoft Graph..." -ForegroundColor Green
-
-    $engineAppRetries = 12
-    $engineAppExists = $false
-
-    do {
-      $engineAppExists = [bool](Get-AzADApplication -ObjectId $engineApp.Id -ErrorAction SilentlyContinue)
-
-      if (-not $engineAppExists) {
-        Start-Sleep -Seconds 5
-        $engineAppRetries--
-      }
-    } while (-not $engineAppExists -and $engineAppRetries -gt 0)
-
-    if (-not $engineAppExists) {
-      throw [System.Exception]::New("Timed out waiting for the Azure IPAM Engine Application to propagate in Microsoft Graph.")
+    # Create IPAM Engine Application. When the UI App is referenced as a Known Client Application,
+    # this can intermittently fail with "Property api.knownClientApplications is invalid." while the
+    # newly created UI App is not yet discoverable by AppId. Retrying absorbs that replication
+    # delay; the create is atomic, so a failed attempt leaves no partial object behind.
+    $engineApp = Invoke-WithGraphRetry -ScriptBlock {
+      New-AzADApplication `
+        -DisplayName $EngineAppName `
+        -Api $engineApiSettings `
+        -RequiredResourceAccess $engineResourceAccessList
     }
 
     Write-Host "INFO: Updating Azure IPAM Engine API Endpoint" -ForegroundColor Green
 
-    # Update IPAM Engine API Endpoint
-    Update-AzADApplication -ObjectId $engineApp.Id -IdentifierUri "api://$($engineApp.AppId)"
+    # Update IPAM Engine API Endpoint. Retried to absorb replication delay, which can intermittently
+    # cause "Resource '<id>' does not exist or one of its queried reference-property objects are not
+    # present." while the newly created Engine App is not yet discoverable.
+    Invoke-WithGraphRetry -ScriptBlock {
+      Update-AzADApplication -ObjectId $engineApp.Id -IdentifierUri "api://$($engineApp.AppId)"
+    }
 
     $uiEngineApiAccess = @{
       ResourceAppId  = $engineApp.AppId
@@ -678,18 +680,38 @@ process {
     if (-not $DisableUI) {
       Write-Host "INFO: Creating Azure IPAM UI Service Principal" -ForegroundColor Green
 
-      New-AzADServicePrincipal -ApplicationObject $uiObject | Out-Null
+      # Retried to absorb replication delay, which can intermittently cause "When using this
+      # permission, the backing application of the service principal being created must in the
+      # local tenant" while the UI App has not yet fully propagated. The existence check keeps the
+      # retry idempotent so a partial success isn't recreated (the SP create also assigns a role).
+      Invoke-WithGraphRetry -ScriptBlock {
+        $uiSpnExists = [bool](Get-AzADServicePrincipal -ApplicationId $uiApp.AppId -ErrorAction SilentlyContinue)
+
+        if (-not $uiSpnExists) {
+          New-AzADServicePrincipal -ApplicationObject $uiObject | Out-Null
+        }
+      }
     }
 
     $scope = "/providers/Microsoft.Management/managementGroups/$MgmtGroupId"
 
     Write-Host "INFO: Creating Azure IPAM Engine Service Principal" -ForegroundColor Green
 
-    # Create IPAM Engine Service Principal
-    New-AzADServicePrincipal -ApplicationObject $engineObject `
-      -Role "Reader" `
-      -Scope $scope `
-    | Out-Null
+    # Create IPAM Engine Service Principal. Retried to absorb replication delay, which can
+    # intermittently cause "When using this permission, the backing application of the service
+    # principal being created must in the local tenant" while the Engine App has not yet fully
+    # propagated. The existence check keeps the retry idempotent so a partial success (e.g. the SP
+    # is created but the role assignment fails) isn't recreated.
+    Invoke-WithGraphRetry -ScriptBlock {
+      $engineSpnExists = [bool](Get-AzADServicePrincipal -ApplicationId $engineApp.AppId -ErrorAction SilentlyContinue)
+
+      if (-not $engineSpnExists) {
+        New-AzADServicePrincipal -ApplicationObject $engineObject `
+          -Role "Reader" `
+          -Scope $scope `
+        | Out-Null
+      }
+    }
 
     Write-Host "INFO: Creating Azure IPAM Engine Secret" -ForegroundColor Green
 
