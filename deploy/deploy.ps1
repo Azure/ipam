@@ -624,6 +624,28 @@ process {
       -Api $engineApiSettings `
       -RequiredResourceAccess $engineResourceAccessList
 
+    # Wait for the Engine Application to replicate in Microsoft Graph before updating it. Without
+    # this, the subsequent Update can intermittently fail with "Resource '<id>' does not exist or
+    # one of its queried reference-property objects are not present." because the newly created
+    # Engine App is not yet discoverable due to replication delay.
+    Write-Host "INFO: Waiting for Azure IPAM Engine Application propagation in Microsoft Graph..." -ForegroundColor Green
+
+    $engineAppRetries = 12
+    $engineAppExists = $false
+
+    do {
+      $engineAppExists = [bool](Get-AzADApplication -ObjectId $engineApp.Id -ErrorAction SilentlyContinue)
+
+      if (-not $engineAppExists) {
+        Start-Sleep -Seconds 5
+        $engineAppRetries--
+      }
+    } while (-not $engineAppExists -and $engineAppRetries -gt 0)
+
+    if (-not $engineAppExists) {
+      throw [System.Exception]::New("Timed out waiting for the Azure IPAM Engine Application to propagate in Microsoft Graph.")
+    }
+
     Write-Host "INFO: Updating Azure IPAM Engine API Endpoint" -ForegroundColor Green
 
     # Update IPAM Engine API Endpoint
