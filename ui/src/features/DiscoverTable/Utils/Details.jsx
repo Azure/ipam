@@ -44,6 +44,37 @@ const detailsTheme = (theme) => createTheme({
   },
 });
 
+const Wrapper = styled(Box)({
+  display: "flex",
+  justifyContent: "center",
+  flexDirection: "column",
+  paddingTop: "8px",
+  paddingBottom: "8px",
+});
+
+const Utilization = styled(Box)({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  paddingTop: "8px",
+  paddingBottom: "8px",
+});
+
+const Fields = styled(Box)({
+  display: "flex",
+  flexDirection: "column",
+  paddingTop: "8px",
+  paddingBottom: "8px",
+});
+
+const Link = styled(Box)({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  paddingTop: "8px",
+  paddingBottom: "8px",
+});
+
 function NumberCircularProgress(props) {
   var circleColor = "inherit";
 
@@ -95,37 +126,6 @@ export default function ItemDetails(props) {
 
   var isTarget = Object.keys(rowData).length;
   var progress = isTarget ? (Math.round((rowData[map.progressUsed] / rowData[map.progressTotal]) * 100) || 0) : 0;
-
-  const Wrapper = styled(Box)({
-    display: "flex",
-    justifyContent: "center",
-    flexDirection: "column",
-    paddingTop: "8px",
-    paddingBottom: "8px",
-  });
-
-  const Utilization = styled(Box)({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: "8px",
-    paddingBottom: "8px",
-  });
-
-  const Fields = styled(Box)({
-    display: "flex",
-    flexDirection: "column",
-    paddingTop: "8px",
-    paddingBottom: "8px",
-  });
-
-  const Link = styled(Box)({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: "8px",
-    paddingBottom: "8px",
-  });
 
   return isTarget ? (
     <ThemeProvider theme={detailsTheme}>
