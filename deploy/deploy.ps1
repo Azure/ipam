@@ -605,7 +605,7 @@ process {
     Write-Host "INFO: Updating Azure IPAM Engine API Endpoint" -ForegroundColor Green
 
     # Update IPAM Engine API Endpoint
-    Update-AzADApplication -ApplicationId $engineApp.AppId -IdentifierUri "api://$($engineApp.AppId)"
+    Update-AzADApplication -ObjectId $engineApp.Id -IdentifierUri "api://$($engineApp.AppId)"
 
     $uiEngineApiAccess = @{
       ResourceAppId  = $engineApp.AppId
@@ -623,12 +623,12 @@ process {
     if (-not $DisableUI) {
       Write-Host "INFO: Updating Azure IPAM UI Application Resource Access" -ForegroundColor Green
 
-      Update-AzADApplication -ApplicationId $uiApp.AppId -RequiredResourceAccess $uiResourceAccess
+      Update-AzADApplication -ObjectId $uiApp.Id -RequiredResourceAccess $uiResourceAccess
 
-      $uiObject = Get-AzADApplication -ApplicationId $uiApp.AppId
+      $uiObject = Get-AzADApplication -ObjectId $uiApp.Id
     }
 
-    $engineObject = Get-AzADApplication -ApplicationId $engineApp.AppId
+    $engineObject = Get-AzADApplication -ObjectId $engineApp.Id
 
     # Create IPAM UI Service Principal (If DisableUI not specified)
     if (-not $DisableUI) {
