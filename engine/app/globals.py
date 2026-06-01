@@ -36,9 +36,7 @@ AZURE_ENV_MAP = {
 
 class Globals:
     def __init__(self):
-        conn = aiohttp.TCPConnector(limit=100)
-        session = aiohttp.ClientSession(connector=conn)
-        self.shared_transport = AioHttpTransport(session=session, session_owner=False)
+        self._shared_transport = None
 
     @property
     def IPAM_VERSION(self):
@@ -113,7 +111,12 @@ class Globals:
 
     @property
     def SHARED_TRANSPORT(self):
-        return self.shared_transport
+        if self._shared_transport is None:
+            conn = aiohttp.TCPConnector(limit=100)
+            session = aiohttp.ClientSession(connector=conn)
+            self._shared_transport = AioHttpTransport(session=session, session_owner=False)
+
+        return self._shared_transport
 
     @property
     def DEPLOYMENT_STACK(self):
