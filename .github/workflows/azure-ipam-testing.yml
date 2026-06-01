@@ -315,9 +315,9 @@ jobs:
 
           Remove-AzRoleAssignment -ObjectId $engineSpn.Id -Scope $scope -RoleDefinitionName Reader
 
-          $engineSpn | Remove-AzADServicePrincipal
-          $uiApp | Remove-AzADApplication
-          $engineApp | Remove-AzADApplication
+          Remove-AzADServicePrincipal -ObjectId $engineSpn.Id
+          Remove-AzADApplication -ObjectId $uiApp.Id
+          Remove-AzADApplication -ObjectId $engineApp.Id
 
       - name: "Remove Azure IPAM Container"
         id: cleanupContainer
