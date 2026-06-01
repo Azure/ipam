@@ -793,13 +793,21 @@ process {
     # Fetch Azure IPAM UI Service Principal (If DisableUI not specified)
     if (-not $DisableUI) {
       $uiSpn = Invoke-WithGraphRetry -ScriptBlock {
-        Get-AzADServicePrincipal -ApplicationId $UIAppId
+        # Get-AzADServicePrincipal returns $null (without throwing) when the service principal
+        # has not yet replicated, so throw to trigger a retry instead of returning an empty result.
+        $spn = Get-AzADServicePrincipal -ApplicationId $UIAppId
+        if (-not $spn) { throw "IPAM UI Service Principal not yet available for App ID '$UIAppId'" }
+        return $spn
       }
     }
 
     # Fetch Azure IPAM Engine Service Principal
     $engineSpn = Invoke-WithGraphRetry -ScriptBlock {
-      Get-AzADServicePrincipal -ApplicationId $EngineAppId
+      # Get-AzADServicePrincipal returns $null (without throwing) when the service principal
+      # has not yet replicated, so throw to trigger a retry instead of returning an empty result.
+      $spn = Get-AzADServicePrincipal -ApplicationId $EngineAppId
+      if (-not $spn) { throw "IPAM Engine Service Principal not yet available for App ID '$EngineAppId'" }
+      return $spn
     }
 
     # Grant admin consent for Microsoft Graph API permissions assigned to IPAM UI application (If DisableUI not specified)
