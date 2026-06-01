@@ -512,6 +512,28 @@ process {
       $uiApp = New-AzADApplication `
         -DisplayName $UiAppName `
         -SPARedirectUri "https://replace-this-value.azurewebsites.net"
+
+      # Wait for the UI Application to replicate in Microsoft Graph before referencing it as a
+      # Known Client Application on the Engine App. Without this, Engine App creation can
+      # intermittently fail with "Property api.knownClientApplications is invalid." because the
+      # newly created UI App is not yet discoverable by AppId due to replication delay.
+      Write-Host "INFO: Waiting for Azure IPAM UI Application propagation in Microsoft Graph..." -ForegroundColor Green
+
+      $uiAppRetries = 12
+      $uiAppExists = $false
+
+      do {
+        $uiAppExists = [bool](Get-AzADApplication -ApplicationId $uiApp.AppId -ErrorAction SilentlyContinue)
+
+        if (-not $uiAppExists) {
+          Start-Sleep -Seconds 5
+          $uiAppRetries--
+        }
+      } while (-not $uiAppExists -and $uiAppRetries -gt 0)
+
+      if (-not $uiAppExists) {
+        throw [System.Exception]::New("Timed out waiting for the Azure IPAM UI Application to propagate in Microsoft Graph.")
+      }
     }
 
     $engineResourceMap = @{
