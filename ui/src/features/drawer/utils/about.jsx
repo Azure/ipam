@@ -24,8 +24,6 @@ import {
 //   DarkModeOutlined,
 // } from "@mui/icons-material";
 
-// import LoadingButton from '@mui/lab/LoadingButton';
-
 // import {
 //   getMeAsync,
 //   getRefreshInterval,
@@ -188,10 +186,10 @@ export default function About(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>OK</Button>
-          {/* <LoadingButton onClick={onSubmit} loading={sending} disabled={!changed}> */}
-          {/* <LoadingButton onClick={onSubmit} loading={sending} >
+          {/* <Button onClick={onSubmit} loading={sending} disabled={!changed}> */}
+          {/* <Button onClick={onSubmit} loading={sending}>
             Apply
-          </LoadingButton> */}
+          </Button> */}
         </DialogActions>
       </Dialog>
     </div>
