@@ -40,4 +40,4 @@ RUN rm -rf src
 EXPOSE $PORT
 
 # Execute Startup Script
-ENTRYPOINT ["/bin/sh", "-c", "./init.sh ${PORT}"]
+ENTRYPOINT ["/bin/sh", "-c", "exec ./init.sh ${PORT}"]
