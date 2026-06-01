@@ -29,4 +29,4 @@ echo "}" >> env.js
 
 mv env.js ./dist/
 
-npx serve -s -L -p ${PORT} dist
+exec npx serve -s -L -p ${PORT} dist
