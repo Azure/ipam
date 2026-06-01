@@ -26,15 +26,27 @@ from netaddr import IPNetwork
 
 from app.globals import globals
 
-managed_identity_credential = ManagedIdentityCredential(
-    client_id = globals.MANAGED_IDENTITY_ID
-)
+_cosmos_client = None
 
-cosmos_client = CosmosClient(
-    url=globals.COSMOS_URL,
-    credential=(globals.COSMOS_KEY if globals.COSMOS_KEY else managed_identity_credential),
-    transport=globals.SHARED_TRANSPORT
-)
+def get_cosmos_client():
+    # Created lazily so the shared aiohttp transport is built within a running event loop. Newer
+    # aiohttp requires a running loop when its ClientSession/TCPConnector are created; building the
+    # client (and thus accessing globals.SHARED_TRANSPORT) at import time raised "no running event
+    # loop" and crash-looped the engine on startup.
+    global _cosmos_client
+
+    if _cosmos_client is None:
+        managed_identity_credential = ManagedIdentityCredential(
+            client_id = globals.MANAGED_IDENTITY_ID
+        )
+
+        _cosmos_client = CosmosClient(
+            url=globals.COSMOS_URL,
+            credential=(globals.COSMOS_KEY if globals.COSMOS_KEY else managed_identity_credential),
+            transport=globals.SHARED_TRANSPORT
+        )
+
+    return _cosmos_client
 
 def valid_ipv4(addr):
     try:
@@ -171,7 +183,7 @@ async def cosmos_query(query: str, tenant_id: str):
     # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
-    database = cosmos_client.get_database_client(database_name)
+    database = get_cosmos_client().get_database_client(database_name)
 
     container_name = globals.CONTAINER_NAME
     container = database.get_container_client(container_name)
@@ -194,7 +206,7 @@ async def cosmos_upsert(data):
     # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
-    database = cosmos_client.get_database_client(database_name)
+    database = get_cosmos_client().get_database_client(database_name)
 
     container_name = globals.CONTAINER_NAME
     container = database.get_container_client(container_name)
@@ -216,7 +228,7 @@ async def cosmos_replace(old, new):
     # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
-    database = cosmos_client.get_database_client(database_name)
+    database = get_cosmos_client().get_database_client(database_name)
 
     container_name = globals.CONTAINER_NAME
     container = database.get_container_client(container_name)
@@ -243,7 +255,7 @@ async def cosmos_delete(item, tenant_id: str):
     # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
-    database = cosmos_client.get_database_client(database_name)
+    database = get_cosmos_client().get_database_client(database_name)
 
     container_name = globals.CONTAINER_NAME
     container = database.get_container_client(container_name)
