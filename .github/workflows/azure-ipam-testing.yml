@@ -163,6 +163,8 @@ jobs:
 
       - name: "Upload Logs"
         id: uploadLogs
+        # Always upload logs (success or failure) so deployment failures can be reviewed
+        if: always()
         working-directory: logs
         env:
           AZURE_IPAM_SUFFIX: ${{ steps.deployScript.outputs.ipamSuffix }}
@@ -171,7 +173,14 @@ jobs:
           STORAGE_ACCT_CTR: ${{ vars.LOGGING_STORAGE_CTR }}
         shell: pwsh
         run: |
-          $archiveName = "IPAM-RUN(${{ github.run_id }})-ATTEMPT(${{ github.run_attempt }})-SUFFIX($env:AZURE_IPAM_SUFFIX).zip"
+          $suffix = if ([string]::IsNullOrWhiteSpace($env:AZURE_IPAM_SUFFIX)) { "FAILED" } else { $env:AZURE_IPAM_SUFFIX }
+          $archiveName = "IPAM-RUN(${{ github.run_id }})-ATTEMPT(${{ github.run_attempt }})-SUFFIX($suffix).zip"
+
+          # Guard against an empty/missing logs directory so a failed deploy still surfaces its real error
+          if (-not (Get-ChildItem -Path ./* -File -Recurse -ErrorAction SilentlyContinue)) {
+            Write-Warning "No log files found to upload; skipping log upload."
+            return
+          }
 
           Compress-Archive -Path ./* -DestinationPath /tmp/$archiveName
 
