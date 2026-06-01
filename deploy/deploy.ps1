@@ -818,12 +818,14 @@ process {
         $msGraphId = Get-AzADServicePrincipal `
           -ApplicationId $scope.scopeId
 
-        New-MgOauth2PermissionGrant `
-          -ResourceId $msGraphId.Id `
-          -Scope $scope.scopes `
-          -ClientId $uiSpn.Id `
-          -ConsentType AllPrincipals `
-        | Out-Null
+        Invoke-WithGraphRetry -ScriptBlock {
+          New-MgOauth2PermissionGrant `
+            -ResourceId $msGraphId.Id `
+            -Scope $scope.scopes `
+            -ClientId $uiSpn.Id `
+            -ConsentType AllPrincipals `
+          | Out-Null
+        }
       }
 
       Write-Host "INFO: Admin consent for Microsoft Graph API permissions granted successfully" -ForegroundColor Green
@@ -833,12 +835,16 @@ process {
     if (-not $DisableUI) {
       Write-Host "INFO: Granting admin consent to the IPAM UI application for exposed API from the IPAM Engine application" -ForegroundColor Green
 
-      New-MgOauth2PermissionGrant `
-        -ResourceId $engineSpn.Id `
-        -Scope "access_as_user" `
-        -ClientId $uiSpn.Id `
-        -ConsentType AllPrincipals `
-      | Out-Null
+      # Retry to absorb replication lag: the engine service principal was just created and may not yet
+      # be visible to the Microsoft Graph endpoint processing the grant ("resourceId not found").
+      Invoke-WithGraphRetry -ScriptBlock {
+        New-MgOauth2PermissionGrant `
+          -ResourceId $engineSpn.Id `
+          -Scope "access_as_user" `
+          -ClientId $uiSpn.Id `
+          -ConsentType AllPrincipals `
+        | Out-Null
+      }
 
       Write-Host "INFO: Admin consent for IPAM Engine exposed API granted successfully" -ForegroundColor Green
     }
@@ -850,12 +856,16 @@ process {
       $msGraphId = Get-AzADServicePrincipal `
         -ApplicationId $scope.scopeId
 
-      New-MgOauth2PermissionGrant `
-        -ResourceId $msGraphId.Id `
-        -Scope $scope.scopes `
-        -ClientId $engineSpn.Id `
-        -ConsentType AllPrincipals `
-      | Out-Null
+      # Retry to absorb replication lag: the engine service principal was just created and may not yet
+      # be visible to the Microsoft Graph endpoint processing the grant ("resourceId not found").
+      Invoke-WithGraphRetry -ScriptBlock {
+        New-MgOauth2PermissionGrant `
+          -ResourceId $msGraphId.Id `
+          -Scope $scope.scopes `
+          -ClientId $engineSpn.Id `
+          -ConsentType AllPrincipals `
+        | Out-Null
+      }
     }
 
     Write-Host "INFO: Admin consent for Azure Service Management API permissions granted successfully" -ForegroundColor Green
