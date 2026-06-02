@@ -346,14 +346,16 @@ export default function Administration() {
               <Tooltip
                 title={ appSearch ? "Service Principals" : "Users" }
                 arrow
-                PopperProps={{
-                  sx: {
-                      "& .MuiTooltip-tooltip": {
-                        left: appSearch ? "32px" : "8px"
-                      },
-                      "& .MuiTooltip-arrow": {
-                        left: appSearch ? "-32px !important" : "-8px !important"
-                      }
+                slotProps={{
+                  popper: {
+                    sx: {
+                        "& .MuiTooltip-tooltip": {
+                          left: appSearch ? "32px" : "8px"
+                        },
+                        "& .MuiTooltip-arrow": {
+                          left: appSearch ? "-32px !important" : "-8px !important"
+                        }
+                    }
                   }
                 }}
               >
