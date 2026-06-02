@@ -646,8 +646,10 @@ const Generator = () => {
                     vertical: 'top',
                     horizontal: 'left',
                   }}
-                  MenuListProps={{
-                    'aria-labelledby': 'basic-button',
+                  slotProps={{
+                    list: {
+                      'aria-labelledby': 'basic-button',
+                    }
                   }}
                 >
                   <MenuItem onClick={handleCopy}>

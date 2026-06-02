@@ -274,17 +274,6 @@ const StandaloneHeaderMenu = React.memo(({ viewSettingKey = DEFAULT_VIEW_SETTING
         open={menuOpen}
         onClose={handleMenuToggle}
         disableAutoFocusItem
-        MenuListProps={{
-          'aria-label': 'Table settings menu',
-          disableListWrap: true,
-          autoFocusItem: true,
-          onKeyDown: (e) => {
-            if (e.key === 'Tab') {
-              e.preventDefault();
-              handleMenuToggle();
-            }
-          }
-        }}
         slotProps={{
           paper: {
             elevation: 0,
@@ -306,10 +295,21 @@ const StandaloneHeaderMenu = React.memo(({ viewSettingKey = DEFAULT_VIEW_SETTING
               },
             },
           },
+
+          list: {
+            'aria-label': 'Table settings menu',
+            disableListWrap: true,
+            autoFocusItem: true,
+            onKeyDown: (e) => {
+              if (e.key === 'Tab') {
+                e.preventDefault();
+                handleMenuToggle();
+              }
+            }
+          }
         }}
         transformOrigin={{ horizontal: 'center', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'center', vertical: 'bottom' }}
-      >
+        anchorOrigin={{ horizontal: 'center', vertical: 'bottom' }}>
         {/* Extra menu items passed from parent */}
         {extraMenuItems.map((item, index) => (
           <MenuItem
@@ -372,7 +372,6 @@ const StandaloneHeaderMenu = React.memo(({ viewSettingKey = DEFAULT_VIEW_SETTING
           />
         </MenuItem>
       </Menu>
-
       <ColumnVisibilityMenu
         anchorEl={columnMenuAnchor}
         open={columnMenuOpen}
