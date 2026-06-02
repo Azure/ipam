@@ -173,8 +173,10 @@ export default function EditSpace(props) {
                 onChange={(event) => {
                   onNameChange(event);
                 }}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -200,8 +202,10 @@ export default function EditSpace(props) {
                 variant="standard"
                 value={description.value}
                 onChange={(event) => onDescriptionChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
           </Box>

@@ -194,8 +194,10 @@ export default function NewReservation(props) {
               variant="standard"
               value={description.value}
               onChange={(event) => onDescriptionChange(event)}
-              inputProps={{ spellCheck: false }}
               sx={{ width: "80%" }}
+              slotProps={{
+                htmlInput: { spellCheck: false }
+              }}
             />
           </Tooltip>
           <Box sx={{ width: "80%", mt: 2, mb: 0.5, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -294,8 +296,10 @@ export default function NewReservation(props) {
                   variant="standard"
                   value={cidr.value}
                   onChange={(event) => onCidrChange(event)}
-                  inputProps={{ spellCheck: false }}
                   sx={{ width: "20ch" }}
+                  slotProps={{
+                    htmlInput: { spellCheck: false }
+                  }}
                 />
               </Tooltip>
             </Box>

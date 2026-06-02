@@ -232,8 +232,10 @@ export default function AddExtSubnet(props) {
               variant="standard"
               value={subName.value}
               onChange={(event) => onNameChange(event)}
-              inputProps={{ spellCheck: false }}
               sx={{ width: "80%" }}
+              slotProps={{
+                htmlInput: { spellCheck: false }
+              }}
             />
           </Tooltip>
           <Tooltip
@@ -259,8 +261,10 @@ export default function AddExtSubnet(props) {
               variant="standard"
               value={subDesc.value}
               onChange={(event) => onDescChange(event)}
-              inputProps={{ spellCheck: false }}
               sx={{ width: "80%" }}
+              slotProps={{
+                htmlInput: { spellCheck: false }
+              }}
             />
           </Tooltip>
           <Box sx={{ width: "80%", mt: 2, mb: 0.5, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -337,8 +341,10 @@ export default function AddExtSubnet(props) {
                     variant="standard"
                     value={subCidr.value}
                     onChange={(event) => onCidrChange(event)}
-                    inputProps={{ spellCheck: false }}
                     sx={{ width: "20ch" }}
+                    slotProps={{
+                      htmlInput: { spellCheck: false }
+                    }}
                   />
                 </Tooltip>
               </Box>

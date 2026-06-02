@@ -265,8 +265,10 @@ export default function EditExtNetwork(props) {
                 variant="standard"
                 value={extName.value}
                 onChange={(event) => onNameChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -292,8 +294,10 @@ export default function EditExtNetwork(props) {
                 variant="standard"
                 value={extDesc.value}
                 onChange={(event) => onDescChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -317,8 +321,10 @@ export default function EditExtNetwork(props) {
                 variant="standard"
                 value={extCidr.value}
                 onChange={(event) => onCidrChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
           </Box>

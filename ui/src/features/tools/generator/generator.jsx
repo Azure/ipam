@@ -687,20 +687,22 @@ const Generator = () => {
                   label="Next Available"
                   value={ nextAvailable || "" }
                   variant="outlined"
-                  InputProps={{
-                    endAdornment:
-                      <IconButton
-                        disabled={ !nextAvailable }
-                        disableRipple
-                        onClick={handleClick}
-                      >
-                        <MenuOpenOutlined />
-                      </IconButton>
-                  }}
                   sx={{
                     width: '13ch',
                     '& .MuiOutlinedInput-root': {
                       paddingRight: 'unset',
+                    }
+                  }}
+                  slotProps={{
+                    input: {
+                      endAdornment:
+                        <IconButton
+                          disabled={ !nextAvailable }
+                          disableRipple
+                          onClick={handleClick}
+                        >
+                          <MenuOpenOutlined />
+                        </IconButton>
                     }
                   }}
                 />
