@@ -379,7 +379,6 @@ export default function Administration() {
                 />
               </Tooltip>
               <Autocomplete
-                PopperComponent={MyPopper}
                 key="12345"
                 id="asynchronous-demo"
                 size="small"
@@ -412,21 +411,27 @@ export default function Administration() {
                   <TextField
                     {...params}
                     label={ appSearch ? "Principal Search" : "User Search" }
-                    // variant="standard"
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <React.Fragment>
-                          {usersLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </React.Fragment>
-                      ),
-                      style: {
-                        borderRadius: "0px 4px 4px 0px"
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input,
+                        endAdornment: (
+                          <React.Fragment>
+                            {usersLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                            {params.slotProps.input.endAdornment}
+                          </React.Fragment>
+                        ),
+                        style: {
+                          borderRadius: "0px 4px 4px 0px"
+                        }
                       }
                     }}
                   />
                 )}
+                slots={{
+                  popper: MyPopper
+                }}
               />
             </Box>
             <HeaderTitle>Admin Users</HeaderTitle>

@@ -297,10 +297,6 @@ export default function AddExtSubnet(props) {
                   value={selectedMask}
                   onChange={(_, newValue) => setSelectedMask(newValue)}
                   sx={{ width: '7ch' }}
-                  ListboxProps={{
-                    style: { maxHeight: "15rem" },
-                    position: "bottom-start"
-                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -309,6 +305,12 @@ export default function AddExtSubnet(props) {
                       variant="standard"
                     />
                   )}
+                  slotProps={{
+                    listbox: {
+                      style: { maxHeight: "15rem" },
+                      position: "bottom-start"
+                    }
+                  }}
                 />
               </Box>
             ) : (

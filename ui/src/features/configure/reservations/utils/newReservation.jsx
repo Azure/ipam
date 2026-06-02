@@ -232,10 +232,6 @@ export default function NewReservation(props) {
                 value={mask}
                 onChange={(_, newValue) => setMask(newValue)}
                 sx={{ width: '7ch', flexShrink: 0 }}
-                ListboxProps={{
-                  style: { maxHeight: "15rem" },
-                  position: "bottom-start"
-                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -244,6 +240,12 @@ export default function NewReservation(props) {
                     variant="standard"
                   />
                 )}
+                slotProps={{
+                  listbox: {
+                    style: { maxHeight: "15rem" },
+                    position: "bottom-start"
+                  }
+                }}
               />
               <FormGroup>
                 <FormControlLabel

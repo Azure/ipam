@@ -280,14 +280,18 @@ const Planner = () => {
                   {...params}
                   label="Virtual Network"
                   placeholder={showAll ? "By Subscription" : "By Space ➜ Block"}
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <React.Fragment>
-                        {!vNetData ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
-                      </React.Fragment>
-                    ),
+                  slotProps={{
+                    ...params.slotProps,
+
+                    input: {
+                      ...params.slotProps.input,
+                      endAdornment: (
+                        <React.Fragment>
+                          {!vNetData ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.slotProps.input.endAdornment}
+                        </React.Fragment>
+                      ),
+                    }
                   }}
                 />
               )}
@@ -304,7 +308,7 @@ const Planner = () => {
                   </li>
                 );
               }}
-              componentsProps={{
+              slotProps={{
                 paper: {
                   sx: {
                     width: 'fit-content'

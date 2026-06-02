@@ -961,7 +961,6 @@ export default function ManageExtEndpoints(props) {
                 value={endAddr}
                 onChange={(event, newValue) => setEndAddr(newValue)}
                 isOptionEqualToValue={(option, value) => isEqual(option, value)}
-                ListboxProps={{ style: { maxHeight: 375 } }}
                 sx={{ width: 300 }}
                 renderInput={(params) => (
                   <TextField
@@ -969,18 +968,25 @@ export default function ManageExtEndpoints(props) {
                     variant="standard"
                     // label="IP Address"
                     placeholder="IP Address"
-                    InputProps={{
-                      ...params.InputProps,
-                      disableUnderline: true,
-                      spellCheck: false,
-                      style: {
-                        fontSize: '14px',
-                        fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
-                        padding: '4px 0px 5px'
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input,
+                        disableUnderline: true,
+                        spellCheck: false,
+                        style: {
+                          fontSize: '14px',
+                          fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+                          padding: '4px 0px 5px'
+                        }
                       }
                     }}
                   />
                 )}
+                slotProps={{
+                  listbox: { style: { maxHeight: 375 } }
+                }}
               />
             </Box>
             <Box

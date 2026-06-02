@@ -908,16 +908,20 @@ export default function NavDrawer() {
                     placeholder={dataLoaded ? (searchData.length > 0 ? "Search..." : "No Resources...") : "Loading..."}
                     fullWidth
                     variant="standard"
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment:
-                        <InputAdornment position="start">
-                          <SearchIcon sx={{ color: 'white', pl: 1}}/>
-                        </InputAdornment>,
-                      disableUnderline: true,
-                      type: 'search',
-                      sx: {
-                        color: 'inherit'
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input,
+                        startAdornment:
+                          <InputAdornment position="start">
+                            <SearchIcon sx={{ color: 'white', pl: 1}}/>
+                          </InputAdornment>,
+                        disableUnderline: true,
+                        type: 'search',
+                        sx: {
+                          color: 'inherit'
+                        }
                       }
                     }}
                   />

@@ -310,198 +310,206 @@ const Associations = () => {
   }, [selectedBlock]);
 
   return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
-        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
-          <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
-            <Autocomplete
-              disabled={refreshing}
-              forcePopupIcon={false}
-              id="grouped-demo"
-              size="small"
-              options={sortBy(spaces, 'name')}
-              getOptionLabel={(option) => option.name}
-              inputValue={spaceInput}
-              onInputChange={(event, newInputValue) => setSpaceInput(newInputValue)}
-              value={selectedSpace}
-              onChange={(event, newValue) => setSelectedSpace(newValue)}
-              isOptionEqualToValue={
-                (option, value) => {
-                  const newOption = pick(option, ['name']);
-                  const newValue = pick(value, ['name']);
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
+      <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
+          <Autocomplete
+            disabled={refreshing}
+            forcePopupIcon={false}
+            id="grouped-demo"
+            size="small"
+            options={sortBy(spaces, 'name')}
+            getOptionLabel={(option) => option.name}
+            inputValue={spaceInput}
+            onInputChange={(event, newInputValue) => setSpaceInput(newInputValue)}
+            value={selectedSpace}
+            onChange={(event, newValue) => setSelectedSpace(newValue)}
+            isOptionEqualToValue={
+              (option, value) => {
+                const newOption = pick(option, ['name']);
+                const newValue = pick(value, ['name']);
 
-                  return isEqual(newOption, newValue);
-                }
+                return isEqual(newOption, newValue);
               }
-              noOptionsText={ !spaces ? "Loading..." : "No Spaces" }
-              sx={{ width: 300 }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Space"
-                  placeholder="Please Select Space..."
-                  InputProps={{
-                    ...params.InputProps,
+            }
+            noOptionsText={ !spaces ? "Loading..." : "No Spaces" }
+            sx={{ width: 300 }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Space"
+                placeholder="Please Select Space..."
+                slotProps={{
+                  ...params.slotProps,
+
+                  input: {
+                    ...params.slotProps.input,
                     endAdornment: (
                       <React.Fragment>
                         {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
+                        {params.slotProps.input.endAdornment}
                       </React.Fragment>
                     ),
-                  }}
-                />
-              )}
-              renderOption={(props, option) => {
-                return (
-                  <li key={option.name} {...props}>
-                    {option.name}
-                  </li>
-                );
-              }}
-              componentsProps={{
-                paper: {
-                  sx: {
-                    width: 'fit-content'
                   }
-                }
-              }}
-            />
-            <Autocomplete
-              disabled={selectedSpace === null || refreshing}
-              forcePopupIcon={false}
-              id="grouped-demo"
-              size="small"
-              options={(blocks && selectedSpace) ? sortBy(blocks.filter((x) => x.parent_space === selectedSpace.name), 'name') : []}
-              getOptionLabel={(option) => option.name}
-              inputValue={blockInput}
-              onInputChange={(event, newInputValue) => setBlockInput(newInputValue)}
-              value={(selectedBlock?.parent_space === selectedSpace?.name) ? selectedBlock : null}
-              onChange={(event, newValue) => setSelectedBlock(newValue)}
-              isOptionEqualToValue={
-                (option, value) => {
-                  const newOption = pick(option, ['id', 'name']);
-                  const newValue = pick(value, ['id', 'name']);
-
-                  return isEqual(newOption, newValue);
+                }}
+              />
+            )}
+            renderOption={(props, option) => {
+              return (
+                <li key={option.name} {...props}>
+                  {option.name}
+                </li>
+              );
+            }}
+            slotProps={{
+              paper: {
+                sx: {
+                  width: 'fit-content'
                 }
               }
-              sx={{ width: 300 }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Block"
-                  placeholder="Please Select Block..."
-                  InputProps={{
-                    ...params.InputProps
-                  }}
-                />
-              )}
-              renderOption={(props, option) => {
-                return (
-                  <li key={option.id} {...props}>
-                    {option.name}
-                  </li>
-                );
-              }}
-              componentsProps={{
-                paper: {
-                  sx: {
-                    width: 'fit-content'
+            }}
+          />
+          <Autocomplete
+            disabled={selectedSpace === null || refreshing}
+            forcePopupIcon={false}
+            id="grouped-demo"
+            size="small"
+            options={(blocks && selectedSpace) ? sortBy(blocks.filter((x) => x.parent_space === selectedSpace.name), 'name') : []}
+            getOptionLabel={(option) => option.name}
+            inputValue={blockInput}
+            onInputChange={(event, newInputValue) => setBlockInput(newInputValue)}
+            value={(selectedBlock?.parent_space === selectedSpace?.name) ? selectedBlock : null}
+            onChange={(event, newValue) => setSelectedBlock(newValue)}
+            isOptionEqualToValue={
+              (option, value) => {
+                const newOption = pick(option, ['id', 'name']);
+                const newValue = pick(value, ['id', 'name']);
+
+                return isEqual(newOption, newValue);
+              }
+            }
+            sx={{ width: 300 }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Block"
+                placeholder="Please Select Block..."
+                slotProps={{
+                  ...params.slotProps,
+
+                  input: {
+                    ...params.slotProps.input
                   }
+                }}
+              />
+            )}
+            renderOption={(props, option) => {
+              return (
+                <li key={option.id} {...props}>
+                  {option.name}
+                </li>
+              );
+            }}
+            slotProps={{
+              paper: {
+                sx: {
+                  width: 'fit-content'
                 }
-              }}
-            />
-            <TextField
-              disabled
-              id="block-cidr-read-only"
-              label="Network"
-              size="small"
-              value={ selectedBlock ? selectedBlock.cidr : "" }
-              sx={{
-                width: '11ch'
-              }}
-            />
+              }
+            }}
+          />
+          <TextField
+            disabled
+            id="block-cidr-read-only"
+            label="Network"
+            size="small"
+            value={ selectedBlock ? selectedBlock.cidr : "" }
+            sx={{
+              width: '11ch'
+            }}
+          />
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'row', ml: 4 }}>
+          <Box sx={{ mr: 1 }}>
+            <Typography variant='body1' display='block' sx={{ fontStyle: 'italic', userSelect: 'none' }}>
+              Selected:
+            </Typography>
           </Box>
-          <Box sx={{ display: 'flex', flexDirection: 'row', ml: 4 }}>
-            <Box sx={{ mr: 1 }}>
-              <Typography variant='body1' display='block' sx={{ fontStyle: 'italic', userSelect: 'none' }}>
-                Selected:
-              </Typography>
-            </Box>
-            <Box>
-              <Typography variant='body1' display='block' sx={{ fontStyle: 'italic', userSelect: 'none' }}>
-                {
-                  (sending || !subscriptions || !spaces || !blocks || !vNets || refreshing ) ?
-                  <span style={{ fontStyle: 'italic', userSelect: 'none' }}>(...)</span> :
-                  <span style={{ fontStyle: 'italic', userSelect: 'none' }}>({selectedRows.length}/{vNets ? vNets.length : '?'})</span>
-                }
-              </Typography>
-            </Box>
-          </Box>
-          <Box sx={{ display: 'flex', ml: 'auto' }}>
-            <Tooltip
-              title="Save"
-              placement="top"
-              style={{
-                visibility: (unchanged || refreshing) ? 'hidden' : 'visible'
-              }}
-            >
-              <span>
-                <IconButton
-                  color="success"
-                  aria-label="save associations"
-                  component="span"
-                  disabled={sending}
-                  onClick={onSubmit}
-                >
-                  <SaveAlt />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Box>
-          <Box sx={{ display: 'flex' }}>
-            <Tooltip title="Refresh" placement="top" >
-              <span>
-                <IconButton
-                  color="primary"
-                  size="small"
-                  onClick={() => refreshData()}
-                  disabled={sending || refreshing || !selectedSpace || !selectedBlock }
-                >
-                  <Refresh />
-                </IconButton>
-              </span>
-            </Tooltip>
+          <Box>
+            <Typography variant='body1' display='block' sx={{ fontStyle: 'italic', userSelect: 'none' }}>
+              {
+                (sending || !subscriptions || !spaces || !blocks || !vNets || refreshing ) ?
+                <span style={{ fontStyle: 'italic', userSelect: 'none' }}>(...)</span> :
+                <span style={{ fontStyle: 'italic', userSelect: 'none' }}>({selectedRows.length}/{vNets ? vNets.length : '?'})</span>
+              }
+            </Typography>
           </Box>
         </Box>
-        <Box sx={{ flexGrow: 1, pb: 3, pr: 3, pl: 3, overflowY: 'auto', overflowX: 'hidden' }}>
-          <Box
-            sx={{
-              pt: 4,
-              height: "100%",
-              // Stale row styling (vNets no longer present)
-              // Override selection background to prevent AG Grid's blue tint
-              '& .ag-row.ipam-block-vnet-stale': {
-                '--ag-selected-row-background-color': theme.palette.mode === 'dark' ? 'rgb(120, 40, 40)' : 'rgb(255, 210, 210)',
-                backgroundColor: theme.palette.mode === 'dark' ? 'rgb(120, 40, 40) !important' : 'rgb(255, 210, 210) !important',
-              },
+        <Box sx={{ display: 'flex', ml: 'auto' }}>
+          <Tooltip
+            title="Save"
+            placement="top"
+            style={{
+              visibility: (unchanged || refreshing) ? 'hidden' : 'visible'
             }}
           >
-            <DataGrid
-              viewSettingKey="networks"
-              idProperty="id"
-              rowData={vNets}
-              columnDefs={columns}
-              multiSelect={true}
-              checkboxSelect={isAdmin}
-              isLoading={sending || refreshing}
-              initialSelectedRows={initialSelection}
-              onRowSelectionChanged={handleSelectionChanged}
-              rowClassRules={rowClassRules}
-              noRowsOverlay={NoRowsOverlay}
-            />
-          </Box>
+            <span>
+              <IconButton
+                color="success"
+                aria-label="save associations"
+                component="span"
+                disabled={sending}
+                onClick={onSubmit}
+              >
+                <SaveAlt />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
+        <Box sx={{ display: 'flex' }}>
+          <Tooltip title="Refresh" placement="top" >
+            <span>
+              <IconButton
+                color="primary"
+                size="small"
+                onClick={() => refreshData()}
+                disabled={sending || refreshing || !selectedSpace || !selectedBlock }
+              >
+                <Refresh />
+              </IconButton>
+            </span>
+          </Tooltip>
         </Box>
       </Box>
+      <Box sx={{ flexGrow: 1, pb: 3, pr: 3, pl: 3, overflowY: 'auto', overflowX: 'hidden' }}>
+        <Box
+          sx={{
+            pt: 4,
+            height: "100%",
+            // Stale row styling (vNets no longer present)
+            // Override selection background to prevent AG Grid's blue tint
+            '& .ag-row.ipam-block-vnet-stale': {
+              '--ag-selected-row-background-color': theme.palette.mode === 'dark' ? 'rgb(120, 40, 40)' : 'rgb(255, 210, 210)',
+              backgroundColor: theme.palette.mode === 'dark' ? 'rgb(120, 40, 40) !important' : 'rgb(255, 210, 210) !important',
+            },
+          }}
+        >
+          <DataGrid
+            viewSettingKey="networks"
+            idProperty="id"
+            rowData={vNets}
+            columnDefs={columns}
+            multiSelect={true}
+            checkboxSelect={isAdmin}
+            isLoading={sending || refreshing}
+            initialSelectedRows={initialSelection}
+            onRowSelectionChanged={handleSelectionChanged}
+            rowClassRules={rowClassRules}
+            noRowsOverlay={NoRowsOverlay}
+          />
+        </Box>
+      </Box>
+    </Box>
   );
 }
 

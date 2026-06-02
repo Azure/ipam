@@ -479,14 +479,18 @@ const Reservations = () => {
                   {...params}
                   label="Space"
                   placeholder="Please Select Space..."
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <React.Fragment>
-                        {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
-                      </React.Fragment>
-                    ),
+                  slotProps={{
+                    ...params.slotProps,
+
+                    input: {
+                      ...params.slotProps.input,
+                      endAdornment: (
+                        <React.Fragment>
+                          {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.slotProps.input.endAdornment}
+                        </React.Fragment>
+                      ),
+                    }
                   }}
                 />
               )}
@@ -497,7 +501,7 @@ const Reservations = () => {
                   </li>
                 );
               }}
-              componentsProps={{
+              slotProps={{
                 paper: {
                   sx: {
                     width: 'fit-content'
@@ -530,8 +534,12 @@ const Reservations = () => {
                   {...params}
                   label="Block"
                   placeholder="Please Select Block..."
-                  InputProps={{
-                    ...params.InputProps
+                  slotProps={{
+                    ...params.slotProps,
+
+                    input: {
+                      ...params.slotProps.input
+                    }
                   }}
                 />
               )}
@@ -542,7 +550,7 @@ const Reservations = () => {
                   </li>
                 );
               }}
-              componentsProps={{
+              slotProps={{
                 paper: {
                   sx: {
                     width: 'fit-content'

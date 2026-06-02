@@ -226,14 +226,18 @@ export default function Externals() {
                     {...params}
                     label="Space"
                     placeholder="Please Select Space..."
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <React.Fragment>
-                          {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </React.Fragment>
-                      ),
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input,
+                        endAdornment: (
+                          <React.Fragment>
+                            {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
+                            {params.slotProps.input.endAdornment}
+                          </React.Fragment>
+                        ),
+                      }
                     }}
                   />
                 )}
@@ -244,7 +248,7 @@ export default function Externals() {
                     </li>
                   );
                 }}
-                componentsProps={{
+                slotProps={{
                   paper: {
                     sx: {
                       width: 'fit-content'
@@ -277,8 +281,12 @@ export default function Externals() {
                     {...params}
                     label="Block"
                     placeholder="Please Select Block..."
-                    InputProps={{
-                      ...params.InputProps
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input
+                      }
                     }}
                   />
                 )}
@@ -289,7 +297,7 @@ export default function Externals() {
                     </li>
                   );
                 }}
-                componentsProps={{
+                slotProps={{
                   paper: {
                     sx: {
                       width: 'fit-content'
