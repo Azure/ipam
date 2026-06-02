@@ -15,7 +15,7 @@ import {
   FormControlLabel,
   Switch,
   Typography,
-  Unstable_Grid2 as Grid,
+  Grid,
 } from "@mui/material";
 
 import {
@@ -149,7 +149,7 @@ export default function AdminSettings() {
             <GridBody>
               <Box sx={{ flexGrow: 1 }}>
                 <Grid container spacing={2}>
-                  <Grid xs={2}>
+                  <Grid size={{ xs: 2 }}>
                     <Item>
                       <Typography variant="button" display="block" gutterBottom>
                         Automatic Updates
@@ -159,7 +159,7 @@ export default function AdminSettings() {
                       </FormGroup>
                     </Item>
                   </Grid>
-                  <Grid xs={10}>
+                  <Grid size={{ xs: 10 }}>
                     <Item>xs=4</Item>
                   </Grid>
                 </Grid>
