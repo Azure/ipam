@@ -290,7 +290,6 @@ jobs:
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module Az -AllowClobber -Force
-          Install-Module Microsoft.Graph.Applications -AllowClobber -Force
 
       - name: Azure Login
         id: azureLogin
@@ -319,15 +318,10 @@ jobs:
           Write-Host "Removing Engine SPN Role Assignment..."
           Remove-AzRoleAssignment -ObjectId $engineSpn.Id -Scope $scope -RoleDefinitionName Reader
 
-          $graphToken = (Get-AzAccessToken -ResourceUrl "https://graph.microsoft.com" -AsSecureString).Token
-          Connect-MgGraph -AccessToken $graphToken -NoWelcome
-
-          # Write-Host "Removing Engine Service Principal..."
-          # Remove-MgServicePrincipal -ServicePrincipalId $engineSpn.Id
           Write-Host "Removing UI Application..."
-          Remove-MgApplication -ApplicationId $uiApp.Id
+          $uiApp | Remove-AzADApplication
           Write-Host "Removing Engine Application..."
-          Remove-MgApplication -ApplicationId $engineApp.Id
+          $engineApp | Remove-AzADApplication
 
       - name: "Remove Azure IPAM Container"
         id: cleanupContainer
