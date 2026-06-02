@@ -117,7 +117,8 @@ jobs:
         shell: pwsh
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module Az, Microsoft.Graph -AllowClobber -Force
+          Install-Module Az -AllowClobber -Force
+          Install-Module Microsoft.Graph -AllowClobber -Force
 
       - name: Azure Login
         id: azureLogin
@@ -235,7 +236,8 @@ jobs:
         shell: pwsh
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module Az, Pester -AllowClobber -Force
+          Install-Module Az -AllowClobber -Force
+          Install-Module Pester -AllowClobber -Force
 
       - name: Azure Login
         id: azureLogin
@@ -320,12 +322,12 @@ jobs:
           $graphToken = (Get-AzAccessToken -ResourceUrl "https://graph.microsoft.com" -AsSecureString).Token
           Connect-MgGraph -AccessToken $graphToken -NoWelcome
 
-          Write-Host "Removing Engine Service Principal..."
-          Remove-MgServicePrincipal -ServicePrincipalId $engineSpn.Id
-          Write-Host "Removing Engine Application..."
-          Remove-MgApplication -ApplicationId $engineApp.Id
+          # Write-Host "Removing Engine Service Principal..."
+          # Remove-MgServicePrincipal -ServicePrincipalId $engineSpn.Id
           Write-Host "Removing UI Application..."
           Remove-MgApplication -ApplicationId $uiApp.Id
+          Write-Host "Removing Engine Application..."
+          Remove-MgApplication -ApplicationId $engineApp.Id
 
       - name: "Remove Azure IPAM Container"
         id: cleanupContainer
