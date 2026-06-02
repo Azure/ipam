@@ -209,7 +209,7 @@ export default function DiscoverTable(props) {
             right: -300,
             height: "calc(100vh - 64px)",
             backgroundColor: "transparent",
-            ...menuExpand ? openStyle : closedStyle
+            ...(menuExpand ? openStyle : closedStyle)
           }}
         >
           <Box

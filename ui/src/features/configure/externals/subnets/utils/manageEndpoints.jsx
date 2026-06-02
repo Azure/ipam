@@ -734,10 +734,12 @@ export default function ManageExtEndpoints(props) {
         PaperComponent={DraggablePaper}
         maxWidth="lg"
         fullWidth
-        PaperProps={{
-          style: {
-            overflowY: "unset"
-          },
+        slotProps={{
+          paper: {
+            style: {
+              overflowY: "unset"
+            },
+          }
         }}
       >
         <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
