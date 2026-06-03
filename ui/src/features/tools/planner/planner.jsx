@@ -332,10 +332,12 @@ const Planner = () => {
                 onChange={(event) => setSelectedPrefix(event.target.value)}
                 sx={{ width: '22ch' }}
                 MenuProps={{
-                  PaperProps: {
-                    style: {
-                      maxHeight: 36 * 10,
-                    }
+                  slotProps: {
+                    paper: {
+                      style: {
+                        maxHeight: 36 * 10,
+                      }
+                    },
                   },
                 }}
               >
