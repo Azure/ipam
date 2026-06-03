@@ -31,12 +31,10 @@ This pattern ensures that CIDR allocation, infrastructure deployment, and IPAM t
 The repository includes working examples of this pattern for both Bicep and Terraform under the [`examples/`](https://github.com/Azure/ipam/tree/main/examples) directory:
 
 - **Bicep** (`examples/azure-eslz/`) — Uses a Bicep deployment script to call the reservation API via a managed identity, then passes the reserved CIDR and reservation ID to a VNet module that applies the tag.
-- **Terraform** (`examples/ipam-terraform/`) — Uses the community [Azure IPAM Terraform provider](https://registry.terraform.io/providers/XtratusCloud/azureipam/latest/docs) to create a reservation as a managed Terraform resource, then creates the VNet with the reserved CIDR and applies the settlement tag.
+- **Terraform** (`examples/ipam-terraform/`) — Uses the community Azure IPAM Terraform provider to create a reservation as a managed Terraform resource, then creates the VNet with the reserved CIDR and applies the settlement tag. See the [Azure IPAM Terraform Provider](#azure-ipam-terraform-provider) section below for more detail.
 - **Standalone Scripts** (`examples/scripts/`) — PowerShell and Bash scripts that demonstrate how to call the Azure IPAM API directly. These cover token acquisition and reservation creation, and can serve as starting points for integrating IPAM into custom pipelines, ad-hoc workflows, or tooling that doesn't use Bicep or Terraform.
 
 These examples can be adapted to fit your own landing zone or spoke deployment patterns.
-
-> **Terraform Provider:** The [Azure IPAM Terraform provider](https://registry.terraform.io/providers/XtratusCloud/azureipam/latest/docs) (`xtratuscloud/azureipam`) is a community-maintained provider that wraps the Azure IPAM REST API. It supports reservations, spaces, blocks, virtual network associations, and external networks as native Terraform resources and data sources — making it a good fit for teams that manage their infrastructure entirely through Terraform.
 
 ### Multi-Block Reservations
 
@@ -130,3 +128,78 @@ External Networks can be provisioned as part of your IaC pipelines alongside you
 3. Ensure the full address plan is captured in a single source of truth
 
 For teams that manage network configurations through version-controlled repositories, a CI/CD pipeline can be configured to automatically update Azure IPAM whenever network definitions change — for example, by maintaining a JSON or YAML file that defines your external network topology and having a pipeline step reconcile it against the Azure IPAM API on each merge.
+
+## Azure IPAM Terraform Provider
+
+The [Azure IPAM Terraform provider](https://registry.terraform.io/providers/XtratusCloud/azureipam/latest/docs) (`xtratuscloud/azureipam`) is a community-maintained provider that wraps the Azure IPAM REST API and exposes it as native Terraform resources and data sources. For teams that already manage their Azure estate with Terraform, it offers a fully declarative alternative to calling the REST API directly — covering the same surface area as the three automation areas above (reservations, virtual network associations, and external networks).
+
+> **Note:** The provider is published and maintained by [XtratusCloud](https://github.com/XtratusCloud/terraform-provider-azureipam), not by the Azure IPAM project. It is not a Microsoft-supported component. The REST API remains the authoritative interface to Azure IPAM, and the snippets below are intended as a starting point — always refer to the [provider documentation on the Terraform Registry](https://registry.terraform.io/providers/XtratusCloud/azureipam/latest/docs) for the current, authoritative reference.
+
+### When to Use the Provider
+
+The provider is a good fit when:
+
+- Your infrastructure is already managed end-to-end with Terraform and you want IPAM state tracked the same way.
+- You want reservations, associations, and external networks reconciled via `terraform plan` / `terraform apply` rather than imperative API calls in a pipeline step.
+- You need Terraform's drift detection to catch out-of-band changes to IPAM objects.
+
+Direct REST calls (via the provided [PowerShell and Bash scripts](https://github.com/Azure/ipam/tree/main/examples/scripts) or your own tooling) remain the right choice for ad-hoc operations, non-Terraform pipelines, or environments where adding a community provider isn't acceptable.
+
+### Provider Configuration
+
+The provider authenticates against the Azure IPAM Engine using a bearer token. The recommended pattern is to acquire the token via the Azure CLI and pass it through the `AZUREIPAM_TOKEN` environment variable so it is not persisted to Terraform state:
+
+```hcl
+terraform {
+  required_providers {
+    azureipam = {
+      source  = "xtratuscloud/azureipam"
+      version = "~> 2.0"
+    }
+  }
+}
+
+provider "azureipam" {
+  api_url = "https://<your-ipam-host>.azurewebsites.net"
+  # token sourced from AZUREIPAM_TOKEN environment variable
+}
+```
+
+```bash
+export AZUREIPAM_TOKEN=$(az account get-access-token \
+  --resource "api://<engine-app-id>" --query accessToken -o tsv)
+terraform apply
+```
+
+For a working example that obtains the token inline (with the trade-offs of storing it in state), see [`examples/ipam-terraform/providers.tf`](https://github.com/Azure/ipam/blob/main/examples/ipam-terraform/providers.tf).
+
+### Example: Reservation and VNet
+
+The most common usage pattern is the **reserve → deploy → tag** workflow described above, expressed as two Terraform resources. The reservation's `cidr` output is consumed as the VNet's address space, and its `tags` output is applied to the VNet so Azure IPAM can automatically settle the reservation:
+
+```hcl
+resource "azureipam_reservation" "vnet" {
+  space  = "MySpace"
+  blocks = ["MyBlock"]
+  size   = 24
+}
+
+resource "azurerm_resource_group" "rg" {
+  name     = "my-rg"
+  location = "eastus"
+}
+
+resource "azurerm_virtual_network" "network" {
+  name                = "my-vnet"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  address_space       = [azureipam_reservation.vnet.cidr]
+  tags                = azureipam_reservation.vnet.tags
+}
+```
+
+A complete, runnable version of this example — including variables, outputs, and provider configuration — is available under [`examples/ipam-terraform/`](https://github.com/Azure/ipam/tree/main/examples/ipam-terraform).
+
+### Beyond Reservations
+
+The provider also exposes resources and data sources for spaces, blocks, virtual network associations, and external networks. Because the resource and attribute surface evolves with the provider rather than this documentation, the [provider's Terraform Registry page](https://registry.terraform.io/providers/XtratusCloud/azureipam/latest/docs) is the authoritative reference for the full schema, available data sources, and version compatibility notes.
