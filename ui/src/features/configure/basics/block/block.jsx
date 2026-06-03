@@ -21,10 +21,10 @@ import {
 
 import {
   Edit as EditIcon,
-  DeleteOutline as DeleteOutlineIcon,
+  DeleteOutlined as DeleteOutlineIcon,
   MoreVert as MoreVertIcon,
   GridView as GridViewIcon,
-  PieChartOutline as PieChartOutlineIcon,
+  PieChartOutlined as PieChartOutlineIcon,
   SettingsEthernet as SettingsEthernetIcon,
   MapOutlined as MapOutlinedIcon
 } from "@mui/icons-material";

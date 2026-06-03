@@ -18,7 +18,7 @@ import {
 
 import {
   Edit as EditIcon,
-  DeleteOutline as DeleteOutlineIcon,
+  DeleteOutlined as DeleteOutlineIcon,
   MoreVert as MoreVertIcon
 } from "@mui/icons-material";
 

@@ -26,7 +26,7 @@ import {
   Autorenew,
   CheckOutlined,
   WarningAmber,
-  ErrorOutline,
+  ErrorOutlined,
   BlockOutlined,
   TimerOffOutlined,
   VisibilityOutlined,
@@ -78,12 +78,12 @@ const MESSAGE_MAP = {
   },
   "errCIDROverlap": {
     msg: "A vNET with overlapping CIDR has already been associated with the target IP Block.",
-    icon: ErrorOutline,
+    icon: ErrorOutlined,
     color: "error"
   },
   "errCIDRExists": {
     msg: "A vNET with overlapping CIDR has already been associated with the target IP Block.",
-    icon: ErrorOutline,
+    icon: ErrorOutlined,
     color: "error"
   },
   "cancelledByUser": {

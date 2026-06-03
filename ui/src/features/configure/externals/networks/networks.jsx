@@ -13,7 +13,7 @@ import {
 import {
   AddOutlined,
   EditOutlined,
-  DeleteOutline
+  DeleteOutlined
 } from "@mui/icons-material";
 
 import {
@@ -65,7 +65,7 @@ const Networks = (props) => {
       disabled: !selectedExternal || !isAdmin,
     },
     {
-      icon: DeleteOutline,
+      icon: DeleteOutlined,
       label: "Delete Network",
       onClick: () => setDelExtOpen(true),
       disabled: !selectedExternal || !isAdmin,

@@ -13,7 +13,7 @@ import {
 import {
   AddOutlined,
   EditOutlined,
-  DeleteOutline,
+  DeleteOutlined,
   EditNoteOutlined
 } from "@mui/icons-material";
 
@@ -69,7 +69,7 @@ const Subnets = (props) => {
       disabled: !selectedSubnet || !isAdmin,
     },
     {
-      icon: DeleteOutline,
+      icon: DeleteOutlined,
       label: "Remove Subnet",
       onClick: () => setDelExtSubOpen(true),
       disabled: !selectedSubnet || !isAdmin,
