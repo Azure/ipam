@@ -1,13 +1,11 @@
 import React from "react";
-import { styled } from '@mui/system';
-import { createTheme } from "@mui/material/styles";
+import { styled, createTheme, ThemeProvider } from "@mui/material/styles";
 
 import { get } from 'lodash';
 
 import {
   CircularProgress,
   Typography,
-  ThemeProvider,
   Button,
   Box,
   Divider,
@@ -22,23 +20,13 @@ import { TableContext } from "../TableContext";
 
 const detailsTheme = (theme) => createTheme({
   ...theme,
-  overrides: {
-    MuiLinearProgress: {
-      root: {
-        borderRadius: 4,
-        height: 7,
-      },
-      bar1Determinate: {
-        borderRadius: 4,
-      },
-      colorPrimary: {
-        backgroundColor: "#f5f5f5",
-      },
-    },
+  components: {
     MuiCircularProgress: {
-      circle: {
-        strokeLinecap: "round",
-        strokeWidth: 2.8,
+      styleOverrides: {
+        circle: {
+          strokeLinecap: "round",
+          strokeWidth: 2.8,
+        },
       },
     },
   },
