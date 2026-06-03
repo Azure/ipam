@@ -260,6 +260,7 @@ function HeaderMenu(props) {
           </IconButton>
           <Menu
             id="table-state-menu"
+            // eslint-disable-next-line react-hooks/refs
             anchorEl={menuRef.current}
             open={menuOpen}
             onClose={onClick}
@@ -677,6 +678,8 @@ export default function ManageExtEndpoints(props) {
     });
   }
 
+  // Manual memo retained; compiler bails on broader component (large stateful form)
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const hasError = React.useMemo(() => {
     const errorCheck = (endName.error || endDesc.error);
     const emptyCheck = (endName.value.length === 0 || endDesc.value.length === 0 || endAddr === null);

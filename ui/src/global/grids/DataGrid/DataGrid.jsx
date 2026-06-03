@@ -81,8 +81,11 @@ const ColumnVisibilityMenu = React.memo(({ anchorEl, open, onClose }) => {
       console.warn('Error getting column order:', error);
       return filter(columnDefs, col => col.field !== ACTIONS_COLUMN_FIELD);
     }
+  // gridRef is stable; reading current is a deliberate fallback pattern
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnDefs]);
 
+  // eslint-disable-next-line react-hooks/refs
   const dataColumns = useMemo(() => getColumnsInGridOrder(), [getColumnsInGridOrder]);
 
   const handleColumnToggle = useCallback((field) => {

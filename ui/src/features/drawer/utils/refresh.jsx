@@ -27,7 +27,7 @@ function Refresh() {
     inProgressRef.current = inProgress;
   }, [inProgress]);
 
-  refreshAllRef.current = React.useCallback(() => {
+  const refreshAll = React.useCallback(() => {
     if (inProgressRef.current !== InteractionStatus.None) {
       return;
     }
@@ -44,7 +44,7 @@ function Refresh() {
     })();
   }, [dispatch]);
 
-  refreshMeRef.current = React.useCallback(() => {
+  const refreshMe = React.useCallback(() => {
     if (inProgressRef.current !== InteractionStatus.None) {
       return;
     }
@@ -60,6 +60,11 @@ function Refresh() {
       }
     })();
   }, [dispatch]);
+
+  React.useEffect(() => {
+    refreshAllRef.current = refreshAll;
+    refreshMeRef.current = refreshMe;
+  }, [refreshAll, refreshMe]);
 
   React.useEffect(() => {
     if(refreshInterval) {
