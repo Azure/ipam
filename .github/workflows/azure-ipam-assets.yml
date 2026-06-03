@@ -19,19 +19,19 @@ jobs:
 
       - name: "Setup NodeJS v22"
         id: setupNode
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
 
       - name: "Setup Python v3.11"
         id: setupPython
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
       - name: Checkout Azure IPAM Code
         id: checkoutRepo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install NPM Packages
         id: installNpmPackages
@@ -51,7 +51,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Name ../assets/ -Force
-          ./build.ps1 -Path ../assets/ 
+          ./build.ps1 -Path ../assets/
 
       - name: Upload Azure IPAM Release Asset
         id: uploadReleaseAsset

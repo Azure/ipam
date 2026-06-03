@@ -30,17 +30,17 @@ jobs:
     steps:
       - name: Checkout Azure IPAM Code
         id: checkoutCode
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
         id: setupNode
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
 
       - name: Setup Python
         id: setupPython
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -68,35 +68,35 @@ jobs:
 
       - name: Lint Dockerfiles Debian (Hadolint)
         id: lintDockerfilesDeb
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: Dockerfile.deb
           recursive: true
 
       - name: Lint Dockerfiles RHEL (Hadolint)
         id: lintDockerfilesRhel
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: Dockerfile.rhel
           recursive: true
 
       - name: Lint Dockerfiles Function (Hadolint)
         id: lintDockerfilesFunc
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: Dockerfile.func
           recursive: true
 
       - name: Lint Dockerfiles Development (Hadolint)
         id: lintDockerfilesDev
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: Dockerfile.dev
           recursive: true
 
       - name: Lint Dockerfiles Load Balancer (Hadolint)
         id: lintDockerfilesLb
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: Dockerfile
           recursive: true
@@ -122,14 +122,14 @@ jobs:
 
       - name: Azure Login
         id: azureLogin
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           enable-AzPSSession: true
 
       - name: Checkout Azure IPAM Code
         id: checkoutRepo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           sparse-checkout: |
             deploy
@@ -241,14 +241,14 @@ jobs:
 
       - name: Azure Login
         id: azureLogin
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           enable-AzPSSession: true
 
       - name: Checkout Azure IPAM Code
         id: checkoutRepo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           sparse-checkout: |
             tests
@@ -293,7 +293,7 @@ jobs:
 
       - name: Azure Login
         id: azureLogin
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           enable-AzPSSession: true

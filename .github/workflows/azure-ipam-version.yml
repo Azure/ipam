@@ -37,19 +37,19 @@ jobs:
 
       - name: "Setup NodeJS v22"
         id: setupNode
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
 
       - name: "Setup Python v3.11"
         id: setupPython
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
       - name: "Extract Pull Request Details"
         id: getPullRequestData
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             return (
@@ -62,14 +62,14 @@ jobs:
 
       - name: "Create GitHub App Token"
         id: appToken
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ vars.IPAM_GITHUB_APP_ID }}
           private-key: ${{ secrets.IPAM_GITHUB_APP_KEY }}
 
       - name: Checkout Azure IPAM Code
         id: checkoutRepo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ steps.appToken.outputs.token }}
 
@@ -138,7 +138,7 @@ jobs:
     steps:
       - name: "Create GitHub App Token"
         id: appToken
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ vars.IPAM_GITHUB_APP_ID }}
           private-key: ${{ secrets.IPAM_GITHUB_APP_KEY }}
