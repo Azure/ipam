@@ -128,7 +128,15 @@ export default function AdminSettings() {
           <FloatingHeader>
             <Box sx={{ width: "20%" }}></Box>
             <HeaderTitle>Admin Settings</HeaderTitle>
-            <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ width: "20%", ml: 2, mr: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "center",
+                width: "20%",
+                ml: 2,
+                mr: 2
+              }}>
               <Tooltip title="Save" >
                 <IconButton
                   color="primary"
@@ -151,7 +159,13 @@ export default function AdminSettings() {
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 2 }}>
                     <Item>
-                      <Typography variant="button" display="block" gutterBottom>
+                      <Typography
+                        variant="button"
+                        gutterBottom
+                        sx={{
+                          display: "block"
+                        }}
+                      >
                         Automatic Updates
                       </Typography>
                       <FormGroup sx={{ pb: 1 }}>

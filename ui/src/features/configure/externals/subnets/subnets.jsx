@@ -118,7 +118,12 @@ const Subnets = (props) => {
   const NoRowsOverlay = React.useCallback(() => {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            display: "block",
+            mt: 1
+          }}>
           {selectedExternal
             ? "No Subnets Found for Selected External Network"
             : "Please Select an External Network"

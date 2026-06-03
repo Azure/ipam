@@ -457,7 +457,12 @@ const CombinedOverlay = React.memo(({ overlayType }) => {
         padding: 2,
       }}
     >
-      <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+      <Typography
+        variant="overline"
+        sx={{
+          display: "block",
+          mt: 1
+        }}>
         No data available
       </Typography>
     </Box>

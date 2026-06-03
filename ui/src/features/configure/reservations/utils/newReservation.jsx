@@ -169,7 +169,12 @@ export default function NewReservation(props) {
         Create Reservation
       </DialogTitle>
       <DialogContent>
-        <Box display="flex" flexDirection="column" alignItems="center">
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center"
+          }}>
           <Tooltip
             arrow
             disableFocusListener
@@ -203,9 +208,13 @@ export default function NewReservation(props) {
           <Box sx={{ width: "80%", mt: 2, mb: 0.5, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Typography
               variant="caption"
-              color="text.secondary"
-              sx={{ display: 'block', mb: 0.75, width: '100%', textAlign: 'center' }}
-            >
+              sx={{
+                color: "text.secondary",
+                display: 'block',
+                mb: 0.75,
+                width: '100%',
+                textAlign: 'center'
+              }}>
               Allocation Mode
             </Typography>
             <ToggleButtonGroup

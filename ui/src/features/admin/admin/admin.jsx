@@ -330,7 +330,12 @@ export default function Administration() {
     return (
       <React.Fragment>
         <Shrug />
-        <Typography variant="overline" display="block"  sx={{ mt: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            display: "block",
+            mt: 1
+          }}>
           Nothing yet...
         </Typography>
       </React.Fragment>
@@ -435,7 +440,15 @@ export default function Administration() {
               />
             </Box>
             <HeaderTitle>Admin Users</HeaderTitle>
-            <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ width: "35%", ml: 2, mr: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "center",
+                width: "35%",
+                ml: 2,
+                mr: 2
+              }}>
               <Tooltip title="Save" >
                 <IconButton
                   color="primary"

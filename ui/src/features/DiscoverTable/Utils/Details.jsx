@@ -87,8 +87,19 @@ function NumberCircularProgress(props) {
   }
 
   return (
-    <Box position="relative" display="inline-block">
-      <Box top={0} left={0} bottom={0} right={0} position="absolute">
+    <Box
+      sx={{
+        position: "relative",
+        display: "inline-block"
+      }}>
+      <Box
+        sx={{
+          top: 0,
+          left: 0,
+          bottom: 0,
+          right: 0,
+          position: "absolute"
+        }}>
         <CircularProgress style={{ color: "#f5f5f5" }} size={110} variant="determinate" value={100} />
       </Box>
       <CircularProgress
@@ -98,15 +109,16 @@ function NumberCircularProgress(props) {
         value={props.value}
       />
       <Box
-        top={0}
-        left={0}
-        bottom={0}
-        right={0}
-        position="absolute"
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-      >
+        sx={{
+          top: 0,
+          left: 0,
+          bottom: 0,
+          right: 0,
+          position: "absolute",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}>
         <Typography
           variant="h6"
           component="div"

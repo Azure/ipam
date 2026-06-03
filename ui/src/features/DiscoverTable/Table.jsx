@@ -232,7 +232,12 @@ export default function DiscoverTable(props) {
     return (
       <React.Fragment>
         <Shrug />
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            display: "block",
+            mt: 1
+          }}>
           Nothing yet...
         </Typography>
       </React.Fragment>

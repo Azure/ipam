@@ -299,7 +299,12 @@ const Associations = () => {
   const NoRowsOverlay = React.useCallback(() => {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            display: "block",
+            mt: 1
+          }}>
           { selectedBlock
             ? "No Virtual Networks Found for Selected Block CIDR"
             : "Please Select a Space & Block"
@@ -431,12 +436,24 @@ const Associations = () => {
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'row', ml: 4 }}>
           <Box sx={{ mr: 1 }}>
-            <Typography variant='body1' display='block' sx={{ fontStyle: 'italic', userSelect: 'none' }}>
+            <Typography
+              variant='body1'
+              sx={{
+                display: 'block',
+                fontStyle: 'italic',
+                userSelect: 'none'
+              }}>
               Selected:
             </Typography>
           </Box>
           <Box>
-            <Typography variant='body1' display='block' sx={{ fontStyle: 'italic', userSelect: 'none' }}>
+            <Typography
+              variant='body1'
+              sx={{
+                display: 'block',
+                fontStyle: 'italic',
+                userSelect: 'none'
+              }}>
               {
                 (sending || !subscriptions || !spaces || !blocks || !vNets || refreshing ) ?
                 <span style={{ fontStyle: 'italic', userSelect: 'none' }}>(...)</span> :

@@ -147,10 +147,20 @@ export default function BlockDataGrid(props) {
     return (
       <React.Fragment>
         { selectedSpace
-          ? <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+          ? <Typography
+              variant="overline"
+              sx={{
+                display: "block",
+                mt: 1
+              }}>
               No Blocks Found in Selected Space
             </Typography>
-          : <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+          : <Typography
+              variant="overline"
+              sx={{
+                display: "block",
+                mt: 1
+              }}>
               Please Select a Space
             </Typography>
         }

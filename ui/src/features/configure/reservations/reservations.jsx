@@ -428,14 +428,24 @@ const Reservations = () => {
     return (
       <React.Fragment>
         { selectedBlock
-          ? <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+          ? <Typography
+              variant="overline"
+              sx={{
+                display: "block",
+                mt: 1
+              }}>
               {
                 filterActive ?
                 "No Active Reservations Found for Selected Block" :
                 "No Reservations Found for Selected Block"
               }
             </Typography>
-          : <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+          : <Typography
+              variant="overline"
+              sx={{
+                display: "block",
+                mt: 1
+              }}>
               Please Select a Space & Block
             </Typography>
         }

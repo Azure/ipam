@@ -123,7 +123,12 @@ export default function SpaceDataGrid(props) {
   const NoRowsOverlay = React.useCallback(() => {
     return (
       <React.Fragment>
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            display: "block",
+            mt: 1
+          }}>
           No Spaces Found, Create a Space to Begin
         </Typography>
       </React.Fragment>
