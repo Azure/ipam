@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector } from "react-redux";
 import { ThemeProvider, createTheme, styled } from "@mui/material/styles";
 
-import { find,isEqual, orderBy } from "lodash";
+import { find,isEqual, orderBy } from "lodash-es";
 
 import {
   Box,

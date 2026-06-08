@@ -1,7 +1,7 @@
 import React from "react";
 import { styled, createTheme, ThemeProvider } from "@mui/material/styles";
 
-import { get } from 'lodash';
+import { get } from 'lodash-es';
 
 import {
   CircularProgress,

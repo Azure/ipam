@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { styled } from "@mui/material/styles";
 
-import { omit, isEqual, cloneDeep } from "lodash";
+import { omit, isEqual, cloneDeep } from "lodash-es";
 
 import { useSnackbar } from "notistack";
 

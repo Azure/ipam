@@ -5,7 +5,7 @@ import { useNavigate } from "react-router";
 
 import { useSnackbar } from "notistack";
 
-import { isEqual, sortBy, pick } from "lodash";
+import { isEqual, sortBy, pick } from "lodash-es";
 
 import {
   Box,

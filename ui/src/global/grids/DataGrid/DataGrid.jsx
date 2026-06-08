@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo, useCallback, useEffect } from "react"
 import { useSelector, useDispatch } from 'react-redux';
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
-import { isEmpty, sortBy, compact, map, filter, find } from 'lodash';
+import { isEmpty, sortBy, compact, map, filter, find } from 'lodash-es';
 import {
   Box,
   Menu,

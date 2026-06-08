@@ -13,7 +13,7 @@ import {
 
 import RestoreIcon from '@mui/icons-material/Restore';
 
-import { cloneDeep, isEmpty } from "lodash";
+import { cloneDeep, isEmpty } from "lodash-es";
 
 import {
   selectSubscriptions,

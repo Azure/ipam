@@ -3,7 +3,7 @@ import { styled } from '@mui/material/styles';
 
 import { useSnackbar } from 'notistack';
 
-import { isEqual, throttle } from 'lodash';
+import { isEqual, throttle } from 'lodash-es';
 
 import { DataGrid } from "../../../global/grids";
 

@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { useLocation } from "react-router";
 import { styled } from "@mui/material/styles";
 
-import { isEqual, sortBy, pick } from "lodash";
+import { isEqual, sortBy, pick } from "lodash-es";
 
 import { useSnackbar } from "notistack";
 

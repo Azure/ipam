@@ -4,7 +4,7 @@ import { styled } from "@mui/material/styles";
 
 import { useNavigate } from "react-router";
 
-import { isEmpty} from "lodash";
+import { isEmpty} from "lodash-es";
 
 import { ConfigureGrid } from "../../../../global/grids";
 

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 
 import { useSnackbar } from "notistack";
 

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useSelector } from "react-redux";
 
-import { cloneDeep } from "lodash";
+import { cloneDeep } from "lodash-es";
 
 import { DataGrid } from "../../../../global/grids";
 

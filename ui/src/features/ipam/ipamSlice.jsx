@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSelector, createSlice } from '@reduxjs/toolkit';
 
-import { concat, merge, cloneDeep, isEqual } from 'lodash';
+import { concat, merge, cloneDeep, isEqual } from 'lodash-es';
 
 // import SnackbarUtils from '../../utils/snackbar';
 

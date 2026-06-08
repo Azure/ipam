@@ -4,7 +4,7 @@ import { styled } from '@mui/material/styles';
 
 import { useSnackbar } from 'notistack';
 
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 
 import {
   Box,

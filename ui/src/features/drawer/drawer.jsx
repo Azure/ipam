@@ -9,7 +9,7 @@ import { useSnackbar } from "notistack";
 import { styled, alpha } from "@mui/material/styles";
 import { SvgIcon } from "@mui/material";
 
-import { orderBy } from 'lodash';
+import { orderBy } from 'lodash-es';
 import { plural, singular } from 'pluralize';
 
 import { Routes, Route, Link, Navigate, useNavigate } from "react-router";

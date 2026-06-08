@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useLocation } from "react-router";
 
-import { isEmpty, isEqual, sortBy, pick } from "lodash";
+import { isEmpty, isEqual, sortBy, pick } from "lodash-es";
 
 import { useSnackbar } from "notistack";
 

@@ -1,7 +1,7 @@
 import React from "react";
 import { useSelector } from 'react-redux';
 
-import { concat } from 'lodash';
+import { concat, cloneDeep, isEmpty } from 'lodash-es';
 
 import ReactECharts from "echarts-for-react";
 
@@ -14,8 +14,6 @@ import {
 } from '@mui/material';
 
 import RestoreIcon from '@mui/icons-material/Restore';
-
-import { cloneDeep, isEmpty } from "lodash";
 
 import {
   selectSpaces,
