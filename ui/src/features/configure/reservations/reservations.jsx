@@ -6,7 +6,10 @@ import { isEmpty, isEqual, sortBy, pick } from "lodash-es";
 
 import { useSnackbar } from "notistack";
 
-import moment from "moment";
+import dayjs from "dayjs";
+import localizedFormat from "dayjs/plugin/localizedFormat";
+
+dayjs.extend(localizedFormat);
 
 import { DataGrid } from "../../../global/grids/DataGrid";
 
@@ -239,13 +242,13 @@ const Reservations = () => {
       field: "createdOn",
       headerName: "Creation Date",
       flex: 0.75,
-      valueFormatter: (params) => params.value ? moment.unix(params.value).format('lll') : null,
+      valueFormatter: (params) => params.value ? dayjs.unix(params.value).format('lll') : null,
       filter: 'agDateColumnFilter',
       filterParams: {
         comparator: (filterDate, cellValue) => {
           if (!cellValue) return -1;
-          const cellDate = moment.unix(cellValue).startOf('day').toDate();
-          const filterDateStart = moment(filterDate).startOf('day').toDate();
+          const cellDate = dayjs.unix(cellValue).startOf('day').toDate();
+          const filterDateStart = dayjs(filterDate).startOf('day').toDate();
           if (cellDate < filterDateStart) return -1;
           if (cellDate > filterDateStart) return 1;
           return 0;
@@ -257,13 +260,13 @@ const Reservations = () => {
       headerName: "Settled Date",
       flex: 0.75,
       hide: true,
-      valueFormatter: (params) => params.value ? moment.unix(params.value).format('lll') : null,
+      valueFormatter: (params) => params.value ? dayjs.unix(params.value).format('lll') : null,
       filter: 'agDateColumnFilter',
       filterParams: {
         comparator: (filterDate, cellValue) => {
           if (!cellValue) return -1;
-          const cellDate = moment.unix(cellValue).startOf('day').toDate();
-          const filterDateStart = moment(filterDate).startOf('day').toDate();
+          const cellDate = dayjs.unix(cellValue).startOf('day').toDate();
+          const filterDateStart = dayjs(filterDate).startOf('day').toDate();
           if (cellDate < filterDateStart) return -1;
           if (cellDate > filterDateStart) return 1;
           return 0;
