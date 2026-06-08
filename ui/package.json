@@ -32,18 +32,6 @@
     "build": "vite build",
     "lint": "eslint src/"
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^5.8.16",
     "@eslint/js": "^10.0.1",
