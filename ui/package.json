@@ -34,7 +34,9 @@
   "scripts": {
     "start": "vite",
     "build": "vite build",
-    "lint": "eslint src/"
+    "preview": "vite preview",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix"
   },
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^5.8.16",
