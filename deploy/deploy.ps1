@@ -1339,8 +1339,8 @@ process {
           Extension = 'rhel'
           Port      = 8080
           Images    = @{
-            Build = 'registry.access.redhat.com/ubi8/nodejs-22'
-            Serve = 'registry.access.redhat.com/ubi8/python-311'
+            Build = 'registry.access.redhat.com/ubi9/nodejs-22'
+            Serve = 'registry.access.redhat.com/ubi9/python-311'
           }
         }
       }
