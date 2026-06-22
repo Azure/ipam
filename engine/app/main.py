@@ -133,7 +133,7 @@ async def ipam_init():
     }
 
     try:
-        requests.post(url = "https://azureipammetrics.azurewebsites.net/api/heartbeat", json = hb_message)
+        requests.post(url = "https://metrics.azureipam.com/api/heartbeat", json = hb_message, timeout = 15)
     except Exception:
         pass
 
