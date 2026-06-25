@@ -18,6 +18,10 @@ on:
       - 'LICENSE'
       - '*.md'
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   ACR_NAME: ${{ vars.IPAM_TEST_ACR }}
   IPAM_UI_NAME: ipam-ui-${{ github.run_id }}-${{ github.run_attempt }}
@@ -124,7 +128,9 @@ jobs:
         id: azureLogin
         uses: azure/login@v3
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_TEST_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TEST_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_TEST_SUBSCRIPTION_ID }}
           enable-AzPSSession: true
 
       - name: Checkout Azure IPAM Code
@@ -151,7 +157,7 @@ jobs:
 
           $bicepFile = Get-Content -Path ./modules/appService.bicep
 
-          $bicepFile = $bicepFile -replace "azureipam.azurecr.io", $acrName
+          $bicepFile = $bicepFile -replace "registry.azureipam.com", $acrName
           $bicepFile = $bicepFile -replace "ipam:latest", $containerName
 
           $bicepFile | Out-File -FilePath ./modules/appService.bicep -Force
@@ -243,7 +249,9 @@ jobs:
         id: azureLogin
         uses: azure/login@v3
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_TEST_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TEST_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_TEST_SUBSCRIPTION_ID }}
           enable-AzPSSession: true
 
       - name: Checkout Azure IPAM Code
@@ -295,7 +303,9 @@ jobs:
         id: azureLogin
         uses: azure/login@v3
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_TEST_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TEST_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_TEST_SUBSCRIPTION_ID }}
           enable-AzPSSession: true
 
       - name : Remove Azure IPAM Resources
