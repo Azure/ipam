@@ -8,12 +8,12 @@
     "npm": ">=10.9.2"
   },
   "dependencies": {
-    "@azure/msal-browser": "^5.14.0",
-    "@azure/msal-react": "^5.4.5",
+    "@azure/msal-browser": "^5.15.0",
+    "@azure/msal-react": "^5.5.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^9.1.1",
-    "@mui/material": "^9.1.1",
+    "@mui/material": "^9.1.2",
     "@reduxjs/toolkit": "^2.12.0",
     "ag-grid-community": "^35.3.1",
     "ag-grid-react": "^35.3.1",
@@ -39,13 +39,13 @@
     "lint:fix": "eslint src/ --fix"
   },
   "devDependencies": {
-    "@eslint-react/eslint-plugin": "^5.9.2",
+    "@eslint-react/eslint-plugin": "^5.9.3",
     "@eslint/js": "^10.0.1",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-react": "^6.0.3",
     "eslint": "^10.5.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.7.0",
     "serve": "^14.2.6",
-    "vite": "^8.0.16"
+    "vite": "^8.1.0"
   }
 }
