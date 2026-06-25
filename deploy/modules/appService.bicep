@@ -41,7 +41,7 @@ param privateAcr bool
 param privateAcrUri string
 
 // ACR Uri Variable
-var acrUri = privateAcr ? privateAcrUri : 'azureipam.azurecr.io'
+var acrUri = privateAcr ? privateAcrUri : 'registry.azureipam.com'
 
 // Disable Build Process Internet-Restricted Clouds
 var runFromPackage = azureCloud == 'AZURE_US_GOV_SECRET' ? true : false

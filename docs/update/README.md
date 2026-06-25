@@ -31,7 +31,7 @@ The update process varies depending on your current Azure IPAM deployment archit
 
 #### Most Common Deployment Type
 
-For deployments using the publicly hosted Azure Container Registry (`azureipam.azurecr.io`), updates are handled by simply restarting your Azure App Service or Function App to pull the latest container images.
+For deployments using the publicly hosted Azure Container Registry (`registry.azureipam.com`, or the legacy `azureipam.azurecr.io`), updates are handled by simply restarting your Azure App Service or Function App to pull the latest container images.
 
 - **Update Method**: Container restart
 - **Downtime**: Minimal (during restart only)
@@ -250,7 +250,7 @@ The update script follows this automated process and will automatically determin
 
 #### For Public ACR Container Deployments
 
-- Detects use of public Azure Container Registry (`azureipam.azurecr.io`) by examining `LinuxFxVersion`
+- Detects use of public Azure Container Registry (`registry.azureipam.com`, or the legacy `azureipam.azurecr.io`) by examining `LinuxFxVersion`
 - Simply restarts the application to pull latest container images from public registry
 - **Process exits here** - no building or ZIP deployment needed
 

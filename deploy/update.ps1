@@ -82,8 +82,8 @@ $ROOT_DIR = (Get-Item $($MyInvocation.MyCommand.Path)).Directory.Parent.FullName
 # Minimum Required Azure CLI Version
 $MIN_AZ_CLI_VER = [System.Version]'2.35.0'
 
-# Azure IPAM Public ACR
-$IPAM_PUBLIC_ACR = "azureipam.azurecr.io"
+# Azure IPAM Public ACR (element [0] is the current/preferred registry; remaining values are legacy registries retained for backward-compatible detection)
+$IPAM_PUBLIC_ACR = @("registry.azureipam.com", "azureipam.azurecr.io")
 
 # Set preference variables
 $ErrorActionPreference = "Stop"
@@ -401,9 +401,24 @@ try {
 
   if ($isContainer) {
     $appAcr = $existingApp.SiteConfig.LinuxFxVersion.Split('|')[1].Split('/')[0]
-    $privateAcr = $appAcr -eq $IPAM_PUBLIC_ACR ? $false : $true
+    $privateAcr = $appAcr -in $IPAM_PUBLIC_ACR ? $false : $true
 
     if (-not $privateAcr) {
+      $currentPublicAcr = $IPAM_PUBLIC_ACR[0]
+
+      if ($appAcr -ne $currentPublicAcr) {
+        Write-Host "INFO: Deployment is using the legacy Azure IPAM public ACR (" -ForegroundColor Green -NoNewline
+        Write-Host "$appAcr" -ForegroundColor Cyan -NoNewline
+        Write-Host "), migrating image reference to " -ForegroundColor Green -NoNewline
+        Write-Host "$currentPublicAcr" -ForegroundColor Cyan -NoNewline
+        Write-Host "..." -ForegroundColor Green
+
+        $existingApp.SiteConfig.LinuxFxVersion = $existingApp.SiteConfig.LinuxFxVersion.Replace($appAcr, $currentPublicAcr)
+        $existingApp | Set-AzWebApp | Out-Null
+
+        Start-Sleep -Seconds 10
+      }
+
       Write-Host "INFO: Deployment is using the Azure IPAM public ACR, restarting to update..." -ForegroundColor Green
       Restart-IpamApp -AppName $AppName -ResourceGroupName $ResourceGroupName
       exit

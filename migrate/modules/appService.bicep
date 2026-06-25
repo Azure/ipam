@@ -38,7 +38,7 @@ param privateAcr bool
 param privateAcrUri string
 
 // ACR Uri Variable
-var acrUri = privateAcr ? privateAcrUri : 'azureipam.azurecr.io'
+var acrUri = privateAcr ? privateAcrUri : 'registry.azureipam.com'
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
   name: appServicePlanName
