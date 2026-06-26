@@ -54,8 +54,16 @@ ARG PIP_ROOT_USER_ACTION=ignore
 # Disable PIP Upgrade Warnings
 ARG PIP_DISABLE_PIP_VERSION_CHECK=1
 
+# IPAM Version (for OCI Image Label)
+ARG IPAM_VERSION=0.0.0
+
 # Set Environment Variable
 ENV PORT=${PORT}
+
+# OCI Image Labels
+LABEL org.opencontainers.image.title="Azure IPAM" \
+      org.opencontainers.image.version="${IPAM_VERSION}" \
+      org.opencontainers.image.source="https://github.com/Azure/ipam"
 
 # Set Working Directory
 WORKDIR /tmp

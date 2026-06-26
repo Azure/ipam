@@ -5,9 +5,17 @@ FROM mcr.microsoft.com/azure-functions/python:4-python3.11-appservice
 # Set Production Build Flag
 ARG PROD_BUILD=true
 
+# IPAM Version (for OCI Image Label)
+ARG IPAM_VERSION=0.0.0
+
 # Set Azure Function Root Directory & Enable Console Logging
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     AzureFunctionsJobHost__Logging__Console__IsEnabled=true
+
+# OCI Image Labels
+LABEL org.opencontainers.image.title="Azure IPAM Engine Function" \
+      org.opencontainers.image.version="${IPAM_VERSION}" \
+      org.opencontainers.image.source="https://github.com/Azure/ipam"
 
 WORKDIR /home/site/wwwroot
 

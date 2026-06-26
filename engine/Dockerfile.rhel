@@ -7,11 +7,19 @@ ARG PROD_BUILD=true
 # Set Default Port
 ARG PORT=8080
 
+# IPAM Version (for OCI Image Label)
+ARG IPAM_VERSION=0.0.0
+
 # Set Environment Variable
 ENV PORT=${PORT}
 
 # Disable PIP Root Warnings
 ENV PIP_ROOT_USER_ACTION=ignore
+
+# OCI Image Labels
+LABEL org.opencontainers.image.title="Azure IPAM Engine" \
+      org.opencontainers.image.version="${IPAM_VERSION}" \
+      org.opencontainers.image.source="https://github.com/Azure/ipam"
 
 # Set the Working Directory
 WORKDIR /ipam
