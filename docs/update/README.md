@@ -15,6 +15,7 @@ To successfully update your Azure IPAM deployment, ensure the following prerequi
 - An Azure Subscription containing your existing Azure IPAM deployment
 - The following Azure RBAC Roles:
   - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner) at the Resource Group scope containing your Azure IPAM resources
+  - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner) at the **Subscription** scope, required only for the [infrastructure update](#3-infrastructure-update-auto-detected) — its additive deployment is evaluated at subscription scope. If you cannot grant subscription-scope access, run the update with `-SkipInfraUpdate` to bypass this step.
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
   - Required to clone the Azure IPAM GitHub repository
 - [PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
@@ -74,6 +75,7 @@ For detailed backup instructions, refer to the [Migration Guide backup section](
 The update script automatically handles version compatibility, including:
 
 - **Python Version Updates**: If the target Azure IPAM version uses a different Python version, the script will automatically update your App Service configuration
+- **Version Comparison**: For native deployments, the script compares the running version against the latest GitHub release and skips the ZIP deploy when already up to date (override with `-Force`)
 - **Health Check Configuration**: Missing health check configurations will be automatically added during the update
 - **Legacy Detection**: Docker Compose deployments (deprecated) will be detected and the script will redirect you to the migration guide
 
@@ -138,13 +140,13 @@ Clone the Azure IPAM repository to access the update script:
 ```powershell
 # Example using PowerShell for Windows
 PS C:\> git clone https://github.com/Azure/ipam.git
-PS C:\> cd .\ipam\deploy
-PS C:\ipam\deploy> .\update.ps1 <OPTIONS>
+PS C:\> cd .\ipam\update
+PS C:\ipam\update> .\update.ps1 <OPTIONS>
 
 # Example using PowerShell for Linux
 PS /> git clone https://github.com/Azure/ipam.git
-PS /> cd /ipam/deploy
-PS /ipam/deploy> .\update.ps1 <OPTIONS>
+PS /> cd /ipam/update
+PS /ipam/update> .\update.ps1 <OPTIONS>
 ```
 
 ## Update Scenarios and Usage
@@ -224,6 +226,8 @@ By default, the script automatically creates a temporary directory for downloadi
 | `-ZipFileName`       | String | No       | ZIP file name to download from GitHub **<sup>1</sup>**               |
 | `-ZipFilePath`       | String | No       | Path to local ZIP file for deployment **<sup>1</sup>**               |
 | `-AssetFolder`       | String | No       | Directory to store downloaded ZIP file **<sup>2</sup>**              |
+| `-SkipInfraUpdate`   | Switch | No       | Skip infrastructure updates                                          |
+| `-Force`             | Switch | No       | Skip confirmation prompts and force a redeploy even if already up to date |
 
 > **NOTE 1:** Only applicable for native (non-container) deployments. These parameters are ignored for container deployments, which are automatically built from the latest repository code.
 
@@ -246,7 +250,20 @@ The update script follows this automated process and will automatically determin
 - Automatically adds health check configuration if missing
 - Sets health check failure threshold to 2 attempts
 
-### 3. Deployment Type Detection and Processing
+### 3. Infrastructure Update (Auto-Detected)
+
+For deployments missing infrastructure that newer Azure IPAM deployments include, the script offers an additive infrastructure update that brings the deployment in line with current deployments. The set of infrastructure it provisions evolves alongside Azure IPAM. **The production site is never modified.**
+
+- Skipped automatically when the deployment already includes the expected infrastructure (safe to re-run)
+- Skipped (with a warning) when the environment can't support the update (for example, an unsupported App Service Plan tier or missing baseline settings)
+- Discovers and verifies all dependencies (plan tier, managed identity, Cosmos/Key Vault settings) **before** deploying anything
+- Prompts for confirmation before deploying any infrastructure (use `-Force` to skip the prompt, or `-SkipInfraUpdate` to bypass infrastructure updates entirely)
+- Provisions resources from an additive Bicep template that mirrors production and **preserves all existing app-setting values** (only *missing* baseline keys are added)
+- Replicates production networking (such as regional vNet integration) where applicable; if it can't be applied automatically, you're directed to complete it manually
+
+> **NOTE:** This step is independent of the code/image update below — the day-to-day update still targets **production only**. The slot is scaffolding that makes future version changes safer via slot swaps.
+
+### 4. Deployment Type Detection and Processing
 
 #### For Public ACR Container Deployments
 
@@ -268,6 +285,9 @@ The update script follows this automated process and will automatically determin
 
 #### For Native ZIP Deploy Deployments
 
+- Compares the currently running version (via the `/api/status` endpoint) against the latest GitHub release and **skips the deployment if already up to date**
+  - Use `-Force` to redeploy anyway
+  - This check is also skipped when a local `-ZipFilePath` is supplied
 - Checks and updates Python version if it has changed between versions
 - Downloads latest release ZIP from GitHub (using GitHubUserName/GitHubRepoName parameters)
 - Alternatively uses provided local ZIP file if ZipFilePath is specified
@@ -277,11 +297,81 @@ The update script follows this automated process and will automatically determin
 - Handles retry logic for deployment failures (3 attempts)
 - Cleans up temporary files
 
-### 4. Restart and Validation
+### 5. Restart and Validation
 
 - Restarts the App Service or Function App
 - Implements retry logic for restart failures
 - Provides status updates throughout the process
+
+## Staging Slots
+
+Current Azure IPAM deployments provision a **`staging` [deployment slot](https://learn.microsoft.com/azure/app-service/deploy-staging-slots)** alongside the production site.
+
+This additional deployment slot:
+
+- Runs on the **same App Service Plan** at no additional plan cost
+- Reuses the **same managed identity**, so it inherits Key Vault and Cosmos DB access automatically
+- Is created **disabled** so it consumes no runtime capacity until needed
+- Mirrors production, making it a safe target for future **slot-swap** upgrades (deploy to the slot, validate, then swap)
+
+When you run `update.ps1` against an older deployment that predates slots, the script auto-detects the missing slot and offers an infrastructure update to add it (see [Infrastructure Update](#3-infrastructure-update-auto-detected)). Use `-SkipInfraUpdate` to bypass it, or `-Force` to add it without the confirmation prompt.
+
+> **NOTE:** Adding the slot is **additive** — your production site is never modified, and your existing app-setting values are always preserved. Only missing baseline settings are backfilled on the slot.
+
+### vNet Integration on the Staging Slot
+
+If your production App Service or Function App uses **regional vNet integration**, the update replicates that integration onto the new slot automatically. If it cannot be applied automatically (for example, due to subnet capacity, delegation, or permissions), the slot is still created **without** vNet integration and the script reports the production subnet details (writing the full subnet resource ID to the log) for manual remediation.
+
+To add vNet integration to the `staging` slot manually:
+
+#### Azure Portal
+
+1. Navigate to your App Service / Function App → **Deployment slots** → select the **staging** slot
+2. Go to **Networking** → **vNet integration** → **Add vNet integration**
+3. Select the **same vNet and subnet** used by the production site, then **Connect**
+
+#### Azure CLI
+
+```bash
+az webapp vnet-integration add \
+  --resource-group "<your-ipam-rg>" \
+  --name "<your-ipam-app>" \
+  --slot staging \
+  --vnet "/subscriptions/<sub-id>/resourceGroups/<vnet-rg>/providers/Microsoft.Network/virtualNetworks/<vnet-name>" \
+  --subnet "<subnet-name>"
+```
+
+#### Azure PowerShell
+
+```powershell
+# Full resource ID of the subnet used by the production site
+$subnetId = "/subscriptions/<sub-id>/resourceGroups/<vnet-rg>/providers/Microsoft.Network/virtualNetworks/<vnet-name>/subnets/<subnet-name>"
+
+$slot = Get-AzResource `
+  -ResourceGroupName "<your-ipam-rg>" `
+  -ResourceType "Microsoft.Web/sites/slots" `
+  -ResourceName "<your-ipam-app>/staging"
+
+$slot.Properties | Add-Member -NotePropertyName "virtualNetworkSubnetId" -NotePropertyValue $subnetId -Force
+
+$slot | Set-AzResource -Force
+```
+
+> **NOTE:** The subnet must be delegated to **`Microsoft.Web/serverFarms`**. The Azure CLI command adds this delegation automatically; with the Azure Portal or Azure PowerShell, ensure the delegation is in place first.
+
+> **NOTE:** If your production site routes all outbound traffic through the vNet (the `vnetRouteAllEnabled` site property, shown in the portal under **Networking** → **Outbound traffic configuration**), apply the same setting to the `staging` slot. Otherwise, outbound connectivity that depends on the vNet — for example, reaching private-endpoint-only Cosmos DB or Key Vault — could break after a slot swap.
+
+> **NOTE:** Regional vNet integration is configured **per slot**. The slot stays disabled until you explicitly start and swap it, so this can be completed at any time before your first slot-based upgrade.
+
+### Optional: Removing the Legacy `COSMOS-KEY` Secret
+
+Deployments originally created with very old Azure IPAM versions (e.g. v3.0.0) may have an unused `COSMOS-KEY` secret in Key Vault left over from key-based Cosmos DB authentication. Current Azure IPAM uses managed identity exclusively, so this secret is no longer referenced. It is harmless to leave in place, but if you wish to clean it up:
+
+```powershell
+Remove-AzKeyVaultSecret -VaultName "<your-ipam-kv>" -Name "COSMOS-KEY"
+```
+
+> **WARNING:** Only remove this secret if you are certain no custom automation references it.
 
 ## Monitoring the Update Process
 

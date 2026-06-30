@@ -53,6 +53,116 @@ var runFromPackage = azureCloud == 'AZURE_US_GOV_SECRET' ? true : false
 var engineVersion = loadJsonContent('../../engine/app/version.json')
 var pythonVersion = engineVersion.python
 
+// Shared Function App site configuration (reused by the production site and the staging slot)
+var functionAppSiteConfig = {
+  acrUseManagedIdentityCreds: privateAcr ? true : false
+  acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
+  linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipamfunc:latest' : 'PYTHON|${pythonVersion}'
+  healthCheckPath: '/api/status'
+  appSettings: concat(
+    [
+      {
+        name: 'AZURE_ENV'
+        value: azureCloud
+      }
+      {
+        name: 'COSMOS_URL'
+        value: cosmosDbUri
+      }
+      {
+        name: 'DATABASE_NAME'
+        value: databaseName
+      }
+      {
+        name: 'CONTAINER_NAME'
+        value: containerName
+      }
+      {
+        name: 'MANAGED_IDENTITY_ID'
+        value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/IDENTITY-ID/)'
+      }
+      {
+        name: 'UI_APP_ID'
+        value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/UI-ID/)'
+      }
+      {
+        name: 'ENGINE_APP_ID'
+        value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-ID/)'
+      }
+      {
+        name: 'ENGINE_APP_SECRET'
+        value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-SECRET/)'
+      }
+      {
+        name: 'TENANT_ID'
+        value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/TENANT-ID/)'
+      }
+      {
+        name: 'KEYVAULT_URL'
+        value: keyVaultUri
+      }
+      {
+        name: 'AzureWebJobsStorage'
+        value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+      }
+      {
+        name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
+        value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+      }
+      {
+        name: 'WEBSITE_CONTENTSHARE'
+        value: toLower(functionAppName)
+      }
+      {
+        name: 'FUNCTIONS_EXTENSION_VERSION'
+        value: '~4'
+      }
+      {
+        name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+        value: applicationInsights.properties.InstrumentationKey
+      }
+      {
+        name: 'WEBSITE_HEALTHCHECK_MAXPINGFAILURES'
+        value: '2'
+      }
+    ],
+    deployAsContainer ? [
+      {
+        name: 'DOCKER_REGISTRY_SERVER_URL'
+        value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
+      }
+      {
+        name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+        value: 'false'
+      }
+    ] : runFromPackage ? [
+      {
+        name: 'FUNCTIONS_WORKER_RUNTIME'
+        value: 'python'
+      }
+      {
+        name: 'WEBSITE_RUN_FROM_PACKAGE'
+        value: '1'
+      }
+    ] : [
+      {
+        name: 'FUNCTIONS_WORKER_RUNTIME'
+        value: 'python'
+      }
+      {
+        name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+        value: 'true'
+      }
+    ]
+  )
+}
+
+// Settings that must remain with their slot during a swap (not swapped)
+var functionAppStickySettingNames = [
+  'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
+  'WEBSITE_CONTENTSHARE'
+]
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-06-01' existing = {
   name: storageAccountName
 }
@@ -84,114 +194,63 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
     httpsOnly: true
     serverFarmId: functionPlan.id
     keyVaultReferenceIdentity: managedIdentityId
-    siteConfig: {
-      acrUseManagedIdentityCreds: privateAcr ? true : false
-      acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
-      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipamfunc:latest' : 'PYTHON|${pythonVersion}'
-      healthCheckPath: '/api/status'
-      appSettings: concat(
-        [
-          {
-            name: 'AZURE_ENV'
-            value: azureCloud
-          }
-          {
-            name: 'COSMOS_URL'
-            value: cosmosDbUri
-          }
-          {
-            name: 'DATABASE_NAME'
-            value: databaseName
-          }
-          {
-            name: 'CONTAINER_NAME'
-            value: containerName
-          }
-          {
-            name: 'MANAGED_IDENTITY_ID'
-            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/IDENTITY-ID/)'
-          }
-          {
-            name: 'UI_APP_ID'
-            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/UI-ID/)'
-          }
-          {
-            name: 'ENGINE_APP_ID'
-            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-ID/)'
-          }
-          {
-            name: 'ENGINE_APP_SECRET'
-            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-SECRET/)'
-          }
-          {
-            name: 'TENANT_ID'
-            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/TENANT-ID/)'
-          }
-          {
-            name: 'KEYVAULT_URL'
-            value: keyVaultUri
-          }
-          {
-            name: 'AzureWebJobsStorage'
-            value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-          }
-          {
-            name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-            value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-          }
-          {
-            name: 'WEBSITE_CONTENTSHARE'
-            value: toLower(functionAppName)
-          }
-          {
-            name: 'FUNCTIONS_EXTENSION_VERSION'
-            value: '~4'
-          }
-          {
-            name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-            value: applicationInsights.properties.InstrumentationKey
-          }
-          {
-            name: 'WEBSITE_HEALTHCHECK_MAXPINGFAILURES'
-            value: '2'
-          }
-        ],
-        deployAsContainer ? [
-          {
-            name: 'DOCKER_REGISTRY_SERVER_URL'
-            value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
-          }
-          {
-            name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
-            value: 'false'
-          }
-        ] : runFromPackage ? [
-          {
-            name: 'FUNCTIONS_WORKER_RUNTIME'
-            value: 'python'
-          }
-          {
-            name: 'WEBSITE_RUN_FROM_PACKAGE'
-            value: '1'
-          }
-        ] : [
-          {
-            name: 'FUNCTIONS_WORKER_RUNTIME'
-            value: 'python'
-          }
-          {
-            name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
-            value: 'true'
-          }
-        ]
-      )
+    siteConfig: functionAppSiteConfig
+  }
+}
+
+// Staging slot (created dormant; started on demand for slot-based upgrades/swaps)
+resource functionAppStagingSlot 'Microsoft.Web/sites/slots@2021-03-01' = {
+  name: 'staging'
+  parent: functionApp
+  location: location
+  kind: 'functionapp,linux'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${managedIdentityId}': {}
+    }
+  }
+  properties: {
+    enabled: false
+    httpsOnly: true
+    serverFarmId: functionPlan.id
+    keyVaultReferenceIdentity: managedIdentityId
+    siteConfig: functionAppSiteConfig
+  }
+}
+
+// Mark content-share settings as slot-sticky so a future swap never crosses the file share
+resource functionAppSlotConfigNames 'Microsoft.Web/sites/config@2021-03-01' = {
+  name: 'slotConfigNames'
+  parent: functionApp
+  properties: {
+    appSettingNames: functionAppStickySettingNames
+  }
+}
+
+resource functionAppLogs 'Microsoft.Web/sites/config@2021-02-01' = {
+  name: 'logs'
+  parent: functionApp
+  properties: {
+    detailedErrorMessages: {
+      enabled: true
+    }
+    failedRequestsTracing: {
+      enabled: true
+    }
+    httpLogs: {
+      fileSystem: {
+        enabled: true
+        retentionInDays: 7
+        retentionInMb: 50
+      }
     }
   }
 }
 
-resource appConfigLogs 'Microsoft.Web/sites/config@2021-02-01' = {
+resource functionAppStagingSlotLogs 'Microsoft.Web/sites/slots/config@2021-02-01' = {
   name: 'logs'
-  parent: functionApp
+  parent: functionAppStagingSlot
   properties: {
     detailedErrorMessages: {
       enabled: true
@@ -267,3 +326,4 @@ resource diagnosticSettingsApp 'Microsoft.Insights/diagnosticSettings@2021-05-01
 }
 
 output functionAppHostName string = functionApp.properties.defaultHostName
+output functionAppStagingSlotHostName string = functionAppStagingSlot.properties.defaultHostName

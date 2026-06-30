@@ -50,6 +50,84 @@ var runFromPackage = azureCloud == 'AZURE_US_GOV_SECRET' ? true : false
 var engineVersion = loadJsonContent('../../engine/app/version.json')
 var pythonVersion = engineVersion.python
 
+// Shared App Service site configuration (reused by the production site and the staging slot)
+var appServiceSiteConfig = {
+  acrUseManagedIdentityCreds: privateAcr ? true : false
+  acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
+  alwaysOn: true
+  linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:latest' : 'PYTHON|${pythonVersion}'
+  appCommandLine: !deployAsContainer ? 'bash ./init.sh 8000' : null
+  healthCheckPath: '/api/status'
+  appSettings: concat(
+    [
+      {
+        name: 'AZURE_ENV'
+        value: azureCloud
+      }
+      {
+        name: 'COSMOS_URL'
+        value: cosmosDbUri
+      }
+      {
+        name: 'DATABASE_NAME'
+        value: databaseName
+      }
+      {
+        name: 'CONTAINER_NAME'
+        value: containerName
+      }
+      {
+        name: 'MANAGED_IDENTITY_ID'
+        value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/IDENTITY-ID/)'
+      }
+      {
+        name: 'UI_APP_ID'
+        value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/UI-ID/)'
+      }
+      {
+        name: 'ENGINE_APP_ID'
+        value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-ID/)'
+      }
+      {
+        name: 'ENGINE_APP_SECRET'
+        value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-SECRET/)'
+      }
+      {
+        name: 'TENANT_ID'
+        value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/TENANT-ID/)'
+      }
+      {
+        name: 'KEYVAULT_URL'
+        value: keyVaultUri
+      }
+      {
+        name: 'WEBSITE_HEALTHCHECK_MAXPINGFAILURES'
+        value: '2'
+      }
+    ],
+    deployAsContainer ? [
+      {
+        name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
+        value: 'true'
+      }
+      {
+        name: 'DOCKER_REGISTRY_SERVER_URL'
+        value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
+      }
+    ] : runFromPackage ? [
+      {
+        name: 'WEBSITE_RUN_FROM_PACKAGE'
+        value: '1'
+      }
+    ] : [
+      {
+        name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+        value: 'true'
+      }
+    ]
+  )
+}
+
 resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
   name: appServicePlanName
   location: location
@@ -79,88 +157,54 @@ resource appService 'Microsoft.Web/sites@2021-02-01' = {
     httpsOnly: true
     serverFarmId: appServicePlan.id
     keyVaultReferenceIdentity: managedIdentityId
-    siteConfig: {
-      acrUseManagedIdentityCreds: privateAcr ? true : false
-      acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
-      alwaysOn: true
-      linuxFxVersion: deployAsContainer ? 'DOCKER|${acrUri}/ipam:latest' : 'PYTHON|${pythonVersion}'
-      appCommandLine: !deployAsContainer ? 'bash ./init.sh 8000' : null
-      healthCheckPath: '/api/status'
-      appSettings: concat(
-        [
-          {
-            name: 'AZURE_ENV'
-            value: azureCloud
-          }
-          {
-            name: 'COSMOS_URL'
-            value: cosmosDbUri
-          }
-          {
-            name: 'DATABASE_NAME'
-            value: databaseName
-          }
-          {
-            name: 'CONTAINER_NAME'
-            value: containerName
-          }
-          {
-            name: 'MANAGED_IDENTITY_ID'
-            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/IDENTITY-ID/)'
-          }
-          {
-            name: 'UI_APP_ID'
-            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/UI-ID/)'
-          }
-          {
-            name: 'ENGINE_APP_ID'
-            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-ID/)'
-          }
-          {
-            name: 'ENGINE_APP_SECRET'
-            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-SECRET/)'
-          }
-          {
-            name: 'TENANT_ID'
-            value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/TENANT-ID/)'
-          }
-          {
-            name: 'KEYVAULT_URL'
-            value: keyVaultUri
-          }
-          {
-            name: 'WEBSITE_HEALTHCHECK_MAXPINGFAILURES'
-            value: '2'
-          }
-        ],
-        deployAsContainer ? [
-          {
-            name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
-            value: 'true'
-          }
-          {
-            name: 'DOCKER_REGISTRY_SERVER_URL'
-            value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
-          }
-        ] : runFromPackage ? [
-          {
-            name: 'WEBSITE_RUN_FROM_PACKAGE'
-            value: '1'
-          }
-        ] : [
-          {
-            name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
-            value: 'true'
-          }
-        ]
-      )
+    siteConfig: appServiceSiteConfig
+  }
+}
+
+// Staging slot (created dormant; started on demand for slot-based upgrades/swaps)
+resource appServiceStagingSlot 'Microsoft.Web/sites/slots@2021-02-01' = {
+  name: 'staging'
+  parent: appService
+  location: location
+  kind: deployAsContainer ? 'app,linux,container' : 'app,linux'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${managedIdentityId}': {}
+    }
+  }
+  properties: {
+    enabled: false
+    httpsOnly: true
+    serverFarmId: appServicePlan.id
+    keyVaultReferenceIdentity: managedIdentityId
+    siteConfig: appServiceSiteConfig
+  }
+}
+
+resource appServiceLogs 'Microsoft.Web/sites/config@2021-02-01' = {
+  name: 'logs'
+  parent: appService
+  properties: {
+    detailedErrorMessages: {
+      enabled: true
+    }
+    failedRequestsTracing: {
+      enabled: true
+    }
+    httpLogs: {
+      fileSystem: {
+        enabled: true
+        retentionInDays: 7
+        retentionInMb: 50
+      }
     }
   }
 }
 
-resource appConfigLogs 'Microsoft.Web/sites/config@2021-02-01' = {
+resource appServiceStagingSlotLogs 'Microsoft.Web/sites/slots/config@2021-02-01' = {
   name: 'logs'
-  parent: appService
+  parent: appServiceStagingSlot
   properties: {
     detailedErrorMessages: {
       enabled: true
@@ -281,3 +325,4 @@ resource diagnosticSettingsApp 'Microsoft.Insights/diagnosticSettings@2021-05-01
 }
 
 output appServiceHostName string = appService.properties.defaultHostName
+output appServiceStagingSlotHostName string = appServiceStagingSlot.properties.defaultHostName
