@@ -21,4 +21,5 @@ azure-mgmt-resource-subscriptions
 azure-mgmt-resourcegraph
 azure-mgmt-managementgroups
 azure-mgmt-datafactory
+azure-mgmt-web
 apscheduler

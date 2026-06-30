@@ -14,7 +14,7 @@ from azure.identity.aio import (
     ManagedIdentityCredential,
     OnBehalfOfCredential,
 )
-from azure.mgmt.managementgroups.aio import ManagementGroupsAPI
+from azure.mgmt.managementgroups.aio import ManagementGroupsMgmtClient
 from azure.mgmt.resourcegraph.aio import ResourceGraphClient
 from azure.mgmt.resourcegraph.models import (
     QueryRequest,
@@ -164,7 +164,7 @@ async def get_mgmt_group_name(tenant_id):
     """DOCSTRING"""
 
     client_creds = await get_client_credentials()
-    mgmt_group_api = ManagementGroupsAPI(client_creds)
+    mgmt_group_api = ManagementGroupsMgmtClient(client_creds)
 
     try:
         result = await mgmt_group_api.management_groups.get(tenant_id)
