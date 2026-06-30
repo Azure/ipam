@@ -1,5 +1,5 @@
-fastapi[all]>=0.103.0
-pydantic[email]>=2.3.0
+fastapi[all]
+pydantic[email]
 pyjwt
 cryptography
 requests
