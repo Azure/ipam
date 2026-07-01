@@ -1,10 +1,16 @@
 import json
 import os
+from datetime import datetime, timezone
 
 import aiohttp
 from azure.core.pipeline.transport import AioHttpTransport
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Process start time (ISO 8601, UTC), captured once when this module is first
+# imported at engine startup. Exposed via /api/status so clients can detect a
+# restart: the value changes when a new process comes up.
+_START_TIME = datetime.now(timezone.utc)
 
 AZURE_ENV_MAP = {
     'AZURE_PUBLIC': {
@@ -41,6 +47,17 @@ class Globals:
     @property
     def IPAM_VERSION(self):
         return json.load(open(os.path.join(ROOT_DIR, "version.json")))['app']
+
+    @property
+    def SCHEMA_VERSION(self):
+        # Monotonic integer, decoupled from the app SemVer. Bumped only when the
+        # Cosmos document shapes change. Used for the startup compatibility gate
+        # and to decide whether a production-slot convergence pass is needed.
+        return json.load(open(os.path.join(ROOT_DIR, "version.json")))['schema']
+
+    @property
+    def START_TIME(self):
+        return _START_TIME.isoformat(timespec='seconds').replace('+00:00', 'Z')
 
     @property
     def MANAGED_IDENTITY_ID(self):
@@ -117,6 +134,20 @@ class Globals:
             self._shared_transport = AioHttpTransport(session=session, session_owner=False)
 
         return self._shared_transport
+
+    @property
+    def SLOT_NAME(self):
+        # App Service sets this to 'Production' for the production slot and the
+        # slot name (e.g. 'staging') otherwise. Unset for container/k8s/local.
+        return os.environ.get('WEBSITE_SLOT_NAME')
+
+    @property
+    def IS_PRODUCTION_SLOT(self):
+        # Treat 'unset' as production so non-slot deployments (container 'latest',
+        # zip, Kubernetes, local) always run with full functionality.
+        slot = os.environ.get('WEBSITE_SLOT_NAME')
+
+        return slot is None or slot.lower() == 'production'
 
     @property
     def DEPLOYMENT_STACK(self):

@@ -662,6 +662,46 @@ class CIDRCheckRes(BaseModel):
     prefixes: List[IPv4Network]
     containers: List[CIDRContainer]
 
+######################
+#   SERVICE MODELS   #
+######################
+
+class ServiceConfiguration(BaseModel):
+    """Current Azure IPAM deployment configuration."""
+
+    stack: str
+    version: str
+    registry: Optional[str] = None
+    image: Optional[str] = None
+    credential_mode: Optional[str] = None
+
+class ServiceConfigurationUpdate(BaseModel):
+    """Mutable Azure IPAM deployment configuration."""
+
+    registry: str
+
+class ServiceOperationAccepted(BaseModel):
+    """Acknowledgement that a service operation has been accepted."""
+
+    status: str
+    detail: str
+
+#####################
+#   HEALTH MODELS   #
+#####################
+
+class HealthCheck(BaseModel):
+    """DOCSTRING"""
+
+    ok: bool
+    detail: Optional[str] = None
+
+class Health(BaseModel):
+    """DOCSTRING"""
+
+    ok: bool
+    checks: Dict[str, HealthCheck]
+
 #####################
 #   STATUS MODELS   #
 #####################
@@ -679,4 +719,8 @@ class Status(BaseModel):
 
     status: str
     version: str
-    container: ImageDetails
+    stack: str
+    environment: str
+    start_time: str
+    mode: Optional[str] = None
+    container: Optional[ImageDetails] = None

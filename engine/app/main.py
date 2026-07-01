@@ -1,4 +1,3 @@
-import copy
 import json
 import os
 import shutil
@@ -13,10 +12,9 @@ import requests
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from azure.cosmos import PartitionKey
 from azure.cosmos.aio import CosmosClient
-from azure.cosmos.exceptions import CosmosHttpResponseError, CosmosResourceNotFoundError
+from azure.cosmos.exceptions import CosmosHttpResponseError
 from azure.identity.aio import ManagedIdentityCredential
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -25,8 +23,8 @@ from fastapi.staticfiles import StaticFiles
 
 from app.globals import globals
 from app.logs.logs import ipam_logger as logger
-from app.routers import admin, azure, internal, space, status, tool, user
-from app.routers.common.helper import cosmos_query, cosmos_replace, cosmos_upsert
+from app.schema import check_compatibility, run_convergence
+from app.routers import admin, azure, health, internal, service, space, status, tool, user
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 BUILD_DIR = os.path.join(os.getcwd(), "dist")
@@ -41,6 +39,15 @@ except Exception:
 description = """
 Azure IPAM is a lightweight solution developed on top of the Azure platform designed to help Azure customers manage their enterprise IP Address space easily and effectively.
 """
+
+# Operational modes set during startup and enforced by the service-mode gate.
+SERVICE_MODE_PRODUCTION = "production"
+SERVICE_MODE_STAGING = "staging"
+SERVICE_MODE_INCOMPATIBLE = "incompatible"
+
+# API paths that remain reachable even when the engine is not in production mode
+# (so a deploy pipeline can verify health/version on the staging slot).
+ALLOWED_API_PATHS = {"/api/status", "/api/health"}
 
 async def ipam_init():
     global BUILD_DIR
@@ -132,243 +139,12 @@ async def ipam_init():
         "env": globals.AZURE_ENV
     }
 
-    try:
-        requests.post(url = "https://metrics.azureipam.com/api/heartbeat", json = hb_message, timeout = 15)
-    except Exception:
-        pass
-
-async def upgrade_db():
-    managed_identity_credential = ManagedIdentityCredential(
-        client_id = globals.MANAGED_IDENTITY_ID
-    )
-
-    cosmos_client = CosmosClient(
-        globals.COSMOS_URL,
-        credential=globals.COSMOS_KEY if globals.COSMOS_KEY else managed_identity_credential,
-        transport=globals.SHARED_TRANSPORT
-    )
-
-    database_name = globals.DATABASE_NAME
-    database = cosmos_client.get_database_client(database_name)
-
-    container_name = globals.CONTAINER_NAME
-    container = database.get_container_client(container_name)
-
-    try:
-        spaces_query = await container.read_item("spaces", partition_key="spaces")
-
-        for space in spaces_query['spaces']:
-            if 'vnets' in space:
-                del space['vnets']
-
-            new_space = {
-                "id": uuid.uuid4(),
-                "type": "space",
-                "tenant_id": globals.TENANT_ID,
-                **space
-            }
-
-            await cosmos_upsert(jsonable_encoder(new_space))
-
-        await container.delete_item("spaces", partition_key = "spaces")
-
-        logger.warning('Spaces database conversion complete!')
-    except CosmosResourceNotFoundError:
-        logger.info('No existing spaces to convert...')
-        pass
-
-    try:
-        users_query = await container.read_item("users", partition_key="users")
-
-        for user in users_query['users']:
-            new_user = {
-                "id": uuid.uuid4(),
-                "type": "user",
-                "tenant_id": globals.TENANT_ID,
-                "data": user
-            }
-
-            await cosmos_upsert(jsonable_encoder(new_user))
-
-        await container.delete_item("users", partition_key = "users")
-
-        logger.warning('Users database conversion complete!')
-    except CosmosResourceNotFoundError:
-        logger.info('No existing users to convert...')
-        pass
-
-    try:
-        admins_query = await container.read_item("admins", partition_key="admins")
-
-        admin_data = {
-            "id": uuid.uuid4(),
-            "type": "admin",
-            "tenant_id": globals.TENANT_ID,
-            "admins": admins_query['admins'],
-            "exclusions": []
-        }
-
-        await cosmos_upsert(jsonable_encoder(admin_data))
-
-        await container.delete_item("admins", partition_key = "admins")
-
-        logger.warning('Admins database conversion complete!')
-    except CosmosResourceNotFoundError:
-        logger.info('No existing admins to convert...')
-        pass
-
-    user_fixup_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND (NOT IS_DEFINED(c['data']['darkMode']) OR NOT IS_DEFINED(c['data']['views'])))", globals.TENANT_ID)
-
-    if user_fixup_query:
-        for user in user_fixup_query:
-            user_data = copy.deepcopy(user)
-
-            if 'darkMode' not in user_data['data']:
-                user_data['data']['darkMode'] = False
-
-            if 'views' not in user_data['data']:
-                user_data['data']['views'] = {}
-
-            await cosmos_replace(user, user_data)
-
-        logger.warning('User object patching complete!')
-    else:
-        logger.info("No existing user objects to patch...")
-
-    admin_fixup_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN admin IN c.admins WHERE (c.type = 'admin' AND NOT IS_DEFINED(admin.type))", globals.TENANT_ID)
-
-    if admin_fixup_query:
-        admin_data = copy.deepcopy(admin_fixup_query[0])
-
-        for i, admin in enumerate(admin_data['admins']):
-            if 'type' not in admin:
-                admin_data['admins'][i] = {
-                    "type": "User",
-                    "name": admin['name'],
-                    "email": admin['email'],
-                    "id": admin['id']
-                }
-
-        await cosmos_replace(admin_fixup_query[0], admin_data)
-
-        logger.warning('Admin object patching complete!')
-    else:
-        logger.info("No existing admin objects to patch...")
-
-    resv_fixup_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN resv in block.resv WHERE (c.type = 'space' AND NOT IS_DEFINED(resv.settledOn))", globals.TENANT_ID)
-
-    if resv_fixup_query:
-        for space in resv_fixup_query:
-            space_data = copy.deepcopy(space)
-
-            for block in space_data['blocks']:
-                for i, resv in enumerate(block['resv']):
-                    if 'settledOn' not in resv:
-                        block['resv'][i] = {
-                            "id": resv['id'],
-                            "cidr": resv['cidr'],
-                            "desc": resv['desc'] if 'desc' in resv else None,
-                            "createdOn": resv['createdOn'],
-                            "createdBy": resv['userId'],
-                            "settledOn": None,
-                            "settledBy": None,
-                            "status": resv['status']
-                        }
-
-            await cosmos_replace(space, space_data)
-
-        logger.warning('Reservation patching complete!')
-    else:
-        logger.info("No existing reservations to patch...")
-
-    external_fixup_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks WHERE (c.type = 'space' AND NOT IS_DEFINED(block.externals))", globals.TENANT_ID)
-
-    if external_fixup_query:
-        for space in external_fixup_query:
-            space_data = copy.deepcopy(space)
-
-            new_blocks = []
-
-            for block in space_data['blocks']:
-                new_block = {
-                    "name": block['name'],
-                    "cidr": block['cidr'],
-                    "vnets": block['vnets'],
-                    "externals": [],
-                    "resv": block['resv']
-                }
-
-                new_blocks.append(new_block)
-
-            space_data['blocks'] = new_blocks
-
-            await cosmos_replace(space, space_data)
-
-        logger.warning('External networks patching complete!')
-    else:
-        logger.info("No existing external networks to patch...")
-
-    subnet_fixup_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN ext in block.externals WHERE (c.type = 'space' AND NOT IS_DEFINED(ext.subnets))", globals.TENANT_ID)
-
-    if subnet_fixup_query:
-        for space in subnet_fixup_query:
-            space_data = copy.deepcopy(space)
-
-            for block in space_data['blocks']:
-                new_externals = []
-
-                for external in block['externals']:
-
-                    new_external = {
-                        "name": external['name'],
-                        "desc": external['desc'],
-                        "cidr": external['cidr'],
-                        "subnets": []
-                    }
-
-                    new_externals.append(new_external)
-
-                block['externals'] = new_externals
-
-            await cosmos_replace(space, space_data)
-
-        logger.warning('External subnet patching complete!')
-    else:
-        logger.info("No existing external subnets to patch...")
-
-    # vhub_fixup_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN vnet in block.vnets WHERE (c.type = 'space' AND RegexMatch (vnet.id, '/Microsoft.Network/virtualHubs/', ''))", globals.TENANT_ID)
-
-    # if vhub_fixup_query:
-    #     for space in vhub_fixup_query:
-    #         space_data = copy.deepcopy(space)
-
-    #         new_blocks = []
-
-    #         for block in space_data['blocks']:
-    #             vnets = [x for x in block['vnets'] if re.match(".*/Microsoft.Network/virtualNetworks/.*", x['id'])]
-    #             vhubs = [x for x in block['vnets'] if re.match(".*/Microsoft.Network/virtualHubs/.*", x['id'])]
-
-    #             new_block = {
-    #                 "name": block['name'],
-    #                 "cidr": block['cidr'],
-    #                 "vnets": vnets,
-    #                 "vhubs": vhubs,
-    #                 "external": block['external'],
-    #                 "resv": block['resv']
-    #             }
-
-    #             new_blocks.append(new_block)
-
-    #         space_data['blocks'] = new_blocks
-
-    #         await cosmos_replace(space, space_data)
-
-    #     logger.warning('Virtual Hub patching complete!')
-    # else:
-    #     logger.info("No existing Virtual Hubs to patch...")
-
-    await cosmos_client.close()
-    await managed_identity_credential.close()
+    # Only the production slot phones home; a staging slot stays inert.
+    if globals.IS_PRODUCTION_SLOT:
+        try:
+            requests.post(url = "https://metrics.azureipam.com/api/heartbeat", json = hb_message, timeout = 15)
+        except Exception:
+            pass
 
 async def find_reservations():
     if not os.environ.get("FUNCTIONS_WORKER_RUNTIME"):
@@ -382,19 +158,41 @@ async def find_reservations():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # IPAM Startup Tasks
+    # IPAM Startup Tasks (also acts as a Cosmos / managed-identity connectivity probe).
     await ipam_init()
-    await upgrade_db()
 
-    # Schedule Recurring Tasks
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(func=find_reservations, trigger='interval', minutes=1)
-    scheduler.start()
+    # Compatibility gate (runs in every slot): refuse to serve if this build is
+    # older than the database's minimum readable schema.
+    compat = await check_compatibility()
+    app.state.compat = compat
+
+    scheduler = None
+
+    if not compat.compatible:
+        app.state.service_mode = SERVICE_MODE_INCOMPATIBLE
+        logger.error("Engine starting in INCOMPATIBLE mode; API disabled. %s", compat.detail)
+    elif not globals.IS_PRODUCTION_SLOT:
+        app.state.service_mode = SERVICE_MODE_STAGING
+        logger.warning(
+            "Engine starting in the '%s' slot; API disabled until swap to production.",
+            globals.SLOT_NAME,
+        )
+    else:
+        app.state.service_mode = SERVICE_MODE_PRODUCTION
+
+        # Production slot only: bring the data up to this build's schema, then
+        # start background work. Staging never mutates the shared database.
+        await run_convergence()
+
+        scheduler = AsyncIOScheduler()
+        scheduler.add_job(func=find_reservations, trigger='interval', minutes=1)
+        scheduler.start()
 
     yield
 
     # IPAM Shutdown Tasks
-    scheduler.shutdown()
+    if scheduler:
+        scheduler.shutdown()
 
 app = FastAPI(
     title = "Azure IPAM",
@@ -446,6 +244,17 @@ app.include_router(
 )
 
 app.include_router(
+    service.router,
+    prefix = "/api",
+    include_in_schema = service.STANDARD_DEPLOYMENT
+)
+
+app.include_router(
+    health.router,
+    prefix = "/api"
+)
+
+app.include_router(
     status.router,
     prefix = "/api"
 )
@@ -490,6 +299,38 @@ app.add_middleware(
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
     return JSONResponse({"error": str(exc.detail)}, status_code=exc.status_code)
+
+@app.middleware("http")
+async def service_mode_gate(request: Request, call_next):
+    """
+    When the engine is not in production mode (running in a staging slot, or
+    incompatible with the database schema), short-circuit all /api requests
+    except the status endpoint. Static UI paths are unaffected.
+    """
+
+    mode = getattr(request.app.state, "service_mode", SERVICE_MODE_PRODUCTION)
+
+    if mode != SERVICE_MODE_PRODUCTION:
+        path = request.url.path
+
+        if path.startswith("/api") and path not in ALLOWED_API_PATHS:
+            if mode == SERVICE_MODE_INCOMPATIBLE:
+                compat = getattr(request.app.state, "compat", None)
+
+                return JSONResponse(
+                    {
+                        "error": "Azure IPAM is running code incompatible with the current database schema.",
+                        "detail": compat.detail if compat else None,
+                    },
+                    status_code=503,
+                )
+
+            return JSONResponse(
+                {"error": "Azure IPAM is currently in staging mode."},
+                status_code=503,
+            )
+
+    return await call_next(request)
 
 if os.path.isdir(BUILD_DIR) and UI_APP_ID and VALID_APP_ID:
     app.mount(

@@ -2080,6 +2080,25 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
     }
   }
 
+  Context 'Health' {
+    # GET /api/health
+    It 'Verify Health' {
+
+      $health, $healthStatus = Get-ApiResource '/health'
+
+      $healthStatus | Should -Be 200
+
+      $health.ok | Should -Be $true
+
+      $checkNames = $health.checks.PSObject.Properties.Name
+
+      foreach ($check in @('config', 'cosmos', 'arm', 'schema')) {
+        $checkNames | Should -Contain $check
+        $health.checks.$check.ok | Should -Be $true
+      }
+    }
+  }
+
   Context 'Status' {
     # GET /api/status
     It 'Verify Status' {

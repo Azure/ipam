@@ -865,6 +865,13 @@ async def multi(
     error_msg = "Error updating reservation status!"
 )
 async def match_resv_to_vnets():
+    # Reservation/vNet reconciliation writes to Cosmos, so it must only run on the
+    # production slot. This single guard covers both entry points that call it:
+    # the App Service scheduler and the Functions timer trigger ('sentinel').
+    if not globals.IS_PRODUCTION_SLOT:
+        logger.info("Skipping reservation reconciliation in non-production slot '%s'.", globals.SLOT_NAME)
+        return
+
     net_list = await get_network(None, globals.TENANT_ID, True)
     stale_resv = list(i for j in list(str_to_list(x['resv']) for x in net_list if x['resv'] is not None) for i in j)
 
