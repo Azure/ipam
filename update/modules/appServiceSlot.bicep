@@ -37,6 +37,9 @@ param privateAcr bool
 @description('Uri for Private Container Registry')
 param privateAcrUri string
 
+@description('Whether the app authenticates to ACR with a managed identity (mirrored from production)')
+param acrUseManagedIdentity bool = false
+
 @description('Flag to Run from Package (build-restricted clouds)')
 param runFromPackage bool = false
 
@@ -112,8 +115,8 @@ resource appServiceStagingSlot 'Microsoft.Web/sites/slots@2022-03-01' = {
     keyVaultReferenceIdentity: managedIdentityId
     virtualNetworkSubnetId: (replicateVnet && !empty(prodSubnetId)) ? prodSubnetId : null
     siteConfig: {
-      acrUseManagedIdentityCreds: privateAcr ? true : false
-      acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
+      acrUseManagedIdentityCreds: acrUseManagedIdentity
+      acrUserManagedIdentityID: acrUseManagedIdentity ? managedIdentityClientId : null
       alwaysOn: true
       linuxFxVersion: linuxFxVersion
       appCommandLine: !deployAsContainer ? 'bash ./init.sh 8000' : null

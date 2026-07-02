@@ -575,6 +575,10 @@ Function Update-IpamInfrastructure {
       }
     }
 
+    # Mirror production's ACR authentication method (managed identity vs admin/anonymous)
+    # rather than inferring it from the registry name.
+    $acrUseManagedIdentity = [bool]$ExistingApp.SiteConfig.AcrUseManagedIdentityCreds
+
     $prodSubnetId = $ExistingApp.VirtualNetworkSubnetId
     $hasVnet = -not [string]::IsNullOrWhiteSpace($prodSubnetId)
 
@@ -594,6 +598,7 @@ Function Update-IpamInfrastructure {
       deployAsContainer       = $IsContainer
       privateAcr              = $privateAcr
       privateAcrUri           = $privateAcrUri
+      acrUseManagedIdentity   = $acrUseManagedIdentity
       runFromPackage          = $runFromPackage
     }
 
@@ -797,12 +802,13 @@ try {
   Write-Host $appType -ForegroundColor White
 
   if($isContainer -and $existingApp.SiteConfig.LinuxFxVersion.StartsWith("COMPOSE|")) {
+    Write-Section -Title "Manual Migration Required"
+    Write-Host "This deployment uses the legacy Docker Compose configuration, which is no longer" -ForegroundColor Yellow
+    Write-Host "supported and cannot be updated automatically." -ForegroundColor Yellow
     Write-Host
-    Write-Host "⚠️ Legacy Docker Compose detected!" -ForegroundColor Yellow
+    Write-Host "To migrate to the current single-container deployment, follow the migration guide:" -ForegroundColor Yellow
+    Write-Host "  https://azure.github.io/ipam/#/migration/README" -ForegroundColor Cyan
     Write-Host
-    Write-Host "Please follow the migration guide at " -ForegroundColor Blue -NoNewline
-    Write-Host "https://azure.github.io/ipam/#/migration/README" -ForegroundColor Cyan -NoNewline
-    Write-Host " for complete instructions." -ForegroundColor Blue
     exit
   }
 
@@ -855,6 +861,7 @@ try {
 
       Write-Section -Title "Azure IPAM Update Complete"
       Write-Host "✅ Azure IPAM solution updated successfully" -ForegroundColor Green
+      Write-Host "ℹ️ Please allow a few minutes for the container to restart and load the updated image" -ForegroundColor Cyan
       Write-Host
       exit
     }
@@ -865,7 +872,7 @@ try {
       Write-Host "🔍 Private ACR detected: " -ForegroundColor Cyan -NoNewline
       Write-Host "$acrName" -ForegroundColor White
 
-      Write-Host "🔍 Verifying ACR is in the current Resource Group..." -ForegroundColor Cyan -NoNewline
+      Write-Host "🔍 Looking for the ACR in Resource Group '$ResourceGroupName'..." -ForegroundColor Cyan -NoNewline
       $acrDetails = Get-AzContainerRegistry `
         -Name $acrName `
         -ResourceGroupName $ResourceGroupName `
@@ -873,13 +880,29 @@ try {
         -ErrorAction SilentlyContinue
 
       if ($acrErr) {
-        Write-Host " ❌ Not found" -ForegroundColor Red
-        Write-Host "  ❌ Private ACR not found in current Resource Group!" -ForegroundColor Red
-        throw $acrErr
+        $acrErr | Out-File -FilePath $errorLog -Append
+
+        Write-Host " ⚠️ Not found" -ForegroundColor Yellow
+
+        $appNoun = $isFunction ? 'Function App' : 'App Service'
+
+        Write-Section -Title "Manual Image Update Required"
+        Write-Host "The container registry is not located in the $appNoun's resource group, so this" -ForegroundColor Yellow
+        Write-Host "image cannot be updated automatically." -ForegroundColor Yellow
+        Write-Host
+        Write-Host "  Container Registry: " -ForegroundColor Cyan -NoNewline
+        Write-Host $appAcr -ForegroundColor White
+        Write-Host
+
+        Write-Host "To perform this update manually, build and push a new image to the registry," -ForegroundColor Yellow
+        Write-Host "then restart the $appNoun to load it. For build instructions, see:" -ForegroundColor Yellow
+        Write-Host "  https://azure.github.io/ipam/#/update/README?id=container-build-failures" -ForegroundColor Cyan
+        Write-Host
+        exit
       }
 
       $acrName = $acrDetails.Name
-      Write-Host " ✅ Verified" -ForegroundColor Green
+      Write-Host " ✅ Found" -ForegroundColor Green
 
       # Verify Minimum Azure CLI Version
       Write-Host "🔍 Verifying minimum Azure CLI version..." -ForegroundColor Cyan -NoNewline
@@ -970,6 +993,33 @@ try {
   if ($isContainer) {
     Write-Section -Title "Building Container Image"
 
+    # Version used to tag the image (mirrors the CI convention: <version> + latest)
+    $engineVersionFile = Join-Path -Path $ROOT_DIR -ChildPath 'engine' -AdditionalChildPath 'app', 'version.json'
+    $ipamVersion = $(Get-Content -Path $engineVersionFile | ConvertFrom-Json).app
+
+    # Skip the image build when the running version already matches the repository (unless -Force).
+    # Both /api/status and version.json report bare versions (e.g. 3.6.0), so no normalization is needed.
+    if (-not $Force) {
+      Write-Host "🔍 Comparing the running version with the repository..." -ForegroundColor Cyan -NoNewline
+
+      $runningVersion = Get-RunningVersion -ExistingApp $existingApp
+
+      if ($runningVersion -and ($runningVersion -eq $ipamVersion)) {
+        Write-Host " ✅ Up to date (v$ipamVersion)" -ForegroundColor Green
+
+        Write-Section -Title "Azure IPAM Update Complete"
+        Write-Host "✅ Azure IPAM is already running the latest version (v$ipamVersion)" -ForegroundColor Green
+        Write-Host
+        exit
+      }
+      elseif ($runningVersion) {
+        Write-Host " ⚠️ Update available (v$runningVersion -> v$ipamVersion)" -ForegroundColor Yellow
+      }
+      else {
+        Write-Host " ℹ️ Unable to determine; proceeding with build" -ForegroundColor Cyan
+      }
+    }
+
     if (-not $isFunction) {
       Write-Host "🔍 Detecting container distro..." -ForegroundColor Cyan -NoNewline
 
@@ -1019,8 +1069,10 @@ try {
 
       $funcBuildOutput = $(
         az acr build -r $acrName `
+        -t ipamfunc:$ipamVersion `
         -t ipamfunc:latest `
         -f $dockerFileFunc $ROOT_DIR `
+        --build-arg IPAM_VERSION=$ipamVersion `
         --no-logs
       ) *>&1
 
@@ -1050,11 +1102,13 @@ try {
 
       $appBuildOutput = $(
         az acr build -r $acrName `
+          -t ipam:$ipamVersion `
           -t ipam:latest `
           -f $dockerFilePath $ROOT_DIR `
           --build-arg PORT=$($containerMap[$ContainerType].Port) `
           --build-arg BUILD_IMAGE=$($containerMap[$containerType].Images.Build) `
           --build-arg SERVE_IMAGE=$($containerMap[$containerType].Images.Serve) `
+          --build-arg IPAM_VERSION=$ipamVersion `
           --no-logs
       ) *>&1
 
@@ -1082,6 +1136,7 @@ try {
     if(-not $containerBuildError) {
       Write-Section -Title "Azure IPAM Update Complete"
       Write-Host "✅ Azure IPAM solution updated successfully" -ForegroundColor Green
+      Write-Host "ℹ️ Please allow a few minutes for the container to restart and load the updated image" -ForegroundColor Cyan
       Write-Host
     } else {
       Write-Section -Title "Azure IPAM Update Completed With Errors"

@@ -17,6 +17,7 @@ type resourceObject = {
   deployAsContainer: bool
   privateAcr: bool
   privateAcrUri: string
+  acrUseManagedIdentity: bool
   runFromPackage: bool
 }
 
@@ -50,6 +51,7 @@ module appServiceSlot './modules/appServiceSlot.bicep' = if (!resourceDetails.is
     deployAsContainer: resourceDetails.deployAsContainer
     privateAcr: resourceDetails.privateAcr
     privateAcrUri: resourceDetails.privateAcrUri
+    acrUseManagedIdentity: resourceDetails.acrUseManagedIdentity
     runFromPackage: resourceDetails.runFromPackage
     linuxFxVersion: resourceDetails.linuxFxVersion
     replicateVnet: replicateVnet
@@ -74,6 +76,7 @@ module functionAppSlot './modules/functionAppSlot.bicep' = if (resourceDetails.i
     deployAsContainer: resourceDetails.deployAsContainer
     privateAcr: resourceDetails.privateAcr
     privateAcrUri: resourceDetails.privateAcrUri
+    acrUseManagedIdentity: resourceDetails.acrUseManagedIdentity
     runFromPackage: resourceDetails.runFromPackage
     linuxFxVersion: resourceDetails.linuxFxVersion
     replicateVnet: replicateVnet

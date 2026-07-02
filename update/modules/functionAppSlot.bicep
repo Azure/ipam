@@ -37,6 +37,9 @@ param privateAcr bool
 @description('Uri for Private Container Registry')
 param privateAcrUri string
 
+@description('Whether the app authenticates to ACR with a managed identity (mirrored from production)')
+param acrUseManagedIdentity bool = false
+
 @description('Flag to Run from Package (build-restricted clouds)')
 param runFromPackage bool = false
 
@@ -103,7 +106,7 @@ resource functionAppStagingSlot 'Microsoft.Web/sites/slots@2022-03-01' = {
   name: 'staging'
   parent: functionApp
   location: location
-  kind: 'functionapp,linux'
+  kind: deployAsContainer ? 'functionapp,linux,container' : 'functionapp,linux'
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
@@ -117,8 +120,8 @@ resource functionAppStagingSlot 'Microsoft.Web/sites/slots@2022-03-01' = {
     keyVaultReferenceIdentity: managedIdentityId
     virtualNetworkSubnetId: (replicateVnet && !empty(prodSubnetId)) ? prodSubnetId : null
     siteConfig: {
-      acrUseManagedIdentityCreds: privateAcr ? true : false
-      acrUserManagedIdentityID: privateAcr ? managedIdentityClientId : null
+      acrUseManagedIdentityCreds: acrUseManagedIdentity
+      acrUserManagedIdentityID: acrUseManagedIdentity ? managedIdentityClientId : null
       linuxFxVersion: linuxFxVersion
       healthCheckPath: '/api/status'
     }
@@ -152,8 +155,9 @@ resource functionAppStagingSlotLogs 'Microsoft.Web/sites/slots/config@2022-03-01
   }
 }
 
-// Mark content-share settings as slot-sticky so a future swap never crosses the file share
-resource functionAppSlotConfigNames 'Microsoft.Web/sites/config@2022-03-01' = {
+// Mark content-share settings as slot-sticky so a future swap never crosses the file share.
+// Container function apps don't use a content share, so this only applies to non-container plans.
+resource functionAppSlotConfigNames 'Microsoft.Web/sites/config@2022-03-01' = if (!deployAsContainer) {
   name: 'slotConfigNames'
   parent: functionApp
   properties: {
