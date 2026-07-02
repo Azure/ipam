@@ -44,7 +44,9 @@ For deployments using a self-hosted Azure Container Registry within your subscri
 
 - **Update Method**: Container build and deployment
 - **Downtime**: During container build and restart
-- **Additional Requirements**: Azure CLI authentication (as noted in Prerequisites above)
+- **Additional Requirements**:
+  - Azure CLI authentication (as noted in Prerequisites above)
+  - The registry must reside in the App Service's resource group for automated builds (otherwise the script provides manual image-update guidance)
 
 ### 3. Native ZIP Deploy Deployments
 
@@ -75,7 +77,9 @@ For detailed backup instructions, refer to the [Migration Guide backup section](
 The update script automatically handles version compatibility, including:
 
 - **Python Version Updates**: If the target Azure IPAM version uses a different Python version, the script will automatically update your App Service configuration
-- **Version Comparison**: For native deployments, the script compares the running version against the latest GitHub release and skips the ZIP deploy when already up to date (override with `-Force`)
+- **Version Comparison**: The script compares the currently running version (via the `/api/status` endpoint) against the target version and skips the update when already up to date (override with `-Force`)
+  - Native deployments compare against the latest GitHub release
+  - Private ACR container deployments compare against the repository and skip the image build when they match
 - **Health Check Configuration**: Missing health check configurations will be automatically added during the update
 - **Legacy Detection**: Docker Compose deployments (deprecated) will be detected and the script will redirect you to the migration guide
 
@@ -273,13 +277,15 @@ For deployments missing infrastructure that newer Azure IPAM deployments include
 
 #### For Private ACR Container Deployments
 
-- Validates private ACR exists in the same Resource Group
+- Locates the private ACR in the App Service's resource group
+  - The script only attempts an automated build when the registry is in that resource group; if it is located elsewhere, the script outlines the manual image-update steps and exits cleanly (see [Container Build Failures](#container-build-failures))
+- Compares the running version (via `/api/status`) against the repository and **skips the image build when already up to date** (override with `-Force`)
 - Verifies Azure CLI version (minimum `2.35.0`) and authentication status
 - Ensures Azure PowerShell and Azure CLI contexts match
 - Detects container distribution type (Debian/RHEL) by querying application `/api/status` endpoint
   - App Service containers only; Function containers use a fixed Dockerfile
 - Builds new container images using `az acr build` with appropriate Dockerfile
-- Tags and pushes updated images to private registry (`ipam:latest` or `ipamfunc:latest`)
+- Tags images with both the current version and `latest` (`ipam:<version>` + `ipam:latest`, or `ipamfunc:<version>` + `ipamfunc:latest`) and pushes them to the private registry
 - Restarts the application
 - Captures and logs build errors if container build fails
 
@@ -492,7 +498,7 @@ az account set --subscription "your-subscription-id"
 
 #### Container Build Failures
 
-**Issue**: Private ACR container build fails
+**Issue**: Private ACR container build fails, or the registry is located outside the App Service's resource group
 
 **Solution**:
 
@@ -501,6 +507,8 @@ az account set --subscription "your-subscription-id"
 3. Review Azure Container Registry task logs in Azure Portal
 4. Ensure the application's `/api/status` endpoint is accessible for container type detection
 5. For manual container build instructions, see the [Contributing Guide](/contributing/README.md#building--updating-production-containers-images-using-a-private-acr)
+
+> **NOTE:** The update script will only attempt an automated build when the private ACR resides in the **same resource group** as the App Service. If your registry is in a different resource group, the script skips the build and directs you here — build and push a new image manually using the Contributing Guide instructions above, then restart the App Service or Function App to pull the new image.
 
 #### ZIP Deploy Failures
 
@@ -518,8 +526,12 @@ az account set --subscription "your-subscription-id"
 **Issue**: Script detects Docker Compose deployment
 
 ```text
-WARNING: Legacy Docker Compose detected!
-Please follow the migration guide...
+Manual Migration Required
+This deployment uses the legacy Docker Compose configuration, which is no longer
+supported and cannot be updated automatically.
+
+To migrate to the current single-container deployment, follow the migration guide:
+  https://azure.github.io/ipam/#/migration/README
 ```
 
 **Solution**: Use the [Migration Guide](/migration/README.md) instead of the update script
