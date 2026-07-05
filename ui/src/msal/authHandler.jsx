@@ -29,27 +29,10 @@ function isInteractionRequiredError(error) {
   return typeof errorCode === "string" && INTERACTION_REQUIRED_ERROR_CODES.has(errorCode);
 }
 
-function extractTokenRequest(event) {
-  const payload = event?.payload;
-
-  if (payload && typeof payload === "object" && "request" in payload) {
-    return payload.request;
-  }
-
-  return null;
-}
-
 function AuthHandler() {
   const { instance, inProgress } = useMsal();
-  const [pendingInteraction, setPendingInteraction] = React.useState(null);
-  const activeRequestRef = React.useRef(null);
+  const [pendingReauth, setPendingReauth] = React.useState(null);
   const redirectPendingRef = React.useRef(false);
-
-  const resetInteraction = React.useCallback(() => {
-    activeRequestRef.current = null;
-    setPendingInteraction(null);
-    redirectPendingRef.current = false;
-  }, []);
 
   React.useEffect(() => {
     const callbackId = instance.addEventCallback((event) => {
@@ -63,7 +46,8 @@ function AuthHandler() {
           instance.setActiveAccount(event.payload.account);
         }
 
-        resetInteraction();
+        redirectPendingRef.current = false;
+        setPendingReauth(null);
         return;
       }
 
@@ -79,15 +63,11 @@ function AuthHandler() {
           return;
         }
 
-        const tokenRequest = extractTokenRequest(event);
-
-        const interaction = tokenRequest
-          ? { type: "token", tokenRequest, error }
-          : { type: "login", error };
-
-        activeRequestRef.current = interaction;
+        // A silent token acquisition failed and needs interaction. Trigger a
+        // single re-auth redirect via the effect below. loginRedirect(loginRequest)
+        // re-consents every scope (API + Graph), so it covers any failed request.
         redirectPendingRef.current = false;
-        setPendingInteraction(interaction);
+        setPendingReauth({ error });
       }
     });
 
@@ -96,10 +76,10 @@ function AuthHandler() {
         instance.removeEventCallback(callbackId);
       }
     };
-  }, [instance, resetInteraction]);
+  }, [instance]);
 
   React.useEffect(() => {
-    if (!pendingInteraction) {
+    if (!pendingReauth) {
       return;
     }
 
@@ -107,30 +87,17 @@ function AuthHandler() {
       return;
     }
 
-    const request = activeRequestRef.current;
-
-    if (!request) {
-      return;
-    }
-
     redirectPendingRef.current = true;
 
-    const invokeRedirect = async () => {
-      try {
-        if (request.type === "token" && request.tokenRequest) {
-          await instance.acquireTokenRedirect(request.tokenRequest);
-        } else {
-          await instance.loginRedirect(loginRequest);
-        }
-      } catch (error) {
-        console.error("Redirect request failed", error);
-        redirectPendingRef.current = false;
-        setPendingInteraction((current) => (current ? { ...current } : current));
-      }
-    };
+    instance.loginRedirect(loginRequest).catch((error) => {
+      console.error("Re-authentication redirect failed", error);
 
-    invokeRedirect();
-  }, [pendingInteraction, inProgress, instance]);
+      // Allow a retry once the in-progress interaction clears. A fresh object
+      // changes identity so this effect re-runs.
+      redirectPendingRef.current = false;
+      setPendingReauth((current) => (current ? { ...current } : current));
+    });
+  }, [pendingReauth, inProgress, instance]);
 
   return null;
 }

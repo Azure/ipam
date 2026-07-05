@@ -10,13 +10,14 @@ const GRAPH_SCOPES = ["User.Read", "Directory.Read.All"];
  *
  * Prefers the active account set via setActiveAccount(), but falls
  * back to the first account in the cache.  This handles the race
- * condition where AuthenticatedTemplate renders (because an account
- * exists in the cache after handleRedirectPromise resolves) before
- * the LOGIN_SUCCESS event handler has called setActiveAccount().
+ * condition where MsalAuthenticationTemplate renders its children
+ * (because an account exists in the cache after handleRedirectPromise
+ * resolves) before the LOGIN_SUCCESS event handler has called
+ * setActiveAccount().
  *
  * If there are truly no accounts (first visit, not yet logged in),
  * returns null — acquireTokenSilent will throw no_account_error and
- * the Login component will redirect to AAD.
+ * MsalAuthenticationTemplate will redirect to AAD.
  */
 function getAccount() {
   return msalInstance.getActiveAccount() || msalInstance.getAllAccounts()[0] || null;

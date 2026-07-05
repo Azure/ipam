@@ -2,10 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router} from "react-router";
 import { useSelector } from 'react-redux';
 
-import {
-  AuthenticatedTemplate,
-  UnauthenticatedTemplate
-} from "@azure/msal-react";
+import { MsalAuthenticationTemplate } from "@azure/msal-react";
+import { InteractionType } from "@azure/msal-browser";
 
 import './App.css';
 
@@ -16,10 +14,9 @@ import { SnackbarProvider } from 'notistack';
 
 import Slide from '@mui/material/Slide';
 
-import Login from "./features/login/login";
-
 import NavDrawer from './features/drawer/drawer';
 import AuthHandler from './msal/authHandler';
+import { loginRequest } from './msal/authConfig';
 
 import {
   getDarkMode
@@ -44,7 +41,10 @@ function App() {
   return (
     <div className="App">
       <AuthHandler />
-      <AuthenticatedTemplate>
+      <MsalAuthenticationTemplate
+        interactionType={InteractionType.Redirect}
+        authenticationRequest={loginRequest}
+      >
         <SnackbarProvider
           anchorOrigin={{
               vertical: 'bottom',
@@ -59,10 +59,7 @@ function App() {
             </ThemeProvider>
           </Router>
         </SnackbarProvider>
-      </AuthenticatedTemplate>
-      <UnauthenticatedTemplate>
-        <Login />
-      </UnauthenticatedTemplate>
+      </MsalAuthenticationTemplate>
     </div>
   );
 }

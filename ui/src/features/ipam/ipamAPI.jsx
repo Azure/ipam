@@ -279,3 +279,22 @@ export function fetchNextAvailableSubnet(body) {
 
   return api.post(url, body);
 }
+
+export function fetchNotifications() {
+  var url = new URL(`${ENGINE_URL}/api/notifications`);
+
+  return api.get(url);
+}
+
+export function resolveNotification(id) {
+  var url = new URL(`${ENGINE_URL}/api/notifications/${id}/resolve`);
+
+  return api.post(url);
+}
+
+// /api/status is public: use bare axios (no auth token) and unwrap data manually.
+export function fetchStatus() {
+  var url = new URL(`${ENGINE_URL}/api/status`);
+
+  return axios.get(url).then(response => response.data);
+}
