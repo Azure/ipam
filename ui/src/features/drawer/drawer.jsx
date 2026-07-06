@@ -17,6 +17,9 @@ import { Routes, Route, Link, Navigate, useNavigate } from "react-router";
 import { callMsGraph, callMsGraphPhoto } from "../../msal/graph";
 import { getApiToken } from "../../msal/tokenService";
 
+import NotificationCenter from "../notifications/NotificationCenter";
+import ServiceRestartGate from "../restart/ServiceRestartGate";
+
 import {
   AppBar,
   Box,
@@ -935,6 +938,7 @@ export default function NavDrawer() {
               />
             </Search>
             <Box sx={{ flexGrow: 1 }} />
+            <NotificationCenter />
             <Box sx={{ display: { xs: "none", md: "flex" } }}>
               <IconButton
                 size="large"
@@ -1042,6 +1046,7 @@ export default function NavDrawer() {
           </Update>
         </Box> */}
       </Box>
+      <ServiceRestartGate />
     </React.Fragment>
   );
 }
