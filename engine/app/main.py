@@ -23,8 +23,18 @@ from fastapi.staticfiles import StaticFiles
 
 from app.globals import globals
 from app.logs.logs import ipam_logger as logger
+from app.routers import (
+    admin,
+    azure,
+    health,
+    internal,
+    notifications,
+    space,
+    status,
+    tool,
+    user,
+)
 from app.schema import check_compatibility, run_convergence
-from app.routers import admin, azure, health, internal, service, space, status, tool, user
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 BUILD_DIR = os.path.join(os.getcwd(), "dist")
@@ -244,13 +254,12 @@ app.include_router(
 )
 
 app.include_router(
-    service.router,
-    prefix = "/api",
-    include_in_schema = service.STANDARD_DEPLOYMENT
+    health.router,
+    prefix = "/api"
 )
 
 app.include_router(
-    health.router,
+    notifications.router,
     prefix = "/api"
 )
 
