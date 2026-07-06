@@ -5,8 +5,8 @@ from fastapi.responses import JSONResponse
 
 from app.dependencies import validate_token
 from app.globals import globals
-from app.schema.control import read_schema_doc
 from app.routers.common.helper import arg_query_helper, get_client_credentials
+from app.schema.control import read_schema_doc
 
 router = APIRouter(
     prefix="/health",

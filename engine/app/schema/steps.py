@@ -34,8 +34,8 @@ from fastapi.encoders import jsonable_encoder
 
 from app.globals import globals
 from app.logs.logs import ipam_logger as logger
-from app.schema.control import _container
 from app.routers.common.helper import cosmos_query, cosmos_replace, cosmos_upsert
+from app.schema.control import _container
 
 
 @dataclass(frozen=True)
