@@ -2080,6 +2080,51 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
     }
   }
 
+  Context 'Notifications' {
+    # GET /api/notifications
+    It 'Verify Notifications list' {
+
+      $notifications, $status = Get-ApiResource '/notifications'
+
+      $status | Should -Be 200
+
+      # The envelope always carries a 'notifications' collection (possibly empty).
+      $notifications.PSObject.Properties.Name | Should -Contain 'notifications'
+
+      # When notifications are present, each must be well-formed and self-describing.
+      foreach ($notification in $notifications.notifications) {
+        $notification.id | Should -Not -BeNullOrEmpty
+        $notification.title | Should -Not -BeNullOrEmpty
+        $notification.message | Should -Not -BeNullOrEmpty
+        $notification.category | Should -Not -BeNullOrEmpty
+        $notification.severity | Should -BeIn @('critical', 'warning', 'information')
+        $notification.audience | Should -BeIn @('all', 'admin')
+      }
+    }
+
+    # POST /api/notifications/{id}/resolve
+    It 'Returns an error resolving an unknown notification' {
+
+      { New-ApiResource '/notifications/does-not-exist/resolve' @{} } | Should -Throw -ExpectedMessage '*404*'
+    }
+
+    # POST /api/notifications/{id}/resolve
+    It 'Returns an error resolving a notification with no remediation' {
+
+      # 'update-available' is a real, link-only notification: it never carries a
+      # server-owned resolve action, so resolving it is always a 404.
+      { New-ApiResource '/notifications/update-available/resolve' @{} } | Should -Throw -ExpectedMessage '*404*'
+    }
+
+    # POST /api/notifications/{id}/resolve
+    It 'Returns an error resolving a remediable notification that is not active' {
+
+      # Never active against the test deployment's private ACR, so this hits the
+      # active-gate (409) instead of triggering a real remediation/restart.
+      { New-ApiResource '/notifications/registry-migration/resolve' @{} } | Should -Throw -ExpectedMessage '*409*'
+    }
+  }
+
   Context 'Health' {
     # GET /api/health
     It 'Verify Health' {
