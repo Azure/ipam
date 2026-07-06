@@ -254,12 +254,12 @@ app.include_router(
 )
 
 app.include_router(
-    health.router,
+    notifications.router,
     prefix = "/api"
 )
 
 app.include_router(
-    notifications.router,
+    health.router,
     prefix = "/api"
 )
 
