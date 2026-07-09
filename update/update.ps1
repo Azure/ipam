@@ -12,29 +12,25 @@
 #Requires -Modules @{ ModuleName="Az.Resources"; ModuleVersion="6.16.0" }
 
 # Intake and set global parameters
+[CmdletBinding()]
 param(
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $true)]
+  [Parameter(Mandatory = $true)]
   [string]
   $AppName,
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $true)]
+  [Parameter(Mandatory = $true)]
   [string]
   $ResourceGroupName,
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory=$false)]
+  [Parameter(Mandatory=$false)]
   [string]
   $GitHubUserName = "Azure",
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory=$false)]
+  [Parameter(Mandatory=$false)]
   [string]
   $GitHubRepoName = "ipam",
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory=$false)]
+  [Parameter(Mandatory=$false)]
   [ValidateScript({
     $IndexOfInvalidChar = $_.IndexOfAny([System.IO.Path]::GetInvalidFileNameChars())
     if (-Not ($IndexOfInvalidChar -eq -1)) {
@@ -48,8 +44,7 @@ param(
   [string]
   $ZipFileName = "ipam.zip",
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory=$false)]
+  [Parameter(Mandatory=$false)]
   [ValidateScript({
     if(-Not ($_ | Get-Item) ) {
       throw [System.ArgumentException]::New("AssetFolder does not exist, please provide a pre-existing folder.")
@@ -59,8 +54,7 @@ param(
   [System.IO.DirectoryInfo]
   $AssetFolder,
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false)]
+  [Parameter(Mandatory = $false)]
   [ValidateScript({
     if(-Not ($_ | Test-Path) ) {
       throw [System.ArgumentException]::New("Target file or does not exist.")
@@ -76,13 +70,11 @@ param(
   [System.IO.FileInfo]
   $ZipFilePath,
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false)]
+  [Parameter(Mandatory = $false)]
   [switch]
   $SkipInfraUpdate,
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false)]
+  [Parameter(Mandatory = $false)]
   [switch]
   $Force
 )
@@ -98,6 +90,11 @@ $IPAM_PUBLIC_ACR = @("registry.azureipam.com", "azureipam.azurecr.io")
 
 # Set preference variables
 $ErrorActionPreference = "Stop"
+$DebugPreference = 'SilentlyContinue'
+
+# Check for Debug Flag (native -Debug common parameter)
+$DEBUG_MODE = [bool]$PSCmdlet.MyInvocation.BoundParameters["Debug"].IsPresent
+$debugSetting = $DEBUG_MODE ? 'Continue' : 'SilentlyContinue'
 
 # Hide Azure PowerShell SDK Warnings
 $Env:SuppressAzurePowerShellBreakingChangeWarnings = $true
@@ -110,15 +107,58 @@ $Env:AZURE_CORE_SURVEY_MESSAGE = $false
 $logPath = Join-Path -Path $ROOT_DIR -ChildPath "logs"
 New-Item -ItemType Directory -Path $logpath -Force | Out-Null
 
-$updateLog = Join-Path -Path $logPath -ChildPath "update_$(get-date -format `"yyyyMMddhhmmsstt`").log"
-$errorLog = Join-Path -Path $logPath -ChildPath "error_$(get-date -format `"yyyyMMddhhmmsstt`").log"
+# Initialize logging (run transcript + structured detail log + on-demand debug log)
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$transcriptLog = Join-Path -Path $logPath -ChildPath "update_$timestamp.log"
+$logFile = Join-Path -Path $logPath -ChildPath "detail_$timestamp.log"
+$debugLog = Join-Path -Path $logPath -ChildPath "debug_$timestamp.log"
+
+# Structured file logger (shared, identical pattern with migrate.ps1)
+function Write-LogFile {
+  param(
+    [string]$Message,
+    [string]$Level = "INFO",
+    [switch]$ToConsole,
+    [System.Management.Automation.ErrorRecord]$ErrorRecord = $null
+  )
+
+  $logEntry = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [$Level] $Message"
+
+  # Always write to log file
+  Add-Content -Path $logFile -Value $logEntry -ErrorAction SilentlyContinue
+
+  # Write detailed error information for ERROR level entries
+  if ($Level -eq "ERROR" -and $ErrorRecord) {
+    $errorDetails = @"
+[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [ERROR-DETAILS] Exception Type: $($ErrorRecord.Exception.GetType().FullName)
+[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [ERROR-DETAILS] Exception Message: $($ErrorRecord.Exception.Message)
+[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [ERROR-DETAILS] Stack Trace: $($ErrorRecord.ScriptStackTrace)
+[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [ERROR-DETAILS] Position: $($ErrorRecord.InvocationInfo.PositionMessage)
+[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [ERROR-DETAILS] Command: $($ErrorRecord.InvocationInfo.MyCommand)
+[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [ERROR-DETAILS] Line: $($ErrorRecord.InvocationInfo.ScriptLineNumber)
+[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [ERROR-DETAILS] ----------------------------------------
+"@
+    Add-Content -Path $logFile -Value $errorDetails -ErrorAction SilentlyContinue
+  }
+
+  # Optionally write to console
+  if ($ToConsole) {
+    switch ($Level) {
+      "ERROR" { Write-Host $Message -ForegroundColor Red }
+      "WARNING" { Write-Host $Message -ForegroundColor Yellow }
+      "SUCCESS" { Write-Host $Message -ForegroundColor Green }
+      default { Write-Host $Message }
+    }
+  }
+}
 
 $containerBuildError = $false
 
 $TempFolderObj = $null
 
-Function Get-AccessToken {
-  Param(
+function Get-AccessToken {
+  [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '', Justification = 'Normalizes an ephemeral Azure access token across Az module versions (older Az returns a String, newer returns a SecureString). This is not a stored credential.')]
+  param(
     [Parameter(Mandatory = $false)]
     [string]$Resource,
     [Parameter(Mandatory = $false)]
@@ -143,8 +183,8 @@ Function Get-AccessToken {
   }
 }
 
-Function Write-Section {
-  Param(
+function Write-Section {
+  param(
     [Parameter(Mandatory = $true)]
     [string]$Title
   )
@@ -155,8 +195,8 @@ Function Write-Section {
   Write-Host "=====================================================" -ForegroundColor Blue
 }
 
-Function Get-BuildLogs {
-  Param(
+function Get-BuildLog {
+  param(
     [Parameter(Mandatory=$true)]
     [string]$SubscriptionId,
     [Parameter(Mandatory=$true)]
@@ -164,7 +204,9 @@ Function Get-BuildLogs {
     [Parameter(Mandatory=$true)]
     [string]$RegistryName,
     [Parameter(Mandatory=$true)]
-    [string]$BuildId
+    [string]$BuildId,
+    [Parameter(Mandatory=$true)]
+    [string]$AzureCloud
   )
 
   $msArmMap = @{
@@ -192,8 +234,8 @@ Function Get-BuildLogs {
   return $logs
 }
 
-Function Set-HealthCheck {
-  Param(
+function Set-HealthCheck {
+  param(
     [Parameter(Mandatory=$true)]
     [string]$AppName,
     [Parameter(Mandatory=$true)]
@@ -222,8 +264,8 @@ Function Set-HealthCheck {
     | Out-Null
 }
 
-Function Restart-IpamApp {
-  Param(
+function Restart-IpamApp {
+  param(
     [Parameter(Mandatory=$true)]
     [string]$AppName,
     [Parameter(Mandatory=$true)]
@@ -274,8 +316,8 @@ Function Restart-IpamApp {
   } while ($restartSuccess -eq $False -and $restartRetries -gt 0)
 }
 
-Function Get-ZipFile {
-  Param(
+function Get-ZipFile {
+  param(
     [Parameter(Mandatory=$true)]
     [string]$GitHubUserName,
     [Parameter(Mandatory=$true)]
@@ -313,8 +355,8 @@ Function Get-ZipFile {
   }
 }
 
-Function Publish-ZipFile {
-  Param(
+function Publish-ZipFile {
+  param(
     [Parameter(Mandatory=$true)]
     [string]$AppName,
     [Parameter(Mandatory=$true)]
@@ -378,8 +420,8 @@ Function Publish-ZipFile {
   } while ($publishSuccess -eq $False -and $publishRetries -ge 0)
 }
 
-Function Get-RunningVersion {
-  Param(
+function Get-RunningVersion {
+  param(
     [Parameter(Mandatory = $true)]
     $ExistingApp
   )
@@ -395,8 +437,8 @@ Function Get-RunningVersion {
   }
 }
 
-Function Get-LatestReleaseVersion {
-  Param(
+function Get-LatestReleaseVersion {
+  param(
     [Parameter(Mandatory = $true)]
     [string]$GitHubUserName,
     [Parameter(Mandatory = $true)]
@@ -411,11 +453,17 @@ Function Get-LatestReleaseVersion {
   }
 }
 
-Function Get-UserConfirmation {
-  Param(
+function Get-UserConfirmation {
+  param(
+    [Parameter(Mandatory = $false)]
+    [string]$Message,
     [Parameter(Mandatory = $true)]
     [string]$PromptText
   )
+
+  if ($Message) {
+    Write-Host $Message -ForegroundColor Yellow
+  }
 
   do {
     $confirmation = Read-Host "$PromptText (Y/N)"
@@ -427,8 +475,8 @@ Function Get-UserConfirmation {
   } while ($true)
 }
 
-Function Get-AppSettingValue {
-  Param(
+function Get-AppSettingValue {
+  param(
     [Parameter(Mandatory = $true)]
     [AllowNull()]
     $AppSettings,
@@ -440,7 +488,7 @@ Function Get-AppSettingValue {
   return $setting ? $setting.Value : $null
 }
 
-Function Update-IpamInfrastructure {
+function Update-IpamInfrastructure {
   <#
     Auto-detected infrastructure update that brings an existing Azure IPAM deployment in
     line with current deployments by adding any missing infrastructure. Today this adds a
@@ -453,7 +501,7 @@ Function Update-IpamInfrastructure {
     An infrastructure-update failure is non-fatal: it warns and returns so the normal
     production update can still proceed.
   #>
-  Param(
+  param(
     [Parameter(Mandatory = $true)]
     $ExistingApp,
     [Parameter(Mandatory = $true)]
@@ -667,13 +715,16 @@ Function Update-IpamInfrastructure {
 
     Write-Host "🚀 Applying infrastructure update (this may take a few minutes)..." -ForegroundColor Cyan
 
+    # Capture the Azure deployment debug stream to the debug log when -Debug is set
+    $DebugPreference = $debugSetting
+
     try {
       $deployment = New-AzSubscriptionDeployment `
         -Name "ipamSlotMigrate-$(Get-Date -Format `"yyyyMMddhhmmsstt`")" `
         -Location $ExistingApp.Location `
         -TemplateFile $bicepPath `
         -TemplateParameterObject $deploymentParameters `
-        -ErrorAction Stop
+        -ErrorAction Stop 5>$($DEBUG_MODE ? $debugLog : $null)
     }
     catch {
       $deployError = $_
@@ -686,7 +737,7 @@ Function Update-IpamInfrastructure {
 
       if ($isVnetFailure) {
         Write-Host "  ℹ️ vNet integration could not be applied; retrying without it..." -ForegroundColor Cyan
-        $deployError | Out-File -FilePath $errorLog -Append
+        Write-LogFile -Message "Slot deployment failed; retrying without vNet integration." -Level "ERROR" -ErrorRecord $deployError
 
         $deploymentParameters.replicateVnet = $false
         $vnetManual = $true
@@ -696,12 +747,14 @@ Function Update-IpamInfrastructure {
           -Location $ExistingApp.Location `
           -TemplateFile $bicepPath `
           -TemplateParameterObject $deploymentParameters `
-          -ErrorAction Stop
+          -ErrorAction Stop 5>$($DEBUG_MODE ? $debugLog : $null)
       }
       else {
         throw $deployError
       }
     }
+
+    $DebugPreference = 'SilentlyContinue'
 
     Write-Section -Title "Infrastructure Update Complete"
     Write-Host "✅ Deployment slot '$SLOT_NAME' created (disabled)" -ForegroundColor Green
@@ -745,14 +798,14 @@ Function Update-IpamInfrastructure {
         Write-Host "   The full subnet resource ID has been written to the log." -ForegroundColor Gray
 
         # Verbose detail for the log
-        "[InfrastructureUpdate] vNet integration was not applied to the '$SLOT_NAME' slot automatically." | Out-File -FilePath $errorLog -Append
-        "[InfrastructureUpdate] To make the slot swap-ready, manually add regional vNet integration using subnet: $prodSubnetId" | Out-File -FilePath $errorLog -Append
+        Write-LogFile -Message "vNet integration was not applied to the '$SLOT_NAME' slot automatically." -Level "WARNING"
+        Write-LogFile -Message "To make the slot swap-ready, manually add regional vNet integration using subnet: $prodSubnetId" -Level "WARNING"
       }
     }
   }
   catch {
     # Infrastructure update is best-effort: never block the core production update
-    $_ | Out-File -FilePath $errorLog -Append
+    Write-LogFile -Message "Infrastructure update failed (non-fatal): $($_.Exception.Message)" -Level "ERROR" -ErrorRecord $_
 
     Write-Section -Title "Infrastructure Update Failed"
     Write-Host "⚠️ The infrastructure update could not be completed." -ForegroundColor Yellow
@@ -763,14 +816,22 @@ Function Update-IpamInfrastructure {
     Write-Host
     Write-Host ("   {0,-13}: " -f 'Prerequisites') -ForegroundColor Yellow -NoNewline
     Write-Host "https://azure.github.io/ipam/#/update/README?id=prerequisites" -ForegroundColor Cyan
-    Write-Host ("   {0,-13}: " -f 'Error Log') -ForegroundColor Yellow -NoNewline
-    Write-Host $errorLog -ForegroundColor Gray
+    Write-Host ("   {0,-13}: " -f 'Detail Log') -ForegroundColor Yellow -NoNewline
+    Write-Host $logFile -ForegroundColor Gray
   }
 }
 
-Start-Transcript -Path $updateLog | Out-Null
+Start-Transcript -Path $transcriptLog | Out-Null
+
+Write-LogFile -Message "=== Azure IPAM Update Script Started ===" -Level "INFO"
 
 try {
+  if ($DEBUG_MODE) {
+    Write-Host "🐛 Debug mode enabled — verbose Azure logs will be written to:" -ForegroundColor Gray
+    Write-Host "   $debugLog" -ForegroundColor Gray
+    Write-Host
+  }
+
   Write-Section -Title "Verifying Azure IPAM Application"
 
   $appType = ""
@@ -880,7 +941,7 @@ try {
         -ErrorAction SilentlyContinue
 
       if ($acrErr) {
-        $acrErr | Out-File -FilePath $errorLog -Append
+        Write-LogFile -Message "ACR lookup error: $acrErr" -Level "ERROR"
 
         Write-Host " ⚠️ Not found" -ForegroundColor Yellow
 
@@ -1064,6 +1125,9 @@ try {
 
     $dockerFileFunc = Join-Path -Path $ROOT_DIR -ChildPath 'Dockerfile.func'
 
+    $azureCloud = Get-AppSettingValue -AppSettings $existingApp.SiteConfig.AppSettings -Name 'AZURE_ENV'
+    if ([string]::IsNullOrWhiteSpace($azureCloud)) { $azureCloud = 'AZURE_PUBLIC' }
+
     if($isFunction) {
       Write-Host "🚀 Building and pushing Function container image..." -ForegroundColor Cyan
 
@@ -1081,13 +1145,14 @@ try {
 
         $buildId = [regex]::Matches($funcBuildOutput, "(?<=Queued a build with ID: )[\w]*").Value.Trim()
 
-        $buildLogs = Get-BuildLogs `
+        $buildLogs = Get-BuildLog `
           -SubscriptionId (Get-AzContext).Subscription.Id `
           -ResourceGroupName $ResourceGroupName `
           -RegistryName $acrName `
-          -BuildId $buildId
+          -BuildId $buildId `
+          -AzureCloud $azureCloud
 
-        $buildLogs | Out-File -FilePath $errorLog -Append
+        Write-LogFile -Message "Container build logs:`n$($buildLogs | Out-String)" -Level "ERROR"
 
         $script:containerBuildError = $true
       } else {
@@ -1117,13 +1182,14 @@ try {
 
         $buildId = [regex]::Matches($appBuildOutput, "(?<=Queued a build with ID: )[\w]*").Value.Trim()
 
-        $buildLogs = Get-BuildLogs `
+        $buildLogs = Get-BuildLog `
           -SubscriptionId (Get-AzContext).Subscription.Id `
           -ResourceGroupName $ResourceGroupName `
           -RegistryName $acrName `
-          -BuildId $buildId
+          -BuildId $buildId `
+          -AzureCloud $azureCloud
 
-        $buildLogs | Out-File -FilePath $errorLog -Append
+        Write-LogFile -Message "Container build logs:`n$($buildLogs | Out-String)" -Level "ERROR"
 
         $script:containerBuildError = $true
       } else {
@@ -1141,8 +1207,8 @@ try {
     } else {
       Write-Section -Title "Azure IPAM Update Completed With Errors"
       Write-Host "⚠️ Azure IPAM solution deployed with errors, see logs for details!" -ForegroundColor Yellow
-      Write-Host "   Run Log:   $updateLog" -ForegroundColor Yellow
-      Write-Host "   Error Log: $errorLog" -ForegroundColor Yellow
+      Write-Host "   Run Log:    $transcriptLog" -ForegroundColor Yellow
+      Write-Host "   Detail Log: $logFile" -ForegroundColor Yellow
       Write-Host
     }
   } elseif ($skipZipDeploy) {
@@ -1198,10 +1264,14 @@ try {
   }
 }
 catch {
-  $_ | Out-File -FilePath $errorLog -Append
+  Write-LogFile -Message "Update failed: $($_.Exception.Message)" -Level "ERROR" -ErrorRecord $_
   Write-Host
   Write-Host "❌ Unable to update Azure IPAM application, see log for detailed information!" -ForegroundColor Red
-  Write-Host "   Error Log: $errorLog" -ForegroundColor Red
+  Write-Host "   Detail Log: $logFile" -ForegroundColor Red
+
+  if ($DEBUG_MODE) {
+    Write-Host "   Debug Log: $debugLog" -ForegroundColor Red
+  }
 
   if ($env:CI) {
     Write-Host $_.ToString()

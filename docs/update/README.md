@@ -221,17 +221,18 @@ By default, the script automatically creates a temporary directory for downloadi
 
 ## Update Script Parameters
 
-| Parameter            | Type   | Required | Description                                                          |
-|----------------------|--------|----------|----------------------------------------------------------------------|
-| `-AppName`           | String | Yes      | Name of your existing Azure IPAM App Service or Function App         |
-| `-ResourceGroupName` | String | Yes      | Resource group containing your App Service                           |
-| `-GitHubUserName`    | String | No       | GitHub user/organization name for custom repository **<sup>1</sup>** |
-| `-GitHubRepoName`    | String | No       | GitHub repository name for custom repository **<sup>1</sup>**        |
-| `-ZipFileName`       | String | No       | ZIP file name to download from GitHub **<sup>1</sup>**               |
-| `-ZipFilePath`       | String | No       | Path to local ZIP file for deployment **<sup>1</sup>**               |
-| `-AssetFolder`       | String | No       | Directory to store downloaded ZIP file **<sup>2</sup>**              |
-| `-SkipInfraUpdate`   | Switch | No       | Skip infrastructure updates                                          |
+| Parameter            | Type   | Required | Description                                                               |
+|----------------------|--------|----------|---------------------------------------------------------------------------|
+| `-AppName`           | String | Yes      | Name of your existing Azure IPAM App Service or Function App              |
+| `-ResourceGroupName` | String | Yes      | Resource group containing your App Service                                |
+| `-GitHubUserName`    | String | No       | GitHub user/organization name for custom repository **<sup>1</sup>**      |
+| `-GitHubRepoName`    | String | No       | GitHub repository name for custom repository **<sup>1</sup>**             |
+| `-ZipFileName`       | String | No       | ZIP file name to download from GitHub **<sup>1</sup>**                    |
+| `-ZipFilePath`       | String | No       | Path to local ZIP file for deployment **<sup>1</sup>**                    |
+| `-AssetFolder`       | String | No       | Directory to store downloaded ZIP file **<sup>2</sup>**                   |
+| `-SkipInfraUpdate`   | Switch | No       | Skip infrastructure updates                                               |
 | `-Force`             | Switch | No       | Skip confirmation prompts and force a redeploy even if already up to date |
+| `-Debug`             | Switch | No       | Write verbose Azure deployment logs to `logs/debug_[timestamp].log`       |
 
 > **NOTE 1:** Only applicable for native (non-container) deployments. These parameters are ignored for container deployments, which are automatically built from the latest repository code.
 
@@ -385,8 +386,9 @@ Remove-AzKeyVaultSecret -VaultName "<your-ipam-kv>" -Name "COSMOS-KEY"
 
 The update script generates detailed logs in the `logs` directory:
 
-- **Update Log**: `logs/update_[timestamp].log` - Complete update process log
-- **Error Log**: `logs/error_[timestamp].log` - Detailed error information if issues occur
+- **Update Log**: `logs/update_[timestamp].log` - Complete console transcript of the update process
+- **Detail Log**: `logs/detail_[timestamp].log` - Structured, detailed log including error information if issues occur
+- **Debug Log**: `logs/debug_[timestamp].log` - Verbose Azure deployment logs (only written when `-Debug` is specified)
 
 ### Container Build Monitoring (Private ACR)
 
@@ -502,7 +504,7 @@ az account set --subscription "your-subscription-id"
 
 **Solution**:
 
-1. Check build logs in `logs/error_[timestamp].log` (script automatically captures detailed logs)
+1. Check build logs in `logs/detail_[timestamp].log` (script automatically captures detailed logs)
 2. Verify ACR permissions and storage capacity
 3. Review Azure Container Registry task logs in Azure Portal
 4. Ensure the application's `/api/status` endpoint is accessible for container type detection
