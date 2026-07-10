@@ -71,8 +71,9 @@ $ROOT_DIR = (Get-Item $($MyInvocation.MyCommand.Path)).Directory.Parent.FullName
 # Minimum Required Azure CLI Version - Required for ACR build functionality
 $MIN_AZ_CLI_VER = [System.Version]'2.35.0'
 
-# Azure IPAM Public ACR (element [0] is the current/preferred registry; remaining values are legacy registries retained for backward-compatible detection)
-$IPAM_PUBLIC_ACR = @("registry.azureipam.com", "azureipam.azurecr.io")
+# Azure IPAM-managed registries. Element [0] is the current registry; any other entry
+# (legacy production or the dev/test registry) is auto-repointed to [0].
+$IPAM_PUBLIC_ACR = @("registry.azureipam.com", "azureipam.azurecr.io", "azureipamdev.azurecr.io")
 
 # Set preference variables
 $ErrorActionPreference = "Stop"
