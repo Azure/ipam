@@ -33,10 +33,10 @@ param(
   [Parameter(Mandatory=$false)]
   [ValidateScript({
     $IndexOfInvalidChar = $_.IndexOfAny([System.IO.Path]::GetInvalidFileNameChars())
-    if (-Not ($IndexOfInvalidChar -eq -1)) {
+    if (-not ($IndexOfInvalidChar -eq -1)) {
       throw [System.ArgumentException]::New("The 'ZipFileName' argument contains one or more invalid characters.")
     }
-    if(-Not ($_ -match "(\.zip)")) {
+    if(-not ($_ -match "(\.zip)")) {
       throw [System.ArgumentException]::New("The 'ZipFileName' argument must be of type zip.")
     }
     return $true
@@ -46,8 +46,8 @@ param(
 
   [Parameter(Mandatory=$false)]
   [ValidateScript({
-    if(-Not ($_ | Get-Item) ) {
-      throw [System.ArgumentException]::New("AssetFolder does not exist, please provide a pre-existing folder.")
+    if(-not ($_ | Get-Item) ) {
+      throw [System.ArgumentException]::New("The specified 'AssetFolder' path does not exist. Please provide a pre-existing folder.")
     }
     return $true
   })]
@@ -56,11 +56,11 @@ param(
 
   [Parameter(Mandatory = $false)]
   [ValidateScript({
-    if(-Not ($_ | Test-Path) ) {
-      throw [System.ArgumentException]::New("Target file or does not exist.")
+    if(-not ($_ | Test-Path) ) {
+      throw [System.ArgumentException]::New("The specified 'ZipFilePath' path does not exist.")
     }
-    if(-Not ($_ | Test-Path -PathType Leaf) ) {
-      throw [System.ArgumentException]::New("The 'ZipFilePath' argument must be a file, folder paths are not allowed.")
+    if(-not ($_ | Test-Path -PathType Leaf) ) {
+      throw [System.ArgumentException]::New("The 'ZipFilePath' argument must be a path to a file, not a folder.")
     }
     if($_ -notmatch "(\.zip)") {
       throw [System.ArgumentException]::New("The file specified in the 'ZipFilePath' argument must be of type zip.")
@@ -215,7 +215,7 @@ function Get-BuildLog {
     AZURE_US_GOV_SECRET  = "management.azure.microsoft.scloud"
     AZURE_GERMANY        = "management.microsoftazure.de"
     AZURE_CHINA          = "management.chinacloudapi.cn"
-  };
+  }
 
   $accessToken = Get-AccessToken
 
@@ -1216,8 +1216,8 @@ try {
     Write-Host "✅ Azure IPAM is already running the latest version (v$runningClean)" -ForegroundColor Green
     Write-Host
   } else {
-    if (-Not $ZipFilePath) {
-      if (-Not $AssetFolder) {
+    if (-not $ZipFilePath) {
+      if (-not $AssetFolder) {
         try {
           # Create a temporary folder path
           $TempFolder = Join-Path -Path TEMP:\ -ChildPath $(New-Guid)

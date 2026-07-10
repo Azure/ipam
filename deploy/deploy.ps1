@@ -198,11 +198,11 @@ param(
     Mandatory = $false,
     ParameterSetName = 'FunctionContainer')]
   [ValidateScript({
-    if (-Not ($_ | Test-Path) ) {
-      throw [System.ArgumentException]::New("Target file or does not exist.")
+    if (-not ($_ | Test-Path) ) {
+      throw [System.ArgumentException]::New("The specified 'ParameterFile' path does not exist.")
     }
-    if (-Not ($_ | Test-Path -PathType Leaf) ) {
-      throw [System.ArgumentException]::New("The 'ParameterFile' argument must be a file, folder paths are not allowed.")
+    if (-not ($_ | Test-Path -PathType Leaf) ) {
+      throw [System.ArgumentException]::New("The 'ParameterFile' argument must be a path to a file, not a folder.")
     }
     if ($_ -notmatch "(\.json)") {
       throw [System.ArgumentException]::New("The file specified in the 'ParameterFile' argument must be of type json.")
@@ -219,11 +219,11 @@ param(
     Mandatory = $false,
     ParameterSetName = 'Function')]
   [ValidateScript({
-    if (-Not ($_ | Test-Path) ) {
-      throw [System.ArgumentException]::New("Target file or does not exist.")
+    if (-not ($_ | Test-Path) ) {
+      throw [System.ArgumentException]::New("The specified 'ZipFilePath' path does not exist.")
     }
-    if (-Not ($_ | Test-Path -PathType Leaf) ) {
-      throw [System.ArgumentException]::New("The 'ZipFilePath' argument must be a file, folder paths are not allowed.")
+    if (-not ($_ | Test-Path -PathType Leaf) ) {
+      throw [System.ArgumentException]::New("The 'ZipFilePath' argument must be a path to a file, not a folder.")
     }
     if ($_ -notmatch "(\.zip)") {
       throw [System.ArgumentException]::New("The file specified in the 'ZipFilePath' argument must be of type zip.")
@@ -234,7 +234,7 @@ param(
   $ZipFilePath
 )
 
-DynamicParam {
+dynamicparam {
   $validators = @{
     functionName          = '^(?=^.{2,59}$)([^-][\w-]*[^-])$'
     appServiceName        = '^(?=^.{2,59}$)([^-][\w-]*[^-])$'
@@ -371,9 +371,9 @@ process {
   $logPath = Join-Path -Path $ROOT_DIR -ChildPath "logs"
   New-Item -ItemType Directory -Path $logpath -Force | Out-Null
 
-  $debugLog = Join-Path -Path $logPath -ChildPath "debug_$(get-date -format `"yyyyMMddhhmmsstt`").log"
-  $errorLog = Join-Path -Path $logPath -ChildPath "error_$(get-date -format `"yyyyMMddhhmmsstt`").log"
-  $transcriptLog = Join-Path -Path $logPath -ChildPath "deploy_$(get-date -format `"yyyyMMddhhmmsstt`").log"
+  $debugLog = Join-Path -Path $logPath -ChildPath "debug_$(Get-Date -Format `"yyyyMMddhhmmsstt`").log"
+  $errorLog = Join-Path -Path $logPath -ChildPath "error_$(Get-Date -Format `"yyyyMMddhhmmsstt`").log"
+  $transcriptLog = Join-Path -Path $logPath -ChildPath "deploy_$(Get-Date -Format `"yyyyMMddhhmmsstt`").log"
 
   $debugSetting = $DEBUG_MODE ? 'Continue' : 'SilentlyContinue'
 
@@ -387,8 +387,8 @@ process {
 
   Start-Transcript -Path $transcriptLog | Out-Null
 
-  Function Test-Location {
-    Param(
+  function Test-Location {
+    param(
       [Parameter(Mandatory = $true)]
       [string]$Location
     )
@@ -398,8 +398,9 @@ process {
     return $validLocations.Contains($Location)
   }
 
-  Function Get-AccessToken {
-    Param(
+  function Get-AccessToken {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '', Justification = 'Normalizes an ephemeral Azure access token across Az module versions (older Az returns a String, newer returns a SecureString). This is not a stored credential.')]
+    param(
       [Parameter(Mandatory = $false)]
       [string]$Resource,
       [Parameter(Mandatory = $false)]
@@ -424,8 +425,8 @@ process {
     }
   }
 
-  Function Get-BuildLogs {
-    Param(
+  function Get-BuildLog {
+    param(
       [Parameter(Mandatory = $true)]
       [string]$SubscriptionId,
       [Parameter(Mandatory = $true)]
@@ -463,8 +464,8 @@ process {
     return $logs
   }
 
-  Function Invoke-WithGraphRetry {
-    Param(
+  function Invoke-WithGraphRetry {
+    param(
       [Parameter(Mandatory = $true)]
       [scriptblock]$ScriptBlock,
       [Parameter(Mandatory = $false)]
@@ -501,8 +502,9 @@ process {
     } while ($attempt -lt $MaxAttempts)
   }
 
-  Function Deploy-IPAMApplications {
-    Param(
+  function Deploy-IPAMApplication {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'EngineAppName', Justification = 'Consumed inside an Invoke-WithGraphRetry -ScriptBlock (New-AzADApplication -DisplayName), which PSScriptAnalyzer does not trace into.')]
+    param(
       [Parameter(Mandatory = $false)]
       [string]$EngineAppName = 'ipam-engine-app',
       [Parameter(Mandatory = $false)]
@@ -734,8 +736,10 @@ process {
     return $appDetails
   }
 
-  Function Grant-AdminConsent {
-    Param(
+  function Grant-AdminConsent {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'UIAppId', Justification = 'Consumed inside an Invoke-WithGraphRetry -ScriptBlock (Get-AzADServicePrincipal -ApplicationId), which PSScriptAnalyzer does not trace into.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'EngineAppId', Justification = 'Consumed inside an Invoke-WithGraphRetry -ScriptBlock (Get-AzADServicePrincipal -ApplicationId), which PSScriptAnalyzer does not trace into.')]
+    param(
       [Parameter(Mandatory = $false)]
       [string]$UIAppId = [GUID]::Empty,
       [Parameter(Mandatory = $true)]
@@ -872,8 +876,8 @@ process {
     Write-Host "INFO: Admin consent for Azure Service Management API permissions granted successfully" -ForegroundColor Green
   }
 
-  Function Save-Parameters {
-    Param(
+  function Save-ParameterFile {
+    param(
       [Parameter(Mandatory = $false)]
       [string]$UIAppId = [GUID]::Empty,
       [Parameter(Mandatory = $true)]
@@ -907,16 +911,16 @@ process {
     Write-Host "INFO: Bicep parameter file populated successfully" -ForegroundColor Green
   }
 
-  Function Import-Parameters {
-    Param(
+  function Import-ParameterFile {
+    param(
       [Parameter(Mandatory = $true)]
-      [System.IO.FileInfo]$ParameterFile
+      [System.IO.FileInfo]$Path
     )
 
     Write-Host "INFO: Importing values from Bicep parameters file" -ForegroundColor Green
 
     # Retrieve JSON object from sample parameter file
-    $parametersObject = Get-Content $ParameterFile | ConvertFrom-Json
+    $parametersObject = Get-Content $Path | ConvertFrom-Json
 
     # Read Values from Parameters
     $UIAppId = $parametersObject.parameters.uiAppId.value ?? [GUID]::Empty
@@ -950,8 +954,8 @@ process {
     return $appDetails
   }
 
-  Function Deploy-Bicep {
-    Param(
+  function Deploy-Bicep {
+    param(
       [Parameter(Mandatory = $false)]
       [string]$UIAppId = [GUID]::Empty,
       [Parameter(Mandatory = $true)]
@@ -1030,8 +1034,8 @@ process {
     return $deployment
   }
 
-  Function Get-ZipFile {
-    Param(
+  function Get-ZipFile {
+    param(
       [Parameter(Mandatory = $true)]
       [string]$GitHubUserName,
       [Parameter(Mandatory = $true)]
@@ -1068,8 +1072,8 @@ process {
     }
   }
 
-  Function Publish-ZipFile {
-    Param(
+  function Publish-ZipFile {
+    param(
       [Parameter(Mandatory = $true)]
       [string]$AppName,
       [Parameter(Mandatory = $true)]
@@ -1138,8 +1142,8 @@ process {
     } while ($publishSuccess -eq $False -and $publishRetries -ge 0)
   }
 
-  Function Update-UIApplication {
-    Param(
+  function Update-UIApplication {
+    param(
       [Parameter(Mandatory = $true)]
       [string]$UIAppId,
       [Parameter(Mandatory = $true)]
@@ -1238,7 +1242,7 @@ process {
     }
 
     if (-not $ParameterFile) {
-      $appDetails = Deploy-IPAMApplications `
+      $appDetails = Deploy-IPAMApplication `
         -UIAppName $UIAppName `
         -EngineAppName $EngineAppName `
         -MgmtGroupId $MgmtGroupId `
@@ -1257,12 +1261,12 @@ process {
     }
 
     if ($PSCmdlet.ParameterSetName -in ('AppsOnly')) {
-      Save-Parameters @appDetails -DisableUI $DisableUI
+      Save-ParameterFile @appDetails -DisableUI $DisableUI
     }
 
     if ($ParameterFile) {
-      $appDetails = Import-Parameters `
-        -ParameterFile $ParameterFile
+      $appDetails = Import-ParameterFile `
+        -Path $ParameterFile
     }
 
     if ($PSCmdlet.ParameterSetName -in ('App', 'AppContainer', 'Function', 'FunctionContainer')) {
@@ -1283,7 +1287,7 @@ process {
     }
 
     if ($PSCmdlet.ParameterSetName -in ('App', 'Function')) {
-      if (-Not $ZipFilePath) {
+      if (-not $ZipFilePath) {
         try {
           # Create a temporary folder path
           $TempFolder = Join-Path -Path TEMP:\ -ChildPath $(New-Guid)
@@ -1364,7 +1368,7 @@ process {
 
           $buildId = [regex]::Matches($funcBuildOutput, "(?<=Queued a build with ID: )[\w]*").Value.Trim()
 
-          $buildLogs = Get-BuildLogs `
+          $buildLogs = Get-BuildLog `
             -SubscriptionId $deployment.Outputs["subscriptionId"].Value `
             -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value `
             -RegistryName $deployment.Outputs["acrName"].Value `
@@ -1403,7 +1407,7 @@ process {
 
           $buildId = [regex]::Matches($appBuildOutput, "(?<=Queued a build with ID: )[\w]*").Value.Trim()
 
-          $buildLogs = Get-BuildLogs `
+          $buildLogs = Get-BuildLog `
             -SubscriptionId $deployment.Outputs["subscriptionId"].Value `
             -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value `
             -RegistryName $deployment.Outputs["acrName"].Value `

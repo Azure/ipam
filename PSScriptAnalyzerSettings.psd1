@@ -26,4 +26,43 @@
         # A byte-order mark is intentionally not used.
         'PSUseBOMForUnicodeEncodedFile'
     )
+
+    Rules = @{
+        # Enforce consistent casing across the scripts. This keeps cmdlet and parameter
+        # names aligned with their canonical metadata casing (e.g. Get-AzContext,
+        # -ResourceGroupName) and language keywords lowercase (function, param, if,
+        # foreach), matching the Microsoft-recommended style already applied to
+        # deploy.ps1, update.ps1, and migrate.ps1. This rule is Information severity,
+        # so it surfaces suggestions without affecting the Warning/Error count.
+        PSUseCorrectCasing = @{
+            Enable        = $true
+            CheckCommands = $true
+            CheckKeyword  = $true
+            CheckOperator = $true
+        }
+
+        # Enforce the one-true-brace style already used throughout these scripts
+        # (opening brace on the same line, followed by a newline). Purely a guard
+        # against future regressions; the current code fully conforms.
+        PSPlaceOpenBrace = @{
+            Enable             = $true
+            OnSameLine         = $true
+            NewLineAfter       = $true
+            IgnoreOneLineBlock = $true
+        }
+
+        # The scripts declare #Requires -Version 7.2 and use PowerShell 7 syntax
+        # (ternary, null-coalescing). This guards against accidentally introducing
+        # syntax that would not run on the declared minimum version.
+        PSUseCompatibleSyntax = @{
+            Enable         = $true
+            TargetVersions = @('7.2')
+        }
+
+        # Disallow a trailing semicolon used as a line terminator (e.g. "$x = 1;"),
+        # which is redundant in PowerShell and hurts readability.
+        PSAvoidSemicolonsAsLineTerminators = @{
+            Enable = $true
+        }
+    }
 }

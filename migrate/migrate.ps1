@@ -30,11 +30,11 @@ param(
 
   [Parameter(Mandatory = $false)]
   [ValidateScript({
-    if (-Not ($_ | Test-Path) ) {
-      throw [System.ArgumentException]::New("Target file or does not exist.")
+    if (-not ($_ | Test-Path) ) {
+      throw [System.ArgumentException]::New("The specified 'JsonFile' path does not exist.")
     }
-    if (-Not ($_ | Test-Path -PathType Leaf) ) {
-      throw [System.ArgumentException]::New("The 'JsonFile' argument must be a file, folder paths are not allowed.")
+    if (-not ($_ | Test-Path -PathType Leaf) ) {
+      throw [System.ArgumentException]::New("The 'JsonFile' argument must be a path to a file, not a folder.")
     }
     if ($_ -notmatch "(\.json|\.jsonc)$") {
       throw [System.ArgumentException]::New("The file specified in the 'JsonFile' argument must be of type json or jsonc.")
@@ -481,7 +481,7 @@ function Get-BuildLog {
     AZURE_US_GOV_SECRET  = "management.azure.microsoft.scloud"
     AZURE_GERMANY        = "management.microsoftazure.de"
     AZURE_CHINA          = "management.chinacloudapi.cn"
-  };
+  }
 
   $accessToken = Get-AccessToken
 
