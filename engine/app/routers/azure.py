@@ -51,7 +51,7 @@ def str_to_list(input):
     return split
 
 async def get_subscriptions_sdk(credentials):
-    """DOCSTRING"""
+    """Return all Azure subscriptions visible to the given credentials, with their offer/quota type resolved to a friendly label."""
 
     QUOTA_MAP = {
         "EnterpriseAgreement": "Enterprise Agreement",
@@ -96,7 +96,7 @@ async def get_subscriptions_sdk(credentials):
     return subscriptions
 
 async def update_vhub_data(auth, admin, hubs):
-    """DOCSTRING"""
+    """Populate each vWAN hub with its virtual network connection (peering) data using admin or on-behalf-of credentials."""
 
     if admin:
         creds = await get_client_credentials()
@@ -138,7 +138,7 @@ async def update_vhub_data(auth, admin, hubs):
     return hubs
 
 async def get_vmss(auth, admin):
-    """DOCSTRING"""
+    """Return the network interfaces of all Virtual Machine Scale Set instances across every accessible subscription."""
 
     if admin:
         creds = await get_client_credentials()
@@ -159,7 +159,7 @@ async def get_vmss(auth, admin):
     return vmss_vm_interfaces
 
 async def get_vmss_list_sdk(credentials, subscriptions):
-    """DOCSTRING"""
+    """Concurrently enumerate the Virtual Machine Scale Sets across the given subscriptions."""
 
     tasks = []
     vmss_list = []
@@ -172,7 +172,7 @@ async def get_vmss_list_sdk(credentials, subscriptions):
     return vmss_list
 
 async def get_vmss_list_sdk_helper(credentials, subscription, list):
-    """DOCSTRING"""
+    """Append the Virtual Machine Scale Sets found in a single subscription to the shared result list."""
 
     azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
@@ -210,7 +210,7 @@ async def get_vmss_list_sdk_helper(credentials, subscription, list):
     await compute_client.close()
 
 async def get_vmss_interfaces_sdk(credentials, vmss_list):
-    """DOCSTRING"""
+    """Concurrently resolve the network interfaces for every Virtual Machine Scale Set in the list."""
 
     tasks = []
     vmss_interfaces = []
@@ -223,7 +223,7 @@ async def get_vmss_interfaces_sdk(credentials, vmss_list):
     return vmss_interfaces
 
 async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
-    """DOCSTRING"""
+    """Append the per-instance network interface details for a single Virtual Machine Scale Set to the shared result list."""
 
     azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
@@ -824,7 +824,7 @@ async def nic(
     return results
 
 async def multi_helper(func, list, *args):
-    """DOCSTRING"""
+    """Await the given coroutine function and append its result to the shared list (used to gather endpoint queries concurrently)."""
 
     results = await func(*args)
     list.append(results)

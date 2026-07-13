@@ -16,7 +16,8 @@ from pydantic_core import CoreSchema, core_schema
 
 class IPv4Network(str):
     """
-    DOCSTRING
+    Pydantic-compatible ``str`` subtype that validates a value as an IPv4
+    network in CIDR notation (e.g. ``10.0.0.0/8``).
     """
 
     @classmethod
@@ -54,7 +55,8 @@ class IPv4Network(str):
 
 class IPv4Address(str):
     """
-    DOCSTRING
+    Pydantic-compatible ``str`` subtype that validates a value as an IPv4
+    address (e.g. ``10.0.0.1``).
     """
 
     @classmethod
@@ -95,26 +97,26 @@ class IPv4Address(str):
 #######################
 
 class VNet(BaseModel):
-    """DOCSTRING"""
+    """Reference to an Azure Virtual Network associated with a Block, tracked by resource ID and active status."""
 
     id: str
     active: Optional[bool] = None
 
 class Network(BaseModel):
-    """DOCSTRING"""
+    """Reference to a generic Azure network resource associated with a Block, tracked by resource ID and active status."""
 
     id: str
     active: Optional[bool] = None
 
 class ExtEndpoint(BaseModel):
-    """DOCSTRING"""
+    """An endpoint (named host) with a description and IP address defined within an external subnet."""
 
     name: str
     desc: str
     ip: str
 
 class ExtSubnet(BaseModel):
-    """DOCSTRING"""
+    """A subnet within an external network, containing a CIDR range and its endpoints."""
 
     name: str
     desc: str
@@ -122,7 +124,7 @@ class ExtSubnet(BaseModel):
     endpoints: List[ExtEndpoint]
 
 class ExtSubnetExpand(BaseModel):
-    """DOCSTRING"""
+    """An external subnet enriched with its parent space, block, and external network context."""
 
     name: str
     desc: str
@@ -133,7 +135,7 @@ class ExtSubnetExpand(BaseModel):
     endpoints: List[ExtEndpoint]
 
 class ExtNet(BaseModel):
-    """DOCSTRING"""
+    """An external (non-Azure) network defined within a Block, with a CIDR range and child subnets."""
 
     name: str
     desc: str
@@ -141,7 +143,7 @@ class ExtNet(BaseModel):
     subnets: List[ExtSubnet]
 
 class ExtNetExpand(BaseModel):
-    """DOCSTRING"""
+    """An external network enriched with its parent space and block context."""
 
     name: str
     desc: str
@@ -151,18 +153,18 @@ class ExtNetExpand(BaseModel):
     subnets: List[ExtSubnet]
 
 class VNets(BaseModel):
-    """DOCSTRING"""
+    """A collection of Virtual Network resource IDs."""
 
     ids: List[str]
 
 class Subnet(BaseModel):
-    """DOCSTRING"""
+    """A subnet within a Virtual Network, identified by name and address prefix."""
 
     name: str
     prefix: str
 
 class SubnetUtil(BaseModel):
-    """DOCSTRING"""
+    """A subnet with address utilization details (total and used address counts)."""
 
     name: str
     prefix: str
@@ -170,7 +172,7 @@ class SubnetUtil(BaseModel):
     used: int
 
 class NetworkExpand(BaseModel):
-    """DOCSTRING"""
+    """A network resource with expanded details including its prefixes and Azure resource context."""
 
     name: str
     id: str
@@ -180,7 +182,7 @@ class NetworkExpand(BaseModel):
     tenant_id: str
 
 class VNetExpand(BaseModel):
-    """DOCSTRING"""
+    """A Virtual Network with expanded details including its prefixes, subnets, and Azure resource context."""
 
     name: str
     id: str
@@ -191,7 +193,7 @@ class VNetExpand(BaseModel):
     tenant_id: str
 
 class VNetExpandUtil(BaseModel):
-    """DOCSTRING"""
+    """A Virtual Network with expanded details and address utilization (total and used address counts)."""
 
     name: str
     id: str
@@ -204,7 +206,7 @@ class VNetExpandUtil(BaseModel):
     used: int
 
 class Reservation(BaseModel):
-    """DOCSTRING"""
+    """A CIDR reservation within a Block, tracking creation/settlement metadata and status."""
 
     id: str
     cidr: str
@@ -216,7 +218,7 @@ class Reservation(BaseModel):
     status: str
 
 class ReservationExpand(BaseModel):
-    """DOCSTRING"""
+    """A CIDR reservation enriched with its parent space, block, and a derived IPAM reservation ID tag."""
 
     id: str
     space: Optional[str] = None
@@ -240,7 +242,7 @@ class ReservationExpand(BaseModel):
                 return data
 
 class BlockBasic(BaseModel):
-    """DOCSTRING"""
+    """A Block summary containing its CIDR, associated networks, externals, and reservations."""
 
     name: str
     cidr: str
@@ -249,7 +251,7 @@ class BlockBasic(BaseModel):
     resv: List[Reservation]
 
 class BlockBasicUtil(BaseModel):
-    """DOCSTRING"""
+    """A Block summary with address utilization (total and used address counts)."""
 
     name: str
     cidr: str
@@ -260,7 +262,7 @@ class BlockBasicUtil(BaseModel):
     used: int
 
 class Block(BaseModel):
-    """DOCSTRING"""
+    """A network Block within a Space, containing a CIDR, its Virtual Networks, externals, and reservations."""
 
     name: str
     cidr: str
@@ -269,7 +271,7 @@ class Block(BaseModel):
     resv: List[Reservation]
 
 class BlockExpand(BaseModel):
-    """DOCSTRING"""
+    """A Block with its Virtual Networks expanded to full detail."""
 
     name: str
     cidr: str
@@ -278,7 +280,7 @@ class BlockExpand(BaseModel):
     resv: List[Reservation]
 
 class BlockUtil(BaseModel):
-    """DOCSTRING"""
+    """A Block with address utilization (total and used address counts)."""
 
     name: str
     cidr: str
@@ -289,7 +291,7 @@ class BlockUtil(BaseModel):
     used: int
 
 class BlockExpandUtil(BaseModel):
-    """DOCSTRING"""
+    """A Block with expanded Virtual Networks and address utilization."""
 
     name: str
     cidr: str
@@ -300,14 +302,14 @@ class BlockExpandUtil(BaseModel):
     used: int
 
 class SpaceBasic(BaseModel):
-    """DOCSTRING"""
+    """A Space summary containing its description and basic Block information."""
 
     name: str
     desc: str
     blocks: List[BlockBasic]
 
 class SpaceBasicUtil(BaseModel):
-    """DOCSTRING"""
+    """A Space summary with per-Block and aggregate address utilization."""
 
     name: str
     desc: str
@@ -316,21 +318,21 @@ class SpaceBasicUtil(BaseModel):
     used: int
 
 class Space(BaseModel):
-    """DOCSTRING"""
+    """A top-level Space that groups related network Blocks."""
 
     name: str
     desc: str
     blocks: List[Block]
 
 class SpaceExpand(BaseModel):
-    """DOCSTRING"""
+    """A Space with its Blocks and Virtual Networks expanded to full detail."""
 
     name: str
     desc: str
     blocks: List[BlockExpand]
 
 class SpaceUtil(BaseModel):
-    """DOCSTRING"""
+    """A Space with per-Block and aggregate address utilization."""
 
     name: str
     desc: str
@@ -339,7 +341,7 @@ class SpaceUtil(BaseModel):
     used: int
 
 class SpaceExpandUtil(BaseModel):
-    """DOCSTRING"""
+    """A Space with expanded Blocks and aggregate address utilization."""
 
     name: str
     desc: str
@@ -352,19 +354,19 @@ class SpaceExpandUtil(BaseModel):
 ######################
 
 class SpaceReq(BaseModel):
-    """DOCSTRING"""
+    """Request body for creating or updating a Space."""
 
     name: str
     desc: str
 
 class BlockReq(BaseModel):
-    """DOCSTRING"""
+    """Request body for creating a Block with a name and CIDR."""
 
     name: str
     cidr: IPv4Network
 
 class SpaceCIDRReq(BaseModel):
-    """DOCSTRING"""
+    """Request body for finding the next available CIDR of a given size across a Space's Blocks."""
 
     blocks: list
     size: int
@@ -373,7 +375,7 @@ class SpaceCIDRReq(BaseModel):
     smallest_cidr: Optional[bool] = False
 
 class BlockCIDRReq(BaseModel):
-    """DOCSTRING"""
+    """Request body for reserving a CIDR within a Block, either by explicit CIDR or by size."""
 
     size: Optional[int] = None
     cidr: Optional[IPv4Network] = None
@@ -397,7 +399,7 @@ class BlockCIDRReq(BaseModel):
         return data
 
 class ExtNetReq(BaseModel):
-    """DOCSTRING"""
+    """Request body for creating an external network, either by explicit CIDR or by size."""
 
     name: str
     desc: Optional[str] = None
@@ -417,7 +419,7 @@ class ExtNetReq(BaseModel):
         return data
 
 class ExtSubnetReq(BaseModel):
-    """DOCSTRING"""
+    """Request body for creating an external subnet, either by explicit CIDR or by size."""
 
     name: str
     desc: Optional[str] = None
@@ -437,14 +439,14 @@ class ExtSubnetReq(BaseModel):
         return data
 
 class ExtEndpointReq(BaseModel):
-    """DOCSTRING"""
+    """Request body for creating an endpoint within an external subnet."""
 
     name: str
     desc: str
     ip: Union[IPv4Address, None]
 
 class JSONPatch(BaseModel):
-    """DOCSTRING"""
+    """A single JSON Patch (RFC 6902) operation used to update a resource."""
 
     op: str
     path: str
@@ -473,14 +475,14 @@ DeleteResvReq = Annotated[List[str], None]
 ####################
 
 class VNetPeering(BaseModel):
-    """DOCSTRING"""
+    """A peering connection from a Virtual Network to a remote network."""
 
     name: str
     remote_network: str
     state: str
 
 class VWanHub(BaseModel):
-    """DOCSTRING"""
+    """An Azure Virtual WAN hub with its address prefix, parent space/block, and peerings."""
 
     name: str
     id: str
@@ -502,7 +504,7 @@ class VWanHub(BaseModel):
     )
 
 class AzureNetwork(BaseModel):
-    """DOCSTRING"""
+    """An Azure network resource (VNet or vWAN hub) with its prefixes, peerings, and utilization."""
 
     name: str
     id: str
@@ -526,7 +528,7 @@ class AzureNetwork(BaseModel):
 ####################
 
 class Admin(BaseModel):
-    """DOCSTRING"""
+    """An IPAM administrator, either a user (with email) or a service principal."""
 
     type: Literal["User", "Principal"]
     name: str
@@ -569,7 +571,7 @@ class ViewSettings(BaseModel):
     columnState: Optional[List[dict]] = None
 
 class User(BaseModel):
-    """DOCSTRING"""
+    """IPAM user settings such as dark mode, API refresh interval, and admin status."""
 
     id: UUID
     darkMode: bool
@@ -583,7 +585,7 @@ class User(BaseModel):
     )
 
 class UserExpand(BaseModel):
-    """DOCSTRING"""
+    """IPAM user settings expanded to include saved grid view configurations."""
 
     id: UUID
     darkMode: bool
@@ -598,7 +600,7 @@ class UserExpand(BaseModel):
     )
 
 class JSONPatch(BaseModel):
-    """DOCSTRING"""
+    """A single JSON Patch (RFC 6902) operation used to update a resource."""
 
     op: str
     path: str
@@ -611,7 +613,7 @@ UserUpdate = Annotated[List[JSONPatch], None]
 ###################
 
 class VNetCIDRReq(BaseModel):
-    """DOCSTRING"""
+    """Request body for finding the next available CIDR for a new Virtual Network."""
 
     space: str
     blocks: List[str]
@@ -620,7 +622,7 @@ class VNetCIDRReq(BaseModel):
     smallest_cidr: Optional[bool] = False
 
 class SubnetCIDRReq(BaseModel):
-    """DOCSTRING"""
+    """Request body for finding the next available CIDR for a new subnet within a Virtual Network."""
 
     vnet_id: str
     size: int
@@ -628,7 +630,7 @@ class SubnetCIDRReq(BaseModel):
     smallest_cidr: Optional[bool] = False
 
 class NewSubnetCIDR(BaseModel):
-    """DOCSTRING"""
+    """Response describing an available CIDR for a new subnet within a Virtual Network."""
 
     vnet_name: str
     resource_group: str
@@ -636,7 +638,7 @@ class NewSubnetCIDR(BaseModel):
     cidr: str
 
 class NewVNetCIDR(BaseModel):
-    """DOCSTRING"""
+    """Response describing an available CIDR for a new Virtual Network within a Space/Block."""
 
     space: str
     block: str
@@ -647,12 +649,12 @@ class CIDRContainer(BaseModel):
     block: str
 
 class CIDRCheckReq(BaseModel):
-    """DOCSTRING"""
+    """Request body for checking whether a CIDR overlaps existing IPAM-managed networks."""
 
     cidr: IPv4Network
 
 class CIDRCheckRes(BaseModel):
-    """DOCSTRING"""
+    """Result describing an existing network that overlaps the requested CIDR."""
 
     name: str
     id: str
@@ -667,13 +669,13 @@ class CIDRCheckRes(BaseModel):
 #####################
 
 class HealthCheck(BaseModel):
-    """DOCSTRING"""
+    """Result of a single dependency health check."""
 
     ok: bool
     detail: Optional[str] = None
 
 class Health(BaseModel):
-    """DOCSTRING"""
+    """Overall health status with per-dependency check results."""
 
     ok: bool
     checks: Dict[str, HealthCheck]
@@ -683,7 +685,7 @@ class Health(BaseModel):
 #####################
 
 class ImageDetails(BaseModel):
-    """DOCSTRING"""
+    """Details of the container image the engine is running from."""
 
     image_id: str
     image_version: str
@@ -691,7 +693,7 @@ class ImageDetails(BaseModel):
     image_pretty_name: str
 
 class Status(BaseModel):
-    """DOCSTRING"""
+    """Runtime status of the engine including version, stack, environment, and start time."""
 
     status: str
     version: str

@@ -25,7 +25,7 @@ router = APIRouter(
 )
 
 async def multi_helper(func, list, *args):
-    """DOCSTRING"""
+    """Await the given coroutine function and append its result to the shared list (used to gather queries concurrently)."""
 
     results = await func(*args)
     list.append(results)

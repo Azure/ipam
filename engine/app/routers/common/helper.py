@@ -96,14 +96,14 @@ def subnet_fixup(subnet_list):
     return subnet_list
 
 def get_tenant_from_jwt(token):
-    """DOCSTRING"""
+    """Return the tenant ID (``tid`` claim) from an unverified decode of the given JWT."""
 
     decoded = jwt.decode(token, options={"verify_signature": False})
 
     return decoded['tid']
 
 def get_username_from_jwt(token):
-    """DOCSTRING"""
+    """Return the caller's username from a JWT, falling back to ``spn:<oid>`` for service principals."""
 
     decoded = jwt.decode(token, options={"verify_signature": False})
 
@@ -113,14 +113,14 @@ def get_username_from_jwt(token):
         return f"spn:{decoded['oid']}"
 
 def get_user_id_from_jwt(token):
-    """DOCSTRING"""
+    """Return the caller's object ID (``oid`` claim) from an unverified decode of the given JWT."""
 
     decoded = jwt.decode(token, options={"verify_signature": False})
 
     return decoded['oid']
 
 async def get_obo_token(assertion):
-    """DOCSTRING"""
+    """Exchange a user assertion for an on-behalf-of access token scoped to Azure Resource Manager."""
 
     azure_arm_url = 'https://{}/user_impersonation'.format(globals.AZURE_ARM_URL)
 
@@ -136,7 +136,7 @@ async def get_obo_token(assertion):
     return obo_token
 
 async def get_client_credentials():
-    """DOCSTRING"""
+    """Return a client-secret credential for the IPAM service principal (app-only auth)."""
 
     credential = ClientSecretCredential(
         tenant_id=globals.TENANT_ID,
@@ -148,7 +148,7 @@ async def get_client_credentials():
     return credential
 
 async def get_obo_credentials(assertion):
-    """DOCSTRING"""
+    """Return an on-behalf-of credential built from the given user assertion (delegated auth)."""
 
     credential = OnBehalfOfCredential(
         tenant_id=globals.TENANT_ID,
@@ -161,7 +161,7 @@ async def get_obo_credentials(assertion):
     return credential
 
 async def get_mgmt_group_name(tenant_id):
-    """DOCSTRING"""
+    """Fetch the root management group for the given tenant using app-only credentials."""
 
     client_creds = await get_client_credentials()
     mgmt_group_api = ManagementGroupsMgmtClient(client_creds)
@@ -178,7 +178,7 @@ async def get_mgmt_group_name(tenant_id):
 
 # Needs a try/except block for aiohttp.client_exceptions.ServerTimeoutError
 async def cosmos_query(query: str, tenant_id: str):
-    """DOCSTRING"""
+    """Run a Cosmos DB query within the tenant's partition and return all matching items."""
 
     # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
@@ -201,7 +201,7 @@ async def cosmos_query(query: str, tenant_id: str):
     return result_array
 
 async def cosmos_upsert(data):
-    """DOCSTRING"""
+    """Insert or replace a document in the IPAM Cosmos DB container."""
 
     # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
@@ -223,7 +223,7 @@ async def cosmos_upsert(data):
     return res
 
 async def cosmos_replace(old, new):
-    """DOCSTRING"""
+    """Replace an existing Cosmos DB document using optimistic concurrency (ETag match)."""
 
     # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
@@ -250,7 +250,7 @@ async def cosmos_replace(old, new):
     return
 
 async def cosmos_delete(item, tenant_id: str):
-    """DOCSTRING"""
+    """Delete a document from the tenant's partition in the IPAM Cosmos DB container."""
 
     # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
@@ -275,7 +275,7 @@ async def cosmos_delete(item, tenant_id: str):
     return
 
 def cosmos_retry(error_msg, max_retry = 5):
-    """DOCSTRING"""
+    """Decorator that retries a Cosmos DB operation on optimistic-concurrency conflicts, raising HTTP 500 with ``error_msg`` once retries are exhausted."""
 
     def cosmos_retry_decorator(func):
         @wraps(func)
@@ -295,7 +295,7 @@ def cosmos_retry(error_msg, max_retry = 5):
     return cosmos_retry_decorator
 
 async def arg_query(auth, admin, query):
-    """DOCSTRING"""
+    """Run an Azure Resource Graph query (as admin or on-behalf-of the caller), injecting the tenant's subscription exclusions."""
 
     if admin:
         creds = await get_client_credentials()
@@ -330,7 +330,7 @@ async def arg_query(auth, admin, query):
     return results
 
 async def arg_query_client(query):
-    """DOCSTRING"""
+    """Run an Azure Resource Graph query using app-only (client secret) credentials."""
 
     client_creds = await get_client_credentials()
 
@@ -345,7 +345,7 @@ async def arg_query_client(query):
     return results
 
 async def arg_query_obo(auth, query):
-    """DOCSTRING"""
+    """Run an Azure Resource Graph query on-behalf-of the caller using their bearer token."""
 
     user_assertion=auth.split(' ')[1]
 
@@ -362,7 +362,7 @@ async def arg_query_obo(auth, query):
     return results
 
 async def arg_query_helper(credentials, query):
-    """DOCSTRING"""
+    """Execute an Azure Resource Graph query with the given credentials, paging through all results via skip tokens."""
 
     results = []
 
