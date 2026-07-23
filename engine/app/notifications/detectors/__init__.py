@@ -6,12 +6,13 @@ returns a list of ``Notification``. To add a notification, add a module here and
 register its ``detect`` in ``DETECTORS`` below.
 """
 
-from app.notifications.detectors import registry, update
+from app.notifications.detectors import platform, registry, update
 
 # Ordered list of local detectors. A future remote provider aggregates into the
 # same pipeline (see app.notifications.get_notifications).
 DETECTORS = [
     registry.detect,
+    platform.detect,
     update.detect,
 ]
 
