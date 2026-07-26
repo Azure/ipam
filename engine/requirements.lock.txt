@@ -19,7 +19,7 @@ azure-mgmt-datafactory==9.2.0
 azure-mgmt-managementgroups==1.0.0
 azure-mgmt-network==29.0.0
 azure-mgmt-resource==25.0.0
-azure-mgmt-resource-subscriptions==1.1.0
+azure-mgmt-resource-subscriptions==1.0.0
 azure-mgmt-resourcegraph==8.0.0
 certifi==2025.8.3
 cffi==2.0.0
