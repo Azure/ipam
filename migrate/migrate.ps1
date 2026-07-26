@@ -83,6 +83,13 @@ $DebugPreference = 'SilentlyContinue'
 $DEBUG_MODE = [bool]$PSCmdlet.MyInvocation.BoundParameters["Debug"].IsPresent
 $debugSetting = $DEBUG_MODE ? 'Continue' : 'SilentlyContinue'
 
+# Hide Azure PowerShell SDK Warnings
+$Env:SuppressAzurePowerShellBreakingChangeWarnings = $true
+
+# Hide Azure PowerShell SDK & Azure CLI Survey Prompts
+$Env:AzSurveyMessage = $false
+$Env:AZURE_CORE_SURVEY_MESSAGE = $false
+
 # Set Log File Location
 $logPath = Join-Path -Path $ROOT_DIR -ChildPath "logs"
 New-Item -ItemType Directory -Path $logpath -Force | Out-Null
@@ -212,9 +219,9 @@ function Restart-IpamApp {
   $restartRetries = 5
   $restartSuccess = $False
 
-  Write-Host "🔄 Restarting application..." -ForegroundColor Cyan
-
   do {
+    Write-Host "🔄 Restarting application..." -ForegroundColor Cyan -NoNewline
+
     try {
       if ($Function) {
         Restart-AzFunctionApp `
@@ -238,13 +245,13 @@ function Restart-IpamApp {
       }
 
       $restartSuccess = $True
-      Write-Host "  ✅ Application restarted successfully" -ForegroundColor Green
+      Write-Host " ✅ Success" -ForegroundColor Green
     } catch {
       if($restartRetries -gt 0) {
-        Write-Host "  ⚠️ Restart failed, retrying..." -ForegroundColor Yellow
+        Write-Host " ⚠️ Restart failed, retrying..." -ForegroundColor Yellow
         $restartRetries--
       } else {
-        Write-Host "  ❌ Unable to restart application!" -ForegroundColor Red
+        Write-Host " ❌ Unable to restart application!" -ForegroundColor Red
         throw $_
       }
     }
@@ -745,13 +752,24 @@ function Get-WebAppDetail {
   # Azure IPAM registry, or a private ACR co-located in the App Service's resource group.
   Write-Host "🔍 Discovering Container Registry configuration..." -ForegroundColor Cyan -NoNewline
   $containerRegistryResourceId = $null
+
+  # A non-Compose deployment isn't an error — this script only migrates legacy Docker Compose
+  # deployments. Explain calmly and point the user to update.ps1 instead of throwing.
+  $linuxFxVersion = $webApp.SiteConfig.LinuxFxVersion
+  if ([string]::IsNullOrWhiteSpace($linuxFxVersion) -or -not $linuxFxVersion.StartsWith("COMPOSE|")) {
+    Write-Host " ℹ️ Skipped" -ForegroundColor Cyan
+
+    Write-Section -Title "Migration Not Required"
+    Write-Host "WebApp '$AppName' is not a Docker Compose deployment. This script only migrates legacy" -ForegroundColor Yellow
+    Write-Host "Docker Compose deployments to the modern single-container model." -ForegroundColor Yellow
+    Write-Host
+    Write-Host "If this app is already a single-container deployment, use update.ps1 instead:" -ForegroundColor Yellow
+    Write-Host "  https://azure.github.io/ipam/#/update/README" -ForegroundColor Cyan
+    Write-Host
+    exit
+  }
+
   try {
-    $linuxFxVersion = $webApp.SiteConfig.LinuxFxVersion
-
-    if ([string]::IsNullOrWhiteSpace($linuxFxVersion) -or -not $linuxFxVersion.StartsWith("COMPOSE|")) {
-      throw [System.InvalidOperationException]::new("WebApp '$AppName' is not a Docker Compose deployment. This script migrates legacy Docker Compose deployments to the modern single-container model; if this app is already a single-container deployment, use update.ps1 instead.")
-    }
-
     $registryHost = Get-RegistryHost -LinuxFxVersion $linuxFxVersion
     if ([string]::IsNullOrWhiteSpace($registryHost)) {
       throw [System.InvalidOperationException]::new("Unable to determine the container registry from the Docker Compose configuration for WebApp '$AppName'.")

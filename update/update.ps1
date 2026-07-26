@@ -278,9 +278,9 @@ function Restart-IpamApp {
   $restartRetries = 5
   $restartSuccess = $False
 
-  Write-Host "🔄 Restarting application..." -ForegroundColor Cyan
-
   do {
+    Write-Host "🔄 Restarting application..." -ForegroundColor Cyan -NoNewline
+
     try {
       if ($Function) {
         Restart-AzFunctionApp `
@@ -304,13 +304,13 @@ function Restart-IpamApp {
       }
 
       $restartSuccess = $True
-      Write-Host "  ✅ Application restarted successfully" -ForegroundColor Green
+      Write-Host " ✅ Success" -ForegroundColor Green
     } catch {
       if($restartRetries -gt 0) {
-        Write-Host "  ⚠️ Restart failed, retrying..." -ForegroundColor Yellow
+        Write-Host " ⚠️ Restart failed, retrying..." -ForegroundColor Yellow
         $restartRetries--
       } else {
-        Write-Host "  ❌ Unable to restart application!" -ForegroundColor Red
+        Write-Host " ❌ Unable to restart application!" -ForegroundColor Red
         throw $_
       }
     }
@@ -450,6 +450,94 @@ function Get-LatestReleaseVersion {
     $release = Invoke-RestMethod -Method GET -Uri "https://api.github.com/repos/$GitHubUserName/$GitHubRepoName/releases/latest" -ErrorAction Stop
     return $release.tag_name
   } catch {
+    return $null
+  }
+}
+
+function Get-RegistryImageVersion {
+  # Reads the 'org.opencontainers.image.version' OCI label from a remote image WITHOUT
+  # pulling it, using the Docker Registry v2 HTTP API (compatible with ACR anonymous pull).
+  # Returns the version string, or $null if it can't be determined (e.g. pre-OCI images,
+  # anonymous pull disabled, or any transport error) so callers can fall back safely.
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Registry,
+    [Parameter(Mandatory = $true)]
+    [string]$Repository,
+    [Parameter(Mandatory = $false)]
+    [string]$Tag = 'latest'
+  )
+
+  $acceptTypes = @(
+    'application/vnd.oci.image.index.v1+json',
+    'application/vnd.oci.image.manifest.v1+json',
+    'application/vnd.docker.distribution.manifest.list.v2+json',
+    'application/vnd.docker.distribution.manifest.v2+json'
+  ) -join ', '
+
+  try {
+    $baseUri = "https://$Registry"
+
+    # Obtain an anonymous pull token. If /v2/ is open we proceed without one; otherwise we
+    # parse the Bearer challenge (realm + service) and request a repository:pull token.
+    $token = $null
+    try {
+      Invoke-WebRequest -Uri "$baseUri/v2/" -Method Get -UseBasicParsing -ErrorAction Stop | Out-Null
+    } catch {
+      $response = $_.Exception.Response
+
+      if ($null -ne $response -and [int]$response.StatusCode -eq 401) {
+        $bearer = $response.Headers.WwwAuthenticate | Where-Object { $_.Scheme -eq 'Bearer' } | Select-Object -First 1
+
+        if ($bearer -and $bearer.Parameter -match 'realm="([^"]+)"') {
+          $realm = $Matches[1]
+          $service = if ($bearer.Parameter -match 'service="([^"]+)"') { $Matches[1] } else { $Registry }
+          $scope = "repository:${Repository}:pull"
+          $tokenUri = "${realm}?service=$([uri]::EscapeDataString($service))&scope=$([uri]::EscapeDataString($scope))"
+
+          $tokenResp = Invoke-RestMethod -Uri $tokenUri -Method Get -ErrorAction Stop
+          $token = if ($tokenResp.access_token) { $tokenResp.access_token } else { $tokenResp.token }
+        }
+      } else {
+        throw
+      }
+    }
+
+    $headers = @{ Accept = $acceptTypes }
+    if ($token) { $headers['Authorization'] = "Bearer $token" }
+
+    # Fetch the manifest; if it's a multi-arch index, descend into a linux/amd64 manifest.
+    $manifest = Invoke-RestMethod -Uri "$baseUri/v2/$Repository/manifests/$Tag" -Headers $headers -Method Get -ErrorAction Stop
+    if ($manifest -is [string]) { $manifest = $manifest | ConvertFrom-Json }
+
+    if ($manifest.manifests) {
+      $child = $manifest.manifests |
+        Where-Object { $_.platform.os -eq 'linux' -and $_.platform.architecture -eq 'amd64' } |
+        Select-Object -First 1
+      if (-not $child) {
+        $child = $manifest.manifests | Where-Object { $_.platform.architecture -ne 'unknown' } | Select-Object -First 1
+      }
+      if (-not $child) { $child = $manifest.manifests[0] }
+
+      $manifest = Invoke-RestMethod -Uri "$baseUri/v2/$Repository/manifests/$($child.digest)" -Headers $headers -Method Get -ErrorAction Stop
+      if ($manifest -is [string]) { $manifest = $manifest | ConvertFrom-Json }
+    }
+
+    $configDigest = $manifest.config.digest
+    if (-not $configDigest) { return $null }
+
+    $configHeaders = @{}
+    if ($token) { $configHeaders['Authorization'] = "Bearer $token" }
+
+    $config = Invoke-RestMethod -Uri "$baseUri/v2/$Repository/blobs/$configDigest" -Headers $configHeaders -Method Get -ErrorAction Stop
+    if ($config -is [string]) { $config = $config | ConvertFrom-Json }
+
+    $version = $config.config.Labels.'org.opencontainers.image.version'
+    if ([string]::IsNullOrWhiteSpace($version)) { return $null }
+
+    return $version
+  } catch {
+    Write-LogFile -Message "Unable to read OCI version label from ${Registry}/${Repository}:${Tag} - $($_.Exception.Message)" -Level "WARNING"
     return $null
   }
 }
@@ -908,14 +996,60 @@ try {
         Write-Host "$appAcr" -ForegroundColor White -NoNewline
         Write-Host ") to " -ForegroundColor Cyan -NoNewline
         Write-Host "$currentPublicAcr" -ForegroundColor White -NoNewline
-        Write-Host "..." -ForegroundColor Cyan
+        Write-Host "..." -ForegroundColor Cyan -NoNewline
 
         $existingApp.SiteConfig.LinuxFxVersion = $existingApp.SiteConfig.LinuxFxVersion.Replace($appAcr, $currentPublicAcr)
         $existingApp | Set-AzWebApp | Out-Null
 
-        Write-Host "  ✅ Image reference migrated" -ForegroundColor Green
+        Write-Host " ✅ Migrated" -ForegroundColor Green
 
-        Start-Sleep -Seconds 10
+        # Updating LinuxFxVersion already recycles the App Service and pulls the image from
+        # the new registry, so no explicit restart is needed here.
+        Write-Section -Title "Azure IPAM Update Complete"
+        Write-Host "✅ Azure IPAM registry updated; the App Service is restarting to pull the latest image" -ForegroundColor Green
+        Write-Host "ℹ️ Please allow a few minutes for the container to restart and load the updated image" -ForegroundColor Cyan
+        Write-Host
+        exit
+      }
+
+      # Determine whether a restart is required. With -Force, restart unconditionally to pull
+      # the latest image. Otherwise compare the running version against the OCI version label
+      # on the public image and skip the restart when already current. If the label can't be
+      # read (older, pre-OCI images), fall back to restarting to pull the latest image.
+      $restartNeeded = $true
+      $latestVersion = $null
+
+      if (-not $Force) {
+        Write-Host "🔍 Comparing the running version with the public registry..." -ForegroundColor Cyan -NoNewline
+
+        # Parse repo:tag from the image reference so we handle both the app (ipam) and
+        # function (ipamfunc) images.
+        $imageRef = $existingApp.SiteConfig.LinuxFxVersion.Split('|')[1]
+        $repoAndTag = $imageRef.Substring($imageRef.IndexOf('/') + 1)
+        $imageRepository = $repoAndTag.Split(':')[0]
+        $imageTag = ($repoAndTag -split ':', 2)[1]
+        if ([string]::IsNullOrWhiteSpace($imageTag)) { $imageTag = 'latest' }
+
+        $runningVersion = Get-RunningVersion -ExistingApp $existingApp
+        $latestVersion = Get-RegistryImageVersion -Registry $currentPublicAcr -Repository $imageRepository -Tag $imageTag
+
+        if ($runningVersion -and $latestVersion -and ($runningVersion -eq $latestVersion)) {
+          Write-Host " ✅ Up to date (v$latestVersion)" -ForegroundColor Green
+          $restartNeeded = $false
+        }
+        elseif ($runningVersion -and $latestVersion) {
+          Write-Host " ⚠️ Update available (v$runningVersion -> v$latestVersion)" -ForegroundColor Yellow
+        }
+        else {
+          Write-Host " ℹ️ Unknown" -ForegroundColor Cyan
+        }
+      }
+
+      if (-not $restartNeeded) {
+        Write-Section -Title "Azure IPAM Update Complete"
+        Write-Host "✅ Azure IPAM is already running the latest version (v$latestVersion)" -ForegroundColor Green
+        Write-Host
+        exit
       }
 
       Write-Host "ℹ️ Deployment is using the Azure IPAM public ACR; restarting to pull the latest image" -ForegroundColor Cyan
@@ -934,6 +1068,35 @@ try {
       Write-Host "🔍 Private ACR detected: " -ForegroundColor Cyan -NoNewline
       Write-Host "$acrName" -ForegroundColor White
 
+      # Target version comes from the repo (this is what we would build and push).
+      # Compare it against the running version first so we can short-circuit before
+      # doing any ACR/CLI/context verification when no update is required (unless -Force).
+      # Both /api/status and version.json report bare versions (e.g. 3.6.0), so no normalization is needed.
+      $engineVersionFile = Join-Path -Path $ROOT_DIR -ChildPath 'engine' -AdditionalChildPath 'app', 'version.json'
+      $ipamVersion = $(Get-Content -Path $engineVersionFile | ConvertFrom-Json).app
+
+      if (-not $Force) {
+        Write-Host "🔍 Comparing the running version with the repository..." -ForegroundColor Cyan -NoNewline
+
+        $runningVersion = Get-RunningVersion -ExistingApp $existingApp
+
+        if ($runningVersion -and ($runningVersion -eq $ipamVersion)) {
+          Write-Host " ✅ Up to date (v$ipamVersion)" -ForegroundColor Green
+
+          Write-Section -Title "Azure IPAM Update Complete"
+          Write-Host "✅ Azure IPAM is already running the latest version (v$ipamVersion)" -ForegroundColor Green
+          Write-Host
+          exit
+        }
+        elseif ($runningVersion) {
+          Write-Host " ⚠️ Update available (v$runningVersion -> v$ipamVersion)" -ForegroundColor Yellow
+        }
+        else {
+          Write-Host " ℹ️ Unable to determine; proceeding with build" -ForegroundColor Cyan
+        }
+      }
+
+      # An update is required (or was forced); verify the ACR and tooling prerequisites.
       Write-Host "🔍 Looking for the ACR in Resource Group '$ResourceGroupName'..." -ForegroundColor Cyan -NoNewline
       $acrDetails = Get-AzContainerRegistry `
         -Name $acrName `
@@ -1055,32 +1218,9 @@ try {
   if ($isContainer) {
     Write-Section -Title "Building Container Image"
 
-    # Version used to tag the image (mirrors the CI convention: <version> + latest)
-    $engineVersionFile = Join-Path -Path $ROOT_DIR -ChildPath 'engine' -AdditionalChildPath 'app', 'version.json'
-    $ipamVersion = $(Get-Content -Path $engineVersionFile | ConvertFrom-Json).app
-
-    # Skip the image build when the running version already matches the repository (unless -Force).
-    # Both /api/status and version.json report bare versions (e.g. 3.6.0), so no normalization is needed.
-    if (-not $Force) {
-      Write-Host "🔍 Comparing the running version with the repository..." -ForegroundColor Cyan -NoNewline
-
-      $runningVersion = Get-RunningVersion -ExistingApp $existingApp
-
-      if ($runningVersion -and ($runningVersion -eq $ipamVersion)) {
-        Write-Host " ✅ Up to date (v$ipamVersion)" -ForegroundColor Green
-
-        Write-Section -Title "Azure IPAM Update Complete"
-        Write-Host "✅ Azure IPAM is already running the latest version (v$ipamVersion)" -ForegroundColor Green
-        Write-Host
-        exit
-      }
-      elseif ($runningVersion) {
-        Write-Host " ⚠️ Update available (v$runningVersion -> v$ipamVersion)" -ForegroundColor Yellow
-      }
-      else {
-        Write-Host " ℹ️ Unable to determine; proceeding with build" -ForegroundColor Cyan
-      }
-    }
+    # $ipamVersion was resolved from the repo during the private ACR checks above and
+    # is used below to tag the image (mirrors the CI convention: <version> + latest).
+    # The running-vs-repo comparison and up-to-date short-circuit already happened there.
 
     if (-not $isFunction) {
       Write-Host "🔍 Detecting container distro..." -ForegroundColor Cyan -NoNewline
@@ -1130,7 +1270,7 @@ try {
     if ([string]::IsNullOrWhiteSpace($azureCloud)) { $azureCloud = 'AZURE_PUBLIC' }
 
     if($isFunction) {
-      Write-Host "🚀 Building and pushing Function container image..." -ForegroundColor Cyan
+      Write-Host "🚀 Building and pushing Function container image..." -ForegroundColor Cyan -NoNewline
 
       $funcBuildOutput = $(
         az acr build -r $acrName `
@@ -1142,29 +1282,44 @@ try {
       ) *>&1
 
       if ($LASTEXITCODE -ne 0) {
-        Write-Host "  ❌ Container build failed, fetching error logs..." -ForegroundColor Red
+        Write-Host " ❌ Failed" -ForegroundColor Red
 
         $buildId = [regex]::Matches($funcBuildOutput, "(?<=Queued a build with ID: )[\w]*").Value.Trim()
 
-        $buildLogs = Get-BuildLog `
-          -SubscriptionId (Get-AzContext).Subscription.Id `
-          -ResourceGroupName $ResourceGroupName `
-          -RegistryName $acrName `
-          -BuildId $buildId `
-          -AzureCloud $azureCloud
+        if ($buildId) {
+          Write-Host "📋 Fetching build logs for ID: $buildId..." -ForegroundColor Cyan -NoNewline
 
-        Write-LogFile -Message "Container build logs:`n$($buildLogs | Out-String)" -Level "ERROR"
+          try {
+            $buildLogs = Get-BuildLog `
+              -SubscriptionId (Get-AzContext).Subscription.Id `
+              -ResourceGroupName $ResourceGroupName `
+              -RegistryName $acrName `
+              -BuildId $buildId `
+              -AzureCloud $azureCloud
+
+            Write-Host " ✅ Success" -ForegroundColor Green
+            Write-LogFile -Message "Container build logs:`n$($buildLogs | Out-String)" -Level "ERROR"
+          }
+          catch {
+            Write-Host " ❌ Failed" -ForegroundColor Red
+            Write-Host "⚠️ Failed to retrieve build logs: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-LogFile -Message "Failed to retrieve build logs: $($_.Exception.Message)" -Level "ERROR" -ErrorRecord $_
+          }
+        }
+        else {
+          Write-LogFile -Message "No build ID found in ACR build output" -Level "ERROR"
+        }
 
         $script:containerBuildError = $true
       } else {
-        Write-Host "  ✅ Function container image built and pushed" -ForegroundColor Green
+        Write-Host " ✅ Success" -ForegroundColor Green
       }
 
       Restart-IpamApp -AppName $AppName -ResourceGroupName $ResourceGroupName -Function
     } else {
       Write-Host "🚀 Building and pushing App container image (" -ForegroundColor Cyan -NoNewline
       Write-Host "$containerType" -ForegroundColor White -NoNewline
-      Write-Host ")..." -ForegroundColor Cyan
+      Write-Host ")..." -ForegroundColor Cyan -NoNewline
 
       $appBuildOutput = $(
         az acr build -r $acrName `
@@ -1179,22 +1334,37 @@ try {
       ) *>&1
 
       if ($LASTEXITCODE -ne 0) {
-        Write-Host "  ❌ Container build failed, fetching error logs..." -ForegroundColor Red
+        Write-Host " ❌ Failed" -ForegroundColor Red
 
         $buildId = [regex]::Matches($appBuildOutput, "(?<=Queued a build with ID: )[\w]*").Value.Trim()
 
-        $buildLogs = Get-BuildLog `
-          -SubscriptionId (Get-AzContext).Subscription.Id `
-          -ResourceGroupName $ResourceGroupName `
-          -RegistryName $acrName `
-          -BuildId $buildId `
-          -AzureCloud $azureCloud
+        if ($buildId) {
+          Write-Host "📋 Fetching build logs for ID: $buildId..." -ForegroundColor Cyan -NoNewline
 
-        Write-LogFile -Message "Container build logs:`n$($buildLogs | Out-String)" -Level "ERROR"
+          try {
+            $buildLogs = Get-BuildLog `
+              -SubscriptionId (Get-AzContext).Subscription.Id `
+              -ResourceGroupName $ResourceGroupName `
+              -RegistryName $acrName `
+              -BuildId $buildId `
+              -AzureCloud $azureCloud
+
+            Write-Host " ✅ Success" -ForegroundColor Green
+            Write-LogFile -Message "Container build logs:`n$($buildLogs | Out-String)" -Level "ERROR"
+          }
+          catch {
+            Write-Host " ❌ Failed" -ForegroundColor Red
+            Write-Host "⚠️ Failed to retrieve build logs: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-LogFile -Message "Failed to retrieve build logs: $($_.Exception.Message)" -Level "ERROR" -ErrorRecord $_
+          }
+        }
+        else {
+          Write-LogFile -Message "No build ID found in ACR build output" -Level "ERROR"
+        }
 
         $script:containerBuildError = $true
       } else {
-        Write-Host "  ✅ App container image built and pushed" -ForegroundColor Green
+        Write-Host " ✅ Success" -ForegroundColor Green
       }
 
       Restart-IpamApp -AppName $AppName -ResourceGroupName $ResourceGroupName
