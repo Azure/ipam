@@ -78,7 +78,7 @@ async def detect():
                 severity="critical",
                 audience="all",
                 category="Deployment",
-                title="Action required: Azure IPAM container registry has moved",
+                title="Azure IPAM container registry has moved",
                 message=(
                     "This deployment still pulls container images from the legacy "
                     "registry ({legacy}). Migrate to the current official registry "
