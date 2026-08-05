@@ -1,11 +1,11 @@
+import asyncio
 import copy
 import json
 
+import aiohttp
 import jwt
 from cryptography.hazmat.primitives import serialization
 from fastapi import HTTPException, Request
-from requests import Session, adapters
-from urllib3.util.retry import Retry
 
 from app.globals import globals
 from app.logs.logs import ipam_logger as logger
@@ -134,26 +134,31 @@ from app.routers.common.helper import cosmos_query
 
 _session = None
 
+_JWKS_MAX_ATTEMPTS = 5
+_JWKS_RETRY_STATUSES = (500, 502, 503, 504)
+
 async def fetch_jwks_keys():
     global _session
 
-    if _session is None:
-        _session = Session()
-
-        retries = Retry(
-            total=5,
-            backoff_factor=0.1,
-            status_forcelist=[ 500, 502, 503, 504 ]
-        )
-
-        _session.mount('https://', adapters.HTTPAdapter(max_retries=retries))
-        _session.mount('http://', adapters.HTTPAdapter(max_retries=retries))
+    # aiohttp verifies against the OS trust store, so sovereign cloud roots injected
+    # by WEBSITES_INCLUDE_CLOUD_CERTS are honored. `requests` uses the bundled certifi
+    # roots instead and cannot validate those endpoints.
+    if _session is None or _session.closed:
+        _session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15))
 
     key_url = "https://" + globals.AUTHORITY_HOST + "/" + globals.TENANT_ID + "/discovery/v2.0/keys"
 
-    jwks = _session.get(key_url).json()
+    for attempt in range(_JWKS_MAX_ATTEMPTS):
+        final_attempt = attempt == _JWKS_MAX_ATTEMPTS - 1
 
-    return jwks
+        async with _session.get(key_url) as resp:
+            if final_attempt or resp.status not in _JWKS_RETRY_STATUSES:
+                resp.raise_for_status()
+
+                # Sovereign clouds may label the response 'application/jwk-set+json'
+                return await resp.json(content_type=None)
+
+        await asyncio.sleep(0.1 * (2 ** attempt))
 
 async def get_token_auth_header(request: Request):
     auth = request.headers.get("Authorization", None)

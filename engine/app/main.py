@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlparse
 
-import requests
+import aiohttp
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from azure.cosmos import PartitionKey
 from azure.cosmos.aio import CosmosClient
@@ -152,7 +152,10 @@ async def ipam_init():
     # Only the production slot phones home; a staging slot stays inert.
     if globals.IS_PRODUCTION_SLOT:
         try:
-            requests.post(url = "https://metrics.azureipam.com/api/heartbeat", json = hb_message, timeout = 15)
+            timeout = aiohttp.ClientTimeout(total = 15)
+
+            async with aiohttp.ClientSession(timeout = timeout) as session:
+                await session.post(url = "https://metrics.azureipam.com/api/heartbeat", json = hb_message)
         except Exception:
             pass
 

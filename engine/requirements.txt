@@ -2,7 +2,6 @@ fastapi[all]
 pydantic[email]
 pyjwt
 cryptography
-requests
 netaddr
 shortuuid
 aiohttp
