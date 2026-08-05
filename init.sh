@@ -2,8 +2,9 @@
 PORT=$1
 
 if [ "${WEBSITE_RUN_FROM_PACKAGE:-}" = "1" ]; then
-  export PATH=$PATH:$APP_PATH/packages
-  export PYTHONPATH=$PYTHONPATH:$APP_PATH/packages
+  # ZIP mounts read-only with no venv, so point Python at the bundled packages
+  APP_ROOT="$(cd "$(dirname "$0")" && pwd)"
+  export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}$APP_ROOT/packages"
 fi
 
 # Pull Environment Variables from Parent Shell
