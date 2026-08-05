@@ -42,11 +42,16 @@ jobs:
         with:
           node-version: 22
 
+      # Must match the App Service runtime declared in engine/app/version.json
+      - name: Read Python Version
+        id: pythonVersion
+        run: echo "version=$(jq -r .python engine/app/version.json)" >> "$GITHUB_OUTPUT"
+
       - name: Setup Python
         id: setupPython
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: ${{ steps.pythonVersion.outputs.version }}
 
       - name: Lint Azure IPAM UI (ESLint)
         id: lintUI

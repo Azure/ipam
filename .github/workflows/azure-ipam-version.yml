@@ -41,12 +41,6 @@ jobs:
         with:
           node-version: 22
 
-      - name: "Setup Python v3.11"
-        id: setupPython
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-
       - name: "Extract Pull Request Details"
         id: getPullRequestData
         uses: actions/github-script@v9
@@ -72,6 +66,18 @@ jobs:
         uses: actions/checkout@v6
         with:
           token: ${{ steps.appToken.outputs.token }}
+
+      # requirements.lock.txt is resolved against this interpreter, so it must
+      # match the App Service runtime declared in engine/app/version.json
+      - name: "Read Python Version"
+        id: pythonVersion
+        run: echo "version=$(jq -r .python engine/app/version.json)" >> "$GITHUB_OUTPUT"
+
+      - name: "Setup Python"
+        id: setupPython
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ steps.pythonVersion.outputs.version }}
 
       - name: Configure Git
         id: configureGit
