@@ -8,9 +8,9 @@
 #Requires -Version 7.2
 
 # Intake and set global parameters
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPositionalParameters', '', Justification = 'npm is an external executable; its arguments are not PowerShell positional parameters.')]
 param(
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $true)]
+  [Parameter(Mandatory = $true)]
   [ValidateScript({
     if (Test-Path -LiteralPath $_ -PathType Container) {
       return $true
@@ -23,8 +23,7 @@ param(
   [string]
   $Path,
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false)]
+  [Parameter(Mandatory = $false)]
   [ValidateScript({
     if ($_.IndexOfAny([System.IO.Path]::GetInvalidFileNameChars()) -eq -1) {
       return $true
@@ -35,8 +34,7 @@ param(
   $FileName = 'ipam.zip',
 
   # Use this to use "npm install" instead of "npm ci" and direct pip to install "requirements.txt" instead of "requirements.lock.txt"
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false)]
+  [Parameter(Mandatory = $false)]
   [switch]
   $ManifestOnly
 )
@@ -79,8 +77,8 @@ $ErrorActionPreference = "Stop"
 $logPath = Join-Path -Path $ROOT_DIR -ChildPath "logs"
 New-Item -ItemType Directory -Path $logpath -Force | Out-Null
 
-$errorLog = Join-Path -Path $logPath -ChildPath "error_$(get-date -format `"yyyyMMddhhmmsstt`").log"
-$transcriptLog = Join-Path -Path $logPath -ChildPath "build_$(get-date -format `"yyyyMMddhhmmsstt`").log"
+$errorLog = Join-Path -Path $logPath -ChildPath "error_$(Get-Date -Format `"yyyyMMddhhmmsstt`").log"
+$transcriptLog = Join-Path -Path $logPath -ChildPath "build_$(Get-Date -Format `"yyyyMMddhhmmsstt`").log"
 
 Start-Transcript -Path $transcriptLog | Out-Null
 
@@ -103,7 +101,7 @@ try {
   } catch {
     Write-Host "ERROR: NodeJS not detected!" -ForegroundColor red
     Write-Host "ERROR: NodeJS is required to build the Azure IPAM code package!" -ForegroundColor red
-    exit
+    exit 1
   }
 
   # Extract NodeJs and NPM versions and exit if either is not detected
@@ -115,7 +113,7 @@ try {
   } else {
     Write-Host "ERROR: NodeJS not detected!" -ForegroundColor red
     Write-Host "ERROR: NodeJS is required to build the Azure IPAM code package!" -ForegroundColor red
-    exit
+    exit 1
   }
 
   # Check for required NodeJS version
@@ -134,7 +132,7 @@ try {
 
   # Exit if NodeJS or NPM versions do not meet the minimum version requirements
   if(($nodeVersion -lt $MIN_NODE_VERSION) -or ($npmVersion -lt $MIN_NPM_VERSION)) {
-    exit
+    exit 1
   }
 
   Write-Host "INFO: Verifying Python is present and has the correct version" -ForegroundColor Green
@@ -149,7 +147,7 @@ try {
     Write-Host "ERROR: Python " -ForegroundColor red -NoNewline
     Write-Host "v$PYTHON_VERSION" -ForegroundColor cyan -NoNewline
     Write-Host " and PIP are required to build the Azure IPAM code package!" -ForegroundColor red
-    exit
+    exit 1
   }
 
   # Extract Python version and exit if it doesn't match required version
@@ -161,14 +159,14 @@ try {
       Write-Host "ERROR: Python " -ForegroundColor red -NoNewline
       Write-Host "v$PYTHON_VERSION" -ForegroundColor cyan -NoNewline
       Write-Host " and PIP are required to build the Azure IPAM code package!" -ForegroundColor red
-      exit
+      exit 1
     }
   } else {
     Write-Host "ERROR: Python PIP not detected!" -ForegroundColor red
     Write-Host "ERROR: Python " -ForegroundColor red -NoNewline
     Write-Host "v$PYTHON_VERSION" -ForegroundColor cyan -NoNewline
     Write-Host " and PIP are required to build the Azure IPAM code package!" -ForegroundColor red
-    exit
+    exit 1
   }
 
   # Check for required Python version
@@ -178,7 +176,7 @@ try {
     Write-Host "! Python " -ForegroundColor red -NoNewline
     Write-Host "v$pythonVersion" -ForegroundColor cyan -NoNewline
     Write-Host " detected." -ForegroundColor red
-    exit
+    exit 1
   }
 
   Write-Host "INFO: Building application creating ZIP Deploy package" -ForegroundColor Green
@@ -339,33 +337,28 @@ try {
 
   Write-Host "INFO: Verified $($nativeModules.Count) native module(s) against $PYTHON_ABI and glibc <= $MAX_GLIBC_VERSION" -ForegroundColor Green
 
-  # Create the Azure IPAM ZIP Deploy archive if NPM Build and PIP install were successful
-  if((-not $npmBuildErr) -and (-not $pipInstallErr)) {
-    $FilePath = Join-Path -Path $Path -ChildPath $FileName
+  # Create the Azure IPAM ZIP Deploy archive
+  $FilePath = Join-Path -Path $Path -ChildPath $FileName
 
-    Write-Host "INFO: Collecting asset files..." -ForegroundColor Green
+  Write-Host "INFO: Collecting asset files..." -ForegroundColor Green
 
-    Copy-Item -Path ..\engine\app -Destination $tempFolder -Recurse
-    Copy-Item -Path ..\engine\host.json -Destination $tempFolder
-    Copy-Item -Path ..\engine\function_app.py -Destination $tempFolder
-    Copy-Item -Path ..\ui\dist -Destination $tempFolder -Recurse
-    Copy-Item -Path ..\init.sh -Destination $tempFolder
+  Copy-Item -Path ..\engine\app -Destination $tempFolder -Recurse
+  Copy-Item -Path ..\engine\host.json -Destination $tempFolder
+  Copy-Item -Path ..\engine\function_app.py -Destination $tempFolder
+  Copy-Item -Path ..\ui\dist -Destination $tempFolder -Recurse
+  Copy-Item -Path ..\init.sh -Destination $tempFolder
 
-    if ($ManifestOnly) {
-      Copy-Item -Path ..\engine\requirements.txt -Destination $tempFolder
-    } else {
-      Copy-Item -Path ..\engine\requirements.lock.txt -Destination (Join-Path -Path $tempFolder -ChildPath "requirements.txt")
-    }
-
-    Get-ChildItem -Path (Join-Path -Path $tempFolder -ChildPath "app") -Filter "__pycache__" -Recurse | Remove-Item -Recurse
-
-    Write-Host "INFO: Creating ZIP Deploy archive..." -ForegroundColor Green
-
-    Compress-Archive -Path (Join-Path -Path $tempFolder -ChildPath *) -DestinationPath $FilePath -Force
+  if ($ManifestOnly) {
+    Copy-Item -Path ..\engine\requirements.txt -Destination $tempFolder
   } else {
-    Write-Host "ERROR: Cannot create ZIP Deploy archive!" -ForegroundColor red
-    exit
+    Copy-Item -Path ..\engine\requirements.lock.txt -Destination (Join-Path -Path $tempFolder -ChildPath "requirements.txt")
   }
+
+  Get-ChildItem -Path (Join-Path -Path $tempFolder -ChildPath "app") -Filter "__pycache__" -Recurse | Remove-Item -Recurse
+
+  Write-Host "INFO: Creating ZIP Deploy archive..." -ForegroundColor Green
+
+  Compress-Archive -Path (Join-Path -Path $tempFolder -ChildPath *) -DestinationPath $FilePath -Force
 
   Write-Host "INFO: Cleaning up temporary files..." -ForegroundColor Green
 
@@ -382,7 +375,7 @@ try {
 catch {
   $_ | Out-File -FilePath $errorLog -Append
   Write-Host "ERROR: Unable to build Azure IPAM Zip assets due to an exception, see log for detailed information!" -ForegroundColor red
-  Write-Host "Build Log: $buildLog" -ForegroundColor Red
+  Write-Host "Build Log: $transcriptLog" -ForegroundColor Red
 
   if ($env:CI) {
     Write-Host $_.ToString()
