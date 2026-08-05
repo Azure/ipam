@@ -19,6 +19,39 @@ api.interceptors.request.use(
     return Promise.reject(error);
 });
 
+// The Engine returns { error } for handled failures, but unhandled exceptions, request
+// validation (422) and upstream proxy errors use other shapes; without this the message
+// resolves to undefined and the UI renders an empty error snackbar.
+function getErrorMessage(error) {
+  const data = error.response?.data;
+
+  if (typeof data === 'string') {
+    const text = data.trim();
+
+    if (text && !text.startsWith('<')) {
+      return text;
+    }
+  } else if (data && typeof data === 'object') {
+    if (data.error) {
+      return String(data.error);
+    }
+
+    if (typeof data.detail === 'string' && data.detail) {
+      return data.detail;
+    }
+
+    if (Array.isArray(data.detail)) {
+      const detail = data.detail.map(item => item?.msg).filter(Boolean).join('; ');
+
+      if (detail) {
+        return detail;
+      }
+    }
+  }
+
+  return error.message || 'An unexpected error occurred.';
+}
+
 api.interceptors.response.use(
   response => response.data,
   error => {
@@ -26,7 +59,7 @@ api.interceptors.response.use(
     console.log(error);
 
     if (error.response) {
-      return Promise.reject(new Error(error.response.data.error));
+      return Promise.reject(new Error(getErrorMessage(error)));
     }
 
     return Promise.reject(error);
