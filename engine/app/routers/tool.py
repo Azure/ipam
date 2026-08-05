@@ -85,7 +85,7 @@ async def next_available_subnet(
     if req.smallest_cidr:
         # cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
         cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set[available_slicer]))
-        min_mask = max(map(lambda x: x.prefixlen, cidr_list))
+        min_mask = max(map(lambda x: x.prefixlen, cidr_list), default = None)
         available_block = next((net for net in list(filter(lambda network: network.prefixlen == min_mask, cidr_list))), None)
     else:
         # available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
@@ -179,7 +179,7 @@ async def next_available_vnet(
 
             if req.smallest_cidr:
                 cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
-                min_mask = max(map(lambda x: x.prefixlen, cidr_list))
+                min_mask = max(map(lambda x: x.prefixlen, cidr_list), default = None)
                 available_block = next((net for net in list(filter(lambda network: network.prefixlen == min_mask, cidr_list))), None)
             else:
                 available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)

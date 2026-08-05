@@ -1700,6 +1700,34 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
       $reservations.Count | Should -Be 3
     }
 
+    # POST /api/spaces/{space}/blocks/{block}/reservations
+    It 'Reject Block Reservation When Smallest CIDR Search Finds No Candidate' {
+      # Requesting a network larger than the Block itself leaves the smallest CIDR
+      # search with no candidates, which must surface as a descriptive error.
+      $body = @{
+        size = 8
+        smallest_cidr = $true
+        desc = 'Oversized Reservation'
+      }
+
+      $caught = $null
+
+      try {
+        New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $body
+      }
+      catch {
+        $caught = $_
+      }
+
+      $caught | Should -Not -BeNullOrEmpty
+      $caught.ErrorDetails.Message | Should -BeLike '*unavailable in target block*'
+
+      $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations'
+
+      $reservationsStatus | Should -Be 200
+      $reservations.Count | Should -Be 3
+    }
+
     # GET /api/spaces/{space}/blocks/{block}/available
     It 'List Available Block Networks by CIDR Eligibility' -Tag @('LongRunning') {
       $script:newNetAvailA = New-AzVirtualNetwork `
@@ -2050,6 +2078,29 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
       $newSubnet.Cidr | Should -Be '198.51.100.0/26'
     }
 
+    # POST /api/tools/nextAvailableSubnet
+    It 'Reject Next Available Subnet When Smallest CIDR Search Finds No Candidate' {
+      # Requesting a subnet larger than the vNET itself leaves the smallest CIDR
+      # search with no candidates, which must surface as a descriptive error.
+      $body = @{
+        vnet_id = $script:toolsNet.Id
+        size = 23
+        smallest_cidr = $true
+      }
+
+      $caught = $null
+
+      try {
+        New-ApiResource '/tools/nextAvailableSubnet' $body
+      }
+      catch {
+        $caught = $_
+      }
+
+      $caught | Should -Not -BeNullOrEmpty
+      $caught.ErrorDetails.Message | Should -BeLike '*unavailable in target virtual network*'
+    }
+
     # POST /api/tools/cidrCheck
     It 'Check Where CIDR is Used' {
       $body = @{
@@ -2077,6 +2128,93 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
 
       (Compare-Object $cidrCheck.containers $containers -Property {$_.space}) | Should -BeNullOrEmpty
       (Compare-Object $cidrCheck.containers $containers -Property {$_.block}) | Should -BeNullOrEmpty
+    }
+
+    # POST /api/spaces/{space}/blocks
+    It 'Create Tools Fallback Blocks' {
+      # 'ToolsBlockSmall' is intentionally too small to satisfy a /25 request so
+      # that block list evaluation must fall through to 'ToolsBlockLarge'.
+      $smallBlock = @{
+        name = 'ToolsBlockSmall'
+        cidr = '203.0.113.0/26'
+      }
+
+      $largeBlock = @{
+        name = 'ToolsBlockLarge'
+        cidr = '203.0.113.128/25'
+      }
+
+      New-ApiResource '/spaces/ToolsSpace/blocks' $smallBlock
+      New-ApiResource '/spaces/ToolsSpace/blocks' $largeBlock
+
+      $blocks, $blocksStatus = Get-ApiResource '/spaces/ToolsSpace/blocks'
+
+      $blocksStatus | Should -Be 200
+      $blocks.Count | Should -Be 3
+
+      $blocks.Name | Should -Contain 'ToolsBlockSmall'
+      $blocks.Name | Should -Contain 'ToolsBlockLarge'
+    }
+
+    # POST /api/tools/nextAvailableVNet
+    It 'Skip Blocks That Cannot Satisfy Requested Size with Smallest CIDR Search' {
+      $body = @{
+        space = 'ToolsSpace'
+        blocks = @('ToolsBlockSmall', 'ToolsBlockLarge')
+        size = 25
+        reverse_search = $false
+        smallest_cidr = $true
+      }
+
+      $newNet, $newNetStatus = New-ApiResource '/tools/nextAvailableVNet' $body
+
+      $newNetStatus | Should -Be 200
+
+      $newNet.Space | Should -Be 'ToolsSpace'
+      $newNet.Block | Should -Be 'ToolsBlockLarge'
+      $newNet.Cidr | Should -Be '203.0.113.128/25'
+    }
+
+    # POST /api/tools/nextAvailableVNet
+    It 'Skip Blocks That Cannot Satisfy Requested Size without Smallest CIDR Search' {
+      $body = @{
+        space = 'ToolsSpace'
+        blocks = @('ToolsBlockSmall', 'ToolsBlockLarge')
+        size = 25
+        reverse_search = $false
+        smallest_cidr = $false
+      }
+
+      $newNet, $newNetStatus = New-ApiResource '/tools/nextAvailableVNet' $body
+
+      $newNetStatus | Should -Be 200
+
+      $newNet.Space | Should -Be 'ToolsSpace'
+      $newNet.Block | Should -Be 'ToolsBlockLarge'
+      $newNet.Cidr | Should -Be '203.0.113.128/25'
+    }
+
+    # POST /api/tools/nextAvailableVNet
+    It 'Reject Next Available vNET When No Block Can Satisfy Requested Size' {
+      $body = @{
+        space = 'ToolsSpace'
+        blocks = @('ToolsBlockSmall', 'ToolsBlockLarge')
+        size = 16
+        reverse_search = $false
+        smallest_cidr = $true
+      }
+
+      $caught = $null
+
+      try {
+        New-ApiResource '/tools/nextAvailableVNet' $body
+      }
+      catch {
+        $caught = $_
+      }
+
+      $caught | Should -Not -BeNullOrEmpty
+      $caught.ErrorDetails.Message | Should -BeLike '*unavailable in target block*'
     }
   }
 
