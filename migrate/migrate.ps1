@@ -369,7 +369,7 @@ function Resolve-ContainerType {
     Resolves the container distro ('Debian' or 'RHEL') used to select the Dockerfile for the
     private-ACR image build. An explicit -ContainerType override always wins; otherwise the
     value auto-detected from the source app's /api/status (container.image_id) is normalized.
-    Throws when neither is available so the caller can fail early rather than build the wrong image.
+    Returns $null when neither is available so the caller can guide the user rather than fail.
   #>
   param(
     [Parameter(Mandatory = $false)]
@@ -388,7 +388,7 @@ function Resolve-ContainerType {
     'rhel'   { return 'RHEL' }
   }
 
-  throw [System.InvalidOperationException]::new("Unable to auto-detect the container distro from the source application's status API. Re-run the migration with the -ContainerType parameter (Debian or RHEL) to specify it explicitly.")
+  return $null
 }
 
 function New-ResourceId {
@@ -1632,6 +1632,24 @@ try {
     }
     else {
       $effectiveContainerType = Resolve-ContainerType -Override $ContainerType
+    }
+
+    if (-not $effectiveContainerType) {
+      Write-Host "=====================================================" -ForegroundColor Blue
+      Write-Host "Building and Pushing Container Image..." -ForegroundColor Yellow
+      Write-Host "=====================================================" -ForegroundColor Blue
+      Write-Host "The container distro could not be detected from the source application, so the" -ForegroundColor Yellow
+      Write-Host "correct Dockerfile cannot be selected for the image build." -ForegroundColor Yellow
+      Write-Host
+      Write-Host "Re-run the migration specifying the distro explicitly:" -ForegroundColor Yellow
+      Write-Host "  -ContainerType Debian" -ForegroundColor Cyan -NoNewline
+      Write-Host "  (default)" -ForegroundColor Gray
+      Write-Host "  -ContainerType RHEL" -ForegroundColor Cyan
+      Write-Host
+
+      Write-LogFile -Message "Container distro could not be resolved and no -ContainerType override was supplied." -Level "ERROR"
+
+      exit
     }
 
     Write-Host "ℹ️ Container distro: $effectiveContainerType" -ForegroundColor Cyan
