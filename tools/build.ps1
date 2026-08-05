@@ -338,7 +338,8 @@ try {
   Write-Host "INFO: Verified $($nativeModules.Count) native module(s) against $PYTHON_ABI and glibc <= $MAX_GLIBC_VERSION" -ForegroundColor Green
 
   # Create the Azure IPAM ZIP Deploy archive
-  $FilePath = Join-Path -Path $Path -ChildPath $FileName
+  # .NET resolves relative paths against the process directory, not PowerShell's location
+  $FilePath = Join-Path -Path (Convert-Path -LiteralPath $Path) -ChildPath $FileName
 
   Write-Host "INFO: Collecting asset files..." -ForegroundColor Green
 
@@ -358,7 +359,16 @@ try {
 
   Write-Host "INFO: Creating ZIP Deploy archive..." -ForegroundColor Green
 
-  Compress-Archive -Path (Join-Path -Path $tempFolder -ChildPath *) -DestinationPath $FilePath -Force
+  if (Test-Path -LiteralPath $FilePath) {
+    Remove-Item -LiteralPath $FilePath -Force
+  }
+
+  [System.IO.Compression.ZipFile]::CreateFromDirectory(
+    (Convert-Path -LiteralPath $tempFolder),
+    $FilePath,
+    [System.IO.Compression.CompressionLevel]::Optimal,
+    $false
+  )
 
   Write-Host "INFO: Cleaning up temporary files..." -ForegroundColor Green
 
