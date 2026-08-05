@@ -14,4 +14,4 @@ eval $(printenv | sed -n "s/^\([^=]\+\)=\(.*\)$/export \1=\2/p" | sed 's/"/\\\"/
 /usr/sbin/sshd
 
 # Start the Uvicorn Server
-exec python -m uvicorn "app.main:app" --reload --host "0.0.0.0" --port ${PORT}
+exec python -m uvicorn "app.main:app" --host "0.0.0.0" --port ${PORT}
