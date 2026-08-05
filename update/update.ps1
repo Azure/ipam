@@ -118,6 +118,7 @@ $IPAM_SHAPE_APP_SETTINGS = @(
   'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
   'WEBSITE_RUN_FROM_PACKAGE'
   'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+  'WEBSITES_INCLUDE_CLOUD_CERTS'
 )
 
 # Staging slot name used for slot-based updates
@@ -743,6 +744,8 @@ function Get-IpamTargetAppSettingMap {
 
     if ($RunFromPackage) {
       $target['WEBSITE_RUN_FROM_PACKAGE'] = '1'
+      # Sovereign cloud roots are absent from the default trust store
+      $target['WEBSITES_INCLUDE_CLOUD_CERTS'] = 'true'
     }
     else {
       $target['SCM_DO_BUILD_DURING_DEPLOYMENT'] = 'true'

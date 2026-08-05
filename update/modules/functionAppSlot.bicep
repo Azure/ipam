@@ -79,6 +79,8 @@ var canonicalBaseline = union(
         ? {
             FUNCTIONS_WORKER_RUNTIME: 'python'
             WEBSITE_RUN_FROM_PACKAGE: '1'
+            // Sovereign cloud roots are absent from the default trust store
+            WEBSITES_INCLUDE_CLOUD_CERTS: 'true'
           }
         : {
             FUNCTIONS_WORKER_RUNTIME: 'python'

@@ -40,6 +40,9 @@ param privateAcrUri string
 // ACR Uri Variable
 var acrUri = privateAcr ? privateAcrUri : 'registry.azureipam.com'
 
+// Inject the sovereign cloud root certificates, which are not in the default trust store
+var includeCloudCerts = azureCloud == 'AZURE_US_GOV_SECRET' ? true : false
+
 // Shared App Service site configuration (reused by the production site and the staging slot)
 var appServiceSiteConfig = {
   acrUseManagedIdentityCreds: privateAcr ? true : false
@@ -98,7 +101,13 @@ var appServiceSiteConfig = {
         name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
         value: 'true'
       }
-    ]
+    ],
+    includeCloudCerts ? [
+      {
+        name: 'WEBSITES_INCLUDE_CLOUD_CERTS'
+        value: 'true'
+      }
+    ] : []
   )
 }
 

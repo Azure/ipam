@@ -75,6 +75,8 @@ var canonicalBaseline = union(
     : runFromPackage
         ? {
             WEBSITE_RUN_FROM_PACKAGE: '1'
+            // Sovereign cloud roots are absent from the default trust store
+            WEBSITES_INCLUDE_CLOUD_CERTS: 'true'
           }
         : {
             SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'

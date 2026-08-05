@@ -140,6 +140,11 @@ var functionAppSiteConfig = {
         name: 'WEBSITE_RUN_FROM_PACKAGE'
         value: '1'
       }
+      // Sovereign cloud roots are absent from the default trust store
+      {
+        name: 'WEBSITES_INCLUDE_CLOUD_CERTS'
+        value: 'true'
+      }
     ] : [
       {
         name: 'FUNCTIONS_WORKER_RUNTIME'
