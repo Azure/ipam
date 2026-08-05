@@ -54,6 +54,21 @@ $engineVersionFile = Join-Path -Path $engineAppDir -ChildPath "version.json"
 $engineVersionJson = Get-Content -Path $engineVersionFile | ConvertFrom-Json
 $PYTHON_VERSION = [version]$engineVersionJson.python
 
+# Wheels must target the App Service runtime, not the build host. manylinux2014
+# (glibc 2.17) maximizes compatibility for sovereign clouds that lag commercial.
+# If pip ever reports "no matching distribution", widen to 'manylinux_2_28_x86_64'
+# (glibc 2.28, still under bullseye's 2.31); the gate ceiling follows automatically.
+$PIP_PLATFORM = 'manylinux2014_x86_64'
+
+$PYTHON_TAG = "$($PYTHON_VERSION.Major).$($PYTHON_VERSION.Minor)"
+$PYTHON_ABI = "cp$($PYTHON_VERSION.Major)$($PYTHON_VERSION.Minor)"
+
+$MAX_GLIBC_VERSION = switch -Regex ($PIP_PLATFORM) {
+  '^manylinux2014_' { [version]'2.17'; break }
+  '^manylinux_(\d+)_(\d+)_' { [version]"$($Matches[1]).$($Matches[2])"; break }
+  default { throw "Cannot derive a glibc ceiling from PIP_PLATFORM '$PIP_PLATFORM'." }
+}
+
 # Create a temporary folder path
 $tempFolder = Join-Path -Path TEMP:\ -ChildPath $(New-Guid)
 
@@ -239,13 +254,23 @@ try {
   # Create temporary directory for PIP packages
   $packageDir = New-Item -ItemType Directory -Path (Join-Path -Path $tempFolder -ChildPath "packages")
 
+  $pipTargetArgs = @(
+    '--only-binary=:all:'
+    '--platform', $PIP_PLATFORM
+    '--implementation', 'cp'
+    '--python-version', $PYTHON_TAG
+    '--abi', $PYTHON_ABI
+  )
+
+  Write-Host "INFO: PIP wheel target - $($pipTargetArgs -join ' ')" -ForegroundColor Green
+
   # Fetch Azure IPAM Engine modules
   try {
     # Capture all output for logging purposes
     $pipOutput = if ($ManifestOnly) {
-      pip install -r requirements.txt --target $packageDir.FullName --no-warn-script-location --no-user --progress-bar off 2>&1
+      pip install -r requirements.txt --target $packageDir.FullName @pipTargetArgs --no-warn-script-location --no-user --progress-bar off 2>&1
     } else {
-      pip install -r requirements.lock.txt --target $packageDir.FullName --no-warn-script-location --no-user --progress-bar off 2>&1
+      pip install -r requirements.lock.txt --target $packageDir.FullName @pipTargetArgs --no-warn-script-location --no-user --progress-bar off 2>&1
     }
 
     # Throw error if PIP Install fails
@@ -262,6 +287,57 @@ try {
 
   # Switch back to original dir
   Pop-Location
+
+  Write-Host "INFO: Verifying native modules match the target runtime..." -ForegroundColor Green
+
+  $abiViolations = @()
+  $glibcViolations = @()
+
+  $nativeModules = Get-ChildItem -Path $packageDir.FullName -Recurse -File |
+    Where-Object { $_.Name -match '\.(so|pyd)(\.\d+)*$' }
+
+  foreach ($module in $nativeModules) {
+    if ($module.Name -like '*.pyd') {
+      $abiViolations += "$($module.Name) - Windows extension module"
+      continue
+    }
+
+    if ($module.Name -match 'cpython-(\d+)') {
+      if ($Matches[1] -ne "$($PYTHON_VERSION.Major)$($PYTHON_VERSION.Minor)") {
+        $abiViolations += "$($module.Name) - built for cpython-$($Matches[1])"
+      }
+    }
+
+    # GLIBC_x.y symbol versions are plain ASCII in the ELF dynamic string table
+    $symbols = [regex]::Matches(
+      [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($module.FullName)),
+      'GLIBC_(\d+\.\d+)'
+    )
+
+    if ($symbols.Count -gt 0) {
+      $required = @($symbols | ForEach-Object { [version]$_.Groups[1].Value } | Sort-Object)[-1]
+
+      if ($required -gt $MAX_GLIBC_VERSION) {
+        $glibcViolations += "$($module.Name) - requires glibc $required"
+      }
+    }
+  }
+
+  if (($abiViolations.Count -gt 0) -or ($glibcViolations.Count -gt 0)) {
+    Write-Host "ERROR: Native module verification failed!" -ForegroundColor Red
+
+    foreach ($violation in $abiViolations) {
+      Write-Host "ERROR: Expected $PYTHON_ABI - $violation" -ForegroundColor Red
+    }
+
+    foreach ($violation in $glibcViolations) {
+      Write-Host "ERROR: Exceeds glibc ceiling $MAX_GLIBC_VERSION - $violation" -ForegroundColor Red
+    }
+
+    throw "Native module verification failed with $($abiViolations.Count) ABI and $($glibcViolations.Count) glibc violation(s)."
+  }
+
+  Write-Host "INFO: Verified $($nativeModules.Count) native module(s) against $PYTHON_ABI and glibc <= $MAX_GLIBC_VERSION" -ForegroundColor Green
 
   # Create the Azure IPAM ZIP Deploy archive if NPM Build and PIP install were successful
   if((-not $npmBuildErr) -and (-not $pipInstallErr)) {
