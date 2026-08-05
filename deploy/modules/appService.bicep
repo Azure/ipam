@@ -110,10 +110,6 @@ var appServiceSiteConfig = {
         name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
         value: 'true'
       }
-      {
-        name: 'DOCKER_REGISTRY_SERVER_URL'
-        value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
-      }
     ] : runFromPackage ? [
       {
         name: 'WEBSITE_RUN_FROM_PACKAGE'

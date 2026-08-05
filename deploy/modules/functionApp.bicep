@@ -128,10 +128,6 @@ var functionAppSiteConfig = {
     ],
     deployAsContainer ? [
       {
-        name: 'DOCKER_REGISTRY_SERVER_URL'
-        value: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
-      }
-      {
         name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
         value: 'false'
       }
