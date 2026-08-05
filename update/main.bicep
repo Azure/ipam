@@ -15,8 +15,6 @@ type resourceObject = {
   linuxFxVersion: string
   isFunction: bool
   deployAsContainer: bool
-  privateAcr: bool
-  privateAcrUri: string
   acrUseManagedIdentity: bool
   runFromPackage: bool
 }
@@ -49,8 +47,6 @@ module appServiceSlot './modules/appServiceSlot.bicep' = if (!resourceDetails.is
     containerName: resourceDetails.containerName
     keyVaultUri: resourceDetails.keyVaultUri
     deployAsContainer: resourceDetails.deployAsContainer
-    privateAcr: resourceDetails.privateAcr
-    privateAcrUri: resourceDetails.privateAcrUri
     acrUseManagedIdentity: resourceDetails.acrUseManagedIdentity
     runFromPackage: resourceDetails.runFromPackage
     linuxFxVersion: resourceDetails.linuxFxVersion
@@ -74,8 +70,6 @@ module functionAppSlot './modules/functionAppSlot.bicep' = if (resourceDetails.i
     containerName: resourceDetails.containerName
     keyVaultUri: resourceDetails.keyVaultUri
     deployAsContainer: resourceDetails.deployAsContainer
-    privateAcr: resourceDetails.privateAcr
-    privateAcrUri: resourceDetails.privateAcrUri
     acrUseManagedIdentity: resourceDetails.acrUseManagedIdentity
     runFromPackage: resourceDetails.runFromPackage
     linuxFxVersion: resourceDetails.linuxFxVersion

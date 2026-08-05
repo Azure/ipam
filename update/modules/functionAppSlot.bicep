@@ -31,12 +31,6 @@ param keyVaultUri string
 @description('Flag to Deploy IPAM as a Container')
 param deployAsContainer bool
 
-@description('Flag to Deploy Private Container Registry')
-param privateAcr bool
-
-@description('Uri for Private Container Registry')
-param privateAcrUri string
-
 @description('Whether the app authenticates to ACR with a managed identity (mirrored from production)')
 param acrUseManagedIdentity bool = false
 
@@ -79,7 +73,6 @@ var canonicalBaseline = union(
   },
   deployAsContainer
     ? {
-        DOCKER_REGISTRY_SERVER_URL: privateAcr ? 'https://${privateAcrUri}' : 'https://index.docker.io/v1'
         WEBSITES_ENABLE_APP_SERVICE_STORAGE: 'false'
       }
     : runFromPackage
