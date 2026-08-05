@@ -19,7 +19,7 @@ To successfully update your Azure IPAM deployment, ensure the following prerequi
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
   - Required to clone the Azure IPAM GitHub repository
 - [PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
-- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 10.3.0 or later installed
+- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 11.4.0 or later installed
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) version 2.35.0 or later installed (required only for Private ACR deployments)
 
 > **NOTE:** The update script requires access to your existing Azure IPAM resources. Ensure you have the necessary permissions to both read the current configuration and restart/redeploy the App Service.

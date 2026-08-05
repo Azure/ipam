@@ -15,7 +15,7 @@ To successfully deploy the solution, the following prerequisites must be met:
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
   - Required to clone the Azure IPAM GitHub repository
 - [PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
-- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 11.0.0 or later installed
+- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 11.4.0 or later installed
 - [Microsoft Graph PowerShell SDK](https://learn.microsoft.com/powershell/microsoftgraph/installation) version 2.0.0 or later installed
   - Required for *Full* or *Identities Only* deployments to grant [Admin Consent](https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent) to the App Registrations
 - [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install) version 0.21.1 or later installed

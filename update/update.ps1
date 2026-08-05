@@ -6,9 +6,9 @@
 
 # Set minimum version requirements
 #Requires -Version 7.2
-#Requires -Modules @{ ModuleName="Az.Accounts"; ModuleVersion="2.13.0" }
-#Requires -Modules @{ ModuleName="Az.Functions"; ModuleVersion="4.0.6" }
-#Requires -Modules @{ ModuleName="Az.Websites"; ModuleVersion="3.1.1" }
+#Requires -Modules @{ ModuleName="Az.Accounts"; ModuleVersion="2.16.0" }
+#Requires -Modules @{ ModuleName="Az.Functions"; ModuleVersion="4.0.7" }
+#Requires -Modules @{ ModuleName="Az.Websites"; ModuleVersion="3.2.0" }
 #Requires -Modules @{ ModuleName="Az.Resources"; ModuleVersion="6.16.0" }
 
 # Intake and set global parameters
