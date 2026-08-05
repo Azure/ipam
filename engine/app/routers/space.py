@@ -799,7 +799,7 @@ async def update_space(
     try:
         patch = jsonpatch.JsonPatch([x.model_dump() for x in updates])
     except jsonpatch.InvalidJsonPatch:
-        raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
+        raise HTTPException(status_code=400, detail="Invalid JSON patch, please review and try again.")
 
     scrubbed_patch = jsonpatch.JsonPatch(await scrub_space_patch(patch, space, tenant_id))
     update_space = scrubbed_patch.apply(target_space)
@@ -978,7 +978,7 @@ async def create_multi_block_reservation(
             available_block_name = block if available_block else None
 
     if not available_block:
-        raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block(s).")
+        raise HTTPException(status_code=409, detail="Network of requested size unavailable in target block(s).")
 
     next_cidr = list(available_block.subnet(req.size))[next_selector]
 
@@ -1309,7 +1309,7 @@ async def update_block(
     try:
         patch = jsonpatch.JsonPatch([x.model_dump() for x in updates])
     except jsonpatch.InvalidJsonPatch:
-        raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
+        raise HTTPException(status_code=400, detail="Invalid JSON patch, please review and try again.")
 
     scrubbed_patch = jsonpatch.JsonPatch(await scrub_block_patch(patch, space, block, tenant_id))
     scrubbed_patch.apply(update_block, in_place=True)
@@ -1848,7 +1848,7 @@ async def create_external_network(
         available_network = next((net for net in list(available_set.iter_cidrs()) if net.prefixlen <= req.size), None)
 
         if not available_network:
-            raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block.")
+            raise HTTPException(status_code=409, detail="Network of requested size unavailable in target block.")
 
         next_cidr = list(available_network.subnet(req.size))[0]
 
@@ -1965,7 +1965,7 @@ async def update_ext_network(
     try:
         patch = jsonpatch.JsonPatch([x.model_dump() for x in updates])
     except jsonpatch.InvalidJsonPatch:
-        raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
+        raise HTTPException(status_code=400, detail="Invalid JSON patch, please review and try again.")
 
     scrubbed_patch = jsonpatch.JsonPatch(await scrub_ext_network_patch(patch, space, block, external, tenant_id))
     scrubbed_patch.apply(update_ext_network, in_place=True)
@@ -2147,7 +2147,7 @@ async def create_external_subnet(
         available_subnet = next((net for net in list(available_set.iter_cidrs()) if net.prefixlen <= req.size), None)
 
         if not available_subnet:
-            raise HTTPException(status_code=500, detail="Subnet of requested size unavailable in target external network.")
+            raise HTTPException(status_code=409, detail="Subnet of requested size unavailable in target external network.")
 
         next_cidr = list(available_subnet.subnet(req.size))[0]
 
@@ -2277,7 +2277,7 @@ async def update_ext_subnet(
     try:
         patch = jsonpatch.JsonPatch([x.model_dump() for x in updates])
     except jsonpatch.InvalidJsonPatch:
-        raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
+        raise HTTPException(status_code=400, detail="Invalid JSON patch, please review and try again.")
 
     scrubbed_patch = jsonpatch.JsonPatch(await scrub_ext_subnet_patch(patch, space, block, external, subnet, tenant_id))
     scrubbed_patch.apply(update_ext_subnet, in_place=True)
@@ -2795,7 +2795,7 @@ async def update_ext_endpoint(
     try:
         patch = jsonpatch.JsonPatch([x.model_dump() for x in updates])
     except jsonpatch.InvalidJsonPatch:
-        raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
+        raise HTTPException(status_code=400, detail="Invalid JSON patch, please review and try again.")
 
     scrubbed_patch = jsonpatch.JsonPatch(await scrub_ext_endpoint_patch(patch, space, block, external, subnet, endpoint, tenant_id))
     scrubbed_patch.apply(update_ext_endpoint, in_place=True)
@@ -3038,7 +3038,7 @@ async def create_block_reservation(
             available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
 
         if not available_block:
-            raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block.")
+            raise HTTPException(status_code=409, detail="Network of requested size unavailable in target block.")
 
         next_cidr = list(available_block.subnet(req.size))[next_selector]
 

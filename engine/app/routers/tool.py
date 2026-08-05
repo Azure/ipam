@@ -92,7 +92,7 @@ async def next_available_subnet(
         available_block = next((net for net in available_set[available_slicer] if net.prefixlen <= req.size), None)
 
     if not available_block:
-        raise HTTPException(status_code=500, detail="Subnet of requested size unavailable in target virtual network.")
+        raise HTTPException(status_code=409, detail="Subnet of requested size unavailable in target virtual network.")
 
     next_cidr = list(available_block.subnet(req.size))[next_selector]
 
@@ -187,7 +187,7 @@ async def next_available_vnet(
             available_block_name = block if available_block else None
 
     if not available_block:
-        raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block(s).")
+        raise HTTPException(status_code=409, detail="Network of requested size unavailable in target block(s).")
 
     next_cidr = list(available_block.subnet(req.size))[next_selector]
 

@@ -215,13 +215,13 @@ async def update_user(
     try:
         patch = jsonpatch.JsonPatch([x.model_dump() for x in updates])
     except jsonpatch.InvalidJsonPatch:
-        raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
+        raise HTTPException(status_code=400, detail="Invalid JSON patch, please review and try again.")
 
     try:
         scrubbed_patch = jsonpatch.JsonPatch(await scrub_patch(patch))
         user_data['data'] = scrubbed_patch.apply(user_data['data'], in_place = True)
     except jsonpatch.JsonPatchConflict as e:
-        raise HTTPException(status_code=500, detail=str(e).capitalize())
+        raise HTTPException(status_code=409, detail=str(e).capitalize())
 
     await cosmos_replace(user_query[0], user_data)
 
