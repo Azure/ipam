@@ -81,6 +81,15 @@ module managedIdentity './modules/managedIdentity.bicep' = {
   }
 }
 
+// Role Assignments for the Managed Identity
+module managedIdentityRoles './modules/managedIdentityRoles.bicep' = {
+  name: 'managedIdentityRolesModule'
+  scope: resourceGroup
+  params: {
+    principalId: managedIdentity.outputs.principalId
+  }
+}
+
 // KeyVault for Secure Values
 module keyVault './modules/keyVault.bicep' = {
   name: 'keyVaultModule'
