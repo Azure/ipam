@@ -34,11 +34,11 @@ jobs:
     steps:
       - name: Checkout Azure IPAM Code
         id: checkoutCode
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Node.js
         id: setupNode
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
 
@@ -49,7 +49,7 @@ jobs:
 
       - name: Setup Python
         id: setupPython
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ steps.pythonVersion.outputs.version }}
 
@@ -77,35 +77,35 @@ jobs:
 
       - name: Lint Dockerfiles Debian (Hadolint)
         id: lintDockerfilesDeb
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
         with:
           dockerfile: Dockerfile.deb
           recursive: true
 
       - name: Lint Dockerfiles RHEL (Hadolint)
         id: lintDockerfilesRhel
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
         with:
           dockerfile: Dockerfile.rhel
           recursive: true
 
       - name: Lint Dockerfiles Function (Hadolint)
         id: lintDockerfilesFunc
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
         with:
           dockerfile: Dockerfile.func
           recursive: true
 
       - name: Lint Dockerfiles Development (Hadolint)
         id: lintDockerfilesDev
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
         with:
           dockerfile: Dockerfile.dev
           recursive: true
 
       - name: Lint Dockerfiles Load Balancer (Hadolint)
         id: lintDockerfilesLb
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
         with:
           dockerfile: Dockerfile
           recursive: true
@@ -131,7 +131,7 @@ jobs:
 
       - name: Azure Login
         id: azureLogin
-        uses: azure/login@v3
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
         with:
           client-id: ${{ secrets.AZURE_TEST_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TEST_TENANT_ID }}
@@ -140,7 +140,7 @@ jobs:
 
       - name: Checkout Azure IPAM Code
         id: checkoutRepo
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
             deploy
@@ -252,7 +252,7 @@ jobs:
 
       - name: Azure Login
         id: azureLogin
-        uses: azure/login@v3
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
         with:
           client-id: ${{ secrets.AZURE_TEST_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TEST_TENANT_ID }}
@@ -261,7 +261,7 @@ jobs:
 
       - name: Checkout Azure IPAM Code
         id: checkoutRepo
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
             tests
@@ -306,7 +306,7 @@ jobs:
 
       - name: Azure Login
         id: azureLogin
-        uses: azure/login@v3
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
         with:
           client-id: ${{ secrets.AZURE_TEST_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TEST_TENANT_ID }}

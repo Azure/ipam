@@ -40,7 +40,7 @@ jobs:
     steps:
       - name: Azure Login
         id: azureLogin
-        uses: azure/login@v3
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -49,7 +49,7 @@ jobs:
 
       - name: Checkout Azure IPAM Code
         id: checkoutRepo
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
             engine
@@ -71,7 +71,7 @@ jobs:
     steps:
       - name: Azure Login
         id: azureLogin
-        uses: azure/login@v3
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -80,7 +80,7 @@ jobs:
 
       - name: Checkout Azure IPAM Code
         id: checkoutRepo
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
             engine
