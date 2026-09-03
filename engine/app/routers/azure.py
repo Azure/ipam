@@ -29,6 +29,7 @@ from app.routers.common.helper import (
     cosmos_retry,
     get_client_credentials,
     get_obo_credentials,
+    get_tenant_from_jwt,
     subnet_fixup,
     vnet_fixup,
 )
@@ -50,8 +51,8 @@ def str_to_list(input):
 
     return split
 
-async def get_subscriptions_sdk(credentials):
-    """Return all Azure subscriptions visible to the given credentials, with their offer/quota type resolved to a friendly label."""
+async def get_subscriptions_sdk(credentials, *, tenant_id=None, include_excluded=True):
+    """Return Azure subscriptions visible to the credentials, optionally excluding configured subscriptions."""
 
     QUOTA_MAP = {
         "EnterpriseAgreement": "Enterprise Agreement",
@@ -63,6 +64,18 @@ async def get_subscriptions_sdk(credentials):
     azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
 
+    excluded_subscription_ids = set()
+
+    if not include_excluded:
+        if tenant_id is None:
+            raise ValueError("tenant_id is required when include_excluded is False")
+
+        exclusions_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
+        excluded_subscription_ids = {
+            subscription_id.lower()
+            for subscription_id in exclusions_query[0].get('exclusions', [])
+        } if exclusions_query else set()
+
     subscription_client = SubscriptionClient(
         credential=credentials,
         base_url=azure_arm_url,
@@ -73,6 +86,9 @@ async def get_subscriptions_sdk(credentials):
     subscriptions = []
 
     async for poll in subscription_client.subscriptions.list():
+        if poll.subscription_id.lower() in excluded_subscription_ids:
+            continue
+
         quota_id = poll.subscription_policies.quota_id
         quota_id_parts = quota_id.split("_")
 
@@ -142,12 +158,18 @@ async def get_vmss(auth, admin):
 
     if admin:
         creds = await get_client_credentials()
+        tenant_id = globals.TENANT_ID
     else:
         user_assertion=auth.split(' ')[1]
         creds = await get_obo_credentials(user_assertion)
+        tenant_id = get_tenant_from_jwt(user_assertion)
 
     try:
-        subscriptions = await get_subscriptions_sdk(creds)
+        subscriptions = await get_subscriptions_sdk(
+            creds,
+            tenant_id=tenant_id,
+            include_excluded=False
+        )
         vmss_list = await get_vmss_list_sdk(creds, subscriptions)
         vmss_vm_interfaces = await get_vmss_interfaces_sdk(creds, vmss_list)
     except ClientAuthenticationError:
