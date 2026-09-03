@@ -670,9 +670,14 @@ async def vmss(
 
     results = []
 
-    for vmss in vm_scale_sets:
-        for private_ip in vmss["private_ips"] or []:
-            new_vmss = copy.deepcopy(vmss)
+    for scale_set in vm_scale_sets:
+        if "private_ips" not in scale_set:
+            if scale_set.get("private_ip"):
+                results.append(scale_set)
+            continue
+
+        for private_ip in scale_set["private_ips"] or []:
+            new_vmss = copy.deepcopy(scale_set)
             del new_vmss["private_ips"]
             new_vmss["private_ip"] = private_ip
             results.append(new_vmss)
