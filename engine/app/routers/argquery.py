@@ -261,6 +261,13 @@ resources
 | project name = iff(notempty(name), name, pe_name), id = iff(notempty(id), id, pe_id), private_ip, resource_group = iff(notempty(resource_group), resource_group, pe_rg), subscription_id = iff(notempty(subscription_id), subscription_id, pe_sid), tenant_id = iff(notempty(tenant_id), tenant_id, pe_tid), vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
+DATA_FACTORY = r"""
+resources
+| where type =~ 'Microsoft.DataFactory/factories'
+| where subscriptionId !in~ {}
+| project id, name, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId
+"""
+
 VIRTUAL_MACHINE = r"""
 resources
 | where type =~ 'microsoft.compute/virtualmachines'

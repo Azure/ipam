@@ -9,12 +9,6 @@ from azure.mgmt.compute.aio import ComputeManagementClient
 from azure.mgmt.datafactory.aio import DataFactoryManagementClient
 from azure.mgmt.network.aio import NetworkManagementClient
 from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
-from azure.mgmt.resourcegraph.aio import ResourceGraphClient
-from azure.mgmt.resourcegraph.models import (
-    QueryRequest,
-    QueryRequestOptions,
-    ResultFormat,
-)
 from fastapi import APIRouter, Depends, Header, HTTPException
 from netaddr import IPNetwork, IPSet
 
@@ -301,41 +295,12 @@ async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
 
     await network_client.close()
 
-async def get_factory_map_sdk(credentials):
-    DF_QUERY = "Resources | where type =~ 'Microsoft.DataFactory/factories' | project id, name, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId"
-
-    data_factory_map = {}
-
-    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
-    azure_arm_scope = '{}/.default'.format(azure_arm_url)
-
-    resource_graph_client = ResourceGraphClient(
-        credential=credentials,
-        base_url=azure_arm_url,
-        credential_scopes=[azure_arm_scope],
-        transport=globals.SHARED_TRANSPORT
-    )
-
-    query = QueryRequest(
-        query=DF_QUERY,
-        options=QueryRequestOptions(
-            result_format=ResultFormat.object_array
-        )
-    )
-
-    poll = await resource_graph_client.resources(query)
-
-    await resource_graph_client.close()
-
-    subscription_set = set([x['subscription_id'] for x in poll.data])
-
-    for subscription in subscription_set:
-        data_factory_map[subscription] = list(filter(lambda x: x['subscription_id'] == subscription, poll.data))
-
-    return data_factory_map
-
-async def get_factory_endpoints_sdk(credentials, factory_map):
+async def get_factory_endpoints_sdk(credentials, factories):
     factory_list = []
+    factory_map = {}
+
+    for factory in factories:
+        factory_map.setdefault(factory['subscription_id'], []).append(factory)
 
     azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
@@ -611,14 +576,15 @@ async def df(
     Get a list of Azure Data Factories.
     """
 
+    factories = await arg_query(authorization, admin, argquery.DATA_FACTORY)
+
     if admin:
         creds = await get_client_credentials()
     else:
         user_assertion=authorization.split(' ')[1]
         creds = await get_obo_credentials(user_assertion)
 
-    data_factory_map = await get_factory_map_sdk(creds)
-    data_factory_list = await get_factory_endpoints_sdk(creds, data_factory_map)
+    data_factory_list = await get_factory_endpoints_sdk(creds, factories)
 
     await creds.close()
 
