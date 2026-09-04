@@ -14,7 +14,7 @@ from app.models import (
     SubnetCIDRReq,
     VNetCIDRReq,
 )
-from app.routers.azure import get_network
+from app.routers.azure import fetch_networks
 from app.routers.common.helper import arg_query, cosmos_query, cosmos_retry, vnet_fixup
 
 from . import argquery
@@ -148,7 +148,9 @@ async def next_available_vnet(
     if invalid_blocks:
         raise HTTPException(status_code=400, detail="Invalid Block(s) in Block list: {}.".format(list(invalid_blocks)))
 
-    net_list = await get_network(authorization, True)
+    # Allocation: the next available CIDR must not overlap any existing network, including ones the
+    # caller cannot see, so this deliberately asks for every network.
+    net_list = await fetch_networks(authorization, tenant_id, True)
 
     available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
     next_selector = -1 if req.reverse_search else 0

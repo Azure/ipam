@@ -354,22 +354,16 @@ async def subscription(
 
     return subscription_list
 
-@router.get(
-    "/vnet",
-    summary = "Get All Virtual Networks"
-)
-async def get_vnet(
-    authorization: str = Header(None),
-    tenant_id: str = Depends(get_tenant_id),
-    admin: str = Depends(get_admin)
-):
-    """
-    Get a list of Azure Virtual Networks.
-    """
+# IPAM distinguishes two questions: "is this address space occupied?" and "what occupies it?".
+# The first must always be answered from every network in the tenant or IPAM will allocate over
+# networks the caller cannot see; the second is legitimately scoped to the caller's Azure RBAC.
+# `all_networks` selects between them, and is a required argument so callers must decide deliberately.
+async def fetch_vnets(authorization, tenant_id, all_networks):
+    """Return Azure Virtual Networks: every one in the tenant, or only those the caller can read."""
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
-    vnet_list = await arg_query(authorization, admin, argquery.VNET)
+    vnet_list = await arg_query(authorization, all_networks, argquery.VNET)
     vnet_list = vnet_fixup(vnet_list)
 
     updated_vnet_list = []
@@ -401,6 +395,21 @@ async def get_vnet(
         updated_vnet_list.append(vnet)
 
     return updated_vnet_list
+
+@router.get(
+    "/vnet",
+    summary = "Get All Virtual Networks"
+)
+async def get_vnet(
+    authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
+    admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Azure Virtual Networks.
+    """
+
+    return await fetch_vnets(authorization, tenant_id, admin)
 
 @router.get(
     "/subnet",
@@ -464,24 +473,13 @@ async def get_subnet(
 
     return updated_subnet_list
 
-@router.get(
-    "/vhub",
-    summary = "Get All Virtual Hubs",
-    response_model = List[VWanHub]
-)
-async def get_vhub(
-    authorization: str = Header(None),
-    tenant_id: str = Depends(get_tenant_id),
-    admin: str = Depends(get_admin)
-):
-    """
-    Get a list of Virtual Hubs.
-    """
+async def fetch_vhubs(authorization, tenant_id, all_networks):
+    """Return Azure Virtual Hubs: every one in the tenant, or only those the caller can read."""
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
-    vwan_hubs = await arg_query(authorization, admin, argquery.VHUB)
-    vwan_hubs_update = await update_vhub_data(authorization, admin, vwan_hubs)
+    vwan_hubs = await arg_query(authorization, all_networks, argquery.VHUB)
+    vwan_hubs_update = await update_vhub_data(authorization, all_networks, vwan_hubs)
 
     updated_vhub_list = []
 
@@ -503,22 +501,27 @@ async def get_vhub(
     return updated_vhub_list
 
 @router.get(
-    "/network",
-    summary = "Get All Azure Networks (vNets & vHubs)",
-    # response_model = List[AzureNetwork]
+    "/vhub",
+    summary = "Get All Virtual Hubs",
+    response_model = List[VWanHub]
 )
-async def get_network(
+async def get_vhub(
     authorization: str = Header(None),
     tenant_id: str = Depends(get_tenant_id),
     admin: str = Depends(get_admin)
 ):
     """
-    Get a list of Azure Networks (vNets & vHubs).
+    Get a list of Virtual Hubs.
     """
 
+    return await fetch_vhubs(authorization, tenant_id, admin)
+
+async def fetch_networks(authorization, tenant_id, all_networks):
+    """Return Azure Networks (vNets & vHubs): every one in the tenant, or only those the caller can read."""
+
     tasks = [
-        asyncio.create_task(get_vnet(authorization, tenant_id, admin)),
-        asyncio.create_task(get_vhub(authorization, tenant_id, admin))
+        asyncio.create_task(fetch_vnets(authorization, tenant_id, all_networks)),
+        asyncio.create_task(fetch_vhubs(authorization, tenant_id, all_networks))
     ]
 
     networks = await asyncio.gather(*tasks)
@@ -547,6 +550,22 @@ async def get_network(
     results = [item for sublist in networks for item in sublist]
 
     return results
+
+@router.get(
+    "/network",
+    summary = "Get All Azure Networks (vNets & vHubs)",
+    # response_model = List[AzureNetwork]
+)
+async def get_network(
+    authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
+    admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Azure Networks (vNets & vHubs).
+    """
+
+    return await fetch_networks(authorization, tenant_id, admin)
 
 @router.get(
     "/pe",
@@ -865,7 +884,8 @@ async def match_resv_to_vnets():
         logger.info("Skipping reservation reconciliation in non-production slot '{}'.", globals.SLOT_NAME)
         return
 
-    net_list = await get_network(None, globals.TENANT_ID, True)
+    # Reconciliation compares reservations against every network in the tenant.
+    net_list = await fetch_networks(None, globals.TENANT_ID, True)
     stale_resv = list(i for j in list(str_to_list(x['resv']) for x in net_list if x['resv'] is not None) for i in j)
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", globals.TENANT_ID)

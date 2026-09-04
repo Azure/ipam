@@ -8,9 +8,9 @@ from app.routers.azure import (
     apim,
     appgw,
     bastion,
+    fetch_vnets,
     fwvnet,
     get_subnet,
-    get_vnet,
     pe,
     vm,
     vmss,
@@ -50,7 +50,7 @@ async def tree(
     endpoint_list = []
 
     tasks.append(asyncio.create_task(multi_helper(get_spaces, space_list, False, True, authorization, tenant_id, True)))
-    tasks.append(asyncio.create_task(multi_helper(get_vnet, vnet_list, authorization, tenant_id, admin)))
+    tasks.append(asyncio.create_task(multi_helper(fetch_vnets, vnet_list, authorization, tenant_id, admin)))
     tasks.append(asyncio.create_task(multi_helper(get_subnet, subnet_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(pe, endpoint_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(vm, endpoint_list, authorization, admin)))

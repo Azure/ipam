@@ -51,7 +51,7 @@ from app.models import (
     VNet,
     VNetsUpdate,
 )
-from app.routers.azure import get_network
+from app.routers.azure import fetch_networks
 from app.routers.common.helper import (
     cosmos_delete,
     cosmos_query,
@@ -155,7 +155,9 @@ async def valid_block_cidr_update(cidr, space_name, block_name, tenant_id):
         if(str(block_network.cidr) != cidr):
             raise HTTPException(status_code=400, detail="Invalid CIDR value, try '{}' instead.".format(block_network.cidr))
 
-    net_list = await get_network(None, True)
+    # Occupancy check: the new CIDR must contain every network already in the Block, including any
+    # the caller cannot see, so this needs every network in the tenant.
+    net_list = await fetch_networks(None, tenant_id, True)
 
     for block in blocks:
         if block['name'] != block_name:
@@ -258,7 +260,8 @@ async def valid_ext_network_cidr_update(cidr, space_name, block_name, external_n
         if external_network not in IPNetwork(target_block['cidr']):
             raise HTTPException(status_code=400, detail="Updated External Network CIDR must be contained within the Block CIDR.")
 
-    net_list = await get_network(None, True)
+    # Occupancy check, so it needs every network in the tenant.
+    net_list = await fetch_networks(None, tenant_id, True)
 
     for vnet in target_block['vnets']:
         target_net = next((i for i in net_list if i['id'] == vnet['id']), None)
@@ -546,7 +549,8 @@ async def get_spaces(
         raise HTTPException(status_code=403, detail="Expand parameter can only be used by admins.")
 
     if expand or utilization:
-        nets = await get_network(authorization, True)
+        # Utilization is occupancy, so it needs every network; expand is admin-gated above.
+        nets = await fetch_networks(authorization, tenant_id, True)
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
@@ -697,7 +701,8 @@ async def get_space(
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     if expand or utilization:
-        nets = await get_network(authorization, is_admin)
+        # Utilization is occupancy, so it needs every network; expand is admin-gated above.
+        nets = await fetch_networks(authorization, tenant_id, True)
 
     if utilization:
         target_space['size'] = 0
@@ -939,7 +944,9 @@ async def create_multi_block_reservation(
     if invalid_blocks:
         raise HTTPException(status_code=400, detail="Invalid Block(s) in Block list: {}.".format(list(invalid_blocks)))
 
-    net_list = await get_network(authorization, True)
+    # Reservations are allocations: a CIDR must not overlap any existing network, including ones the
+    # caller cannot see, so this deliberately asks for every network rather than the caller's scope.
+    net_list = await fetch_networks(authorization, tenant_id, True)
 
     available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
     next_selector = -1 if req.reverse_search else 0
@@ -1047,7 +1054,8 @@ async def get_blocks(
     block_list = target_space['blocks']
 
     if expand or utilization:
-        nets = await get_network(authorization, is_admin)
+        # Utilization is occupancy, so it needs every network; expand is admin-gated above.
+        nets = await fetch_networks(authorization, tenant_id, True)
 
     for block in block_list:
         if expand:
@@ -1208,7 +1216,8 @@ async def get_block(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     if expand or utilization:
-        nets = await get_network(authorization, is_admin)
+        # Utilization is occupancy, so it needs every network; expand is admin-gated above.
+        nets = await fetch_networks(authorization, tenant_id, True)
 
     if expand:
         expanded_nets = []
@@ -1405,7 +1414,9 @@ async def available_block_nets(
     if not target_block:
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
-    net_list = await get_network(authorization, tenant_id, is_admin)
+    # Resource enumeration rather than occupancy: non-admins should only be offered networks they
+    # can actually see and associate, so this stays scoped to the caller.
+    net_list = await fetch_networks(authorization, tenant_id, is_admin)
     resv_cidrs = IPSet(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
     ext_cidrs = IPSet(x['cidr'] for x in target_block['externals'])
 
@@ -1463,7 +1474,7 @@ async def get_block_nets(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     if expand:
-        net_list = await get_network(authorization, True)
+        net_list = await fetch_networks(authorization, tenant_id, True)
 
         for block_net in target_block['vnets']:
             target_vnet = next((x for x in net_list if x['id'].lower() == block_net['id'].lower()), None)
@@ -1515,7 +1526,8 @@ async def create_block_net(
     if vnet.id in [v['id'] for v in target_block['vnets']]:
         raise HTTPException(status_code=400, detail="Network already exists in block.")
 
-    net_list = await get_network(authorization, True)
+    # Occupancy check for overlap against every network in the Block.
+    net_list = await fetch_networks(authorization, tenant_id, True)
 
     target_net = next((x for x in net_list if x['id'].lower() == vnet.id.lower()), None)
 
@@ -1599,7 +1611,8 @@ async def update_block_vnets(
     if not unique_nets:
         raise HTTPException(status_code=400, detail="List contains duplicate networks.")
 
-    net_list = await get_network(authorization, True)
+    # Occupancy check for overlap against every network in the Block.
+    net_list = await fetch_networks(authorization, tenant_id, True)
 
     invalid_nets = []
     outside_block_cidr = []
@@ -1808,7 +1821,8 @@ async def create_external_network(
     if req.name in [x['name'] for x in target_block['externals']]:
         raise HTTPException(status_code=400, detail="External network name already exists in block.")
 
-    net_list = await get_network(authorization, True)
+    # Occupancy check: the external network must not overlap anything already in the Block.
+    net_list = await fetch_networks(authorization, tenant_id, True)
 
     block_net_cidrs = []
 
@@ -2997,7 +3011,9 @@ async def create_block_reservation(
     if not target_block:
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
-    net_list = await get_network(authorization, True)
+    # Reservations are allocations, so occupancy needs every network or IPAM can hand out a CIDR that
+    # overlaps a network the caller cannot see.
+    net_list = await fetch_networks(authorization, tenant_id, True)
 
     block_all_cidrs = []
 
