@@ -54,7 +54,7 @@ async def _check_arm():
     creds = await get_client_credentials()
 
     try:
-        await arg_query_helper(creds, "Resources | project id | limit 1")
+        await arg_query_helper(creds, "Resources | project id | limit 1", app_only=True)
     finally:
         await creds.close()
 

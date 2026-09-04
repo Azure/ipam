@@ -862,7 +862,7 @@ async def match_resv_to_vnets():
     # production slot. This single guard covers both entry points that call it:
     # the App Service scheduler and the Functions timer trigger ('sentinel').
     if not globals.IS_PRODUCTION_SLOT:
-        logger.info("Skipping reservation reconciliation in non-production slot '%s'.", globals.SLOT_NAME)
+        logger.info("Skipping reservation reconciliation in non-production slot '{}'.", globals.SLOT_NAME)
         return
 
     net_list = await get_network(None, globals.TENANT_ID, True)

@@ -183,11 +183,11 @@ async def lifespan(app: FastAPI):
 
     if not compat.compatible:
         app.state.service_mode = SERVICE_MODE_INCOMPATIBLE
-        logger.error("Engine starting in INCOMPATIBLE mode; API disabled. %s", compat.detail)
+        logger.error("Engine starting in INCOMPATIBLE mode; API disabled. {}", compat.detail)
     elif not globals.IS_PRODUCTION_SLOT:
         app.state.service_mode = SERVICE_MODE_STAGING
         logger.warning(
-            "Engine starting in the '%s' slot; API disabled until swap to production.",
+            "Engine starting in the '{}' slot; API disabled until swap to production.",
             globals.SLOT_NAME,
         )
     else:
@@ -310,7 +310,8 @@ app.add_middleware(
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
-    return JSONResponse({"error": str(exc.detail)}, status_code=exc.status_code)
+    # Preserve any headers the raiser set (for example Retry-After on a 429).
+    return JSONResponse({"error": str(exc.detail)}, status_code=exc.status_code, headers=getattr(exc, "headers", None))
 
 @app.middleware("http")
 async def service_mode_gate(request: Request, call_next):

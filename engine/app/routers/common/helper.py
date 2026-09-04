@@ -1,3 +1,5 @@
+import asyncio
+import random
 from functools import wraps
 
 import azure.cosmos.exceptions as exceptions
@@ -25,6 +27,14 @@ from fastapi import HTTPException
 from netaddr import IPNetwork
 
 from app.globals import globals
+from app.logs.logs import ipam_logger as logger
+
+# Azure Resource Graph enforces a short per-caller quota window, so brief throttles are absorbed
+# here while longer ones are reported to the caller rather than held open.
+ARG_MAX_ATTEMPTS = 3
+ARG_MAX_BACKOFF_SECONDS = 3
+# Every paged query spends one unit of that quota, so warn before a large result set exhausts it.
+ARG_QUOTA_WARN_THRESHOLD = 2
 
 _cosmos_client = None
 
@@ -297,6 +307,8 @@ def cosmos_retry(error_msg, max_retry = 5):
 async def arg_query(auth, admin, query):
     """Run an Azure Resource Graph query (as admin or on-behalf-of the caller), injecting the tenant's subscription exclusions."""
 
+    app_only = bool(admin)
+
     if admin:
         creds = await get_client_credentials()
         tenant_id = globals.TENANT_ID
@@ -318,12 +330,7 @@ async def arg_query(auth, admin, query):
         exclusions = "('')"
 
     try:
-        results = await arg_query_helper(creds, query.format(exclusions))
-    except ClientAuthenticationError:
-        raise HTTPException(status_code=401, detail="Token has expired.")
-    except HttpResponseError as e:
-        print(e)
-        raise HTTPException(status_code=403, detail="Access denied.")
+        results = await arg_query_helper(creds, query.format(exclusions), app_only=app_only)
     finally:
         await creds.close()
 
@@ -335,10 +342,7 @@ async def arg_query_client(query):
     client_creds = await get_client_credentials()
 
     try:
-        results = await arg_query_helper(client_creds, query)
-    except ClientAuthenticationError:
-        await client_creds.close()
-        raise HTTPException(status_code=401, detail="Token has expired.")
+        results = await arg_query_helper(client_creds, query, app_only=True)
     finally:
         await client_creds.close()
 
@@ -352,17 +356,102 @@ async def arg_query_obo(auth, query):
     obo_creds = await get_obo_credentials(user_assertion)
 
     try:
-        results = await arg_query_helper(obo_creds, query)
-    except ClientAuthenticationError:
-        await obo_creds.close()
-        raise HTTPException(status_code=401, detail="Token has expired.")
+        results = await arg_query_helper(obo_creds, query, app_only=False)
     finally:
         await obo_creds.close()
 
     return results
 
-async def arg_query_helper(credentials, query):
-    """Execute an Azure Resource Graph query with the given credentials, paging through all results via skip tokens."""
+def arg_header_value(headers, name):
+    """Look up a header case-insensitively, since header casing varies by transport."""
+
+    for key, value in (headers or {}).items():
+        if str(key).lower() == name:
+            return value
+
+    return None
+
+def arg_error_headers(error):
+    """Response headers carried by an Azure SDK error, if any."""
+
+    return getattr(getattr(error, 'response', None), 'headers', None)
+
+def arg_retry_after(headers):
+    """Seconds Azure Resource Graph asked us to wait, or None if it didn't say."""
+
+    retry_after = arg_header_value(headers, 'retry-after')
+
+    if retry_after:
+        try:
+            return float(retry_after)
+        except ValueError:
+            pass
+
+    # ARG reports its remaining quota window as hh:mm:ss.
+    quota_reset = arg_header_value(headers, 'x-ms-user-quota-resets-after')
+
+    if quota_reset:
+        try:
+            hours, minutes, seconds = quota_reset.split(':')
+
+            return (int(hours) * 3600) + (int(minutes) * 60) + float(seconds)
+        except ValueError:
+            pass
+
+    return None
+
+def arg_quota_remaining(headers):
+    """Queries left in the caller's Azure Resource Graph quota window, or None if not reported."""
+
+    remaining = arg_header_value(headers, 'x-ms-user-quota-remaining')
+
+    if remaining is not None:
+        try:
+            return int(remaining)
+        except (TypeError, ValueError):
+            pass
+
+    return None
+
+def arg_capture_headers(pipeline_response, deserialized, _):
+    """SDK ``cls`` hook that keeps the raw response headers alongside the deserialized page."""
+
+    return deserialized, pipeline_response.http_response.headers
+
+async def arg_resources_with_retry(resource_graph_client, query_request):
+    """Request one page of Azure Resource Graph results, retrying only while throttling clears quickly.
+
+    Returns the page alongside its response headers so the caller can track quota consumption.
+    """
+
+    attempt = 0
+
+    while True:
+        attempt += 1
+
+        try:
+            return await resource_graph_client.resources(query_request, cls=arg_capture_headers)
+        except HttpResponseError as e:
+            if e.status_code != 429 or attempt >= ARG_MAX_ATTEMPTS:
+                raise
+
+            retry_after = arg_retry_after(arg_error_headers(e))
+
+            # Waiting out a long quota window would stall the caller, so hand the 429 back instead.
+            if retry_after is not None and retry_after > ARG_MAX_BACKOFF_SECONDS:
+                raise
+
+            backoff = retry_after if retry_after is not None else min(2 ** (attempt - 1), ARG_MAX_BACKOFF_SECONDS)
+
+            # Jittered so concurrent vNET/vHUB queries don't retry in lockstep and re-trip the quota.
+            await asyncio.sleep(backoff + random.uniform(0, 0.5))
+
+async def arg_query_helper(credentials, query, app_only = False):
+    """Execute an Azure Resource Graph query with the given credentials, paging through all results via skip tokens.
+
+    Set ``app_only`` when ``credentials`` belong to the IPAM service principal rather than the caller,
+    so an authentication failure is reported as a server fault instead of blaming the caller's token.
+    """
 
     results = []
 
@@ -389,19 +478,55 @@ async def arg_query_helper(credentials, query):
                 )
             )
 
-            poll = await resource_graph_client.resources(query_request)
+            # Only the page request is retried, so already-collected results are never re-appended.
+            poll, response_headers = await arg_resources_with_retry(resource_graph_client, query_request)
             results = results + poll.data
+
+            remaining = arg_quota_remaining(response_headers)
+
+            if remaining is not None and remaining <= ARG_QUOTA_WARN_THRESHOLD:
+                logger.warning(
+                    "Azure Resource Graph quota nearly exhausted: {} queries remaining, resets in {}s ({} of {} records collected)",
+                    remaining, arg_retry_after(response_headers), len(results), poll.total_records
+                )
 
             if poll.skip_token:
                 skip_token = poll.skip_token
             else:
                 break
     except ServiceRequestError as e:
-        print(e)
+        logger.error("Error communicating with Azure: {}", e)
         raise HTTPException(status_code=500, detail="Error communicating with Azure.")
+    # Must precede HttpResponseError: ClientAuthenticationError is a subclass of it.
+    except ClientAuthenticationError as e:
+        logger.error("Azure authentication failed (app_only={}): {}", app_only, e)
+
+        if app_only:
+            raise HTTPException(status_code=500, detail="Azure IPAM could not authenticate to Azure, its service principal credentials may be expired or invalid.")
+
+        raise HTTPException(status_code=401, detail="Azure authentication failed, your credentials may be expired or invalid.")
     except HttpResponseError as e:
-        print(e)
-        raise HTTPException(status_code=403, detail="Access denied.")
+        logger.error("Azure Resource Graph query failed: {}", e)
+
+        if e.status_code == 429:
+            retry_after = arg_retry_after(arg_error_headers(e))
+
+            raise HTTPException(
+                status_code=429,
+                detail="Azure Resource Graph is throttling requests, please retry shortly.",
+                headers={"Retry-After": str(max(1, int(retry_after)))} if retry_after else None
+            )
+
+        if e.status_code and e.status_code >= 500:
+            raise HTTPException(status_code=502, detail="Azure Resource Graph is unavailable, please retry shortly.")
+
+        # The SDK maps an ARG 401 to ClientAuthenticationError, so only 403 reaches here.
+        if e.status_code == 403:
+            raise HTTPException(status_code=403, detail="Access denied.")
+
+        # Any other upstream status reflects an ARG-side or query fault rather than a caller error,
+        # so the real status is logged instead of being relayed and blamed on the caller.
+        raise HTTPException(status_code=502, detail="Azure Resource Graph query failed.")
     finally:
         await resource_graph_client.close()
 

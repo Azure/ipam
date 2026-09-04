@@ -81,7 +81,7 @@ async def run_convergence():
     target = globals.SCHEMA_VERSION
 
     if target <= current:
-        logger.info("Database schema already at v%s; no convergence needed.", current)
+        logger.info("Database schema already at v{}; no convergence needed.", current)
         return
 
     for step in STEPS:
@@ -92,7 +92,7 @@ async def run_convergence():
             break
 
         logger.warning(
-            "Converging schema to v%s (%s, %s)...",
+            "Converging schema to v{} ({}, {})...",
             step.version,
             step.name,
             "breaking" if step.breaking else "additive",
@@ -107,4 +107,4 @@ async def run_convergence():
 
         await write_schema_doc(current, min_readable)
 
-        logger.warning("Converged to schema v%s.", step.version)
+        logger.warning("Converged to schema v{}.", step.version)
