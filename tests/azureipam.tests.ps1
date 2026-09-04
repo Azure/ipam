@@ -20,11 +20,114 @@ BeforeAll {
 
   [string]$baseUrl = "$env:IPAM_URL/api"
 
-  $token = (Get-AzAccessToken -ResourceUrl api://$env:IPAM_ENGINE_APP_ID).Token
-  [System.Security.SecureString]$accessToken = if ($token -is [System.Security.SecureString]) { $token } else { ConvertTo-SecureString $token -AsPlainText }
+  # The suite deliberately waits on ARG propagation, so a run can outlive a single access token.
+  # Tokens are cached and re-acquired on expiry rather than fetched once up front.
+  $script:apiToken = $null
+  $script:apiTokenExpiresOn = [DateTimeOffset]::MinValue
+
+  Function Get-ApiToken {
+    [CmdletBinding()]
+    Param()
+
+    if ($null -eq $script:apiToken -or [DateTimeOffset]::UtcNow -ge $script:apiTokenExpiresOn.AddMinutes(-5)) {
+      $result = Get-AzAccessToken -ResourceUrl api://$env:IPAM_ENGINE_APP_ID
+      $token = $result.Token
+
+      $script:apiToken = if ($token -is [System.Security.SecureString]) { $token } else { ConvertTo-SecureString $token -AsPlainText }
+
+      # ExpiresOn moved between Az.Accounts versions, so fall back to a conservative window.
+      $expiresOn = $result.PSObject.Properties['ExpiresOn']
+
+      $script:apiTokenExpiresOn = if ($expiresOn -and $expiresOn.Value) {
+        [DateTimeOffset]$expiresOn.Value
+      } else {
+        [DateTimeOffset]::UtcNow.AddMinutes(30)
+      }
+    }
+
+    return $script:apiToken
+  }
+
+  # Acquire once here so a broken sign-in fails the suite up front rather than mid-run.
+  $null = Get-ApiToken
 
   [hashtable]$headers = @{
     "Content-Type" = "application/json"
+  }
+
+  # Transient failures worth a retry: Resource Graph throttling surfaced by the engine, plus upstream
+  # faults. Client errors (400/403/404/409/422) are deliberately excluded because this suite asserts
+  # them, and retrying would both mask regressions and slow every negative test.
+  [int[]]$transientStatusCodes = @(429, 500, 502, 503, 504)
+  [int]$maxApiAttempts = 3
+  [int]$maxRetryDelaySeconds = 10
+
+  # Shared request pipeline for the API helpers below.
+  Function Invoke-ApiRequest {
+    [CmdletBinding()]
+    Param(
+      [Parameter(Mandatory=$True)]
+      [string]$method,
+
+      [Parameter(Mandatory=$True)]
+      [string]$resource,
+
+      [Parameter(Mandatory=$False)]
+      $body
+    )
+
+    $attempt = 0
+
+    while ($true) {
+      $attempt++
+
+      $request = @{
+        Method = $method
+        Authentication = 'Bearer'
+        Token = Get-ApiToken
+        Uri = "${baseUrl}${resource}"
+        Headers = $headers
+        Body = $body
+        StatusCodeVariable = 'status'
+      }
+
+      try {
+        $response = Invoke-RestMethod @request
+
+        Write-Output $response, $status
+
+        return
+      }
+      catch {
+        # Only a definitive HTTP response proves the request had no effect. A transport failure could
+        # mean a POST already applied server-side, so those are surfaced rather than replayed.
+        $failedResponse = $_.Exception.PSObject.Properties['Response']
+        $statusCode = if ($failedResponse -and $failedResponse.Value) { [int]$failedResponse.Value.StatusCode } else { 0 }
+
+        if ($attempt -ge $maxApiAttempts -or $statusCode -notin $transientStatusCodes) {
+          throw
+        }
+
+        $delay = [Math]::Pow(2, $attempt - 1)
+
+        # The engine sends Retry-After on a 429, so wait exactly as long as it asked.
+        $retryAfterHeader = $failedResponse.Value.Headers | Where-Object { $_.Key -eq 'Retry-After' } | Select-Object -First 1
+
+        if ($retryAfterHeader) {
+          $retryAfter = ($retryAfterHeader.Value | Select-Object -First 1) -as [int]
+
+          if ($retryAfter -gt 0) {
+            $delay = $retryAfter
+          }
+        }
+
+        $delay = [Math]::Min($delay, $maxRetryDelaySeconds)
+
+        Write-Warning "Transient HTTP $statusCode from $method $resource; retrying in ${delay}s (attempt $attempt of $maxApiAttempts)."
+
+        Start-Sleep -Seconds $delay
+      }
+    }
   }
 
   # GET API Request
@@ -38,16 +141,7 @@ BeforeAll {
 	    [hashtable]$query
     )
 
-    $response = Invoke-RestMethod `
-      -Method Get `
-      -Authentication Bearer `
-      -Token $accessToken `
-      -Uri "${baseUrl}${resource}" `
-      -Headers $headers `
-      -Body $query `
-      -StatusCodeVariable status
-
-    Write-Output $response, $status
+    Invoke-ApiRequest -method Get -resource $resource -body $query
   }
 
   # POST API Request
@@ -62,16 +156,8 @@ BeforeAll {
     )
 
     $jsonBody = $body | ConvertTo-Json
-    $response = Invoke-RestMethod `
-      -Method Post `
-      -Authentication Bearer `
-      -Token $accessToken `
-      -Uri "${baseUrl}${resource}" `
-      -Headers $headers `
-      -Body $jsonBody `
-      -StatusCodeVariable status
 
-    Write-Output $response, $status
+    Invoke-ApiRequest -method Post -resource $resource -body $jsonBody
   }
 
   # PUT API Request
@@ -86,16 +172,8 @@ BeforeAll {
     )
 
     $jsonBody = $body | ConvertTo-Json -AsArray
-    $response = Invoke-RestMethod `
-      -Method Put `
-      -Authentication Bearer `
-      -Token $accessToken `
-      -Uri "${baseUrl}${resource}" `
-      -Headers $headers `
-      -Body $jsonBody `
-      -StatusCodeVariable status
 
-    Write-Output $response, $status
+    Invoke-ApiRequest -method Put -resource $resource -body $jsonBody
   }
 
   # PATCH API Request
@@ -110,16 +188,8 @@ BeforeAll {
     )
 
     $jsonBody = $body | ConvertTo-Json -AsArray
-    $response = Invoke-RestMethod `
-      -Method Patch `
-      -Authentication Bearer `
-      -Token $accessToken `
-      -Uri "${baseUrl}${resource}" `
-      -Headers $headers `
-      -Body $jsonBody `
-      -StatusCodeVariable status
 
-    Write-Output $response, $status
+    Invoke-ApiRequest -method Patch -resource $resource -body $jsonBody
   }
 
   # DELETE API Request
@@ -134,16 +204,8 @@ BeforeAll {
     )
 
     $jsonBody = $body | ConvertTo-Json -AsArray
-    $response = Invoke-RestMethod `
-      -Method Delete `
-      -Authentication Bearer `
-      -Token $accessToken `
-      -Uri "${baseUrl}${resource}" `
-      -Headers $headers `
-      -Body $jsonBody `
-      -StatusCodeVariable status
 
-    Write-Output $response, $status
+    Invoke-ApiRequest -method Delete -resource $resource -body $jsonBody
   }
 
   # Parse JWT Access Token
