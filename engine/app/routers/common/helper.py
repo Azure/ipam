@@ -1,5 +1,3 @@
-import asyncio
-import random
 from functools import wraps
 
 import azure.cosmos.exceptions as exceptions
@@ -10,6 +8,7 @@ from azure.core.exceptions import (
     HttpResponseError,
     ServiceRequestError,
 )
+from azure.core.pipeline.policies import AsyncRetryPolicy
 from azure.cosmos.aio import CosmosClient
 from azure.identity.aio import (
     ClientSecretCredential,
@@ -22,6 +21,7 @@ from azure.mgmt.resourcegraph.models import (
     QueryRequest,
     QueryRequestOptions,
     ResultFormat,
+    ResultTruncated,
 )
 from fastapi import HTTPException
 from netaddr import IPNetwork
@@ -29,14 +29,31 @@ from netaddr import IPNetwork
 from app.globals import globals
 from app.logs.logs import ipam_logger as logger
 
-# Azure Resource Graph enforces a short per-caller quota window, so brief throttles are absorbed
-# here while longer ones are reported to the caller rather than held open.
-ARG_MAX_ATTEMPTS = 3
-ARG_MAX_BACKOFF_SECONDS = 3
-# Every paged query spends one unit of that quota, so warn before a large result set exhausts it.
-ARG_QUOTA_WARN_THRESHOLD = 2
-
 _cosmos_client = None
+
+class ArgRetryPolicy(AsyncRetryPolicy):
+    """Teach the SDK's retry policy how Azure Resource Graph reports throttling.
+
+    ARG throttles a POST and states the wait as ``x-ms-user-quota-resets-after`` rather than
+    ``Retry-After``. Stock azure-core therefore never retries it: POST sits outside the method
+    allowlist, and the ``Retry-After`` short circuit that would override that never fires. Supplying
+    the header on both counts restores the SDK's own retry behaviour and lets it wait exactly as
+    long as ARG asked instead of backing off blindly.
+    """
+
+    def get_retry_after(self, response):
+        retry_after = super().get_retry_after(response)
+
+        if retry_after is not None:
+            return retry_after
+
+        return arg_retry_after(getattr(response.http_response, 'headers', None))
+
+    def is_retry(self, settings, response):
+        if response.http_response.status_code == 429 and self.get_retry_after(response) is not None:
+            return True
+
+        return super().is_retry(settings, response)
 
 def get_cosmos_client():
     # Created lazily so the shared aiohttp transport is built within a running event loop. Newer
@@ -418,34 +435,6 @@ def arg_capture_headers(pipeline_response, deserialized, _):
 
     return deserialized, pipeline_response.http_response.headers
 
-async def arg_resources_with_retry(resource_graph_client, query_request):
-    """Request one page of Azure Resource Graph results, retrying only while throttling clears quickly.
-
-    Returns the page alongside its response headers so the caller can track quota consumption.
-    """
-
-    attempt = 0
-
-    while True:
-        attempt += 1
-
-        try:
-            return await resource_graph_client.resources(query_request, cls=arg_capture_headers)
-        except HttpResponseError as e:
-            if e.status_code != 429 or attempt >= ARG_MAX_ATTEMPTS:
-                raise
-
-            retry_after = arg_retry_after(arg_error_headers(e))
-
-            # Waiting out a long quota window would stall the caller, so hand the 429 back instead.
-            if retry_after is not None and retry_after > ARG_MAX_BACKOFF_SECONDS:
-                raise
-
-            backoff = retry_after if retry_after is not None else min(2 ** (attempt - 1), ARG_MAX_BACKOFF_SECONDS)
-
-            # Jittered so concurrent vNET/vHUB queries don't retry in lockstep and re-trip the quota.
-            await asyncio.sleep(backoff + random.uniform(0, 0.5))
-
 async def arg_query_helper(credentials, query, app_only = False):
     """Execute an Azure Resource Graph query with the given credentials, paging through all results via skip tokens.
 
@@ -462,7 +451,8 @@ async def arg_query_helper(credentials, query, app_only = False):
         credential=credentials,
         base_url=azure_arm_url,
         credential_scopes=[azure_arm_scope],
-        transport=globals.SHARED_TRANSPORT
+        transport=globals.SHARED_TRANSPORT,
+        retry_policy=ArgRetryPolicy()
     )
 
     try:
@@ -478,22 +468,35 @@ async def arg_query_helper(credentials, query, app_only = False):
                 )
             )
 
-            # Only the page request is retried, so already-collected results are never re-appended.
-            poll, response_headers = await arg_resources_with_retry(resource_graph_client, query_request)
+            poll, response_headers = await resource_graph_client.resources(query_request, cls=arg_capture_headers)
             results = results + poll.data
 
-            remaining = arg_quota_remaining(response_headers)
-
-            if remaining is not None and remaining <= ARG_QUOTA_WARN_THRESHOLD:
-                logger.warning(
-                    "Azure Resource Graph quota nearly exhausted: {} queries remaining, resets in {}s ({} of {} records collected)",
-                    remaining, arg_retry_after(response_headers), len(results), poll.total_records
-                )
-
             if poll.skip_token:
+                # Only worth reporting when another page is due, since that is the request that throttles.
+                if arg_quota_remaining(response_headers) == 0:
+                    logger.warning(
+                        "Azure Resource Graph quota exhausted with more pages to fetch, resets in {}s ({} of {} records collected)",
+                        arg_retry_after(response_headers), len(results), poll.total_records
+                    )
+
                 skip_token = poll.skip_token
             else:
                 break
+
+        # ARG withholds the continuation token when it truncates, so the missing rows are unreachable.
+        if poll.result_truncated == ResultTruncated.TRUE:
+            logger.error(
+                "Azure Resource Graph truncated the result set: {} of {} records returned with no continuation token",
+                len(results), poll.total_records
+            )
+
+            raise HTTPException(status_code=500, detail="Azure Resource Graph returned an incomplete result set.")
+
+        if len(results) != poll.total_records:
+            logger.warning(
+                "Azure Resource Graph returned {} records but reported {} total, resources likely changed while paging",
+                len(results), poll.total_records
+            )
     except ServiceRequestError as e:
         logger.error("Error communicating with Azure: {}", e)
         raise HTTPException(status_code=500, detail="Error communicating with Azure.")
