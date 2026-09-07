@@ -369,7 +369,7 @@ process {
 
   # Set Log File Location
   $logPath = Join-Path -Path $ROOT_DIR -ChildPath "logs"
-  New-Item -ItemType Directory -Path $logpath -Force | Out-Null
+  New-Item -ItemType Directory -Path $logPath -Force | Out-Null
 
   $debugLog = Join-Path -Path $logPath -ChildPath "debug_$(Get-Date -Format `"yyyyMMddhhmmsstt`").log"
   $errorLog = Join-Path -Path $logPath -ChildPath "error_$(Get-Date -Format `"yyyyMMddhhmmsstt`").log"

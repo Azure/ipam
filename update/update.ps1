@@ -141,7 +141,7 @@ $Env:AZURE_CORE_SURVEY_MESSAGE = $false
 
 # Set Log File Location
 $logPath = Join-Path -Path $ROOT_DIR -ChildPath "logs"
-New-Item -ItemType Directory -Path $logpath -Force | Out-Null
+New-Item -ItemType Directory -Path $logPath -Force | Out-Null
 
 # Initialize logging (run transcript + structured detail log + on-demand debug log)
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
