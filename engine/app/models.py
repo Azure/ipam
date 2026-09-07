@@ -134,6 +134,16 @@ class ExtSubnetExpand(BaseModel):
     cidr: str
     endpoints: List[ExtEndpoint]
 
+class ExtSubnetUtil(BaseModel):
+    """An external subnet with address utilization (total addresses and endpoints defined within it)."""
+
+    name: str
+    desc: str
+    cidr: str
+    endpoints: List[ExtEndpoint]
+    size: int
+    used: int
+
 class ExtNet(BaseModel):
     """An external (non-Azure) network defined within a Block, with a CIDR range and child subnets."""
 
@@ -151,6 +161,16 @@ class ExtNetExpand(BaseModel):
     block: str
     cidr: IPv4Network
     subnets: List[ExtSubnet]
+
+class ExtNetUtil(BaseModel):
+    """An external network with address utilization (total addresses and address space assigned to subnets)."""
+
+    name: str
+    desc: str
+    cidr: IPv4Network
+    subnets: List[ExtSubnetUtil]
+    size: int
+    used: int
 
 class VNets(BaseModel):
     """A collection of Virtual Network resource IDs."""
@@ -256,7 +276,7 @@ class BlockBasicUtil(BaseModel):
     name: str
     cidr: str
     vnets: List[VNet]
-    externals: List[ExtNet]
+    externals: List[ExtNetUtil]
     resv: List[Reservation]
     size: int
     used: int
@@ -285,7 +305,7 @@ class BlockUtil(BaseModel):
     name: str
     cidr: str
     vnets: List[VNet]
-    externals: List[ExtNet]
+    externals: List[ExtNetUtil]
     resv: List[Reservation]
     size: int
     used: int
@@ -296,7 +316,7 @@ class BlockExpandUtil(BaseModel):
     name: str
     cidr: str
     vnets: List[VNetExpandUtil]
-    externals: List[ExtNet]
+    externals: List[ExtNetUtil]
     resv: List[Reservation]
     size: int
     used: int

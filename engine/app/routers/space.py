@@ -110,6 +110,16 @@ def add_block_utilization(block, nets, expand):
     for ext in block['externals']:
         block['used'] += IPNetwork(ext['cidr']).size
 
+        ext['size'] = IPNetwork(ext['cidr']).size
+        ext['used'] = 0
+
+        for ext_subnet in ext['subnets']:
+            ext_subnet['size'] = IPNetwork(ext_subnet['cidr']).size
+            # An external network is not Azure, so no addresses are reserved by the platform.
+            ext_subnet['used'] = len(ext_subnet['endpoints'])
+
+            ext['used'] += ext_subnet['size']
+
 async def valid_space_name_update(name, space_name, tenant_id):
     space_names = await cosmos_query("SELECT VALUE LOWER(c.name) FROM c WHERE c.type = 'space' AND LOWER(c.name) != LOWER('{}')".format(space_name), tenant_id)
 
