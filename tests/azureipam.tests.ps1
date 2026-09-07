@@ -25,9 +25,10 @@ BeforeAll {
   $script:apiToken = $null
   $script:apiTokenExpiresOn = [DateTimeOffset]::MinValue
 
-  Function Get-ApiToken {
+  function Get-ApiToken {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '', Justification = 'Normalizes an ephemeral Azure access token across Az module versions (older Az returns a String, newer returns a SecureString). This is not a stored credential.')]
     [CmdletBinding()]
-    Param()
+    param()
 
     if ($null -eq $script:apiToken -or [DateTimeOffset]::UtcNow -ge $script:apiTokenExpiresOn.AddMinutes(-5)) {
       $result = Get-AzAccessToken -ResourceUrl api://$env:IPAM_ENGINE_APP_ID
@@ -63,9 +64,9 @@ BeforeAll {
   [int]$maxRetryDelaySeconds = 10
 
   # Shared request pipeline for the API helpers below.
-  Function Invoke-ApiRequest {
+  function Invoke-ApiRequest {
     [CmdletBinding()]
-    Param(
+    param(
       [Parameter(Mandatory=$True)]
       [string]$method,
 
@@ -131,9 +132,9 @@ BeforeAll {
   }
 
   # GET API Request
-  Function Get-ApiResource {
+  function Get-ApiResource {
     [CmdletBinding()]
-    Param (
+    param(
       [Parameter(Mandatory=$True, Position=0)]
       [string]$resource,
 
@@ -145,9 +146,9 @@ BeforeAll {
   }
 
   # POST API Request
-  Function New-ApiResource {
+  function New-ApiResource {
     [CmdletBinding()]
-    Param(
+    param(
       [Parameter(Mandatory=$True, Position=0)]
       [string]$resource,
 
@@ -161,9 +162,9 @@ BeforeAll {
   }
 
   # PUT API Request
-  Function Set-ApiResource {
+  function Set-ApiResource {
     [CmdletBinding()]
-    Param(
+    param(
       [Parameter(Mandatory=$True, Position=0)]
       [string]$resource,
 
@@ -177,9 +178,9 @@ BeforeAll {
   }
 
   # PATCH API Request
-  Function Update-ApiResource {
+  function Update-ApiResource {
     [CmdletBinding()]
-    Param(
+    param(
       [Parameter(Mandatory=$True, Position=0)]
       [string]$resource,
 
@@ -193,9 +194,9 @@ BeforeAll {
   }
 
   # DELETE API Request
-  Function Remove-ApiResource {
+  function Remove-ApiResource {
     [CmdletBinding()]
-    Param(
+    param(
       [Parameter(Mandatory=$True, Position=0)]
       [string]$resource,
 
@@ -209,9 +210,9 @@ BeforeAll {
   }
 
   # Parse JWT Access Token
-  Function Get-JWTPayload {
+  function Get-JWTPayload {
     [CmdletBinding()]
-    Param(
+    param(
       [Parameter(Mandatory=$true)]
       [string]$token
     )
@@ -1564,8 +1565,8 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
   Context 'Utilization & Expansion' -Tag @('AzureLive') {
     BeforeAll {
       # Address count for a CIDR, used to check the engine's utilization math independently.
-      Function Get-CidrSize {
-        Param(
+      function Get-CidrSize {
+        param(
           [Parameter(Mandatory=$True)]
           [string]$cidr
         )
