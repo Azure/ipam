@@ -88,6 +88,7 @@ def add_block_utilization(block, nets, expand):
     for net in block['vnets']:
         if expand:
             net['size'] = 0
+            net['used'] = 0
             net_prefixes = list(filter(lambda x: IPNetwork(x) in block_cidr, net['prefixes']))
         else:
             # Azure reports resource IDs with inconsistent casing, and stored IDs keep the caller's.
@@ -99,13 +100,15 @@ def add_block_utilization(block, nets, expand):
 
             if expand:
                 net['size'] += IPNetwork(prefix).size
-                net['used'] = 0
 
         if expand:
             if 'subnets' in net:
                 for subnet in net['subnets']:
-                    net['used'] += IPNetwork(subnet['prefix']).size
                     subnet['size'] = IPNetwork(subnet['prefix']).size
+
+                    # size only counts the network's in-Block prefixes, so used must be scoped to match.
+                    if IPNetwork(subnet['prefix']) in block_cidr:
+                        net['used'] += subnet['size']
 
     for ext in block['externals']:
         block['used'] += IPNetwork(ext['cidr']).size
