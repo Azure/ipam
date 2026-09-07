@@ -247,7 +247,8 @@ async def cidr_check(
         for space in spaces:
             for block in space['blocks']:
                 for vnet in block['vnets']:
-                    if vnet['id'] == item['id']:
+                    # Azure reports resource IDs with inconsistent casing, and stored IDs keep the caller's.
+                    if vnet['id'].lower() == item['id'].lower():
                         container = {
                             "space": space['name'],
                             "block": block['name']

@@ -540,7 +540,9 @@ async def fetch_networks(authorization, tenant_id, all_networks):
         del vwan['prefix']
 
         for peering in vwan['peerings']:
-            target_vnet = next((x for x in networks[0] if x['id'] == peering['remote_network']), None)
+            # Hub peerings come from the ARM SDK while the networks come from Resource Graph, and the
+            # two APIs do not agree on resource ID casing.
+            target_vnet = next((x for x in networks[0] if x['id'].lower() == peering['remote_network'].lower()), None)
 
             if target_vnet:
                 peering_match = ".*(virtualNetworks/HV_{}_).*".format(vwan['name'])
@@ -909,7 +911,8 @@ async def match_resv_to_vnets():
 
         for block in space['blocks']:
             for net in block['vnets']:
-                active = next((x for x in net_list if x['id'] == net['id']), None)
+                # Azure reports resource IDs with inconsistent casing, and stored IDs keep the caller's.
+                active = next((x for x in net_list if x['id'].lower() == net['id'].lower()), None)
 
                 if active:
                     net_prefix_set = IPSet(active['prefixes'])

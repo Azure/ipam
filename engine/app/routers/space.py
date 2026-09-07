@@ -164,7 +164,8 @@ async def valid_block_cidr_update(cidr, space_name, block_name, tenant_id):
             space_cidrs.append(block['cidr'])
         else:
             for vnet in block['vnets']:
-                target_net = next((i for i in net_list if i['id'] == vnet['id']), None)
+                # Azure reports resource IDs with inconsistent casing, and stored IDs keep the caller's.
+                target_net = next((i for i in net_list if i['id'].lower() == vnet['id'].lower()), None)
 
                 if target_net:
                     block_cidrs += target_net['prefixes']
@@ -264,7 +265,7 @@ async def valid_ext_network_cidr_update(cidr, space_name, block_name, external_n
     net_list = await fetch_network_prefixes(None, True)
 
     for vnet in target_block['vnets']:
-        target_net = next((i for i in net_list if i['id'] == vnet['id']), None)
+        target_net = next((i for i in net_list if i['id'].lower() == vnet['id'].lower()), None)
 
         if target_net:
             block_cidrs += target_net['prefixes']
@@ -567,7 +568,7 @@ async def get_spaces(
                 expanded_nets = []
 
                 for net in block['vnets']:
-                    target_net = next((i for i in nets if i['id'] == net['id']), None)
+                    target_net = next((i for i in nets if i['id'].lower() == net['id'].lower()), None)
                     target_net and expanded_nets.append(target_net)
 
                 block['vnets'] = expanded_nets
@@ -582,7 +583,7 @@ async def get_spaces(
                         net['size'] = 0
                         net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), net['prefixes']))
                     else:
-                        target_net = next((i for i in nets if i['id'] == net['id']), None)
+                        target_net = next((i for i in nets if i['id'].lower() == net['id'].lower()), None)
                         net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), target_net['prefixes'])) if target_net else []
 
                     for prefix in net_prefixes:
@@ -719,7 +720,7 @@ async def get_space(
             expanded_nets = []
 
             for net in block['vnets']:
-                target_net = next((i for i in nets if i['id'] == net['id']), None)
+                target_net = next((i for i in nets if i['id'].lower() == net['id'].lower()), None)
                 target_net and expanded_nets.append(target_net)
 
             block['vnets'] = expanded_nets
@@ -734,7 +735,7 @@ async def get_space(
                     net['size'] = 0
                     net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), net['prefixes']))
                 else:
-                    target_net = next((i for i in nets if i['id'] == net['id']), None)
+                    target_net = next((i for i in nets if i['id'].lower() == net['id'].lower()), None)
                     net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), target_net['prefixes'])) if target_net else []
 
                 for prefix in net_prefixes:
@@ -1071,7 +1072,7 @@ async def get_blocks(
             expanded_nets = []
 
             for net in block['vnets']:
-                target_net = next((i for i in nets if i['id'] == net['id']), None)
+                target_net = next((i for i in nets if i['id'].lower() == net['id'].lower()), None)
                 target_net and expanded_nets.append(target_net)
 
             block['vnets'] = expanded_nets
@@ -1085,7 +1086,7 @@ async def get_blocks(
                     net['size'] = 0
                     net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), net['prefixes']))
                 else:
-                    target_net = next((i for i in nets if i['id'] == net['id']), None)
+                    target_net = next((i for i in nets if i['id'].lower() == net['id'].lower()), None)
                     net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), target_net['prefixes'])) if target_net else []
 
                 for prefix in net_prefixes:
@@ -1235,7 +1236,7 @@ async def get_block(
         expanded_nets = []
 
         for net in target_block['vnets']:
-            target_net = next((i for i in nets if i['id'] == net['id']), None)
+            target_net = next((i for i in nets if i['id'].lower() == net['id'].lower()), None)
             target_net and expanded_nets.append(target_net)
 
         target_block['vnets'] = expanded_nets
@@ -1249,7 +1250,7 @@ async def get_block(
                 net['size'] = 0
                 net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), net['prefixes']))
             else:
-                target_net = next((i for i in nets if i['id'] == net['id']), None)
+                target_net = next((i for i in nets if i['id'].lower() == net['id'].lower()), None)
                 net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target_net['prefixes'])) if target_net else []
 
             for prefix in net_prefixes:
@@ -1729,8 +1730,8 @@ async def delete_block_nets(
     if not unique_nets:
         raise HTTPException(status_code=400, detail="List contains one or more duplicate network id's.")
 
-    current_nets = list(x['id'] for x in target_block['vnets'])
-    ids_exist = all(elem in current_nets for elem in req)
+    current_nets = list(x['id'].lower() for x in target_block['vnets'])
+    ids_exist = all(elem.lower() in current_nets for elem in req)
 
     if not ids_exist:
         raise HTTPException(status_code=400, detail="List contains one or more invalid network id's.")
@@ -1739,7 +1740,7 @@ async def delete_block_nets(
     invalid_nets = []
 
     for id in req:
-        index = next((i for i, item in enumerate(target_block['vnets']) if item['id'] == id), None)
+        index = next((i for i, item in enumerate(target_block['vnets']) if item['id'].lower() == id.lower()), None)
 
         if index is not None:
             del target_block['vnets'][index]
