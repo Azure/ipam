@@ -545,8 +545,10 @@ async def fetch_networks(authorization, tenant_id, all_networks):
             target_vnet = next((x for x in networks[0] if x['id'].lower() == peering['remote_network'].lower()), None)
 
             if target_vnet:
-                peering_match = ".*(virtualNetworks/HV_{}_).*".format(vwan['name'])
-                target_peering = next((x for x in target_vnet['peerings'] if re.match(peering_match, x['remote_network'])), None)
+                # Hub names may contain periods, so the generated HV_<hub>_ transit network that Azure
+                # peers the vNET to is matched as a substring rather than a pattern.
+                peering_match = "virtualnetworks/hv_{}_".format(vwan['name'].lower())
+                target_peering = next((x for x in target_vnet['peerings'] if peering_match in x['remote_network'].lower()), None)
 
                 if target_peering:
                     target_peering['remote_network'] = vwan['id']
