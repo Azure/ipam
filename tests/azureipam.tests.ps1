@@ -1708,6 +1708,99 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
         $network.PSObject.Properties.Name | Should -Contain 'prefixes'
       }
     }
+
+    # GET /api/spaces/{space}/blocks/{block}?expand=true&utilization=true
+    It 'Expanded Network Utilization Never Exceeds Its Size' {
+      # Regression: size counted only the prefixes inside the Block while used counted the subnets of
+      # every prefix the network owns, so a network straddling the Block boundary reported used > size.
+      $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?expand=true&utilization=true'
+
+      $blockStatus | Should -Be 200
+
+      @($block.vnets).Count | Should -BeGreaterThan 0
+
+      foreach($vnet in @($block.vnets)) {
+        $vnet.PSObject.Properties.Name | Should -Contain 'size'
+        $vnet.PSObject.Properties.Name | Should -Contain 'used'
+
+        $vnet.used | Should -BeLessOrEqual $vnet.size
+      }
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?utilization=true
+    It 'External Networks Report Address Utilization' {
+      $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?utilization=true'
+
+      $blockStatus | Should -Be 200
+
+      @($block.externals).Count | Should -BeGreaterThan 0
+
+      foreach($external in @($block.externals)) {
+        $external.PSObject.Properties.Name | Should -Contain 'size'
+        $external.PSObject.Properties.Name | Should -Contain 'used'
+
+        $external.size | Should -Be (Get-CidrSize $external.cidr)
+
+        # An external network's used is the address space assigned to its subnets.
+        $subnetSize = [int64]0
+
+        foreach($subnet in @($external.subnets)) {
+          $subnetSize += Get-CidrSize $subnet.cidr
+        }
+
+        $external.used | Should -Be $subnetSize
+        $external.used | Should -BeLessOrEqual $external.size
+      }
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?utilization=true
+    It 'External Subnets Report Endpoints as Used Addresses' {
+      $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?utilization=true'
+
+      $blockStatus | Should -Be 200
+
+      $subnets = @(@($block.externals) | ForEach-Object { $_.subnets })
+
+      @($subnets).Count | Should -BeGreaterThan 0
+
+      foreach($subnet in $subnets) {
+        $subnet.PSObject.Properties.Name | Should -Contain 'size'
+        $subnet.PSObject.Properties.Name | Should -Contain 'used'
+
+        $subnet.size | Should -Be (Get-CidrSize $subnet.cidr)
+
+        # External networks are not Azure, so no addresses are reserved by the platform.
+        $subnet.used | Should -Be @($subnet.endpoints).Count
+        $subnet.used | Should -BeLessOrEqual $subnet.size
+      }
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?utilization=true
+    It 'Block Utilization Counts an External Network Once, Not Its Subnets Again' {
+      # An external network's subnets sit inside its own range, so counting both would double count.
+      $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?utilization=true'
+
+      $blockStatus | Should -Be 200
+
+      $externalSubnetSize = [int64](@(@($block.externals) | ForEach-Object { $_.subnets } | Where-Object { $_ }) | Measure-Object -Property size -Sum).Sum
+
+      # Guards against this passing vacuously if the external subnet fixture ever disappears.
+      $externalSubnetSize | Should -BeGreaterThan 0
+
+      $externalSize = [int64]0
+
+      foreach($external in @($block.externals)) {
+        $externalSize += Get-CidrSize $external.cidr
+      }
+
+      $networkSize, $networkStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?expand=true&utilization=true'
+
+      $networkStatus | Should -Be 200
+
+      $networkUsed = [int64](@($networkSize.vnets) | Measure-Object -Property size -Sum).Sum
+
+      $block.used | Should -Be ($networkUsed + $externalSize)
+    }
   }
 
   Context 'Reservations' -Tag @('AzureLive') {
