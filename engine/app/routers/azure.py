@@ -203,10 +203,11 @@ async def get_vmss_list_sdk_helper(credentials, subscription, list):
 
     try:
         async for poll in compute_client.virtual_machine_scale_sets.list_all():
-            rg_name_search = re.search(r"(?<=resourceGroups/).*(?=/providers)", poll.id)
+            # ARM does not guarantee the casing of resource ID segments.
+            rg_name_search = re.search(r"(?<=resourceGroups/).*(?=/providers)", poll.id, re.IGNORECASE)
             rg_name = rg_name_search.group(0)
 
-            rg_id_search = re.search(r".*(?=/providers)", poll.id)
+            rg_id_search = re.search(r".*(?=/providers)", poll.id, re.IGNORECASE)
             rg_id = rg_id_search.group(0)
 
             vmss_data = {
@@ -255,16 +256,17 @@ async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
     try:
         async for poll in network_client.network_interfaces.list_virtual_machine_scale_set_network_interfaces(vmss['resource_group_name'], vmss['name']):
             for ip_config in poll.ip_configurations:
-                vnet_name_search = re.search(r"(?<=virtualNetworks/).*(?=/subnets)", ip_config.subnet.id)
+                # ARM does not guarantee the casing of resource ID segments.
+                vnet_name_search = re.search(r"(?<=virtualNetworks/).*(?=/subnets)", ip_config.subnet.id, re.IGNORECASE)
                 vnet_name = vnet_name_search.group(0)
 
-                vnet_id_search = re.search(r".*(?=/subnets)", ip_config.subnet.id)
+                vnet_id_search = re.search(r".*(?=/subnets)", ip_config.subnet.id, re.IGNORECASE)
                 vnet_id = vnet_id_search.group(0)
 
-                subnet_name_search = re.search(r"(?<=subnets/).*", ip_config.subnet.id)
+                subnet_name_search = re.search(r"(?<=subnets/).*", ip_config.subnet.id, re.IGNORECASE)
                 subnet_name = subnet_name_search.group(0)
 
-                vmss_num_search = re.search(r"(?<=virtualMachines/).*", poll.virtual_machine.id)
+                vmss_num_search = re.search(r"(?<=virtualMachines/).*", poll.virtual_machine.id, re.IGNORECASE)
                 vmss_vm_num = vmss_num_search.group(0)
 
                 vmss_data = {
