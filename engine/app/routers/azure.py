@@ -37,13 +37,14 @@ router = APIRouter(
 )
 
 def str_to_list(input):
-    try:
-        scrubbed = re.sub(r"\s+", "", input, flags = re.UNICODE)
-        split = scrubbed.split(",")
-    except Exception:
+    # The Resource Graph query parses tags as JSON, so a value resembling JSON arrives as a list,
+    # object or number rather than the text a reservation ID is written as.
+    if not isinstance(input, str):
         return []
 
-    return split
+    scrubbed = re.sub(r"\s+", "", input, flags = re.UNICODE)
+
+    return scrubbed.split(",")
 
 async def get_subscriptions_sdk(credentials, *, tenant_id=None, include_excluded=True):
     """Return Azure subscriptions visible to the credentials, optionally excluding configured subscriptions."""
@@ -906,6 +907,11 @@ async def match_resv_to_vnets():
 
     # Reconciliation compares reservations against every network in the tenant.
     net_list = await fetch_networks(None, globals.TENANT_ID, True)
+
+    for net in net_list:
+        if net['resv'] is not None and not isinstance(net['resv'], str):
+            logger.warning("Ignoring unreadable reservation tag on network {}: {}", net['id'], net['resv'])
+
     stale_resv = list(i for j in list(str_to_list(x['resv']) for x in net_list if x['resv'] is not None) for i in j)
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", globals.TENANT_ID)
