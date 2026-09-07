@@ -77,6 +77,39 @@ router = APIRouter(
     dependencies=[Depends(api_auth_checks)]
 )
 
+def add_block_utilization(block, nets, expand):
+    """Populate size and used on a Block, its networks and their subnets."""
+
+    block_cidr = IPNetwork(block['cidr'])
+
+    block['size'] = block_cidr.size
+    block['used'] = 0
+
+    for net in block['vnets']:
+        if expand:
+            net['size'] = 0
+            net_prefixes = list(filter(lambda x: IPNetwork(x) in block_cidr, net['prefixes']))
+        else:
+            # Azure reports resource IDs with inconsistent casing, and stored IDs keep the caller's.
+            target_net = next((i for i in nets if i['id'].lower() == net['id'].lower()), None)
+            net_prefixes = list(filter(lambda x: IPNetwork(x) in block_cidr, target_net['prefixes'])) if target_net else []
+
+        for prefix in net_prefixes:
+            block['used'] += IPNetwork(prefix).size
+
+            if expand:
+                net['size'] += IPNetwork(prefix).size
+                net['used'] = 0
+
+        if expand:
+            if 'subnets' in net:
+                for subnet in net['subnets']:
+                    net['used'] += IPNetwork(subnet['prefix']).size
+                    subnet['size'] = IPNetwork(subnet['prefix']).size
+
+    for ext in block['externals']:
+        block['used'] += IPNetwork(ext['cidr']).size
+
 async def valid_space_name_update(name, space_name, tenant_id):
     space_names = await cosmos_query("SELECT VALUE LOWER(c.name) FROM c WHERE c.type = 'space' AND LOWER(c.name) != LOWER('{}')".format(space_name), tenant_id)
 
@@ -574,35 +607,10 @@ async def get_spaces(
                 block['vnets'] = expanded_nets
 
             if utilization:
-                space['size'] += IPNetwork(block['cidr']).size
-                block['size'] = IPNetwork(block['cidr']).size
-                block['used'] = 0
+                add_block_utilization(block, nets, expand)
 
-                for net in block['vnets']:
-                    if expand:
-                        net['size'] = 0
-                        net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), net['prefixes']))
-                    else:
-                        target_net = next((i for i in nets if i['id'].lower() == net['id'].lower()), None)
-                        net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), target_net['prefixes'])) if target_net else []
-
-                    for prefix in net_prefixes:
-                        space['used'] += IPNetwork(prefix).size
-                        block['used'] += IPNetwork(prefix).size
-
-                        if expand:
-                            net['size'] += IPNetwork(prefix).size
-                            net['used'] = 0
-
-                    if expand:
-                        if 'subnets' in net:
-                            for subnet in net['subnets']:
-                                net['used'] += IPNetwork(subnet['prefix']).size
-                                subnet['size'] = IPNetwork(subnet['prefix']).size
-
-                for ext in block['externals']:
-                    space['used'] += IPNetwork(ext['cidr']).size
-                    block['used'] += IPNetwork(ext['cidr']).size
+                space['size'] += block['size']
+                space['used'] += block['used']
 
             if not is_admin:
                 user_name = get_username_from_jwt(user_assertion)
@@ -726,35 +734,10 @@ async def get_space(
             block['vnets'] = expanded_nets
 
         if utilization:
-            target_space['size'] += IPNetwork(block['cidr']).size
-            block['size'] = IPNetwork(block['cidr']).size
-            block['used'] = 0
+            add_block_utilization(block, nets, expand)
 
-            for net in block['vnets']:
-                if expand:
-                    net['size'] = 0
-                    net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), net['prefixes']))
-                else:
-                    target_net = next((i for i in nets if i['id'].lower() == net['id'].lower()), None)
-                    net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), target_net['prefixes'])) if target_net else []
-
-                for prefix in net_prefixes:
-                    target_space['used'] += IPNetwork(prefix).size
-                    block['used'] += IPNetwork(prefix).size
-
-                    if expand:
-                        net['size'] += IPNetwork(prefix).size
-                        net['used'] = 0
-
-                if expand:
-                    if 'subnets' in net:
-                        for subnet in net['subnets']:
-                            net['used'] += IPNetwork(subnet['prefix']).size
-                            subnet['size'] = IPNetwork(subnet['prefix']).size
-
-            for ext in block['externals']:
-                target_space['used'] += IPNetwork(ext['cidr']).size
-                block['used'] += IPNetwork(ext['cidr']).size
+            target_space['size'] += block['size']
+            target_space['used'] += block['used']
 
         if not is_admin:
             user_name = get_username_from_jwt(user_assertion)
@@ -1078,32 +1061,7 @@ async def get_blocks(
             block['vnets'] = expanded_nets
 
         if utilization:
-            block['size'] = IPNetwork(block['cidr']).size
-            block['used'] = 0
-
-            for net in block['vnets']:
-                if expand:
-                    net['size'] = 0
-                    net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), net['prefixes']))
-                else:
-                    target_net = next((i for i in nets if i['id'].lower() == net['id'].lower()), None)
-                    net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(block['cidr']), target_net['prefixes'])) if target_net else []
-
-                for prefix in net_prefixes:
-                    block['used'] += IPNetwork(prefix).size
-
-                    if expand:
-                        net['size'] += IPNetwork(prefix).size
-                        net['used'] = 0
-
-                if expand:
-                    if 'subnets' in net:
-                        for subnet in net['subnets']:
-                            net['used'] += IPNetwork(subnet['prefix']).size
-                            subnet['size'] = IPNetwork(subnet['prefix']).size
-
-            for ext in block['externals']:
-                block['used'] += IPNetwork(ext['cidr']).size
+            add_block_utilization(block, nets, expand)
 
         if not is_admin:
             user_name = get_username_from_jwt(user_assertion)
@@ -1242,32 +1200,7 @@ async def get_block(
         target_block['vnets'] = expanded_nets
 
     if utilization:
-        target_block['size'] = IPNetwork(target_block['cidr']).size
-        target_block['used'] = 0
-
-        for net in target_block['vnets']:
-            if expand:
-                net['size'] = 0
-                net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), net['prefixes']))
-            else:
-                target_net = next((i for i in nets if i['id'].lower() == net['id'].lower()), None)
-                net_prefixes = list(filter(lambda x: IPNetwork(x) in IPNetwork(target_block['cidr']), target_net['prefixes'])) if target_net else []
-
-            for prefix in net_prefixes:
-                target_block['used'] += IPNetwork(prefix).size
-
-                if expand:
-                    net['size'] += IPNetwork(prefix).size
-                    net['used'] = 0
-
-            if expand:
-                if 'subnets' in net:
-                    for subnet in net['subnets']:
-                        net['used'] += IPNetwork(subnet['prefix']).size
-                        subnet['size'] = IPNetwork(subnet['prefix']).size
-
-        for ext in target_block['externals']:
-            target_block['used'] += IPNetwork(ext['cidr']).size
+        add_block_utilization(target_block, nets, expand)
 
     if not is_admin:
         user_name = get_username_from_jwt(user_assertion)
