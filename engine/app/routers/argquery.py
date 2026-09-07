@@ -194,15 +194,15 @@ resources
 NET_BASIC = r"""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
-| project name, id, resourceGroup, subscriptionId, tenantId, prefixes = properties.addressSpace.addressPrefixes
+| project name, id, resourceGroup, subscriptionId, tenantId, prefixes = properties.addressSpace.addressPrefixes, resv = todynamic(tostring(coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id'])))
 | union (
     resources
     | where type =~ 'microsoft.network/virtualhubs'
     | where isempty(kind)
-    | project name, id, resourceGroup, subscriptionId, tenantId, prefixes = pack_array(properties.addressPrefix)
+    | project name, id, resourceGroup, subscriptionId, tenantId, prefixes = pack_array(properties.addressPrefix), resv = todynamic(tostring(coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id'])))
 )
 | where subscriptionId !in~ {}
-| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes
+| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes, resv
 """
 
 NETWORK_INTERFACE = r"""

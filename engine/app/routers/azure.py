@@ -567,6 +567,18 @@ async def get_network(
 
     return await fetch_networks(authorization, tenant_id, admin)
 
+async def fetch_network_prefixes(authorization, all_networks):
+    """Return Azure Networks (vNets & vHubs) carrying address prefixes only.
+
+    Cheap counterpart to `fetch_networks` for overlap checks: one ARG query with no subnet expansion,
+    no peering joins, no per-hub ARM calls and no Cosmos enrichment. Results are just as current, only
+    smaller, so callers that read anything beyond `id` and `prefixes` must use `fetch_networks`.
+    """
+
+    net_list = await arg_query(authorization, all_networks, argquery.NET_BASIC)
+
+    return vnet_fixup(net_list)
+
 @router.get(
     "/pe",
     summary = "Get All Private Endpoints"
