@@ -41,6 +41,13 @@ class ArgRetryPolicy(AsyncRetryPolicy):
     long as ARG asked instead of backing off blindly.
     """
 
+    def __init__(self, **kwargs):
+        # ARG quota is shared by every caller using the same credentials and resets about every five
+        # seconds, so the stock three attempts give up while a burst of requests is still draining.
+        kwargs.setdefault('retry_status', 6)
+
+        super().__init__(**kwargs)
+
     def get_retry_after(self, response):
         retry_after = super().get_retry_after(response)
 
