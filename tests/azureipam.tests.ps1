@@ -1561,6 +1561,155 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
     }
   }
 
+  Context 'Utilization & Expansion' -Tag @('AzureLive') {
+    BeforeAll {
+      # Address count for a CIDR, used to check the engine's utilization math independently.
+      Function Get-CidrSize {
+        Param(
+          [Parameter(Mandatory=$True)]
+          [string]$cidr
+        )
+
+        $mask = [int]($cidr -split '/')[1]
+
+        return [int64][Math]::Pow(2, 32 - $mask)
+      }
+    }
+
+    # GET /api/spaces/{space}?utilization=true
+    It 'Get Space Utilization When a Block Contains External Networks' {
+      # Regression: this accumulated external address space onto the space *path parameter* rather
+      # than the space document, so it returned 500 for any space holding an external network.
+      $space, $spaceStatus = Get-ApiResource '/spaces/TestSpaceA?utilization=true'
+
+      $spaceStatus | Should -Be 200
+
+      $space.size | Should -BeGreaterThan 0
+      $space.used | Should -BeGreaterThan 0
+    }
+
+    # GET /api/spaces?utilization=true
+    It 'Get All Spaces with Utilization' {
+      $spaces, $spacesStatus = Get-ApiResource '/spaces?utilization=true'
+
+      $spacesStatus | Should -Be 200
+
+      $targetSpace = $spaces | Where-Object { $_.name -eq 'TestSpaceA' } | Select-Object -First 1
+
+      $targetSpace | Should -Not -BeNullOrEmpty
+      $targetSpace.size | Should -BeGreaterThan 0
+    }
+
+    # GET /api/spaces/{space}/blocks?utilization=true
+    It 'Get All Blocks with Utilization' {
+      $blocks, $blocksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks?utilization=true'
+
+      $blocksStatus | Should -Be 200
+
+      $targetBlock = $blocks | Where-Object { $_.name -eq 'TestBlockA' } | Select-Object -First 1
+
+      $targetBlock | Should -Not -BeNullOrEmpty
+      $targetBlock.size | Should -Be (Get-CidrSize $targetBlock.cidr)
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?utilization=true
+    It 'Get Block with Utilization' {
+      $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?utilization=true'
+
+      $blockStatus | Should -Be 200
+
+      $block.size | Should -Be (Get-CidrSize $block.cidr)
+      $block.used | Should -BeGreaterThan 0
+      $block.used | Should -BeLessOrEqual $block.size
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?utilization=true
+    It 'Block Utilization Matches Between Reference and Expanded Responses' {
+      # Utilization is answered from a lighter Resource Graph query when networks are not expanded,
+      # so both paths must report identical address counts.
+      $light, $lightStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?utilization=true'
+      $expanded, $expandedStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?expand=true&utilization=true'
+
+      $lightStatus | Should -Be 200
+      $expandedStatus | Should -Be 200
+
+      $light.size | Should -Be $expanded.size
+      $light.used | Should -Be $expanded.used
+    }
+
+    # GET /api/spaces/{space}?utilization=true
+    It 'Space Utilization Matches Between Reference and Expanded Responses' {
+      $light, $lightStatus = Get-ApiResource '/spaces/TestSpaceA?utilization=true'
+      $expanded, $expandedStatus = Get-ApiResource '/spaces/TestSpaceA?expand=true&utilization=true'
+
+      $lightStatus | Should -Be 200
+      $expandedStatus | Should -Be 200
+
+      $light.size | Should -Be $expanded.size
+      $light.used | Should -Be $expanded.used
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?expand=true&utilization=true
+    It 'Block Utilization Equals Network Plus External Address Space' {
+      $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?expand=true&utilization=true'
+
+      $blockStatus | Should -Be 200
+
+      $networkUsed = [int64](@($block.vnets) | Measure-Object -Property size -Sum).Sum
+      $externalUsed = [int64]0
+
+      foreach($external in @($block.externals)) {
+        $externalUsed += Get-CidrSize $external.cidr
+      }
+
+      $block.used | Should -Be ($networkUsed + $externalUsed)
+    }
+
+    # GET /api/spaces/{space}?utilization=true
+    It 'Space Utilization Equals Sum of Block Utilization' {
+      $space, $spaceStatus = Get-ApiResource '/spaces/TestSpaceA?utilization=true'
+
+      $spaceStatus | Should -Be 200
+
+      $blockSize = [int64](@($space.blocks) | Measure-Object -Property size -Sum).Sum
+      $blockUsed = [int64](@($space.blocks) | Measure-Object -Property used -Sum).Sum
+
+      $space.size | Should -Be $blockSize
+      $space.used | Should -Be $blockUsed
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?expand=true
+    It 'Expanded Block Returns Full Network Objects' {
+      # The Union response model silently falls back to the reference shape when expansion fails
+      # validation, so assert the expanded fields are actually present rather than trusting the 200.
+      $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?expand=true'
+
+      $blockStatus | Should -Be 200
+
+      @($block.vnets).Count | Should -BeGreaterThan 0
+
+      foreach($vnet in @($block.vnets)) {
+        $vnet.PSObject.Properties.Name | Should -Contain 'name'
+        $vnet.PSObject.Properties.Name | Should -Contain 'prefixes'
+        $vnet.PSObject.Properties.Name | Should -Contain 'subnets'
+      }
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}/networks?expand=true
+    It 'Expanded Block Networks Return Full Network Objects' {
+      $networks, $networksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks?expand=true'
+
+      $networksStatus | Should -Be 200
+
+      @($networks).Count | Should -BeGreaterThan 0
+
+      foreach($network in @($networks)) {
+        $network.PSObject.Properties.Name | Should -Contain 'name'
+        $network.PSObject.Properties.Name | Should -Contain 'prefixes'
+      }
+    }
+  }
+
   Context 'Reservations' -Tag @('AzureLive') {
     # GET /api/spaces/{space}/blocks/{block}/reservations
     It 'Verify No Reservations Exist in Block' {
