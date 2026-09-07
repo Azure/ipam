@@ -752,7 +752,7 @@ async def get_space(
                             subnet['size'] = IPNetwork(subnet['prefix']).size
 
             for ext in block['externals']:
-                space['used'] += IPNetwork(ext['cidr']).size
+                target_space['used'] += IPNetwork(ext['cidr']).size
                 block['used'] += IPNetwork(ext['cidr']).size
 
         if not is_admin:
