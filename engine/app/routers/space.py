@@ -1428,11 +1428,9 @@ async def available_block_nets(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     # Resource enumeration rather than occupancy: non-admins should only be offered networks they
-    # can actually see and associate, so this stays scoped to the caller.
-    if expand:
-        net_list = await fetch_networks(authorization, tenant_id, is_admin)
-    else:
-        net_list = await fetch_network_prefixes(authorization, is_admin)
+    # can actually see and associate, so this stays scoped to the caller. NetworkExpand carries only
+    # the fields this query already returns, so it serves the expanded response as well.
+    net_list = await fetch_network_prefixes(authorization, is_admin)
 
     resv_cidrs = IPSet(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
     ext_cidrs = IPSet(x['cidr'] for x in target_block['externals'])
