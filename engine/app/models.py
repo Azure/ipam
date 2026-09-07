@@ -490,7 +490,7 @@ class VWanHub(BaseModel):
     vwan_name: str
     vwan_id: str
     parent_space: Union[str,  None] = None
-    parent_block: Union[str, None] = None
+    parent_block: Union[List[str], None] = None
     resource_group: str
     subscription_id: UUID
     tenant_id: str
