@@ -534,6 +534,8 @@ async def fetch_networks(authorization, tenant_id, all_networks):
     for vwan in networks[1]:
         vwan['type'] = 'vhub'
         vwan['prefixes'] = [vwan['prefix']]
+        # vHubs have no subnets, but the expanded response models require the key to be present.
+        vwan['subnets'] = []
 
         del vwan['prefix']
 
