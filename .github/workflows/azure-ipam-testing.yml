@@ -71,6 +71,46 @@ jobs:
           pip install ruff
           ruff check engine/
 
+      - name: Lint PowerShell Scripts (PSScriptAnalyzer)
+        id: lintScripts
+        shell: pwsh
+        run: |
+          Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.25.0 -Repository PSGallery -Scope CurrentUser -Force
+
+          # Scoped to the rules the settings file configures. Running PSUseCorrectCasing alongside the
+          # full default rule set intermittently crashes the analyzer, which would fail this step on a
+          # clean tree: https://github.com/PowerShell/PSScriptAnalyzer/issues/1708
+          # Drop -IncludeRule and rely on the settings file alone once that issue is resolved.
+          $rules = @(
+            'PSUseCorrectCasing'
+            'PSPlaceOpenBrace'
+            'PSUseCompatibleSyntax'
+            'PSAvoidSemicolonsAsLineTerminators'
+          )
+
+          # Enumerated explicitly: passing the settings file itself to the analyzer throws.
+          $scripts = Get-ChildItem -Path . -Recurse -Filter *.ps1 |
+            Where-Object { $_.FullName -notmatch 'node_modules' }
+
+          # Without this the step would pass green having analyzed nothing.
+          if (-not $scripts) {
+            Write-Host "::error::No PowerShell scripts were found to analyze"
+            exit 1
+          }
+
+          Write-Host "Analyzing $($scripts.Count) script(s)..."
+
+          $findings = $scripts | ForEach-Object {
+            Invoke-ScriptAnalyzer -Path $_.FullName -Settings ./PSScriptAnalyzerSettings.psd1 -IncludeRule $rules
+          }
+
+          if ($findings) {
+            $findings | Format-Table ScriptName, Severity, Line, RuleName, Message -AutoSize |
+              Out-String -Width 250 | Write-Host
+            Write-Host "::error::PSScriptAnalyzer reported $(@($findings).Count) finding(s)"
+            exit 1
+          }
+
       - name: Lint Bicep Templates
         id: lintBicep
         run: az bicep build --file deploy/main.bicep --stdout > /dev/null
