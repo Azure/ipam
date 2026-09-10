@@ -23,6 +23,9 @@ param deployAsFunc bool = false
 @description('Flag to Deploy IPAM as a Container')
 param deployAsContainer bool = false
 
+@description('Flag to Force the ZIP Mount Deployment Shape')
+param forceRunFromPackage bool = false
+
 @description('IPAM-UI App Registration Client/App ID')
 param uiAppId string = '00000000-0000-0000-0000-000000000000'
 
@@ -161,6 +164,7 @@ module appService './modules/appService.bicep' = if (!deployAsFunc) {
     deployAsContainer: deployAsContainer
     privateAcr: privateAcr
     privateAcrUri: privateAcr ? containerRegistry!.outputs.acrUri : ''
+    forceRunFromPackage: forceRunFromPackage
   }
 }
 
@@ -184,6 +188,7 @@ module functionApp './modules/functionApp.bicep' = if (deployAsFunc) {
     deployAsContainer: deployAsContainer
     privateAcr: privateAcr
     privateAcrUri: privateAcr ? containerRegistry!.outputs.acrUri : ''
+    forceRunFromPackage: forceRunFromPackage
   }
 }
 

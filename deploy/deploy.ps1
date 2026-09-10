@@ -169,6 +169,18 @@ param(
   [switch]
   $Native,
 
+  # Testing aid: forces the ZIP mount shape on clouds that would otherwise build on the server
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    DontShow = $true,
+    ParameterSetName = 'App')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    DontShow = $true,
+    ParameterSetName = 'Function')]
+  [switch]
+  $RunFromPackage,
+
   [Parameter(ValueFromPipelineByPropertyName = $true,
     Mandatory = $false,
     ParameterSetName = 'AppContainer')]
@@ -971,6 +983,8 @@ process {
       [Parameter(Mandatory = $false)]
       [bool]$Native,
       [Parameter(Mandatory = $false)]
+      [bool]$RunFromPackage,
+      [Parameter(Mandatory = $false)]
       [bool]$PrivateAcr,
       [Parameter(Mandatory = $false)]
       [hashtable]$Tags,
@@ -1001,6 +1015,10 @@ process {
 
     if (-not $Native) {
       $deploymentParameters.Add('deployAsContainer', !$Native)
+    }
+
+    if ($RunFromPackage) {
+      $deploymentParameters.Add('forceRunFromPackage', $RunFromPackage)
     }
 
     if ($PrivateAcr) {
@@ -1276,6 +1294,7 @@ process {
         -PrivateAcr $PrivateAcr `
         -Function $Function `
         -Native $Native `
+        -RunFromPackage $RunFromPackage `
         -Tags $Tags `
         -ResourceNames $ResourceNames
     }

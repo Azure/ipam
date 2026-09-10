@@ -43,11 +43,17 @@ param privateAcr bool
 @description('Uri for Private Container Registry')
 param privateAcrUri string
 
+@description('Flag to Force the ZIP Mount Deployment Shape')
+param forceRunFromPackage bool = false
+
 // ACR Uri Variable
 var acrUri = privateAcr ? privateAcrUri : 'registry.azureipam.com'
 
-// Disable Build Process Internet-Restricted Clouds
-var runFromPackage = azureCloud == 'AZURE_US_GOV_SECRET' ? true : false
+// No server-side build: the ZIP archive ships its own Python dependencies
+var runFromPackage = azureCloud == 'AZURE_US_GOV_SECRET' || forceRunFromPackage
+
+// Trust store is a property of the cloud, not of the deployment shape
+var includeCloudCerts = azureCloud == 'AZURE_US_GOV_SECRET'
 
 // Current Python Version
 var engineVersion = loadJsonContent('../../engine/app/version.json')
@@ -140,11 +146,6 @@ var functionAppSiteConfig = {
         name: 'WEBSITE_RUN_FROM_PACKAGE'
         value: '1'
       }
-      // Sovereign cloud roots are absent from the default trust store
-      {
-        name: 'WEBSITES_INCLUDE_CLOUD_CERTS'
-        value: 'true'
-      }
     ] : [
       {
         name: 'FUNCTIONS_WORKER_RUNTIME'
@@ -154,7 +155,14 @@ var functionAppSiteConfig = {
         name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
         value: 'true'
       }
-    ]
+    ],
+    // Sovereign cloud roots are absent from the default trust store
+    includeCloudCerts ? [
+      {
+        name: 'WEBSITES_INCLUDE_CLOUD_CERTS'
+        value: 'true'
+      }
+    ] : []
   )
 }
 

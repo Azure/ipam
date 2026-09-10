@@ -290,6 +290,38 @@ try {
 
   $abiViolations = @()
   $glibcViolations = @()
+  $tagViolations = @()
+  $wheelTags = [ordered]@{}
+  $observedGlibc = [version]'0.0'
+
+  # .dist-info/WHEEL names the wheel PIP actually selected, so a locally compiled
+  # (linux_x86_64) or over-new manylinux distribution is caught before the ELF scan.
+  foreach ($wheelFile in (Get-ChildItem -Path $packageDir.FullName -Filter 'WHEEL' -File -Recurse -Depth 1)) {
+    $distName = $wheelFile.Directory.Name -replace '\.dist-info$', ''
+
+    $tags = @(Get-Content -LiteralPath $wheelFile.FullName |
+      Where-Object { $_ -match '^Tag:\s*(\S+)' } |
+      ForEach-Object { $Matches[1] })
+
+    $wheelTags[$distName] = $tags -join ' '
+
+    $platforms = @($tags | ForEach-Object { ($_ -split '-')[-1] -split '\.' })
+
+    $compatible = @($platforms | Where-Object {
+      switch -Regex ($_) {
+        '^any$' { $true; break }
+        '^manylinux1_' { [version]'2.5' -le $MAX_GLIBC_VERSION; break }
+        '^manylinux2010_' { [version]'2.12' -le $MAX_GLIBC_VERSION; break }
+        '^manylinux2014_' { [version]'2.17' -le $MAX_GLIBC_VERSION; break }
+        '^manylinux_(\d+)_(\d+)_' { [version]"$($Matches[1]).$($Matches[2])" -le $MAX_GLIBC_VERSION; break }
+        default { $false }
+      }
+    })
+
+    if ($compatible.Count -eq 0) {
+      $tagViolations += "$distName - $($wheelTags[$distName])"
+    }
+  }
 
   $nativeModules = Get-ChildItem -Path $packageDir.FullName -Recurse -File |
     Where-Object { $_.Name -match '\.(so|pyd)(\.\d+)*$' }
@@ -315,27 +347,36 @@ try {
     if ($symbols.Count -gt 0) {
       $required = @($symbols | ForEach-Object { [version]$_.Groups[1].Value } | Sort-Object)[-1]
 
+      if ($required -gt $observedGlibc) {
+        $observedGlibc = $required
+      }
+
       if ($required -gt $MAX_GLIBC_VERSION) {
         $glibcViolations += "$($module.Name) - requires glibc $required"
       }
     }
   }
 
-  if (($abiViolations.Count -gt 0) -or ($glibcViolations.Count -gt 0)) {
+  if (($abiViolations.Count -gt 0) -or ($glibcViolations.Count -gt 0) -or ($tagViolations.Count -gt 0)) {
     Write-Host "ERROR: Native module verification failed!" -ForegroundColor Red
 
     foreach ($violation in $abiViolations) {
       Write-Host "ERROR: Expected $PYTHON_ABI - $violation" -ForegroundColor Red
     }
 
+    foreach ($violation in $tagViolations) {
+      Write-Host "ERROR: Incompatible wheel tag - $violation" -ForegroundColor Red
+    }
+
     foreach ($violation in $glibcViolations) {
       Write-Host "ERROR: Exceeds glibc ceiling $MAX_GLIBC_VERSION - $violation" -ForegroundColor Red
     }
 
-    throw "Native module verification failed with $($abiViolations.Count) ABI and $($glibcViolations.Count) glibc violation(s)."
+    throw "Native module verification failed with $($abiViolations.Count) ABI, $($tagViolations.Count) wheel tag and $($glibcViolations.Count) glibc violation(s)."
   }
 
-  Write-Host "INFO: Verified $($nativeModules.Count) native module(s) against $PYTHON_ABI and glibc <= $MAX_GLIBC_VERSION" -ForegroundColor Green
+  Write-Host "INFO: Verified $($wheelTags.Count) distribution(s) and $($nativeModules.Count) native module(s) against $PYTHON_ABI and glibc <= $MAX_GLIBC_VERSION" -ForegroundColor Green
+  Write-Host "INFO: Highest glibc symbol required by any bundled module - $observedGlibc" -ForegroundColor Green
 
   # Create the Azure IPAM ZIP Deploy archive
   # .NET resolves relative paths against the process directory, not PowerShell's location
@@ -354,6 +395,23 @@ try {
   } else {
     Copy-Item -Path ..\engine\requirements.lock.txt -Destination (Join-Path -Path $tempFolder -ChildPath "requirements.txt")
   }
+
+  # Air-gapped clouds cannot share build logs, so the archive must identify itself
+  $buildManifest = [ordered]@{
+    built         = (Get-Date).ToUniversalTime().ToString('o')
+    app           = $engineVersionJson.app
+    python        = $PYTHON_TAG
+    pipPlatform   = $PIP_PLATFORM
+    glibcCeiling  = $MAX_GLIBC_VERSION.ToString()
+    glibcObserved = $observedGlibc.ToString()
+    nativeModules = $nativeModules.Count
+    manifestOnly  = [bool]$ManifestOnly
+    packages      = $wheelTags
+  }
+
+  $buildManifest |
+    ConvertTo-Json -Depth 4 |
+    Set-Content -Path (Join-Path -Path $tempFolder -ChildPath "build.json") -Encoding utf8
 
   Get-ChildItem -Path (Join-Path -Path $tempFolder -ChildPath "app") -Filter "__pycache__" -Recurse | Remove-Item -Recurse
 

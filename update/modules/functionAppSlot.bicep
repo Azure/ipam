@@ -79,13 +79,17 @@ var canonicalBaseline = union(
         ? {
             FUNCTIONS_WORKER_RUNTIME: 'python'
             WEBSITE_RUN_FROM_PACKAGE: '1'
-            // Sovereign cloud roots are absent from the default trust store
-            WEBSITES_INCLUDE_CLOUD_CERTS: 'true'
           }
         : {
             FUNCTIONS_WORKER_RUNTIME: 'python'
             SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'
-          }
+          },
+  // Trust store is a property of the cloud, not of the deployment shape
+  azureCloud == 'AZURE_US_GOV_SECRET'
+    ? {
+        WEBSITES_INCLUDE_CLOUD_CERTS: 'true'
+      }
+    : {}
 )
 
 // Merge: enforce baseline key PRESENCE only. Live values ALWAYS win; the canonical

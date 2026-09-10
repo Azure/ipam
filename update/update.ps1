@@ -79,6 +79,11 @@ param(
   [switch]
   $SkipInfraUpdate,
 
+  # Testing aid: forces the ZIP mount shape on clouds that would otherwise build on the server
+  [Parameter(Mandatory = $false, DontShow = $true)]
+  [switch]
+  $RunFromPackage,
+
   [Parameter(Mandatory = $false)]
   [switch]
   $Force
@@ -744,12 +749,15 @@ function Get-IpamTargetAppSettingMap {
 
     if ($RunFromPackage) {
       $target['WEBSITE_RUN_FROM_PACKAGE'] = '1'
-      # Sovereign cloud roots are absent from the default trust store
-      $target['WEBSITES_INCLUDE_CLOUD_CERTS'] = 'true'
     }
     else {
       $target['SCM_DO_BUILD_DURING_DEPLOYMENT'] = 'true'
     }
+  }
+
+  # Trust store is a property of the cloud, not of the deployment shape
+  if ($AzureCloud -eq 'AZURE_US_GOV_SECRET') {
+    $target['WEBSITES_INCLUDE_CLOUD_CERTS'] = 'true'
   }
 
   return $target
@@ -893,7 +901,9 @@ function Get-IpamSlotContext {
     [Parameter(Mandatory = $true)]
     [bool]$IsContainer,
     [Parameter(Mandatory = $true)]
-    [string]$TargetLinuxFxVersion
+    [string]$TargetLinuxFxVersion,
+    [Parameter(Mandatory = $false)]
+    [bool]$ForceRunFromPackage
   )
 
   $UNSUPPORTED_TIERS = @('Free', 'Shared', 'Basic', 'Dynamic')
@@ -955,7 +965,7 @@ function Get-IpamSlotContext {
 
   # Derived from the cloud, as deploy/modules/*.bicep does. Reading the live setting would be
   # wrong here because this runs before production converges.
-  $runFromPackage = ($azureCloud -eq 'AZURE_US_GOV_SECRET')
+  $runFromPackage = ($azureCloud -eq 'AZURE_US_GOV_SECRET') -or $ForceRunFromPackage
 
   # Mirror production's ACR authentication method (managed identity vs admin/anonymous)
   # rather than inferring it from the registry name.
@@ -1133,6 +1143,48 @@ function New-IpamStagingSlot {
   }
 }
 
+function Get-IpamZipPythonVersion {
+  <#
+    Reads the engine's target Python version out of a ZIP Deploy archive. The artifact is
+    authoritative for the runtime its wheels were built against, which can differ from the
+    version pinned in this checkout.
+  #>
+  param(
+    [Parameter(Mandatory = $true)]
+    [System.IO.FileInfo]$ZipFilePath
+  )
+
+  $archive = $null
+
+  try {
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($ZipFilePath.FullName)
+    $entry = $archive.GetEntry('app/version.json')
+
+    if (-not $entry) {
+      Write-LogFile -Message "ZIP archive '$($ZipFilePath.Name)' contains no 'app/version.json'." -Level "WARNING"
+      return $null
+    }
+
+    $reader = New-Object System.IO.StreamReader($entry.Open())
+
+    try {
+      return ($reader.ReadToEnd() | ConvertFrom-Json).python
+    }
+    finally {
+      $reader.Dispose()
+    }
+  }
+  catch {
+    Write-LogFile -Message "Unable to read 'app/version.json' from '$($ZipFilePath.Name)'." -Level "WARNING"
+    return $null
+  }
+  finally {
+    if ($archive) {
+      $archive.Dispose()
+    }
+  }
+}
+
 function Get-IpamDriftPlan {
   <#
     Compares the deployment against what a fresh deployment would produce today and returns
@@ -1150,11 +1202,32 @@ function Get-IpamDriftPlan {
     [Parameter(Mandatory = $true)]
     [bool]$IsContainer,
     [Parameter(Mandatory = $false)]
+    [System.IO.FileInfo]$ZipFilePath,
+    [Parameter(Mandatory = $false)]
+    [bool]$ForceRunFromPackage,
+    [Parameter(Mandatory = $false)]
     [switch]$SkipInfra
   )
 
   $engineVersionFile = Join-Path -Path $ROOT_DIR -ChildPath 'engine' -AdditionalChildPath 'app', 'version.json'
   $pythonVersion = $(Get-Content -Path $engineVersionFile | ConvertFrom-Json).python
+
+  # A supplied archive was built against its own Python version; honouring it lets drift
+  # retarget LinuxFxVersion so the runtime and the bundled wheels agree.
+  if ($ZipFilePath) {
+    $zipPythonVersion = Get-IpamZipPythonVersion -ZipFilePath $ZipFilePath
+
+    if ($zipPythonVersion -match '^\d+\.\d+$') {
+      if ($zipPythonVersion -ne $pythonVersion) {
+        Write-LogFile -Message "ZIP archive targets Python $zipPythonVersion, checkout expects $pythonVersion. Using the archive value." -Level "WARNING"
+      }
+
+      $pythonVersion = $zipPythonVersion
+    }
+    elseif ($zipPythonVersion) {
+      Write-LogFile -Message "Ignoring malformed Python version '$zipPythonVersion' in ZIP archive; using $pythonVersion." -Level "WARNING"
+    }
+  }
 
   $appSettings = $ExistingApp.SiteConfig.AppSettings
 
@@ -1163,7 +1236,7 @@ function Get-IpamDriftPlan {
 
   # Derived from the cloud, exactly as deploy/modules/*.bicep does - not from the live setting,
   # so an internet-restricted deployment converges onto the run-from-package model.
-  $runFromPackage = ($azureCloud -eq 'AZURE_US_GOV_SECRET')
+  $runFromPackage = ($azureCloud -eq 'AZURE_US_GOV_SECRET') -or $ForceRunFromPackage
 
   $targetSiteConfig = Get-IpamTargetSiteConfig `
     -LinuxFxVersion $ExistingApp.SiteConfig.LinuxFxVersion `
@@ -1200,7 +1273,8 @@ function Get-IpamDriftPlan {
       -ResourceGroupName $ResourceGroupName `
       -IsFunction $IsFunction `
       -IsContainer $IsContainer `
-      -TargetLinuxFxVersion $targetSiteConfig['LinuxFxVersion']
+      -TargetLinuxFxVersion $targetSiteConfig['LinuxFxVersion'] `
+      -ForceRunFromPackage $ForceRunFromPackage
   }
 
   # Content-share settings must stay with their slot during a swap (non-container Functions only)
@@ -1493,6 +1567,8 @@ try {
     -ResourceGroupName $ResourceGroupName `
     -IsFunction $isFunction `
     -IsContainer $isContainer `
+    -ZipFilePath $ZipFilePath `
+    -ForceRunFromPackage $RunFromPackage `
     -SkipInfra:$SkipInfraUpdate
 
   $registryRepointed = $false
