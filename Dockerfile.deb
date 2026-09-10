@@ -21,8 +21,8 @@ ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 # Set the Working Directory
 WORKDIR /tmp
 
-# Copy UI Code
-COPY ./ui/. ./
+# Copy UI Manifests
+COPY ./ui/package*.json ./
 
 # Install UI Dependencies
 RUN if [ "${PROD_BUILD}" = true ]; then \
@@ -30,7 +30,9 @@ RUN if [ "${PROD_BUILD}" = true ]; then \
 else \
   npm install; \
 fi
-RUN chmod 777 -R node_modules
+
+# Copy UI Source Code
+COPY ./ui/. ./
 
 # Build IPAM UI
 RUN npm run build
@@ -46,19 +48,33 @@ ARG PORT
 # Set Debian Frontend to Non-Interactive
 ARG DEBIAN_FRONTEND=noninteractive
 
+# Disable PIP Root Warnings
+ARG PIP_ROOT_USER_ACTION=ignore
+
+# Disable PIP Upgrade Warnings
+ARG PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# IPAM Version (for OCI Image Label)
+ARG IPAM_VERSION=0.0.0
+
 # Set Environment Variable
 ENV PORT=${PORT}
 
-# Disable PIP Root Warnings
-ENV PIP_ROOT_USER_ACTION=ignore
+# OCI Image Labels
+LABEL org.opencontainers.image.title="Azure IPAM" \
+      org.opencontainers.image.version="${IPAM_VERSION}" \
+      org.opencontainers.image.source="https://github.com/Azure/ipam"
 
 # Set Working Directory
 WORKDIR /tmp
 
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Install OpenSSH and set the password for root to "Docker!"
-RUN apt-get update
-RUN apt-get install -qq openssh-server -y \
-      && echo "root:Docker!" | chpasswd
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssh-server \
+  && echo "root:Docker!" | chpasswd \
+  && rm -rf /var/lib/apt/lists/*
 
 # Enable SSH root login with Password Authentication
 # RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config
@@ -67,8 +83,7 @@ RUN apt-get install -qq openssh-server -y \
 COPY sshd_config /etc/ssh/
 
 # Set SSH Key Permissions
-RUN ssh-keygen -A
-RUN mkdir -p /var/run/sshd
+RUN ssh-keygen -A && mkdir -p /var/run/sshd
 
 # Set Working Directory
 WORKDIR /ipam
@@ -76,9 +91,6 @@ WORKDIR /ipam
 # Install Engine Dependencies
 COPY ./engine/requirements.txt /code/requirements.txt
 COPY ./engine/requirements.lock.txt /code/requirements.lock.txt
-
-# Upgrade PIP
-RUN pip install --upgrade pip --progress-bar off
 
 # Install Dependencies
 RUN if [ "${PROD_BUILD}" = true ]; then \
@@ -101,4 +113,4 @@ RUN chmod +x init.sh
 EXPOSE $PORT 2222
 
 # Execute Startup Script
-ENTRYPOINT ./init.sh ${PORT}
+ENTRYPOINT ["/bin/sh", "-c", "exec ./init.sh ${PORT}"]

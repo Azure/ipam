@@ -2,15 +2,15 @@ import * as React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { styled } from "@mui/material/styles";
 
-import { omit, isEmpty, isEqual, pickBy, orderBy, cloneDeep } from "lodash";
+import { omit, isEqual, cloneDeep } from "lodash-es";
 
 import { useSnackbar } from "notistack";
 
-import ReactDataGrid from "@inovua/reactdatagrid-community";
-import "@inovua/reactdatagrid-community/index.css";
-import "@inovua/reactdatagrid-community/theme/default-dark.css";
+import { AgGridReact } from "ag-grid-react";
+import { themeQuartz } from "ag-grid-community";
+import { SpinnerDotted } from 'spinners-react';
 
-import Draggable from "react-draggable";
+import DraggablePaper from "../../../../../global/DraggablePaper";
 
 import { useTheme } from "@mui/material/styles";
 
@@ -31,9 +31,9 @@ import {
   ListItemIcon,
   OutlinedInput,
   Tooltip,
-  Paper,
   Autocomplete,
-  TextField
+  TextField,
+  Typography
 } from "@mui/material";
 
 import {
@@ -47,11 +47,10 @@ import {
   PlaylistAddOutlined,
   PlaylistAddCheckOutlined,
   PlaylistRemoveOutlined,
-  // HighlightOff,
   InfoOutlined
 } from "@mui/icons-material";
 
-import LoadingButton from "@mui/lab/LoadingButton";
+
 
 import {
   replaceBlockExtSubnetEndpointsAsync,
@@ -85,21 +84,94 @@ const Update = styled("span")(({ theme }) => ({
   textShadow: '-1px 0 white, 0 1px white, 1px 0 white, 0 -1px white'
 }));
 
-const gridStyle = {
-  height: '100%',
-  border: '1px solid rgba(224, 224, 224, 1)',
-  fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
-};
+// ============================================================================
+// Combined Overlay Component (AG Grid v35+)
+// ============================================================================
 
-function RenderDelete(props) {
-  const { value } = props;
-  const { setChanges, selectionModel } = React.useContext(EndpointContext);
+// Context for passing reactive overlay config to CombinedOverlay.
+const OverlayContext = React.createContext(null);
+
+const CombinedOverlay = React.memo(({ overlayType }) => {
+  const overlayConfig = React.use(OverlayContext);
+  const loadingMessage = overlayConfig?.loadingMessage;
+  const NoRowsContent = overlayConfig?.noRowsOverlay;
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
+
+  if (overlayType === 'loading') {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          gap: 2,
+        }}
+      >
+        <SpinnerDotted
+          size={40}
+          thickness={100}
+          speed={100}
+          color={isDarkMode ? '#90caf9' : '#1976d2'}
+        />
+        <Box
+          component="span"
+          sx={{
+            fontSize: '0.875rem',
+            color: 'text.secondary',
+            fontWeight: 500,
+          }}
+        >
+          {loadingMessage || 'Loading data...'}
+        </Box>
+      </Box>
+    );
+  }
+
+  // noRows / noMatchingRows
+  if (NoRowsContent) {
+    return <NoRowsContent />;
+  }
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        padding: 2,
+      }}
+    >
+      <Typography
+        variant="overline"
+        sx={{
+          display: "block",
+          mt: 1
+        }}>
+        No endpoints found
+      </Typography>
+    </Box>
+  );
+});
+
+CombinedOverlay.displayName = 'CombinedOverlay';
+
+function DeleteCellRenderer(props) {
+  const { data } = props;
+  const { setChanges, selectedRow } = React.use(EndpointContext);
 
   const flexCenter = {
     display: "flex",
     alignItems: "center",
-    justifyContent: "center"
-  }
+    justifyContent: "center",
+    height: "100%"
+  };
+
+  const isSelected = selectedRow && selectedRow.id === data.id;
 
   return (
     <Tooltip title="Delete">
@@ -108,23 +180,17 @@ function RenderDelete(props) {
           color="error"
           sx={{
             padding: 0,
-            display: (isEqual([value.id], Object.keys(selectionModel))) ? "flex" : "none"
+            display: isSelected ? "flex" : "none"
           }}
           disableFocusRipple
           disableTouchRipple
           disableRipple
           onClick={() => {
-            var endpointDetails = cloneDeep(value);
-
+            var endpointDetails = cloneDeep(data);
             endpointDetails['op'] = "delete";
-
-            setChanges(prev => [
-              ...prev,
-              endpointDetails
-            ]);
+            setChanges(prev => [...prev, endpointDetails]);
           }}
         >
-          {/* <HighlightOff /> */}
           <PlaylistRemoveOutlined />
         </IconButton>
       </span>
@@ -134,7 +200,7 @@ function RenderDelete(props) {
 
 function HeaderMenu(props) {
   const { setting } = props;
-  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.useContext(EndpointContext);
+  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.use(EndpointContext);
 
   const [menuOpen, setMenuOpen] = React.useState(false);
 
@@ -144,22 +210,22 @@ function HeaderMenu(props) {
 
   const onClick = () => {
     setMenuOpen(prev => !prev);
-  }
+  };
 
   const onSave = () => {
     saveConfig();
     setMenuOpen(false);
-  }
+  };
 
   const onLoad = () => {
     loadConfig();
     setMenuOpen(false);
-  }
+  };
 
   const onReset = () => {
     resetConfig();
     setMenuOpen(false);
-  }
+  };
 
   return (
     <Box
@@ -167,7 +233,9 @@ function HeaderMenu(props) {
       sx={{
         display: "flex",
         alignItems: "center",
-        justifyContent: "center"
+        justifyContent: "center",
+        height: "100%",
+        width: "100%"
       }}
     >
       {
@@ -192,6 +260,7 @@ function HeaderMenu(props) {
           </IconButton>
           <Menu
             id="table-state-menu"
+            // eslint-disable-next-line react-hooks/refs
             anchorEl={menuRef.current}
             open={menuOpen}
             onClose={onClick}
@@ -203,40 +272,42 @@ function HeaderMenu(props) {
               vertical: 'top',
               horizontal: 'right',
             }}
-            PaperProps={{
-              elevation: 0,
-              style: {
-                width: 215,
-                transform: 'translateX(35px)',
-              },
-              sx: {
-                overflow: 'visible',
-                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-                mt: 1.5,
-                '& .MuiAvatar-root': {
-                  width: 32,
-                  height: 32,
-                  ml: -0.5,
-                  mr: 1,
+            slotProps={{
+              paper: {
+                elevation: 0,
+                style: {
+                  width: 215,
+                  transform: 'translateX(35px)',
                 },
-                '&:before': {
-                  content: '""',
-                  display: 'block',
-                  position: 'absolute',
-                  top: 0,
-                  right: 29,
-                  width: 10,
-                  height: 10,
-                  bgcolor: 'background.paper',
-                  transform: 'translateY(-50%) rotate(45deg)',
-                  zIndex: 0,
+                sx: {
+                  overflow: 'visible',
+                  filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                  mt: 1.5,
+                  '& .MuiAvatar-root': {
+                    width: 32,
+                    height: 32,
+                    ml: -0.5,
+                    mr: 1,
+                  },
+                  '&:before': {
+                    content: '""',
+                    display: 'block',
+                    position: 'absolute',
+                    top: 0,
+                    right: 29,
+                    width: 10,
+                    height: 10,
+                    bgcolor: 'background.paper',
+                    transform: 'translateY(-50%) rotate(45deg)',
+                    zIndex: 0,
+                  },
                 },
               },
             }}
           >
             <MenuItem
               onClick={onLoad}
-              disabled={ !viewSetting || isEmpty(viewSetting) }
+              disabled={ !viewSetting }
             >
               <ListItemIcon>
                 <FileDownloadOutlined fontSize="small" />
@@ -259,21 +330,6 @@ function HeaderMenu(props) {
         </React.Fragment>
       }
     </Box>
-  )
-}
-
-function DraggablePaper(props) {
-  const nodeRef = React.useRef(null);
-
-  return (
-    <Draggable
-      nodeRef={nodeRef}
-      handle="#draggable-dialog-title"
-      cancel={'[class*="MuiDialogContent-root"]'}
-      bounds="parent"
-    >
-      <Paper {...props} ref={nodeRef}/>
-    </Draggable>
   );
 }
 
@@ -286,7 +342,7 @@ export default function ManageExtEndpoints(props) {
     external,
     subnet
   } = props;
-  const { refreshing, refresh } = React.useContext(ExternalContext);
+  const { refreshing, refresh } = React.use(ExternalContext);
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -295,13 +351,9 @@ export default function ManageExtEndpoints(props) {
   const [endpoints, setEndpoints] = React.useState(null);
   const [addressOptions, setAddressOptions] = React.useState([]);
   const [changes, setChanges] = React.useState([]);
-  const [gridData, setGridData] = React.useState(null);
-  const [sending, setSending] = React.useState(false);
-  const [selectionModel, setSelectionModel] = React.useState({});
 
-  const [columnState, setColumnState] = React.useState(null);
-  const [columnOrderState, setColumnOrderState] = React.useState([]);
-  const [columnSortState, setColumnSortState] = React.useState({});
+  const [sending, setSending] = React.useState(false);
+  const [selectedRow, setSelectedRow] = React.useState(null);
 
   const [endName, setEndName] = React.useState({ value: "", error: true });
   const [endDesc, setEndDesc] = React.useState({ value: "", error: true });
@@ -313,114 +365,123 @@ export default function ManageExtEndpoints(props) {
   const viewSetting = useSelector(state => selectViewSetting(state, 'extendpoints'));
 
   const dispatch = useDispatch();
+  const gridRef = React.useRef(null);
 
-  const saveTimer = React.useRef();
+  const saveTimerRef = React.useRef(null);
 
   const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
 
   const unchanged = (subnet && endpoints) ? isEqual(subnet['endpoints'], endpoints.map(({id, ...rest}) => rest)) : false;
 
+  // AG Grid column definitions
   const columns = React.useMemo(() => [
-    { name: "name", header: "Name", type: "string", flex: 0.5, draggable: false, visible: true },
-    { name: "desc", header: "Description", type: "string", flex: 1, draggable: false, visible: true },
-    { name: "ip", header: "IP Address", type: "string", flex: 0.30, draggable: false, visible: true },
-    { name: "id", header: () => <HeaderMenu setting="extendpoints"/> , width: 25, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => <RenderDelete value={data} />, visible: true }
+    { field: "name", headerName: "Name", flex: 0.5 },
+    { field: "desc", headerName: "Description", flex: 1 },
+    { field: "ip", headerName: "IP Address", flex: 0.30 },
+    {
+      field: "actions",
+      headerName: "",
+      headerComponent: () => <HeaderMenu setting="extendpoints" />,
+      width: 50,
+      resizable: false,
+      sortable: false,
+      suppressColumnsToolPanel: true,
+      cellRenderer: DeleteCellRenderer
+    }
   ], []);
 
-  const filterValue = [
-    { name: "name", operator: "contains", type: "string", value: "" },
-    { name: "desc", operator: "contains", type: "string", value: "" },
-    { name: "ip", operator: "contains", type: "string", value: "" }
-  ];
+  // Grid theme with compactness
+  const gridTheme = React.useMemo(() => {
+    const baseParams = {
+      spacing: 7,  // default is 8, reduced for tighter layout
+    };
 
-  function onClick(data) {
-    var id = data.id;
-    var newSelectionModel = {};
+    return themeQuartz
+      .withParams({ ...baseParams, modalOverlayBackgroundColor: 'rgba(255, 255, 255, 0.66)' }, 'light')
+      .withParams({ ...baseParams, modalOverlayBackgroundColor: 'rgba(0, 0, 0, 0.2)' }, 'dark');
+  }, []);
 
-    setSelectionModel(prevState => {
-      if(!prevState.hasOwnProperty(id)) {
-        newSelectionModel[id] = data;
+  // Overlay context value for CombinedOverlay
+  const overlayContextValue = React.useMemo(() => ({
+    loadingMessage: sending ? 'Updating...' : 'Loading data...',
+  }), [sending]);
 
-        setEndName({ value: data.name, error: false });
-        setEndDesc({ value: data.desc, error: false });
-        setEndAddrInput(data.ip);
-        setEndAddr(data.ip);
+  // Default column definitions
+  const defaultColDef = React.useMemo(() => ({
+    resizable: true,
+    sortable: true,
+    filter: true,
+    suppressHeaderMenuButton: true,
+  }), []);
 
-        const endpointAddresses = endpoints.map(e => {
-          if (data.ip !== e.ip) {
-            return e.ip;
-          }
-        });
+  // Handle row selection
+  const onRowClicked = React.useCallback((event) => {
+    if (!isAdmin) return;
 
-        const newAddressOptions = expandCIDR(subnet.cidr).slice(1,-1).filter(addr => !endpointAddresses.includes(addr));
-  
-        setAddressOptions(newAddressOptions);
-      } else {
-        setEndName({ value: "", error: true });
-        setEndDesc({ value: "", error: true });
-        setEndAddrInput("");
-        setEndAddr(null);
+    const data = event.data;
+    const node = event.node;
 
-        const endpointAddresses = endpoints.map(e => e.ip);
-        const newAddressOptions = expandCIDR(subnet.cidr).slice(1,-1).filter(addr => !endpointAddresses.includes(addr));
-  
-        setAddressOptions(["<auto>", ...newAddressOptions]);
-      }
-      
-      return newSelectionModel;
-    });
-  }
+    if (selectedRow && selectedRow.id === data.id) {
+      // Deselect
+      node.setSelected(false);
+      setSelectedRow(null);
+      setEndName({ value: "", error: true });
+      setEndDesc({ value: "", error: true });
+      setEndAddrInput("");
+      setEndAddr(null);
 
-  const onBatchColumnResize = (batchColumnInfo) => {
-    const colsMap = batchColumnInfo.reduce((acc, colInfo) => {
-      const { column, flex } = colInfo
-      acc[column.name] = { flex }
-      return acc
-    }, {});
+      const endpointAddresses = endpoints.map(e => e.ip);
+      const newAddressOptions = expandCIDR(subnet.cidr).slice(1,-1).filter(addr => !endpointAddresses.includes(addr));
+      setAddressOptions(["<auto>", ...newAddressOptions]);
+    } else {
+      // Select
+      node.setSelected(true);
+      setSelectedRow(data);
+      setEndName({ value: data.name, error: false });
+      setEndDesc({ value: data.desc, error: false });
+      setEndAddrInput(data.ip);
+      setEndAddr(data.ip);
 
-    const newColumns = columnState.map(c => {
-      return Object.assign({}, c, colsMap[c.name]);
-    })
+      const endpointAddresses = endpoints.map(e => {
+        if (data.ip !== e.ip) {
+          return e.ip;
+        }
+      });
+      const newAddressOptions = expandCIDR(subnet.cidr).slice(1,-1).filter(addr => !endpointAddresses.includes(addr));
+      setAddressOptions(newAddressOptions);
+    }
+  }, [isAdmin, selectedRow, endpoints, subnet]);
 
-    console.log(batchColumnInfo);
+  // Handle cell double click for copy
+  const onCellDoubleClicked = React.useCallback((event) => {
+    const value = event.value;
+    if (value !== undefined && value !== null) {
+      navigator.clipboard.writeText(value);
+      enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
+    }
+  }, [enqueueSnackbar]);
 
-    setColumnState(newColumns);
-  }
+  const saveConfig = React.useCallback(() => {
+    const api = gridRef.current?.api;
+    if (!api) return;
 
-  const onColumnOrderChange = (columnOrder) => {
-    setColumnOrderState(columnOrder);
-  }
-
-  const onColumnVisibleChange = ({ column, visible }) => {
-    const newColumns = columnState.map(c => {
-      if(c.name === column.name) {
-        return Object.assign({}, c, { visible });
-      } else {
-        return c;
-      }
-    });
-
-    setColumnState(newColumns);
-  }
-
-  const onSortInfoChange = (sortInfo) => {
-    setColumnSortState(sortInfo);
-  }
-
-  const saveConfig = () => {
-    const values = columnState.reduce((acc, colInfo) => {
-      const { name, flex, visible } = colInfo;
-
-      acc[name] = { flex, visible };
-
-      return acc;
-    }, {});
+    const columnState = api.getColumnState();
+    // Filter out system columns and non-essential properties
+    const cleanedState = columnState
+      .filter(col => !col.colId.startsWith('ag-') && col.colId !== 'actions')
+      .map(({ colId, width, flex, sort, sortIndex, hide }) => ({
+        colId,
+        width,
+        flex,
+        sort,
+        sortIndex,
+        hide
+      }));
 
     const saveData = {
-      values: values,
-      order: columnOrderState,
-      sort: columnSortState
-    }
+      columnState: cleanedState
+    };
 
     var body = [
       { "op": "add", "path": `/views/extendpoints`, "value": saveData }
@@ -442,77 +503,45 @@ export default function ManageExtEndpoints(props) {
         setSaving(false);
       }
     })();
-  };
+  }, [dispatch, enqueueSnackbar]);
 
   const loadConfig = React.useCallback(() => {
-    const { values, order, sort } = viewSetting;
+    const api = gridRef.current?.api;
+    if (!api || !viewSetting) return;
 
-    const colsMap = columns.reduce((acc, colInfo) => {
-
-      acc[colInfo.name] = colInfo;
-
-      return acc;
-    }, {})
-
-    const loadColumns = order.map(item => {
-      const assigned = pickBy(values[item], v => v !== undefined)
-
-      return Object.assign({}, colsMap[item], assigned);
-    });
-
-    setColumnState(loadColumns);
-    setColumnOrderState(order);
-    setColumnSortState(sort);
-  }, [columns, viewSetting]);
+    // Handle both old format (values, order, sort) and new format (columnState)
+    if (viewSetting.columnState) {
+      api.applyColumnState({ state: viewSetting.columnState, applyOrder: true });
+    }
+  }, [viewSetting]);
 
   const resetConfig = React.useCallback(() => {
-    setColumnState(columns);
-    setColumnOrderState(columns.flatMap(({name}) => name));
-    setColumnSortState(null);
-  }, [columns]);
-
-  const renderColumnContextMenu = React.useCallback((menuProps) => {
-    const columnIndex = menuProps.items.findIndex((item) => item.itemId === 'columns');
-    const idIndex = menuProps.items[columnIndex].items.findIndex((item) => item.value === 'id');
-
-    menuProps.items[columnIndex].items.splice(idIndex, 1);
+    const api = gridRef.current?.api;
+    if (!api) return;
+    api.resetColumnState();
   }, []);
 
-  React.useEffect(() => {
-    if(!columnState && viewSetting) {
-      if(columns && !isEmpty(viewSetting)) {
-        loadConfig();
-      } else {
-        resetConfig();
-      }
+  // Handle grid ready
+  const onGridReady = React.useCallback(() => {
+    // Auto-load saved view if available
+    if (viewSetting?.columnState) {
+      loadConfig();
     }
-  },[columns, viewSetting, columnState, loadConfig, resetConfig]);
-
-  React.useEffect(() => {
-    if(columnSortState) {
-      setGridData(
-        orderBy(
-          endpoints,
-          [columnSortState.name],
-          [columnSortState.dir === -1 ? 'desc' : 'asc']
-        )
-      );
-    } else {
-      setGridData(endpoints);
-    }
-  },[endpoints, columnSortState]);
+  }, [viewSetting, loadConfig]);
 
   React.useEffect(() => {
     if(sendResults !== null) {
-      clearTimeout(saveTimer.current);
+      clearTimeout(saveTimerRef.current);
 
-      saveTimer.current = setTimeout(
+      saveTimerRef.current = setTimeout(
         function() {
           setSendResults(null);
         }, 2000
       );
     }
-  }, [saveTimer, sendResults]);
+  }, [saveTimerRef, sendResults]);
+
+
 
   function onAddExternal() {
     if(!hasError) {
@@ -524,12 +553,12 @@ export default function ManageExtEndpoints(props) {
 
       endpointDetails['id'] = md5(JSON.stringify(endpointDetails));
 
-      if (Object.keys(selectionModel).length !== 0) {
+      if (selectedRow) {
         const updates = {
           op: "update",
-          old: Object.values(selectionModel)[0],
+          old: selectedRow,
           new: endpointDetails
-        }
+        };
 
         setChanges(prev => [
           ...prev,
@@ -598,7 +627,7 @@ export default function ManageExtEndpoints(props) {
     if (open) {
       handleClose();
 
-      setSelectionModel({});
+      setSelectedRow(null);
       setChanges([]);
 
       setEndName({ value: "", error: true });
@@ -607,13 +636,6 @@ export default function ManageExtEndpoints(props) {
       setEndAddr(null);
     }
   }, [open, handleClose]);
-
-  const onCellDoubleClick = React.useCallback((event, cellProps) => {
-    const { value } = cellProps
-
-    navigator.clipboard.writeText(value);
-    enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
-  }, [enqueueSnackbar]);
 
   function onNameChange(event) {
     const newName = event.target.value;
@@ -625,8 +647,8 @@ export default function ManageExtEndpoints(props) {
 
       const nameError = newName ? !regex.test(newName) : false;
       const nameExists = endpoints?.reduce((acc, curr) => {
-        if(Object.keys(selectionModel).length !== 0) {
-          if (curr['name'].toLowerCase() !== Object.values(selectionModel)[0].name.toLowerCase()) {
+        if(selectedRow) {
+          if (curr['name'].toLowerCase() !== selectedRow.name.toLowerCase()) {
             acc.push(curr['name'].toLowerCase());
           }
         } else {
@@ -656,6 +678,8 @@ export default function ManageExtEndpoints(props) {
     });
   }
 
+  // Manual memo retained; compiler bails on broader component (large stateful form)
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const hasError = React.useMemo(() => {
     const errorCheck = (endName.error || endDesc.error);
     const emptyCheck = (endName.value.length === 0 || endDesc.value.length === 0 || endAddr === null);
@@ -713,17 +737,19 @@ export default function ManageExtEndpoints(props) {
   }, [subnet, changes, onCancel]);
 
   return (
-    <EndpointContext.Provider value={{ endpoints, setChanges, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+    <EndpointContext value={{ endpoints, setChanges, selectedRow, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
       <Dialog
         open={open}
         onClose={onCancel}
         PaperComponent={DraggablePaper}
         maxWidth="lg"
         fullWidth
-        PaperProps={{
-          style: {
-            overflowY: "unset"
-          },
+        slotProps={{
+          paper: {
+            style: {
+              overflowY: "unset"
+            },
+          }
         }}
       >
         <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
@@ -747,7 +773,7 @@ export default function ManageExtEndpoints(props) {
           sx={{ overflowY: "unset" }}
         >
           <DialogContentText>
-            Define the Endpoints below which should be associated with the Subnet <Spotlight>'{subnet && subnet.name}'</Spotlight>
+            Define the Endpoints below which should be associated with the Subnet <Spotlight>{`'${subnet && subnet.name}'`}</Spotlight>
           </DialogContentText>
           { isAdmin &&
           <React.Fragment>
@@ -763,7 +789,7 @@ export default function ManageExtEndpoints(props) {
               borderStyle: 'solid',
               borderColor: 'rgb(224, 224, 224)',
               backgroundColor: theme.palette.mode === 'dark' ? 'rgb(80, 80, 80)' : 'rgb(240, 240, 240)'
-              
+
             }}
           >
             <span
@@ -774,7 +800,7 @@ export default function ManageExtEndpoints(props) {
               }}
             >
               {
-                Object.keys(selectionModel).length !== 0 ?
+                selectedRow ?
                 "Edit Existing Endpoint" :
                 "Add New Endpoint"
               }
@@ -798,7 +824,7 @@ export default function ManageExtEndpoints(props) {
                 display: 'flex',
                 flex: '1 1 auto',
                 alignItems: 'center',
-                width: columnState && columnState[0].flex > 1 ? columnState[0].flex : 'calc(((100% - 40px) / 1.80) * 0.5)',
+                width: 'calc(((100% - 50px) / 1.80) * 0.5)',
                 borderRight: '1px solid rgb(224, 224, 224)'
               }}
               style={
@@ -860,7 +886,7 @@ export default function ManageExtEndpoints(props) {
                 display: 'flex',
                 flex: '1 1 auto',
                 alignItems: 'center',
-                width: columnState && columnState[1].flex > 1 ? columnState[1].flex : 'calc(((100% - 40px) / 1.80) * 1)',
+                width: 'calc(((100% - 50px) / 1.80) * 1)',
                 borderRight: '1px solid rgb(224, 224, 224)'
               }}
               style={
@@ -922,7 +948,7 @@ export default function ManageExtEndpoints(props) {
                 display: 'flex',
                 flex: '1 1 auto',
                 alignItems: 'center',
-                width: columnState && columnState[2].flex > 1 ? columnState[2].flex : 'calc(((100% - 40px) / 1.80) * 0.3)',
+                width: 'calc(((100% - 50px) / 1.80) * 0.3)',
               }}
               style={
                 theme.palette.mode === 'dark'
@@ -950,18 +976,25 @@ export default function ManageExtEndpoints(props) {
                     variant="standard"
                     // label="IP Address"
                     placeholder="IP Address"
-                    InputProps={{
-                      ...params.InputProps,
-                      disableUnderline: true,
-                      spellCheck: false,
-                      style: {
-                        fontSize: '14px',
-                        fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
-                        padding: '4px 0px 5px'
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input,
+                        disableUnderline: true,
+                        spellCheck: false,
+                        style: {
+                          fontSize: '14px',
+                          fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+                          padding: '4px 0px 5px'
+                        }
                       }
                     }}
                   />
                 )}
+                slotProps={{
+                  listbox: { style: { maxHeight: 375 } }
+                }}
               />
             </Box>
             <Box
@@ -979,7 +1012,7 @@ export default function ManageExtEndpoints(props) {
               <Tooltip
                 arrow
                 placement="top"
-                title={ Object.keys(selectionModel).length !== 0 ? "Update Network" : "Add Network" }
+                title={ selectedRow ? "Update Network" : "Add Network" }
               >
                 <span>
                   <IconButton
@@ -988,7 +1021,7 @@ export default function ManageExtEndpoints(props) {
                     onClick={onAddExternal}
                   >
                     {
-                      Object.keys(selectionModel).length !== 0 ?
+                      selectedRow ?
                       <PlaylistAddCheckOutlined
                         style={
                           theme.palette.mode === 'dark'
@@ -1031,7 +1064,7 @@ export default function ManageExtEndpoints(props) {
               borderStyle: 'solid',
               borderColor: 'rgb(224, 224, 224)',
               backgroundColor: theme.palette.mode === 'dark' ? 'rgb(80, 80, 80)' : 'rgb(240, 240, 240)'
-              
+
             }}
           >
             <span
@@ -1050,36 +1083,31 @@ export default function ManageExtEndpoints(props) {
               height: "335px"
             }}
           >
-            <ReactDataGrid
-              theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
-              idProperty="id"
-              showCellBorders="horizontal"
-              showZebraRows={false}
-              multiSelect={true}
-              click
-              showActiveRowIndicator={false}
-              enableColumnAutosize={false}
-              showColumnMenuGroupOptions={false}
-              showColumnMenuLockOptions={false}
-              updateMenuPositionOnColumnsChange={false}
-              renderColumnContextMenu={renderColumnContextMenu}
-              onBatchColumnResize={onBatchColumnResize}
-              onSortInfoChange={onSortInfoChange}
-              onColumnOrderChange={onColumnOrderChange}
-              onColumnVisibleChange={onColumnVisibleChange}
-              reservedViewportWidth={0}
-              columns={columnState || []}
-              columnOrder={columnOrderState}
-              loading={sending || !endpoints || refreshing}
-              loadingText={sending ? <Update>Updating</Update> : "Loading"}
-              dataSource={gridData || []}
-              sortInfo={columnSortState}
-              defaultFilterValue={filterValue}
-              onRowClick={(rowData) => { isAdmin && onClick(rowData.data)}}
-              onCellDoubleClick={onCellDoubleClick}
-              selected={selectionModel}
-              style={gridStyle}
-            />
+            <Box
+              className="ag-theme-quartz"
+              sx={{ height: '100%', width: '100%' }}
+              data-ag-theme-mode={isDarkMode ? 'dark' : 'light'}
+            >
+              <OverlayContext value={overlayContextValue}>
+              <AgGridReact
+                ref={gridRef}
+                theme={gridTheme}
+                rowData={endpoints}
+                columnDefs={columns}
+                defaultColDef={defaultColDef}
+                getRowId={(params) => params.data.id}
+                accentedSort={true}
+                rowSelection={{ mode: 'singleRow', checkboxes: false, enableClickSelection: false }}
+                cellSelection={false}
+                suppressCellFocus={true}
+                onRowClicked={onRowClicked}
+                onCellDoubleClicked={onCellDoubleClicked}
+                onGridReady={onGridReady}
+                loading={sending || !endpoints || refreshing}
+                overlayComponent={CombinedOverlay}
+              />
+              </OverlayContext>
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
@@ -1089,16 +1117,15 @@ export default function ManageExtEndpoints(props) {
           >
             Cancel
           </Button>
-          <LoadingButton
+          <Button
             onClick={onSubmit}
             loading={sending}
             disabled={unchanged || sending || refreshing}
-            // sx={{ position: "unset" }}
           >
             Apply
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
-    </EndpointContext.Provider>
+    </EndpointContext>
   );
 }

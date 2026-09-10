@@ -1,37 +1,22 @@
-from fastapi.responses import PlainTextResponse
-from fastapi.encoders import jsonable_encoder
-
-from fastapi import (
-    APIRouter,
-    HTTPException,
-    Response,
-    status,
-    Depends,
-    Header,
-    Path
-)
-
-from typing import List
-
 import copy
-import uuid
+from typing import List
+from uuid import UUID, uuid4
 
-from app.dependencies import (
-    api_auth_checks,
-    get_admin,
-    get_tenant_id
-)
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Response, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import PlainTextResponse
 
-from app.models import *
-from . import argquery
-
+from app.dependencies import api_auth_checks, get_admin, get_tenant_id
+from app.models import Admin, Subscription
 from app.routers.common.helper import (
+    arg_query,
     cosmos_query,
-    cosmos_upsert,
     cosmos_replace,
     cosmos_retry,
-    arg_query
+    cosmos_upsert,
 )
+
+from . import argquery
 
 router = APIRouter(
     prefix="/admin",
@@ -41,7 +26,7 @@ router = APIRouter(
 
 async def new_admin_db(admin_list, exclusion_list, tenant_id):
     admin_data = {
-        "id": uuid.uuid4(),
+        "id": uuid4(),
         "type": "admin",
         "tenant_id": tenant_id,
         "admins": admin_list,
@@ -113,7 +98,7 @@ async def create_admin(
     else:
         admin_data = copy.deepcopy(admin_query[0])
 
-        target_admin = next((x for x in admin_data['admins'] if uuid.UUID(x['id']) == admin.id), None)
+        target_admin = next((x for x in admin_data['admins'] if UUID(x['id']) == admin.id), None)
 
         if target_admin:
             raise HTTPException(status_code=400, detail="User is already an admin.")
@@ -166,7 +151,7 @@ async def update_admins(
         admin_data = copy.deepcopy(admin_query[0])
 
         admin_data['admins'] = jsonable_encoder(admin_list)
-        
+
         await cosmos_replace(admin_query[0], admin_data)
 
     return PlainTextResponse(status_code=status.HTTP_200_OK)
@@ -177,7 +162,7 @@ async def update_admins(
     response_model = Admin,
     status_code = 200
 )
-async def get_admins(
+async def get_admin_by_id(
     objectId: UUID = Path(..., description="Azure AD ObjectID for the target user"),
     authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
@@ -194,7 +179,7 @@ async def get_admins(
 
     try:
         admins = copy.deepcopy(admin_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="No admins found in database.")
 
     target_admin = next((x for x in admins['admins'] if x['id'] == str(objectId)), None)

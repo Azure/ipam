@@ -3,7 +3,7 @@ import { useDispatch } from "react-redux";
 
 import { useSnackbar } from "notistack";
 
-import Draggable from "react-draggable";
+import DraggablePaper from "../../../../../global/DraggablePaper";
 
 import {
   Box,
@@ -14,10 +14,9 @@ import {
   DialogTitle,
   DialogActions,
   DialogContent,
-  Paper
 } from "@mui/material";
 
-import LoadingButton from "@mui/lab/LoadingButton";
+
 
 import {
   updateBlockExtSubnetAsync
@@ -33,21 +32,6 @@ import {
   EXTSUBNET_DESC_REGEX,
   CIDR_REGEX
 } from "../../../../../global/globals";
-
-function DraggablePaper(props) {
-  const nodeRef = React.useRef(null);
-
-  return (
-    <Draggable
-      nodeRef={nodeRef}
-      handle="#draggable-dialog-title"
-      cancel={'[class*="MuiDialogContent-root"]'}
-      bounds="parent"
-    >
-      <Paper {...props} ref={nodeRef}/>
-    </Draggable>
-  );
-}
 
 export default function EditExtSubnet(props) {
   const { open, handleClose, space, block, external, subnets, selectedSubnet } = props;
@@ -195,11 +179,8 @@ export default function EditExtSubnet(props) {
   }, [selectedSubnet, subName, subDesc, subCidr]);
 
   const hasError = React.useMemo(() => {
-    var emptyCheck = false;
-    var errorCheck = false;
-
-    errorCheck = (subName.error || subDesc.error || subCidr.error);
-    emptyCheck = (subName.value.length === 0 || subDesc.value.length === 0 || subCidr.value.length === 0);
+    const errorCheck = (subName.error || subDesc.error || subCidr.error);
+    const emptyCheck = (subName.value.length === 0 || subDesc.value.length === 0 || subCidr.value.length === 0);
 
     return (errorCheck || emptyCheck);
   }, [subName, subDesc, subCidr]);
@@ -231,7 +212,12 @@ export default function EditExtSubnet(props) {
           Edit External Subnet
         </DialogTitle>
         <DialogContent>
-          <Box display="flex" flexDirection="column" alignItems="center">
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center"
+            }}>
             <Tooltip
               arrow
               disableFocusListener
@@ -256,8 +242,10 @@ export default function EditExtSubnet(props) {
                 variant="standard"
                 value={subName.value}
                 onChange={(event) => onNameChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -283,8 +271,10 @@ export default function EditExtSubnet(props) {
                 variant="standard"
                 value={subDesc.value}
                 onChange={(event) => onDescChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -308,8 +298,10 @@ export default function EditExtSubnet(props) {
                 variant="standard"
                 value={subCidr.value}
                 onChange={(event) => onCidrChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
           </Box>
@@ -321,13 +313,13 @@ export default function EditExtSubnet(props) {
           >
             Cancel
           </Button>
-          <LoadingButton
+          <Button
             onClick={onSubmit}
             loading={sending}
             disabled={hasError || unchanged}
           >
             Update
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

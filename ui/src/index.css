@@ -11,3 +11,59 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* AG Grid sharp corners */
+.ag-theme-quartz .ag-root-wrapper,
+.ag-root-wrapper {
+  border-radius: 0;
+}
+
+/* AG Grid overlay scrollbar styling */
+
+/* Force scrollbars to overlay (not take up space) */
+.ag-theme-quartz .ag-body-vertical-scroll {
+  position: absolute !important;
+  top: 0;
+  right: 0;
+  height: 100%;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.ag-theme-quartz .ag-body-horizontal-scroll {
+  position: absolute !important;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+/* Show scrollbars on hover */
+.ag-theme-quartz .ag-root-wrapper:hover .ag-body-vertical-scroll,
+.ag-theme-quartz .ag-root-wrapper:hover .ag-body-horizontal-scroll {
+  opacity: 1;
+}
+
+/* Thin scrollbar */
+.ag-theme-quartz .ag-body-vertical-scroll-viewport,
+.ag-theme-quartz .ag-body-horizontal-scroll-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 128, 128, 0.5) transparent;
+}
+
+/* AG Grid hover: darken existing row color instead of replacing it */
+.ag-theme-quartz .ag-row {
+  --ag-row-hover-color: transparent;
+}
+
+.ag-theme-quartz .ag-row-hover {
+  filter: brightness(0.96);
+}
+
+[data-ag-theme-mode="dark"] .ag-theme-quartz .ag-row-hover,
+.ag-theme-quartz-dark .ag-row-hover {
+  filter: brightness(1.12);
+}

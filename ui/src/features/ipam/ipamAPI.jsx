@@ -1,52 +1,56 @@
 import axios from 'axios';
-import { InteractionRequiredAuthError, BrowserAuthError } from "@azure/msal-browser";
 
-import { msalInstance } from '../../index';
-import { apiRequest } from '../../msal/authConfig';
+import { getApiToken } from '../../msal/tokenService';
 import { getEngineURL } from '../../global/globals';
 
 const ENGINE_URL = getEngineURL();
-
-async function generateToken() {
-  const accounts = msalInstance.getAllAccounts();
-
-  if (accounts.length === 0) {
-    throw new Error("No user accounts found. Please login first.");
-  }
-
-  const tokenRequest = {
-    ...apiRequest,
-    account: accounts[0]
-  };
-
-  try {
-    const response = await msalInstance.acquireTokenSilent(tokenRequest);
-    return response.accessToken;
-  } catch (e) {
-    if (e instanceof InteractionRequiredAuthError ||
-        (e instanceof BrowserAuthError && e.errorCode === "monitor_window_timeout")) {
-
-      await msalInstance.acquireTokenRedirect(tokenRequest);
-      return null;
-    } else {
-      throw e;
-    }
-  }
-}
 
 const api = axios.create();
 
 api.interceptors.request.use(
   async config => {
-    const token = await generateToken();
+    const token = await getApiToken();
 
     config.headers['Authorization'] = `Bearer ${token}`;
 
     return config;
   },
   error => {
-    Promise.reject(error)
+    return Promise.reject(error);
 });
+
+// The Engine returns { error } for handled failures, but unhandled exceptions, request
+// validation (422) and upstream proxy errors use other shapes; without this the message
+// resolves to undefined and the UI renders an empty error snackbar.
+function getErrorMessage(error) {
+  const data = error.response?.data;
+
+  if (typeof data === 'string') {
+    const text = data.trim();
+
+    if (text && !text.startsWith('<')) {
+      return text;
+    }
+  } else if (data && typeof data === 'object') {
+    if (data.error) {
+      return String(data.error);
+    }
+
+    if (typeof data.detail === 'string' && data.detail) {
+      return data.detail;
+    }
+
+    if (Array.isArray(data.detail)) {
+      const detail = data.detail.map(item => item?.msg).filter(Boolean).join('; ');
+
+      if (detail) {
+        return detail;
+      }
+    }
+  }
+
+  return error.message || 'An unexpected error occurred.';
+}
 
 api.interceptors.response.use(
   response => response.data,
@@ -54,11 +58,11 @@ api.interceptors.response.use(
     console.log("ERROR CALLING IPAM API");
     console.log(error);
 
-    if(error.response) {
-      return Promise.reject(new Error(error.response.data.error));
-    } else {
-      return Promise.reject(error);
+    if (error.response) {
+      return Promise.reject(new Error(getErrorMessage(error)));
     }
+
+    return Promise.reject(error);
 });
 
 export function fetchSpaces(utilization = false) {
@@ -307,4 +311,23 @@ export function fetchNextAvailableSubnet(body) {
   const url = new URL(`${ENGINE_URL}/api/tools/nextAvailableSubnet`);
 
   return api.post(url, body);
+}
+
+export function fetchNotifications() {
+  var url = new URL(`${ENGINE_URL}/api/notifications`);
+
+  return api.get(url);
+}
+
+export function resolveNotification(id) {
+  var url = new URL(`${ENGINE_URL}/api/notifications/${id}/resolve`);
+
+  return api.post(url);
+}
+
+// /api/status is public: use bare axios (no auth token) and unwrap data manually.
+export function fetchStatus() {
+  var url = new URL(`${ENGINE_URL}/api/status`);
+
+  return axios.get(url).then(response => response.data);
 }

@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSelector, createSlice } from '@reduxjs/toolkit';
 
-import { concat, merge, cloneDeep, isEqual } from 'lodash';
+import { concat, merge, cloneDeep, isEqual } from 'lodash-es';
 
 // import SnackbarUtils from '../../utils/snackbar';
 
@@ -12,6 +12,7 @@ import {
   createBlock,
   updateBlock,
   deleteBlock,
+  replaceBlockNetworks,
   createBlockExternal,
   updateBlockExternal,
   deleteBlockExternal,
@@ -159,6 +160,19 @@ export const deleteBlockAsync = createAsyncThunk(
   async (args, { rejectWithValue }) => {
     try {
       const response = await deleteBlock(args.space, args.block, args.force);
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const replaceBlockNetworksAsync = createAsyncThunk(
+  'ipam/replaceBlockNetworks',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await replaceBlockNetworks(args.space, args.block, args.body);
 
       return response;
     } catch (err) {
@@ -575,16 +589,37 @@ export const ipamSlice = createSlice({
         // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
+      .addCase(replaceBlockNetworksAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const blockName = action.meta.arg.block;
+
+        const spaceIndex = state.spaces.findIndex((space) => space.name === spaceName);
+
+        if(spaceIndex > -1) {
+          const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+
+          if(blockIndex > -1) {
+            state.spaces[spaceIndex].blocks[blockIndex].vnets = action.payload;
+          }
+        }
+      })
+      .addCase(replaceBlockNetworksAsync.rejected, (state, action) => {
+        console.log("replaceBlockNetworksAsync Rejected");
+        console.log(action);
+        throw action.payload;
+      })
       .addCase(createBlockExternalAsync.fulfilled, (state, action) => {
         const spaceName = action.meta.arg.space;
         const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);
         const blockName = action.meta.arg.block;
         const newExternal = action.payload
 
-        const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+        if(spaceIndex > -1) {
+          const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
 
-        if(blockIndex > -1) {
-          state.spaces[spaceIndex].blocks[blockIndex].externals.push(newExternal);
+          if(blockIndex > -1) {
+            state.spaces[spaceIndex].blocks[blockIndex].externals.push(newExternal);
+          }
         }
       })
       .addCase(createBlockExternalAsync.rejected, (state, action) => {
@@ -792,7 +827,7 @@ export const ipamSlice = createSlice({
 
         const subnets = vnets.map((vnet) => {
           var subnetArray = [];
-        
+
           vnet.subnets.forEach((subnet) => {
             const subnetDetails = {
               name: subnet.name,
@@ -871,7 +906,7 @@ export const ipamSlice = createSlice({
 
         const subnets = vNetData.map((vnet) => {
           var subnetArray = [];
-        
+
           vnet.subnets.forEach((subnet) => {
             const subnetDetails = {
               name: subnet.name,
@@ -959,7 +994,7 @@ export const ipamSlice = createSlice({
 
           const subnets = vNetData.map((vnet) => {
             var subnetArray = [];
-          
+
             vnet.subnets.forEach((subnet) => {
               const subnetDetails = {
                 name: subnet.name,
@@ -993,8 +1028,10 @@ export const ipamSlice = createSlice({
         }
 
         if(action.payload[3].status === 'fulfilled') {
-          const endpoints = action.payload[3].value.map((endpoint) => {
-            endpoint.uniqueId = `${endpoint.id}@$${endpoint.private_ip}`
+          const endpoints = action.payload[3].value.map((endpoint, index) => {
+            // Use index as fallback when private_ip is null to ensure uniqueness
+            const ipPart = endpoint.private_ip ?? `idx${index}`;
+            endpoint.uniqueId = `${endpoint.id}@$${ipPart}`;
 
             return endpoint;
           });
@@ -1174,6 +1211,41 @@ export const selectUpdatedNetworks = createSelector(
       return newNetwork;
     });
   }
+);
+
+// ============================================================================
+// Drill-Down Parent Selectors
+// Pre-computed Sets for O(1) lookups used by DrillDownCellRenderer
+// ============================================================================
+
+export const selectParentSpaceNames = createSelector(
+  [selectBlocks],
+  (blocks) => new Set(blocks?.map((b) => b.parent_space) ?? [])
+);
+
+export const selectBlocksWithVNets = createSelector(
+  [selectVNets],
+  (vnets) => new Set(vnets?.flatMap((v) => v.parent_block ?? []) ?? [])
+);
+
+export const selectBlocksWithVHubs = createSelector(
+  [selectVHubs],
+  (vhubs) => new Set(vhubs?.flatMap((v) => v.parent_block ?? []) ?? [])
+);
+
+export const selectParentVNetNames = createSelector(
+  [selectSubnets],
+  (subnets) => new Set(subnets?.map((s) => s.vnet_name).filter(Boolean) ?? [])
+);
+
+export const selectParentSubnetNames = createSelector(
+  [selectEndpoints],
+  (endpoints) => new Set(endpoints?.map((e) => e.subnet_name).filter(Boolean) ?? [])
+);
+
+export const selectParentNetworkNames = createSelector(
+  [selectEndpoints],
+  (endpoints) => new Set(endpoints?.map((e) => e.vnet_name).filter(Boolean) ?? [])
 );
 
 const getSettingName = (_, settingName) => settingName;

@@ -1,49 +1,34 @@
-from fastapi import (
-    APIRouter,
-    HTTPException,
-    Depends,
-    Header
-)
+import asyncio
+import copy
+import re
+import time
+from typing import List
 
 from azure.core.exceptions import ClientAuthenticationError, HttpResponseError
 from azure.mgmt.compute.aio import ComputeManagementClient
-from azure.mgmt.network.aio import NetworkManagementClient
 from azure.mgmt.datafactory.aio import DataFactoryManagementClient
-from azure.mgmt.resourcegraph.aio import ResourceGraphClient
+from azure.mgmt.network.aio import NetworkManagementClient
 from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
-from azure.mgmt.resourcegraph.models import QueryRequest, QueryRequestOptions, ResultFormat
+from fastapi import APIRouter, Depends, Header, HTTPException
+from netaddr import IPNetwork, IPSet
 
-from typing import  List
-
-import re
-import copy
-import time
-import asyncio
-from netaddr import IPSet, IPNetwork
-
-from app.dependencies import (
-    api_auth_checks,
-    get_admin,
-    get_tenant_id
-)
-
-from app.models import *
-from . import argquery
-
+from app.dependencies import api_auth_checks, get_admin, get_tenant_id
+from app.globals import globals
+from app.logs.logs import ipam_logger as logger
+from app.models import VWanHub
 from app.routers.common.helper import (
-    get_client_credentials,
-    get_obo_credentials,
+    arg_query,
     cosmos_query,
     cosmos_replace,
     cosmos_retry,
-    arg_query,
+    get_client_credentials,
+    get_obo_credentials,
+    get_tenant_from_jwt,
+    subnet_fixup,
     vnet_fixup,
-    subnet_fixup
 )
 
-from app.globals import globals
-
-from app.logs.logs import ipam_logger as logger
+from . import argquery
 
 router = APIRouter(
     prefix="/azure",
@@ -52,16 +37,17 @@ router = APIRouter(
 )
 
 def str_to_list(input):
-    try:
-        scrubbed = re.sub(r"\s+", "", input, flags = re.UNICODE)
-        split = scrubbed.split(",")
-    except:
+    # The Resource Graph query parses tags as JSON, so a value resembling JSON arrives as a list,
+    # object or number rather than the text a reservation ID is written as.
+    if not isinstance(input, str):
         return []
 
-    return split
+    scrubbed = re.sub(r"\s+", "", input, flags = re.UNICODE)
 
-async def get_subscriptions_sdk(credentials):
-    """DOCSTRING"""
+    return scrubbed.split(",")
+
+async def get_subscriptions_sdk(credentials, *, tenant_id=None, include_excluded=True):
+    """Return Azure subscriptions visible to the credentials, optionally excluding configured subscriptions."""
 
     QUOTA_MAP = {
         "EnterpriseAgreement": "Enterprise Agreement",
@@ -73,6 +59,18 @@ async def get_subscriptions_sdk(credentials):
     azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
 
+    excluded_subscription_ids = set()
+
+    if not include_excluded:
+        if tenant_id is None:
+            raise ValueError("tenant_id is required when include_excluded is False")
+
+        exclusions_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
+        excluded_subscription_ids = {
+            subscription_id.lower()
+            for subscription_id in exclusions_query[0].get('exclusions', [])
+        } if exclusions_query else set()
+
     subscription_client = SubscriptionClient(
         credential=credentials,
         base_url=azure_arm_url,
@@ -83,6 +81,9 @@ async def get_subscriptions_sdk(credentials):
     subscriptions = []
 
     async for poll in subscription_client.subscriptions.list():
+        if poll.subscription_id.lower() in excluded_subscription_ids:
+            continue
+
         quota_id = poll.subscription_policies.quota_id
         quota_id_parts = quota_id.split("_")
 
@@ -106,7 +107,7 @@ async def get_subscriptions_sdk(credentials):
     return subscriptions
 
 async def update_vhub_data(auth, admin, hubs):
-    """DOCSTRING"""
+    """Populate each vWAN hub with its virtual network connection (peering) data using admin or on-behalf-of credentials."""
 
     if admin:
         creds = await get_client_credentials()
@@ -148,16 +149,22 @@ async def update_vhub_data(auth, admin, hubs):
     return hubs
 
 async def get_vmss(auth, admin):
-    """DOCSTRING"""
+    """Return the network interfaces of all Virtual Machine Scale Set instances across every accessible subscription."""
 
     if admin:
         creds = await get_client_credentials()
+        tenant_id = globals.TENANT_ID
     else:
         user_assertion=auth.split(' ')[1]
         creds = await get_obo_credentials(user_assertion)
+        tenant_id = get_tenant_from_jwt(user_assertion)
 
     try:
-        subscriptions = await get_subscriptions_sdk(creds)
+        subscriptions = await get_subscriptions_sdk(
+            creds,
+            tenant_id=tenant_id,
+            include_excluded=False
+        )
         vmss_list = await get_vmss_list_sdk(creds, subscriptions)
         vmss_vm_interfaces = await get_vmss_interfaces_sdk(creds, vmss_list)
     except ClientAuthenticationError:
@@ -169,7 +176,7 @@ async def get_vmss(auth, admin):
     return vmss_vm_interfaces
 
 async def get_vmss_list_sdk(credentials, subscriptions):
-    """DOCSTRING"""
+    """Concurrently enumerate the Virtual Machine Scale Sets across the given subscriptions."""
 
     tasks = []
     vmss_list = []
@@ -182,7 +189,7 @@ async def get_vmss_list_sdk(credentials, subscriptions):
     return vmss_list
 
 async def get_vmss_list_sdk_helper(credentials, subscription, list):
-    """DOCSTRING"""
+    """Append the Virtual Machine Scale Sets found in a single subscription to the shared result list."""
 
     azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
@@ -197,10 +204,11 @@ async def get_vmss_list_sdk_helper(credentials, subscription, list):
 
     try:
         async for poll in compute_client.virtual_machine_scale_sets.list_all():
-            rg_name_search = re.search(r"(?<=resourceGroups/).*(?=/providers)", poll.id)
+            # ARM does not guarantee the casing of resource ID segments.
+            rg_name_search = re.search(r"(?<=resourceGroups/).*(?=/providers)", poll.id, re.IGNORECASE)
             rg_name = rg_name_search.group(0)
 
-            rg_id_search = re.search(r".*(?=/providers)", poll.id)
+            rg_id_search = re.search(r".*(?=/providers)", poll.id, re.IGNORECASE)
             rg_id = rg_id_search.group(0)
 
             vmss_data = {
@@ -220,7 +228,7 @@ async def get_vmss_list_sdk_helper(credentials, subscription, list):
     await compute_client.close()
 
 async def get_vmss_interfaces_sdk(credentials, vmss_list):
-    """DOCSTRING"""
+    """Concurrently resolve the network interfaces for every Virtual Machine Scale Set in the list."""
 
     tasks = []
     vmss_interfaces = []
@@ -233,7 +241,7 @@ async def get_vmss_interfaces_sdk(credentials, vmss_list):
     return vmss_interfaces
 
 async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
-    """DOCSTRING"""
+    """Append the per-instance network interface details for a single Virtual Machine Scale Set to the shared result list."""
 
     azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
@@ -249,16 +257,17 @@ async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
     try:
         async for poll in network_client.network_interfaces.list_virtual_machine_scale_set_network_interfaces(vmss['resource_group_name'], vmss['name']):
             for ip_config in poll.ip_configurations:
-                vnet_name_search = re.search(r"(?<=virtualNetworks/).*(?=/subnets)", ip_config.subnet.id)
+                # ARM does not guarantee the casing of resource ID segments.
+                vnet_name_search = re.search(r"(?<=virtualNetworks/).*(?=/subnets)", ip_config.subnet.id, re.IGNORECASE)
                 vnet_name = vnet_name_search.group(0)
 
-                vnet_id_search = re.search(r".*(?=/subnets)", ip_config.subnet.id)
+                vnet_id_search = re.search(r".*(?=/subnets)", ip_config.subnet.id, re.IGNORECASE)
                 vnet_id = vnet_id_search.group(0)
 
-                subnet_name_search = re.search(r"(?<=subnets/).*", ip_config.subnet.id)
+                subnet_name_search = re.search(r"(?<=subnets/).*", ip_config.subnet.id, re.IGNORECASE)
                 subnet_name = subnet_name_search.group(0)
 
-                vmss_num_search = re.search(r"(?<=virtualMachines/).*", poll.virtual_machine.id)
+                vmss_num_search = re.search(r"(?<=virtualMachines/).*", poll.virtual_machine.id, re.IGNORECASE)
                 vmss_vm_num = vmss_num_search.group(0)
 
                 vmss_data = {
@@ -289,41 +298,12 @@ async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
 
     await network_client.close()
 
-async def get_factory_map_sdk(credentials):
-    DF_QUERY = "Resources | where type =~ 'Microsoft.DataFactory/factories' | project id, name, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId"
-
-    data_factory_map = {}
-
-    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
-    azure_arm_scope = '{}/.default'.format(azure_arm_url)
-
-    resource_graph_client = ResourceGraphClient(
-        credential=credentials,
-        base_url=azure_arm_url,
-        credential_scopes=[azure_arm_scope],
-        transport=globals.SHARED_TRANSPORT
-    )
-
-    query = QueryRequest(
-        query=DF_QUERY,
-        options=QueryRequestOptions(
-            result_format=ResultFormat.object_array
-        )
-    )
-
-    poll = await resource_graph_client.resources(query)
-
-    await resource_graph_client.close()
-
-    subscription_set = set([x['subscription_id'] for x in poll.data])
-
-    for subscription in subscription_set:
-        data_factory_map[subscription] = list(filter(lambda x: x['subscription_id'] == subscription, poll.data))
-
-    return data_factory_map
-
-async def get_factory_endpoints_sdk(credentials, factory_map):
+async def get_factory_endpoints_sdk(credentials, factories):
     factory_list = []
+    factory_map = {}
+
+    for factory in factories:
+        factory_map.setdefault(factory['subscription_id'], []).append(factory)
 
     azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
@@ -377,22 +357,16 @@ async def subscription(
 
     return subscription_list
 
-@router.get(
-    "/vnet",
-    summary = "Get All Virtual Networks"
-)
-async def get_vnet(
-    authorization: str = Header(None),
-    tenant_id: str = Depends(get_tenant_id),
-    admin: str = Depends(get_admin)
-):
-    """
-    Get a list of Azure Virtual Networks.
-    """
+# IPAM distinguishes two questions: "is this address space occupied?" and "what occupies it?".
+# The first must always be answered from every network in the tenant or IPAM will allocate over
+# networks the caller cannot see; the second is legitimately scoped to the caller's Azure RBAC.
+# `all_networks` selects between them, and is a required argument so callers must decide deliberately.
+async def fetch_vnets(authorization, tenant_id, all_networks):
+    """Return Azure Virtual Networks: every one in the tenant, or only those the caller can read."""
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
-    vnet_list = await arg_query(authorization, admin, argquery.VNET)
+    vnet_list = await arg_query(authorization, all_networks, argquery.VNET)
     vnet_list = vnet_fixup(vnet_list)
 
     updated_vnet_list = []
@@ -409,7 +383,7 @@ async def get_vnet(
         for subnet in vnet['subnets']:
             subnet['size'] = IPNetwork(subnet['prefix']).size
             total_used += IPNetwork(subnet['prefix']).size
-        
+
         vnet['used'] = total_used
 
         # Python 3.9+
@@ -422,8 +396,23 @@ async def get_vnet(
         vnet['parent_block'] = parent_blocks or None
 
         updated_vnet_list.append(vnet)
-  
+
     return updated_vnet_list
+
+@router.get(
+    "/vnet",
+    summary = "Get All Virtual Networks"
+)
+async def get_vnet(
+    authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
+    admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Azure Virtual Networks.
+    """
+
+    return await fetch_vnets(authorization, tenant_id, admin)
 
 @router.get(
     "/subnet",
@@ -487,24 +476,13 @@ async def get_subnet(
 
     return updated_subnet_list
 
-@router.get(
-    "/vhub",
-    summary = "Get All Virtual Hubs",
-    response_model = List[VWanHub]
-)
-async def get_vhub(
-    authorization: str = Header(None),
-    tenant_id: str = Depends(get_tenant_id),
-    admin: str = Depends(get_admin)
-):
-    """
-    Get a list of Virtual Hubs.
-    """
+async def fetch_vhubs(authorization, tenant_id, all_networks):
+    """Return Azure Virtual Hubs: every one in the tenant, or only those the caller can read."""
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
-    vwan_hubs = await arg_query(authorization, admin, argquery.VHUB)
-    vwan_hubs_update = await update_vhub_data(authorization, admin, vwan_hubs)
+    vwan_hubs = await arg_query(authorization, all_networks, argquery.VHUB)
+    vwan_hubs_update = await update_vhub_data(authorization, all_networks, vwan_hubs)
 
     updated_vhub_list = []
 
@@ -526,6 +504,63 @@ async def get_vhub(
     return updated_vhub_list
 
 @router.get(
+    "/vhub",
+    summary = "Get All Virtual Hubs",
+    response_model = List[VWanHub]
+)
+async def get_vhub(
+    authorization: str = Header(None),
+    tenant_id: str = Depends(get_tenant_id),
+    admin: str = Depends(get_admin)
+):
+    """
+    Get a list of Virtual Hubs.
+    """
+
+    return await fetch_vhubs(authorization, tenant_id, admin)
+
+async def fetch_networks(authorization, tenant_id, all_networks):
+    """Return Azure Networks (vNets & vHubs): every one in the tenant, or only those the caller can read."""
+
+    tasks = [
+        asyncio.create_task(fetch_vnets(authorization, tenant_id, all_networks)),
+        asyncio.create_task(fetch_vhubs(authorization, tenant_id, all_networks))
+    ]
+
+    networks = await asyncio.gather(*tasks)
+
+    # networks[0] = vnet_fixup(networks[0])
+
+    for vnet in networks[0]:
+        vnet['type'] = 'vnet'
+
+    for vwan in networks[1]:
+        vwan['type'] = 'vhub'
+        vwan['prefixes'] = [vwan['prefix']]
+        # vHubs have no subnets, but the expanded response models require the key to be present.
+        vwan['subnets'] = []
+
+        del vwan['prefix']
+
+        for peering in vwan['peerings']:
+            # Hub peerings come from the ARM SDK while the networks come from Resource Graph, and the
+            # two APIs do not agree on resource ID casing.
+            target_vnet = next((x for x in networks[0] if x['id'].lower() == peering['remote_network'].lower()), None)
+
+            if target_vnet:
+                # Hub names may contain periods, so the generated HV_<hub>_ transit network that Azure
+                # peers the vNET to is matched as a substring rather than a pattern.
+                peering_match = "virtualnetworks/hv_{}_".format(vwan['name'].lower())
+                target_peering = next((x for x in target_vnet['peerings'] if peering_match in x['remote_network'].lower()), None)
+
+                if target_peering:
+                    target_peering['remote_network'] = vwan['id']
+
+    results = [item for sublist in networks for item in sublist]
+
+    return results
+
+@router.get(
     "/network",
     summary = "Get All Azure Networks (vNets & vHubs)",
     # response_model = List[AzureNetwork]
@@ -539,37 +574,19 @@ async def get_network(
     Get a list of Azure Networks (vNets & vHubs).
     """
 
-    tasks = [
-        asyncio.create_task(get_vnet(authorization, tenant_id, admin)),
-        asyncio.create_task(get_vhub(authorization, tenant_id, admin))
-    ]
+    return await fetch_networks(authorization, tenant_id, admin)
 
-    networks = await asyncio.gather(*tasks)
+async def fetch_network_prefixes(authorization, all_networks):
+    """Return Azure Networks (vNets & vHubs) carrying address prefixes only.
 
-    # networks[0] = vnet_fixup(networks[0])
+    Cheap counterpart to `fetch_networks` for overlap checks: one ARG query with no subnet expansion,
+    no peering joins, no per-hub ARM calls and no Cosmos enrichment. Results are just as current, only
+    smaller, so callers that read anything beyond `id` and `prefixes` must use `fetch_networks`.
+    """
 
-    for vnet in networks[0]:
-        vnet['type'] = 'vnet'
+    net_list = await arg_query(authorization, all_networks, argquery.NET_BASIC)
 
-    for vwan in networks[1]:
-        vwan['type'] = 'vhub'
-        vwan['prefixes'] = [vwan['prefix']]
-
-        del vwan['prefix']
-
-        for peering in vwan['peerings']:
-            target_vnet = next((x for x in networks[0] if x['id'] == peering['remote_network']), None)
-
-            if target_vnet:
-                peering_match = ".*(virtualNetworks/HV_{}_).*".format(vwan['name'])
-                target_peering = next((x for x in target_vnet['peerings'] if re.match(peering_match, x['remote_network'])), None)
-
-                if target_peering:
-                    target_peering['remote_network'] = vwan['id']
-
-    results = [item for sublist in networks for item in sublist]
-
-    return results
+    return vnet_fixup(net_list)
 
 @router.get(
     "/pe",
@@ -599,14 +616,15 @@ async def df(
     Get a list of Azure Data Factories.
     """
 
+    factories = await arg_query(authorization, admin, argquery.DATA_FACTORY)
+
     if admin:
         creds = await get_client_credentials()
     else:
         user_assertion=authorization.split(' ')[1]
         creds = await get_obo_credentials(user_assertion)
 
-    data_factory_map = await get_factory_map_sdk(creds)
-    data_factory_list = await get_factory_endpoints_sdk(creds, data_factory_map)
+    data_factory_list = await get_factory_endpoints_sdk(creds, factories)
 
     await creds.close()
 
@@ -680,9 +698,14 @@ async def vmss(
 
     results = []
 
-    for vmss in vm_scale_sets:
-        for private_ip in vmss["private_ips"] or []:
-            new_vmss = copy.deepcopy(vmss)
+    for scale_set in vm_scale_sets:
+        if "private_ips" not in scale_set:
+            if scale_set.get("private_ip"):
+                results.append(scale_set)
+            continue
+
+        for private_ip in scale_set["private_ips"] or []:
+            new_vmss = copy.deepcopy(scale_set)
             del new_vmss["private_ips"]
             new_vmss["private_ip"] = private_ip
             results.append(new_vmss)
@@ -817,8 +840,24 @@ async def vhub_ep(
 
     return results
 
+@router.get(
+    "/nic",
+    summary = "Get All Standalone Network Interfaces"
+)
+async def nic(
+    authorization: str = Header(None),
+    admin: str = Depends(get_admin)
+):
+    """
+    Get a list of standalone Azure Network Interfaces (not attached to a VM or Private Endpoint).
+    """
+
+    results = await arg_query(authorization, admin, argquery.NETWORK_INTERFACE)
+
+    return results
+
 async def multi_helper(func, list, *args):
-    """DOCSTRING"""
+    """Await the given coroutine function and append its result to the shared list (used to gather endpoint queries concurrently)."""
 
     results = await func(*args)
     list.append(results)
@@ -847,6 +886,7 @@ async def multi(
     tasks.append(asyncio.create_task(multi_helper(appgw, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(apim, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(lb, result_list, authorization, admin)))
+    tasks.append(asyncio.create_task(multi_helper(nic, result_list, authorization, admin)))
     tasks.append(asyncio.create_task(multi_helper(vhub_ep, result_list, authorization, admin)))
 
     await asyncio.gather(*tasks)
@@ -858,8 +898,21 @@ async def multi(
     error_msg = "Error updating reservation status!"
 )
 async def match_resv_to_vnets():
-    net_list = await get_network(None, globals.TENANT_ID, True)
-    stale_resv = list(i for j in list(str_to_list(x['resv']) for x in net_list if x['resv'] != None) for i in j)
+    # Reservation/vNet reconciliation writes to Cosmos, so it must only run on the
+    # production slot. This single guard covers both entry points that call it:
+    # the App Service scheduler and the Functions timer trigger ('sentinel').
+    if not globals.IS_PRODUCTION_SLOT:
+        logger.info("Skipping reservation reconciliation in non-production slot '{}'.", globals.SLOT_NAME)
+        return
+
+    # Reconciliation compares reservations against every network in the tenant.
+    net_list = await fetch_networks(None, globals.TENANT_ID, True)
+
+    for net in net_list:
+        if net['resv'] is not None and not isinstance(net['resv'], str):
+            logger.warning("Ignoring unreadable reservation tag on network {}: {}", net['id'], net['resv'])
+
+    stale_resv = list(i for j in list(str_to_list(x['resv']) for x in net_list if x['resv'] is not None) for i in j)
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", globals.TENANT_ID)
 
@@ -868,7 +921,8 @@ async def match_resv_to_vnets():
 
         for block in space['blocks']:
             for net in block['vnets']:
-                active = next((x for x in net_list if x['id'] == net['id']), None)
+                # Azure reports resource IDs with inconsistent casing, and stored IDs keep the caller's.
+                active = next((x for x in net_list if x['id'].lower() == net['id'].lower()), None)
 
                 if active:
                     net_prefix_set = IPSet(active['prefixes'])
@@ -912,20 +966,27 @@ async def match_resv_to_vnets():
 
                                 existing_block_cidrs += target_cidrs
 
-                        if IPNetwork(resv['cidr']) in IPSet(existing_block_cidrs):
+                        cidr_overlap = IPSet([resv['cidr']]) & IPSet(existing_block_cidrs)
+
+                        if cidr_overlap:
                             # print("A vNET with the assigned CIDR has already been associated with the target IP Block.")
                             # logging.info("A vNET with the assigned CIDR has already been associated with the target IP Block.")
-                            resv['status'] = "errCIDRExists"
+                            resv['status'] = "errCIDROverlap"
 
                         if resv['status'] == "wait":
                             # print("vNET is being added to IP Block...")
                             # logging.info("vNET is being added to IP Block...")
-                            block['vnets'].append(
-                                {
-                                    "id": net['id'],
-                                    "active": True
-                                }
-                            )
+                            existing_vnet = next((x for x in block['vnets'] if x['id'].lower() == net['id'].lower()), None)
+
+                            if existing_vnet:
+                                existing_vnet['active'] = True
+                            else:
+                                block['vnets'].append(
+                                    {
+                                        "id": net['id'],
+                                        "active": True
+                                    }
+                                )
 
                             # del block['resv'][index]
 

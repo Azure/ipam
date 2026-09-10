@@ -1,47 +1,47 @@
-// Global parameters
 targetScope = 'subscription'
 
 @description('Landing Zone Prefix')
 param landingZonePrefix string
 
-@description('GUID for Resource Naming')
-param guid string = newGuid()
-
 @description('Deployment Location')
 param location string = deployment().location
 
-@description('API Scope for Access Token')
+@description('API Scope for Access Token (e.g. api://<Engine Client ID>)')
 param ipamApiScope string
 
-@description('Azure IPAM Endpoint')
+@description('Azure IPAM Endpoint (e.g. https://myipam.azurewebsites.net)')
 param ipamEndpoint string
 
 @description('IPAM Space')
 param ipamSpace string
 
-@description('IPAM Space')
+@description('IPAM Block')
 param ipamBlock string
 
-// Resource naming variables
-var logAnalyticsWorkspaceName = '${landingZonePrefix}-law-${uniqueString(guid)}'
-var managedIdentityName = '${landingZonePrefix}-mi-${uniqueString(guid)}'
-var networkSvcsResourceGroupName = '${landingZonePrefix}NetworkSvcs-rg-${uniqueString(guid)}'
-var sharedSvcsResourceGroupName = '${landingZonePrefix}SharedSvcs-rg-${uniqueString(guid)}'
-var vnetName = '${landingZonePrefix}-vnet-${uniqueString(guid)}'
+@description('Reservation size as a CIDR mask (e.g. 24 for a /24)')
+param reservationSize int = 24
 
+// Deterministic suffix for resource naming (stable across redeployments)
+var uniqueSuffix = uniqueString(subscription().subscriptionId, landingZonePrefix, location)
+var logAnalyticsWorkspaceName = '${landingZonePrefix}-law-${uniqueSuffix}'
+var managedIdentityName = '${landingZonePrefix}-mi-${uniqueSuffix}'
+var keyVaultName = '${landingZonePrefix}-kv-${uniqueSuffix}'
+var networkSvcsResourceGroupName = '${landingZonePrefix}-NetworkSvcs-rg'
+var sharedSvcsResourceGroupName = '${landingZonePrefix}-SharedSvcs-rg'
+var vnetName = '${landingZonePrefix}-vnet-${uniqueSuffix}'
 
-//Resource Groups
-resource sharedSvcsResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
+// Resource Groups
+resource sharedSvcsResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   location: location
   name: sharedSvcsResourceGroupName
 }
 
-resource networkSvcsResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
+resource networkSvcsResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   location: location
   name: networkSvcsResourceGroupName
 }
 
-// Managed Identity for Secure Access to KeyVault
+// Managed Identity
 module managedIdentity 'managedIdentity.bicep' = {
   name: 'managedIdentityModule'
   scope: sharedSvcsResourceGroup
@@ -61,7 +61,17 @@ module logAnalytics 'logAnalytics.bicep' = {
   }
 }
 
-// Virtual Network Prefix Script
+// Key Vault
+module keyVault 'keyVault.bicep' = {
+  name: 'keyVaultModule'
+  scope: sharedSvcsResourceGroup
+  params: {
+    keyVaultName: keyVaultName
+    location: location
+  }
+}
+
+// IPAM Reservation via Deployment Script
 module fetchAddressPrefix 'fetchAddressPrefix.bicep' = {
   name: 'fetchAddressPrefixModule'
   scope: networkSvcsResourceGroup
@@ -70,12 +80,14 @@ module fetchAddressPrefix 'fetchAddressPrefix.bicep' = {
     ipamBlock: ipamBlock
     ipamEndpoint: ipamEndpoint
     ipamSpace: ipamSpace
+    reservationSize: reservationSize
     location: location
     managedIdentityId: managedIdentity.outputs.id
+    managedIdentityPrincipalId: managedIdentity.outputs.principalId
   }
 }
 
-// Virtual Network
+// Virtual Network (tagged with IPAM reservation ID for automatic settlement)
 module vnet 'vnet.bicep' = {
   name: 'vnetModule'
   scope: networkSvcsResourceGroup

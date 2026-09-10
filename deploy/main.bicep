@@ -23,6 +23,9 @@ param deployAsFunc bool = false
 @description('Flag to Deploy IPAM as a Container')
 param deployAsContainer bool = false
 
+@description('Flag to Force the ZIP Mount Deployment Shape')
+param forceRunFromPackage bool = false
+
 @description('IPAM-UI App Registration Client/App ID')
 param uiAppId string = '00000000-0000-0000-0000-000000000000'
 
@@ -78,6 +81,15 @@ module managedIdentity './modules/managedIdentity.bicep' = {
   params: {
     location: location
     managedIdentityName: resourceNames.managedIdentityName
+  }
+}
+
+// Role Assignments for the Managed Identity
+module managedIdentityRoles './modules/managedIdentityRoles.bicep' = {
+  name: 'managedIdentityRolesModule'
+  scope: resourceGroup
+  params: {
+    principalId: managedIdentity.outputs.principalId
   }
 }
 
@@ -151,7 +163,8 @@ module appService './modules/appService.bicep' = if (!deployAsFunc) {
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     deployAsContainer: deployAsContainer
     privateAcr: privateAcr
-    privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
+    privateAcrUri: privateAcr ? containerRegistry!.outputs.acrUri : ''
+    forceRunFromPackage: forceRunFromPackage
   }
 }
 
@@ -174,7 +187,8 @@ module functionApp './modules/functionApp.bicep' = if (deployAsFunc) {
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     deployAsContainer: deployAsContainer
     privateAcr: privateAcr
-    privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
+    privateAcrUri: privateAcr ? containerRegistry!.outputs.acrUri : ''
+    forceRunFromPackage: forceRunFromPackage
   }
 }
 
@@ -183,6 +197,6 @@ output suffix string = uniqueString(guid)
 output subscriptionId string = subscription().subscriptionId
 output resourceGroupName string = resourceGroup.name
 output appServiceName string = deployAsFunc ? resourceNames.functionName : resourceNames.appServiceName
-output appServiceHostName string = deployAsFunc ? functionApp.outputs.functionAppHostName : appService.outputs.appServiceHostName
-output acrName string = privateAcr ? containerRegistry.outputs.acrName : ''
-output acrUri string = privateAcr ? containerRegistry.outputs.acrUri : ''
+output appServiceHostName string = deployAsFunc ? functionApp!.outputs.functionAppHostName : appService!.outputs.appServiceHostName
+output acrName string = privateAcr ? containerRegistry!.outputs.acrName : ''
+output acrUri string = privateAcr ? containerRegistry!.outputs.acrUri : ''

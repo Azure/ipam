@@ -2,20 +2,23 @@ import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 
 import { useMsal } from "@azure/msal-react";
-import { InteractionStatus, InteractionRequiredAuthError, BrowserAuthError } from "@azure/msal-browser";
+import { InteractionStatus } from "@azure/msal-browser";
 
 import { useSnackbar } from "notistack";
 
 import { styled, alpha } from "@mui/material/styles";
 import { SvgIcon } from "@mui/material";
 
-import { orderBy } from 'lodash';
+import { orderBy } from 'lodash-es';
 import { plural, singular } from 'pluralize';
 
 import { Routes, Route, Link, Navigate, useNavigate } from "react-router";
 
 import { callMsGraph, callMsGraphPhoto } from "../../msal/graph";
-import { msalInstance } from "../../index";
+import { getApiToken } from "../../msal/tokenService";
+
+import NotificationCenter from "../notifications/NotificationCenter";
+import ServiceRestartGate from "../restart/ServiceRestartGate";
 
 import {
   AppBar,
@@ -113,7 +116,7 @@ import {
   selectEndpoints
 } from "../ipam/ipamSlice";
 
-import { apiRequest } from "../../msal/authConfig";
+
 
 const Search = styled("div")(({ theme }) => ({
   display: "flex",
@@ -173,7 +176,7 @@ const Search = styled("div")(({ theme }) => ({
 // }));
 
 export default function NavDrawer() {
-  const { instance, accounts, inProgress } = useMsal();
+  const { instance, inProgress } = useMsal();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
 
   const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
@@ -185,6 +188,7 @@ export default function NavDrawer() {
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [aboutOpen, setAboutOpen] = React.useState(false);
   const [searchData, setSearchData] = React.useState([]);
+  const [dataLoaded, setDataLoaded] = React.useState(false);
   const [searchInput, setSearchInput] = React.useState('');
   const [searchValue, setSearchValue] = React.useState(null);
 
@@ -355,24 +359,37 @@ export default function NavDrawer() {
   ];
 
   React.useEffect(() => {
-    if (!graphData) {
-      (async() => {
-        try {
-          const graphResponse = await callMsGraph();
-          const photoResponse = await callMsGraphPhoto();
-          await dispatch(setUserId(graphResponse.userPrincipalName));
-          setGraphPhoto(photoResponse);
-          setGraphData(graphResponse);
-        } catch (e) {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          // enqueueSnackbar(e.message, { variant: "error" });
-        }
-      })();
+    if (graphData || inProgress !== InteractionStatus.None) {
+      return;
     }
-  }, [graphData, dispatch]);
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const graphResponse = await callMsGraph();
+        const photoResponse = await callMsGraphPhoto();
+
+        if (cancelled) {
+          return;
+        }
+
+        await dispatch(setUserId(graphResponse.userPrincipalName));
+        setGraphPhoto(photoResponse);
+        setGraphData(graphResponse);
+      } catch (e) {
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        // enqueueSnackbar(e.message, { variant: "error" });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [graphData, inProgress, dispatch]);
 
   React.useEffect(() => {
     // Handler to call on window resize
@@ -526,6 +543,10 @@ export default function NavDrawer() {
     }
 
     setSearchData(newSearchData);
+
+    if(vNets !== null && vHubs !== null && endpoints !== null) {
+      setDataLoaded(true);
+    }
   }, [vNets, vHubs, subnets, endpoints]);
 
   const filterOptions = createFilterOptions({
@@ -541,7 +562,7 @@ export default function NavDrawer() {
     >
       {navItems.map((navItem, navIndex) => {
         return (
-          <React.Fragment key={`navItem-${navIndex}`}>
+          <React.Fragment key={`navItem-${navItem[0].title}`}>
             <List>
               {navItem.map((item, itemIndex) => {
                 return item.hasOwnProperty('children')
@@ -613,7 +634,6 @@ export default function NavDrawer() {
   );
 
   function RequestToken() {
-    // Check if there's already an interaction in progress before starting new one
     if (inProgress !== InteractionStatus.None) {
       enqueueSnackbar("Authentication in progress, please wait and try again", { variant: "info" });
       return;
@@ -621,37 +641,10 @@ export default function NavDrawer() {
 
     (async () => {
       try {
-        const accounts = msalInstance.getAllAccounts();
-
-        if (accounts.length === 0) {
-          throw new Error("No user accounts found. Please login first.");
-        }
-
-        const tokenRequest = {
-          ...apiRequest,
-          account: accounts[0]
-        };
-
-        let token;
-        try {
-          const response = await msalInstance.acquireTokenSilent(tokenRequest);
-          token = response.accessToken;
-        } catch (e) {
-          if (e instanceof InteractionRequiredAuthError ||
-              (e instanceof BrowserAuthError && e.errorCode === "monitor_window_timeout")) {
-
-            await msalInstance.acquireTokenRedirect(tokenRequest);
-            return; // Exit since redirect will happen
-          } else {
-            throw e;
-          }
-        }
-
-        if (token) {
-          navigator.clipboard.writeText(token);
-          handleMenuClose();
-          enqueueSnackbar('Token copied to clipboard!', { variant: 'success' });
-        }
+        const token = await getApiToken();
+        navigator.clipboard.writeText(token);
+        handleMenuClose();
+        enqueueSnackbar('Token copied to clipboard!', { variant: 'success' });
       } catch (e) {
         console.log("ERROR REQUESTING TOKEN");
         console.log("------------------");
@@ -729,32 +722,34 @@ export default function NavDrawer() {
       }}
       open={isMenuOpen}
       onClose={handleMenuClose}
-      PaperProps={{
-        elevation: 0,
-        style: {
-          width: 200,
-        },
-        sx: {
-          overflow: 'visible',
-          filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-          mt: 1.5,
-          '& .MuiAvatar-root': {
-            width: 32,
-            height: 32,
-            ml: -0.5,
-            mr: 1,
+      slotProps={{
+        paper: {
+          elevation: 0,
+          style: {
+            width: 200,
           },
-          '&:before': {
-            content: '""',
-            display: 'block',
-            position: 'absolute',
-            top: 0,
-            right: 26,
-            width: 10,
-            height: 10,
-            bgcolor: 'background.paper',
-            transform: 'translateY(-50%) rotate(45deg)',
-            zIndex: 0,
+          sx: {
+            overflow: 'visible',
+            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+            mt: 1.5,
+            '& .MuiAvatar-root': {
+              width: 32,
+              height: 32,
+              ml: -0.5,
+              mr: 1,
+            },
+            '&:before': {
+              content: '""',
+              display: 'block',
+              position: 'absolute',
+              top: 0,
+              right: 26,
+              width: 10,
+              height: 10,
+              bgcolor: 'background.paper',
+              transform: 'translateY(-50%) rotate(45deg)',
+              zIndex: 0,
+            },
           },
         },
       }}
@@ -804,32 +799,34 @@ export default function NavDrawer() {
       }}
       open={isMobileMenuOpen}
       onClose={handleMobileMenuClose}
-      PaperProps={{
-        elevation: 0,
-        style: {
-          width: 200,
-        },
-        sx: {
-          overflow: 'visible',
-          filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-          mt: 1.5,
-          '& .MuiAvatar-root': {
-            width: 32,
-            height: 32,
-            ml: -0.5,
-            mr: 1,
+      slotProps={{
+        paper: {
+          elevation: 0,
+          style: {
+            width: 200,
           },
-          '&:before': {
-            content: '""',
-            display: 'block',
-            position: 'absolute',
-            top: 0,
-            right: 19,
-            width: 10,
-            height: 10,
-            bgcolor: 'background.paper',
-            transform: 'translateY(-50%) rotate(45deg)',
-            zIndex: 0,
+          sx: {
+            overflow: 'visible',
+            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+            mt: 1.5,
+            '& .MuiAvatar-root': {
+              width: 32,
+              height: 32,
+              ml: -0.5,
+              mr: 1,
+            },
+            '&:before': {
+              content: '""',
+              display: 'block',
+              position: 'absolute',
+              top: 0,
+              right: 19,
+              width: 10,
+              height: 10,
+              bgcolor: 'background.paper',
+              transform: 'translateY(-50%) rotate(45deg)',
+              zIndex: 0,
+            },
           },
         },
       }}
@@ -897,7 +894,7 @@ export default function NavDrawer() {
                 options={searchData ? orderBy(searchData, 'category', 'asc') : []}
                 groupBy={(option) => option.category}
                 getOptionLabel={(option) => option.phrase}
-                disabled={searchData.length > 0 ? false : true}
+                disabled={!dataLoaded || searchData.length === 0}
                 inputValue={searchInput}
                 onInputChange={(event, newSearchInput) => {
                   setSearchInput(newSearchInput);
@@ -911,19 +908,23 @@ export default function NavDrawer() {
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    placeholder={searchData.length > 0 ? "Search..." : "Loading..."}
+                    placeholder={dataLoaded ? (searchData.length > 0 ? "Search..." : "No Resources...") : "Loading..."}
                     fullWidth
                     variant="standard"
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment:
-                        <InputAdornment position="start">
-                          <SearchIcon sx={{ color: 'white', pl: 1}}/>
-                        </InputAdornment>,
-                      disableUnderline: true,
-                      type: 'search',
-                      sx: {
-                        color: 'inherit'
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input,
+                        startAdornment:
+                          <InputAdornment position="start">
+                            <SearchIcon sx={{ color: 'white', pl: 1}}/>
+                          </InputAdornment>,
+                        disableUnderline: true,
+                        type: 'search',
+                        sx: {
+                          color: 'inherit'
+                        }
                       }
                     }}
                   />
@@ -937,6 +938,7 @@ export default function NavDrawer() {
               />
             </Search>
             <Box sx={{ flexGrow: 1 }} />
+            <NotificationCenter />
             <Box sx={{ display: { xs: "none", md: "flex" } }}>
               <IconButton
                 size="large"
@@ -1044,6 +1046,7 @@ export default function NavDrawer() {
           </Update>
         </Box> */}
       </Box>
+      <ServiceRestartGate />
     </React.Fragment>
   );
 }

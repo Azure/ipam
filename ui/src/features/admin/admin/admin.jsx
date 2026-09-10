@@ -1,16 +1,11 @@
 import * as React from "react";
-import { useSelector, useDispatch } from 'react-redux';
 import { styled } from '@mui/material/styles';
 
 import { useSnackbar } from 'notistack';
 
-import { isEqual, isEmpty, pickBy, orderBy, throttle } from 'lodash';
+import { isEqual, throttle } from 'lodash-es';
 
-import ReactDataGrid from '@inovua/reactdatagrid-community';
-import '@inovua/reactdatagrid-community/index.css';
-import '@inovua/reactdatagrid-community/theme/default-dark.css'
-
-import { useTheme } from '@mui/material/styles';
+import { DataGrid } from "../../../global/grids";
 
 import {
   Box,
@@ -21,11 +16,7 @@ import {
   CircularProgress,
   Popper,
   Typography,
-  Menu,
-  MenuItem,
-  ListItemIcon,
   Button
-  // Switch
 }  from "@mui/material";
 
 import {
@@ -34,13 +25,7 @@ import {
   QuestionMark,
   PersonSearch,
   SaveAlt,
-  HighlightOff,
-  ExpandCircleDownOutlined,
-  FileDownloadOutlined,
-  FileUploadOutlined,
-  ReplayOutlined,
-  TaskAltOutlined,
-  CancelOutlined
+  HighlightOff
 } from "@mui/icons-material";
 
 import Shrug from "../../../img/pam/Shrug";
@@ -49,11 +34,6 @@ import {
   getAdmins,
   replaceAdmins
 } from "../../ipam/ipamAPI";
-
-import {
-  selectViewSetting,
-  updateMeAsync
-} from "../../ipam/ipamSlice";
 
 import {
   callMsGraphUsersFilter,
@@ -111,143 +91,9 @@ const GridBody = styled("div")({
   width: "100%"
 });
 
-const Update = styled("span")(({ theme }) => ({
-  fontWeight: 'bold',
-  color: theme.palette.error.light,
-  textShadow: '-1px 0 white, 0 1px white, 1px 0 white, 0 -1px white'
-}));
-
-const gridStyle = {
-  height: '100%',
-  border: "1px solid rgba(224, 224, 224, 1)",
-  fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
-};
-
-function HeaderMenu(props) {
-  const { setting } = props;
-  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.useContext(AdminContext);
-
-  const [menuOpen, setMenuOpen] = React.useState(false);
-
-  const menuRef = React.useRef(null);
-
-  const viewSetting = useSelector(state => selectViewSetting(state, setting));
-
-  const onClick = () => {
-    setMenuOpen(prev => !prev);
-  }
-
-  const onSave = () => {
-    saveConfig();
-    setMenuOpen(false);
-  }
-
-  const onLoad = () => {
-    loadConfig();
-    setMenuOpen(false);
-  }
-
-  const onReset = () => {
-    resetConfig();
-    setMenuOpen(false);
-  }
-
-  return (
-    <Box
-      ref={menuRef}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center"
-      }}
-    >
-      {
-        saving ?
-        <React.Fragment>
-          <CircularProgress size={24} />
-        </React.Fragment> :
-        (sendResults !== null) ?
-        <React.Fragment>
-          {
-            sendResults ?
-            <TaskAltOutlined color="success"/> :
-            <CancelOutlined color="error"/>
-          }
-        </React.Fragment> :
-        <React.Fragment>
-          <IconButton
-            id="table-state-menu"
-            onClick={onClick}
-          >
-            <ExpandCircleDownOutlined />
-          </IconButton>
-          <Menu
-            id="table-state-menu"
-            anchorEl={menuRef.current}
-            open={menuOpen}
-            onClose={onClick}
-            // onClick={onClick}
-            PaperProps={{
-              elevation: 0,
-              style: {
-                width: 215,
-              },
-              sx: {
-                overflow: 'visible',
-                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-                mt: 1.5,
-                '& .MuiAvatar-root': {
-                  width: 32,
-                  height: 32,
-                  ml: -0.5,
-                  mr: 1,
-                },
-                '&:before': {
-                  content: '""',
-                  display: 'block',
-                  position: 'absolute',
-                  top: 0,
-                  right: 26,
-                  width: 10,
-                  height: 10,
-                  bgcolor: 'background.paper',
-                  transform: 'translateY(-50%) rotate(45deg)',
-                  zIndex: 0,
-                },
-              },
-            }}
-          >
-            <MenuItem
-              onClick={onLoad}
-              disabled={ !viewSetting || isEmpty(viewSetting) }
-            >
-              <ListItemIcon>
-                <FileDownloadOutlined fontSize="small" />
-              </ListItemIcon>
-              Load Saved View
-            </MenuItem>
-            <MenuItem onClick={onSave}>
-              <ListItemIcon>
-                <FileUploadOutlined fontSize="small" />
-              </ListItemIcon>
-              Save Current View
-            </MenuItem>
-            <MenuItem onClick={onReset}>
-              <ListItemIcon>
-                <ReplayOutlined fontSize="small" />
-              </ListItemIcon>
-              Reset Default View
-            </MenuItem>
-          </Menu>
-        </React.Fragment>
-      }
-    </Box>
-  )
-}
-
 function RenderDelete(props) {
-  const { value } = props;
-  const { admins, setAdmins, selectionModel } = React.useContext(AdminContext);
+  const { data } = props;
+  const { admins, setAdmins, selectedId } = React.use(AdminContext);
 
   const flexCenter = {
     display: "flex",
@@ -262,12 +108,12 @@ function RenderDelete(props) {
           color="error"
           sx={{
             padding: 0,
-            display: (isEqual([value.id], Object.keys(selectionModel))) ? "flex" : "none"
+            display: (data.id === selectedId) ? "flex" : "none"
           }}
           disableFocusRipple
           disableTouchRipple
           disableRipple
-          onClick={() => setAdmins(admins.filter(x => x.id !== value.id))}
+          onClick={() => setAdmins(admins.filter(x => x.id !== data.id))}
         >
           <HighlightOff />
         </IconButton>
@@ -305,16 +151,23 @@ function RenderType(props) {
   );
 }
 
+const popperStyle = {
+  popper: {
+    width: "fit-content"
+  }
+};
+
+function MyPopper(props) {
+  return <Popper {...props} style={{ popperStyle }} placement="bottom-start" />;
+}
+
 export default function Administration() {
   const { enqueueSnackbar } = useSnackbar();
 
   const [admins, setAdmins] = React.useState(null);
   const [loadedAdmins, setLoadedAdmins] = React.useState(null);
-  const [gridData, setGridData] = React.useState(null);
-  const [selectionModel, setSelectionModel] = React.useState({});
+  const [selectedId, setSelectedId] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
-  const [saving, setSaving] = React.useState(false);
-  const [sendResults, setSendResults] = React.useState(null);
 
   const [open, setOpen] = React.useState(false);
   const [options, setOptions] = React.useState(null);
@@ -322,33 +175,41 @@ export default function Administration() {
   const [selected, setSelected] = React.useState(null);
   const [sending, setSending] = React.useState(false);
 
-  const [columnState, setColumnState] = React.useState(null);
-  const [columnOrderState, setColumnOrderState] = React.useState([]);
-  const [columnSortState, setColumnSortState] = React.useState({});
-
   const [appSearch, setAppSearch] = React.useState(false);
 
-  const viewSetting = useSelector(state => selectViewSetting(state, 'admins'));
-  const dispatch = useDispatch();
-
-  const saveTimer = React.useRef();
   const adminLoadedRef = React.useRef(false);
 
-  const theme = useTheme();
+  const TypeHeaderComponent = React.useCallback(() => (
+    <span style={{ display: "flex", height: "100%", width: "100%", alignItems: "center", justifyContent: "center" }}>
+      <PersonSearch />
+    </span>
+  ), []);
 
   const columns = React.useMemo(() => [
-    { name: "type", header: () => <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}><PersonSearch /></span> , width: 40, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({value}) => <RenderType value={value} />, visible: true },
-    { name: "name", header: "Name", type: "string", flex: 0.5, visible: true },
-    { name: "email", header: "Email", type: "string", flex: 1, visible: true, render: ({value}) => value ? value : "N/A" },
-    { name: "id", header: "Object ID", type: "string", flex: 0.75, visible: true },
-    { name: "delete", header: () => <HeaderMenu setting="admins"/> , width: 50, resizable: false, hideable: false, sortable: false, draggable: false, showColumnMenuTool: false, render: ({data}) => <RenderDelete value={data} />, visible: true }
-  ], []);
+    {
+      field: "type",
+      headerName: "",
+      headerComponent: TypeHeaderComponent,
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressMovable: true,
+      suppressSizeToFit: true,
+      suppressAutoSize: true,
+      cellRenderer: RenderType,
+      cellStyle: { display: "flex", alignItems: "center", justifyContent: "center" }
+    },
+    { field: "name", headerName: "Name", flex: 0.5, filter: true },
+    { field: "email", headerName: "Email", flex: 1, filter: true, valueFormatter: (params) => params.value || "N/A" },
+    { field: "id", headerName: "Object ID", flex: 0.75, filter: true }
+  ], [TypeHeaderComponent]);
 
-  const filterValue = [
-    { name: "name", operator: "contains", type: "string", value: "" },
-    { name: "email", operator: "contains", type: "string", value: "" },
-    { name: "id", operator: "contains", type: "string", value: "" }
-  ];
+  const actionsCellRenderer = React.useCallback((params) => {
+    return <RenderDelete data={params.data} />;
+  }, []);
 
   const usersLoading = open && !options;
   const unchanged = isEqual(admins, loadedAdmins);
@@ -419,18 +280,6 @@ export default function Administration() {
     admins && setLoading(false);
   }, [admins]);
 
-  React.useEffect(() => {
-    if(sendResults !== null) {
-      clearTimeout(saveTimer.current);
-
-      saveTimer.current = setTimeout(
-        function() {
-          setSendResults(null);
-        }, 2000
-      );
-    }
-  }, [saveTimer, sendResults]);
-
   function onSave() {
     (async () => {
       try {
@@ -464,7 +313,7 @@ export default function Administration() {
       console.log("Admin already added!");
       enqueueSnackbar('Admin already added!', { variant: 'error' });
     }
-    
+
     setSelected(null);
   }
 
@@ -472,178 +321,29 @@ export default function Administration() {
     setAppSearch((current) => !current);
   };
 
-  const popperStyle = {
-    popper: {
-      width: "fit-content"
-    }
-  };
-
-  const MyPopper = function (props) {
-    return <Popper {...props} style={{ popperStyle }} placement="bottom-start" />;
-  };
-
-  function onClick(data) {
-    var id = data.id;
-    var newSelectionModel = {};
-
-    setSelectionModel(prevState => {
-      if(!prevState.hasOwnProperty(id)) {
-        newSelectionModel[id] = data;
-      }
-      
-      return newSelectionModel;
-    });
-  }
-
-  const onBatchColumnResize = (batchColumnInfo) => {
-    const colsMap = batchColumnInfo.reduce((acc, colInfo) => {
-      const { column, flex } = colInfo
-      acc[column.name] = { flex }
-      return acc
-    }, {});
-
-    const newColumns = columnState.map(c => {
-      return Object.assign({}, c, colsMap[c.name]);
-    })
-
-    setColumnState(newColumns);
-  }
-
-  const onColumnOrderChange = (columnOrder) => {
-    setColumnOrderState(columnOrder);
-  }
-
-  const onColumnVisibleChange = ({ column, visible }) => {
-    const newColumns = columnState.map(c => {
-      if(c.name === column.name) {
-        return Object.assign({}, c, { visible });
-      } else {
-        return c;
-      }
-    });
-
-    setColumnState(newColumns);
-  }
-
-  const onSortInfoChange = (sortInfo) => {
-    setColumnSortState(sortInfo);
-  }
-
-  const saveConfig = () => {
-    const values = columnState.reduce((acc, colInfo) => {
-      const { name, flex, visible } = colInfo;
-
-      acc[name] = { flex, visible };
-
-      return acc;
-    }, {});
-
-    const saveData = {
-      values: values,
-      order: columnOrderState,
-      sort: columnSortState
-    }
-
-    var body = [
-      { "op": "add", "path": `/views/admins`, "value": saveData }
-    ];
-
-    (async () => {
-      try {
-        setSaving(true);
-        await dispatch(updateMeAsync({ body: body }));
-        setSendResults(true);
-      } catch (e) {
-        console.log("ERROR");
-        console.log("------------------");
-        console.log(e);
-        console.log("------------------");
-        setSendResults(false);
-        enqueueSnackbar("Error saving view settings", { variant: "error" });
-      } finally {
-        setSaving(false);
-      }
-    })();
-  };
-
-  const loadConfig = React.useCallback(() => {
-    const { values, order, sort } = viewSetting;
-
-    const colsMap = columns.reduce((acc, colInfo) => {
-
-      acc[colInfo.name] = colInfo;
-
-      return acc;
-    }, {})
-
-    const loadColumns = order.map(item => {
-      const assigned = pickBy(values[item], v => v !== undefined)
-
-      return Object.assign({}, colsMap[item], assigned);
-    });
-
-    setColumnState(loadColumns);
-    setColumnOrderState(order);
-    setColumnSortState(sort);
-  }, [columns, viewSetting]);
-
-  const resetConfig = React.useCallback(() => {
-    setColumnState(columns);
-    setColumnOrderState(columns.flatMap(({name}) => name));
-    setColumnSortState({ name: 'name', dir: 1, type: 'string' });
-  }, [columns]);
-
-  const renderColumnContextMenu = React.useCallback((menuProps) => {
-    const columnIndex = menuProps.items.findIndex((item) => item.itemId === 'columns');
-    const idIndex = menuProps.items[columnIndex].items.findIndex((item) => item.value === 'delete');
-
-    menuProps.items[columnIndex].items.splice(idIndex, 1);
+  const handleRowClicked = React.useCallback((event) => {
+    const data = event.data;
+    setSelectedId(prevId => prevId === data.id ? null : data.id);
   }, []);
 
-  React.useEffect(() => {
-    if(!columnState && viewSetting) {
-      if(columns && !isEmpty(viewSetting)) {
-        loadConfig();
-      } else {
-        resetConfig();
-      }
-    }
-  },[columns, viewSetting, columnState, loadConfig, resetConfig]);
-
-  React.useEffect(() => {
-    if(columnSortState) {
-      setGridData(
-        orderBy(
-          admins,
-          [columnSortState.name],
-          [columnSortState.dir === -1 ? 'desc' : 'asc']
-        )
-      );
-    } else {
-      setGridData(admins);
-    }
-  },[admins, columnSortState]);
-
-  const onCellDoubleClick = React.useCallback((event, cellProps) => {
-    const { value } = cellProps
-
-    navigator.clipboard.writeText(value);
-    enqueueSnackbar("Cell value copied to clipboard", { variant: "success" });
-  }, [enqueueSnackbar]);
-
-  function NoRowsOverlay() {
+  const NoRowsOverlay = React.useCallback(() => {
     return (
       <React.Fragment>
         <Shrug />
-        <Typography variant="overline" display="block"  sx={{ mt: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            display: "block",
+            mt: 1
+          }}>
           Nothing yet...
         </Typography>
       </React.Fragment>
     );
-  }
+  }, []);
 
   return (
-    <AdminContext.Provider value={{ admins, setAdmins, selectionModel, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+    <AdminContext value={{ admins, setAdmins, selectedId }}>
       <Wrapper>
         <MainBody>
           <FloatingHeader>
@@ -651,21 +351,23 @@ export default function Administration() {
               <Tooltip
                 title={ appSearch ? "Service Principals" : "Users" }
                 arrow
-                PopperProps={{
-                  sx: {
-                      "& .MuiTooltip-tooltip": {
-                        left: appSearch ? "32px" : "8px"
-                      },
-                      "& .MuiTooltip-arrow": {
-                        left: appSearch ? "-32px !important" : "-8px !important"
-                      }
+                slotProps={{
+                  popper: {
+                    sx: {
+                        "& .MuiTooltip-tooltip": {
+                          left: appSearch ? "32px" : "8px"
+                        },
+                        "& .MuiTooltip-arrow": {
+                          left: appSearch ? "-32px !important" : "-8px !important"
+                        }
+                    }
                   }
                 }}
               >
                 {/* <IconButton onClick={toggleAppSearch} color="primary">
                   { appSearch ? <Apps /> : <Person /> }
                 </IconButton> */}
-                <Button 
+                <Button
                   variant="outlined"
                   size="large"
                   startIcon={ appSearch ? <Apps /> : <Person /> }
@@ -682,7 +384,6 @@ export default function Administration() {
                 />
               </Tooltip>
               <Autocomplete
-                PopperComponent={MyPopper}
                 key="12345"
                 id="asynchronous-demo"
                 size="small"
@@ -715,25 +416,39 @@ export default function Administration() {
                   <TextField
                     {...params}
                     label={ appSearch ? "Principal Search" : "User Search" }
-                    // variant="standard"
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <React.Fragment>
-                          {usersLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </React.Fragment>
-                      ),
-                      style: {
-                        borderRadius: "0px 4px 4px 0px"
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input,
+                        endAdornment: (
+                          <React.Fragment>
+                            {usersLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                            {params.slotProps.input.endAdornment}
+                          </React.Fragment>
+                        ),
+                        style: {
+                          borderRadius: "0px 4px 4px 0px"
+                        }
                       }
                     }}
                   />
                 )}
+                slots={{
+                  popper: MyPopper
+                }}
               />
             </Box>
             <HeaderTitle>Admin Users</HeaderTitle>
-            <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ width: "35%", ml: 2, mr: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "center",
+                width: "35%",
+                ml: 2,
+                mr: 2
+              }}>
               <Tooltip title="Save" >
                 <IconButton
                   color="primary"
@@ -752,41 +467,19 @@ export default function Administration() {
           </FloatingHeader>
           <DataSection>
             <GridBody>
-              <ReactDataGrid
-                theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
-                idProperty="id"
-                showCellBorders="horizontal"
-                showZebraRows={false}
-                multiSelect={true}
-                showActiveRowIndicator={false}
-                enableColumnAutosize={false}
-                showColumnMenuGroupOptions={false}
-                showColumnMenuLockOptions={false}
-                enableColumnFilterContextMenu={true}
-                updateMenuPositionOnColumnsChange={false}
-                renderColumnContextMenu={renderColumnContextMenu}
-                onBatchColumnResize={onBatchColumnResize}
-                onSortInfoChange={onSortInfoChange}
-                onColumnOrderChange={onColumnOrderChange}
-                onColumnVisibleChange={onColumnVisibleChange}
-                reservedViewportWidth={0}
-                columns={columnState || []}
-                columnOrder={columnOrderState}
-                loading={loading || sending}
-                loadingText={sending ? <Update>Updating</Update> : "Loading"}
-                dataSource={gridData || []}
-                defaultFilterValue={filterValue}
-                onRowClick={(rowData) => onClick(rowData.data)}
-                onCellDoubleClick={onCellDoubleClick}
-                selected={selectionModel}
-                sortInfo={columnSortState}
-                emptyText={NoRowsOverlay}
-                style={gridStyle}
+              <DataGrid
+                viewSettingKey="admins"
+                rowData={admins}
+                columnDefs={columns}
+                isLoading={loading || sending}
+                noRowsOverlay={NoRowsOverlay}
+                onRowClicked={handleRowClicked}
+                actionsCellRenderer={actionsCellRenderer}
               />
             </GridBody>
           </DataSection>
         </MainBody>
       </Wrapper>
-    </AdminContext.Provider>
+    </AdminContext>
   );
 }

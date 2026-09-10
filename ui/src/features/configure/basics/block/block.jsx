@@ -4,13 +4,9 @@ import { styled } from "@mui/material/styles";
 
 import { useNavigate } from "react-router";
 
-import { isEmpty} from "lodash";
+import { isEmpty} from "lodash-es";
 
-import ReactDataGrid from "@inovua/reactdatagrid-community";
-import "@inovua/reactdatagrid-community/index.css";
-import "@inovua/reactdatagrid-community/theme/default-dark.css";
-
-import { useTheme } from "@mui/material/styles";
+import { ConfigureGrid } from "../../../../global/grids";
 
 import {
   Box,
@@ -25,10 +21,10 @@ import {
 
 import {
   Edit as EditIcon,
-  DeleteOutline as DeleteOutlineIcon,
+  DeleteOutlined as DeleteOutlineIcon,
   MoreVert as MoreVertIcon,
   GridView as GridViewIcon,
-  PieChartOutline as PieChartOutlineIcon,
+  PieChartOutlined as PieChartOutlineIcon,
   SettingsEthernet as SettingsEthernetIcon,
   MapOutlined as MapOutlinedIcon
 } from "@mui/icons-material";
@@ -42,14 +38,14 @@ import { BasicContext } from "../basicContext";
 import { getAdminStatus } from "../../../ipam/ipamSlice";
 
 const GridHeader = styled("div")({
-  height: "50px",
+  height: "35px",
   width: "100%",
   display: "flex",
   borderBottom: "1px solid rgba(224, 224, 224, 1)",
 });
 
 const GridTitle = styled("div")(({ theme }) => ({
-  ...theme.typography.h6,
+  ...theme.typography.button,
   width: "80%",
   textAlign: "center",
   alignSelf: "center",
@@ -60,12 +56,6 @@ const GridBody = styled("div")({
   width: "100%",
 });
 
-const gridStyle = {
-  height: '100%',
-  border: 'none',
-  fontFamily: 'Roboto, Helvetica, Arial, sans-serif'
-};
-
 const columns = [
   { name: "name", header: "Name", defaultFlex: 1 },
   { name: "parent_space", header: "Parent Space", defaultFlex: 1 },
@@ -74,10 +64,9 @@ const columns = [
 
 export default function BlockDataGrid(props) {
   const { selectedSpace, selectedBlock, setSelectedBlock } = props;
-  const { blocks, refreshing, refresh } = React.useContext(BasicContext);
+  const { blocks, refreshing, refresh } = React.use(BasicContext);
 
   const [previousSpace, setPreviousSpace] = React.useState(null);
-  const [selectionModel, setSelectionModel] = React.useState({});
 
   const [addBlockOpen, setAddBlockOpen] = React.useState(false);
   const [editBlockOpen, setEditBlockOpen] = React.useState(false);
@@ -90,43 +79,45 @@ export default function BlockDataGrid(props) {
 
   const navigate = useNavigate();
 
-  const theme = useTheme();
-
   const menuOpen = Boolean(anchorEl);
 
+  // Clear selection when space changes
   const onSpaceChange = React.useCallback(() => {
     if(selectedSpace) {
       if(selectedSpace.name !== previousSpace) {
-        setSelectionModel({});
+        setSelectedBlock(null);
       }
     }
 
     setPreviousSpace(selectedSpace ? selectedSpace.name : null);
-  }, [selectedSpace, previousSpace]);
+  }, [selectedSpace, previousSpace, setSelectedBlock]);
 
   React.useEffect(() => {
     onSpaceChange()
   }, [selectedSpace, onSpaceChange]);
 
-  React.useEffect(() => {
-    if(!isEmpty(selectionModel)) {
-      setSelectedBlock(Object.values(selectionModel)[0])
-    } else {
-      setSelectedBlock(null);
-    }
-  }, [selectionModel, setSelectedBlock]);
-
+  // Sync selection when blocks data changes
   React.useEffect(() => {
     if(blocks && selectedBlock && selectedSpace) {
       const currentBlock = blocks.find(block => (block.name === selectedBlock.name) && (block.parent_space === selectedSpace.name));
-      
+
       if(!currentBlock) {
-        setSelectionModel({});
+        setSelectedBlock(null);
       } else {
         setSelectedBlock(currentBlock);
       }
     }
-  }, [blocks, selectedSpace, selectedBlock, setSelectedBlock, setSelectionModel]);
+  }, [blocks, selectedSpace, selectedBlock, setSelectedBlock]);
+
+  // Handle row click from ConfigureGrid
+  const handleRowClick = React.useCallback((data) => {
+    // Toggle selection: if clicking the same row, deselect; otherwise select new row
+    if (selectedBlock && selectedBlock.name === data.name) {
+      setSelectedBlock(null);
+    } else {
+      setSelectedBlock(data);
+    }
+  }, [selectedBlock, setSelectedBlock]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -151,33 +142,36 @@ export default function BlockDataGrid(props) {
     setDeleteBlockOpen(true);
   };
 
-  function onClick(data) {
-    var id = data.name;
-    var newSelectionModel = {};
-
-    setSelectionModel(prevState => {
-      if(!prevState.hasOwnProperty(id)) {
-        newSelectionModel[id] = data;
-      }
-
-      return newSelectionModel;
-    });
-  }
-
-  function NoRowsOverlay() {
+  // Custom no rows overlay component
+  const NoRowsOverlay = React.useCallback(() => {
     return (
       <React.Fragment>
         { selectedSpace
-          ? <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+          ? <Typography
+              variant="overline"
+              sx={{
+                display: "block",
+                mt: 1
+              }}>
               No Blocks Found in Selected Space
             </Typography>
-          : <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+          : <Typography
+              variant="overline"
+              sx={{
+                display: "block",
+                mt: 1
+              }}>
               Please Select a Space
             </Typography>
         }
       </React.Fragment>
     );
-  }
+  }, [selectedSpace]);
+
+  // Compute row data for the grid
+  const rowData = React.useMemo(() => {
+    return (selectedSpace && blocks) ? blocks.filter((block) => block.parent_space === selectedSpace.name) : [];
+  }, [selectedSpace, blocks]);
 
   return (
     <React.Fragment>
@@ -241,32 +235,34 @@ export default function BlockDataGrid(props) {
                 vertical: "top",
                 horizontal: "right",
               }}
-              PaperProps={{
-                elevation: 0,
-                style: {
-                  width: 200,
-                },
-                sx: {
-                  overflow: "visible",
-                  filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
-                  mt: 1.5,
-                  "& .MuiAvatar-root": {
-                    width: 32,
-                    height: 32,
-                    ml: -0.5,
-                    mr: 1,
+              slotProps={{
+                paper: {
+                  elevation: 0,
+                  style: {
+                    width: 200,
                   },
-                  "&:before": {
-                    content: '""',
-                    display: "block",
-                    position: "absolute",
-                    top: 0,
-                    right: 14,
-                    width: 10,
-                    height: 10,
-                    bgcolor: "background.paper",
-                    transform: "translateY(-50%) rotate(45deg)",
-                    zIndex: 0,
+                  sx: {
+                    overflow: "visible",
+                    filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
+                    mt: 1.5,
+                    "& .MuiAvatar-root": {
+                      width: 32,
+                      height: 32,
+                      ml: -0.5,
+                      mr: 1,
+                    },
+                    "&:before": {
+                      content: '""',
+                      display: "block",
+                      position: "absolute",
+                      top: 0,
+                      right: 14,
+                      width: 10,
+                      height: 10,
+                      bgcolor: "background.paper",
+                      transform: "translateY(-50%) rotate(45deg)",
+                      zIndex: 0,
+                    },
                   },
                 },
               }}
@@ -331,22 +327,13 @@ export default function BlockDataGrid(props) {
         </Box>
       </GridHeader>
       <GridBody>
-        <ReactDataGrid
-          theme={theme.palette.mode === 'dark' ? "default-dark" : "default-light"}
+        <ConfigureGrid
+          rowData={rowData}
+          columnDefs={columns}
+          onRowClick={handleRowClick}
+          selectedRow={selectedBlock}
           idProperty="name"
-          showCellBorders="horizontal"
-          showZebraRows={false}
-          multiSelect={true}
-          showActiveRowIndicator={false}
-          enableColumnAutosize={false}
-          showColumnMenuGroupOptions={false}
-          showColumnMenuLockOptions={false}
-          columns={columns}
-          dataSource={selectedSpace ? blocks.filter((block) => block.parent_space === selectedSpace.name) : []}
-          onRowClick={(rowData) => onClick(rowData.data)}
-          selected={selectionModel}
-          emptyText={NoRowsOverlay}
-          style={gridStyle}
+          noRowsOverlay={NoRowsOverlay}
         />
       </GridBody>
     </React.Fragment>

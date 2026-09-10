@@ -1,39 +1,22 @@
-from fastapi.encoders import jsonable_encoder
-
-from fastapi import (
-    APIRouter,
-    HTTPException,
-    Depends,
-    Header,
-    Query
-)
-
-from pydantic import BaseModel
-from typing import Union, List
-
-from app.dependencies import (
-    api_auth_checks,
-    get_admin,
-    get_tenant_id
-)
-
-import re
-import jsonpatch
-import uuid
 import copy
+import re
+import uuid
+from typing import List, Union
 
-from app.models import *
+import jsonpatch
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel
 
-from app.routers.admin import (
-    new_admin_db
-)
-
+from app.dependencies import api_auth_checks, get_admin, get_tenant_id
+from app.models import User, UserExpand, UserUpdate, ViewSettings
+from app.routers.admin import new_admin_db
 from app.routers.common.helper import (
-    get_user_id_from_jwt,
     cosmos_query,
-    cosmos_upsert,
     cosmos_replace,
-    cosmos_retry
+    cosmos_retry,
+    cosmos_upsert,
+    get_user_id_from_jwt,
 )
 
 router = APIRouter(
@@ -94,9 +77,9 @@ async def scrub_patch(patch):
                     raise HTTPException(status_code=400, detail=target['error'])
             elif issubclass(target['valid'], BaseModel):
                 try:
-                    test_data = target['valid'](**item['value'])
+                    target['valid'](**item['value'])
                     scrubbed_patch.append(item)
-                except:
+                except Exception:
                     raise HTTPException(status_code=400, detail=target['error'])
             else:
                 raise HTTPException(status_code=400, detail=target['error'])
@@ -232,13 +215,13 @@ async def update_user(
     try:
         patch = jsonpatch.JsonPatch([x.model_dump() for x in updates])
     except jsonpatch.InvalidJsonPatch:
-        raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
+        raise HTTPException(status_code=400, detail="Invalid JSON patch, please review and try again.")
 
     try:
         scrubbed_patch = jsonpatch.JsonPatch(await scrub_patch(patch))
         user_data['data'] = scrubbed_patch.apply(user_data['data'], in_place = True)
     except jsonpatch.JsonPatchConflict as e:
-        raise HTTPException(status_code=500, detail=str(e).capitalize())
+        raise HTTPException(status_code=409, detail=str(e).capitalize())
 
     await cosmos_replace(user_query[0], user_data)
 

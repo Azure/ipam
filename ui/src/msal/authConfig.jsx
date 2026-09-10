@@ -19,14 +19,9 @@ export const msalConfig = {
   },
   cache: {
     cacheLocation: "localStorage", // This configures where your cache will be stored
-    storeAuthStateInCookie: false, // Set this to "true" if you are having issues on IE11 or Edge
   },
   system: {
     allowRedirectInIframe: false,
-    preventCorsPreflight: true,
-    iframeHashTimeout: 10000, // Increase iframe timeout to 10 seconds
-    loadFrameTimeout: 10000, // Increase frame loading timeout
-    windowHashTimeout: 60000, // Increase overall timeout for redirect flows
     /**
      * Below you can configure MSAL.js logs. For more information, visit:
      * https://docs.microsoft.com/azure/active-directory/develop/msal-logging-js

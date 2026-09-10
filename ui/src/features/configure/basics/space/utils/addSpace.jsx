@@ -3,7 +3,7 @@ import { useDispatch } from "react-redux";
 
 import { useSnackbar } from "notistack";
 
-import Draggable from "react-draggable";
+import DraggablePaper from "../../../../../global/DraggablePaper";
 
 import {
   Box,
@@ -14,10 +14,7 @@ import {
   DialogTitle,
   DialogActions,
   DialogContent,
-  Paper
 } from "@mui/material";
-
-import LoadingButton from "@mui/lab/LoadingButton";
 
 import { createSpaceAsync } from "../../../../ipam/ipamSlice";
 
@@ -25,21 +22,6 @@ import {
   SPACE_NAME_REGEX,
   SPACE_DESC_REGEX
 } from "../../../../../global/globals";
-
-function DraggablePaper(props) {
-  const nodeRef = React.useRef(null);
-
-  return (
-    <Draggable
-      nodeRef={nodeRef}
-      handle="#draggable-dialog-title"
-      cancel={'[class*="MuiDialogContent-root"]'}
-      bounds="parent"
-    >
-      <Paper {...props} ref={nodeRef}/>
-    </Draggable>
-  );
-}
 
 export default function AddSpace(props) {
   const { open, handleClose, spaces } = props;
@@ -136,7 +118,12 @@ export default function AddSpace(props) {
           Add Space
         </DialogTitle>
         <DialogContent>
-          <Box display="flex" flexDirection="column" alignItems="center">
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center"
+            }}>
             <Tooltip
               arrow
               disableFocusListener
@@ -163,8 +150,10 @@ export default function AddSpace(props) {
                 onChange={(event) => {
                   onNameChange(event);
                 }}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -190,21 +179,23 @@ export default function AddSpace(props) {
                 variant="standard"
                 value={description.value}
                 onChange={(event) => onDescriptionChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={onCancel}>Cancel</Button>
-          <LoadingButton
+          <Button
             onClick={onSubmit}
             loading={sending}
             disabled={invalidForm}
           >
             Create
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

@@ -1,5 +1,5 @@
-ARG BUILD_IMAGE=registry.access.redhat.com/ubi8/nodejs-22
-ARG SERVE_IMAGE=registry.access.redhat.com/ubi8/python-311
+ARG BUILD_IMAGE=registry.access.redhat.com/ubi9/nodejs-22
+ARG SERVE_IMAGE=registry.access.redhat.com/ubi9/python-311
 
 # Set Production Build Flag
 ARG PROD_BUILD=true
@@ -21,8 +21,8 @@ WORKDIR /tmp
 # Switch to Root User
 USER root
 
-# Copy UI Code
-COPY ./ui/. ./
+# Copy UI Manifests
+COPY ./ui/package*.json ./
 
 # Install UI Dependencies
 RUN if [ "${PROD_BUILD}" = true ]; then \
@@ -30,7 +30,9 @@ RUN if [ "${PROD_BUILD}" = true ]; then \
 else \
   npm install; \
 fi
-RUN chmod 777 -R node_modules
+
+# Copy UI Source Code
+COPY ./ui/. ./
 
 # Build IPAM UI
 RUN npm run build
@@ -43,11 +45,22 @@ ARG PROD_BUILD
 # Port to Listen On
 ARG PORT
 
+# Disable PIP Root Warnings
+ARG PIP_ROOT_USER_ACTION=ignore
+
+# Disable PIP Upgrade Warnings
+ARG PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# IPAM Version (for OCI Image Label)
+ARG IPAM_VERSION=0.0.0
+
 # Set Environment Variable
 ENV PORT=${PORT}
 
-# Disable PIP Root Warnings
-ENV PIP_ROOT_USER_ACTION=ignore
+# OCI Image Labels
+LABEL org.opencontainers.image.title="Azure IPAM" \
+      org.opencontainers.image.version="${IPAM_VERSION}" \
+      org.opencontainers.image.source="https://github.com/Azure/ipam"
 
 # Set Working Directory
 WORKDIR /tmp
@@ -55,14 +68,17 @@ WORKDIR /tmp
 # Switch to Root User
 USER root
 
-# Disable Subscription Manager YUM Plugin
-RUN sed -i s/enabled=./enabled=0/g /etc/yum/pluginconf.d/subscription-manager.conf
+# Disable Subscription Manager DNF Plugin
+RUN sed -i s/enabled=./enabled=0/g /etc/dnf/plugins/subscription-manager.conf
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install OpenSSH and set the password for root to "Docker!"
-RUN yum update -y
-RUN yum install -qq openssh-server -y \
-      && echo "root:Docker!" | chpasswd \
-      && systemctl enable sshd
+RUN dnf update -y \
+  && dnf install -y openssh-server \
+  && echo "root:Docker!" | chpasswd \
+  && dnf clean all \
+  && rm -rf /var/cache/dnf
 
 # Enable SSH root login with Password Authentication
 # RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config
@@ -70,8 +86,7 @@ RUN yum install -qq openssh-server -y \
 # Copy 'sshd_config File' to /etc/ssh/
 COPY sshd_config /etc/ssh/
 
-RUN ssh-keygen -A
-RUN mkdir /var/run/sshd
+RUN ssh-keygen -A && mkdir /var/run/sshd
 
 # Set Working Directory
 WORKDIR /ipam
@@ -79,9 +94,6 @@ WORKDIR /ipam
 # Install Engine Dependencies
 COPY ./engine/requirements.txt /code/requirements.txt
 COPY ./engine/requirements.lock.txt /code/requirements.lock.txt
-
-# Upgrade PIP
-RUN pip install --upgrade pip --progress-bar off
 
 # Install Dependencies
 RUN if [ "${PROD_BUILD}" = true ]; then \
@@ -109,4 +121,4 @@ USER 1001
 EXPOSE $PORT 2222
 
 # Execute Startup Script
-ENTRYPOINT ./init.sh ${PORT}
+ENTRYPOINT ["/bin/sh", "-c", "exec ./init.sh ${PORT}"]

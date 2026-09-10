@@ -3,61 +3,49 @@
   "version": "3.6.0",
   "type": "module",
   "private": true,
+  "engines": {
+    "node": ">=22.22.0",
+    "npm": ">=10.9.2"
+  },
   "dependencies": {
-    "@azure/msal-browser": "^4.22.1",
-    "@azure/msal-react": "^3.0.19",
+    "@azure/msal-browser": "^5.21.0",
+    "@azure/msal-react": "^5.7.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@inovua/reactdatagrid-community": "^5.10.2",
-    "@mui/icons-material": "^7.3.2",
-    "@mui/lab": "^7.0.0-beta.17",
-    "@mui/material": "^7.3.2",
-    "@reduxjs/toolkit": "^2.9.0",
-    "@testing-library/jest-dom": "^6.8.0",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^14.6.1",
-    "axios": "^1.11.0",
-    "echarts": "^6.0.0",
-    "echarts-for-react": "^3.0.4",
-    "globals": "^16.4.0",
-    "lodash": "^4.17.21",
+    "@mui/icons-material": "^9.4.0",
+    "@mui/material": "^9.4.0",
+    "@reduxjs/toolkit": "^2.12.0",
+    "ag-grid-community": "^36.1.0",
+    "ag-grid-react": "^36.1.0",
+    "axios": "^1.20.0",
+    "dayjs": "^1.11.23",
+    "echarts": "^6.1.0",
+    "echarts-for-react": "^3.0.6",
+    "lodash-es": "^4.18.1",
     "md5": "^2.3.0",
-    "moment": "^2.30.1",
     "notistack": "^3.0.2",
     "pluralize": "^8.0.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-draggable": "^4.5.0",
-    "react-redux": "^9.2.0",
-    "react-router": "^7.8.2",
-    "spinners-react": "^1.0.11",
-    "web-vitals": "^5.1.0"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-redux": "^9.3.0",
+    "react-router": "^8.3.1",
+    "spinners-react": "^1.0.11"
   },
   "scripts": {
     "start": "vite",
-    "build": "vite build"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix"
   },
   "devDependencies": {
-    "@eslint/js": "^9.35.0",
-    "@vitejs/plugin-react": "^5.0.2",
-    "eslint": "^9.35.0",
-    "eslint-plugin-jest": "^29.0.1",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "serve": "^14.2.5",
-    "vite": "^7.1.5",
-    "vite-plugin-eslint2": "^5.0.4"
+    "@eslint-react/eslint-plugin": "^5.18.7",
+    "@eslint/js": "^10.0.1",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^10.9.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
+    "serve": "^14.2.6",
+    "vite": "^8.2.2"
   }
 }

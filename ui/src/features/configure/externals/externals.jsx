@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { useLocation } from "react-router";
 import { styled } from "@mui/material/styles";
 
-import { isEqual, sortBy, pick } from "lodash";
+import { isEqual, sortBy, pick } from "lodash-es";
 
 import { useSnackbar } from "notistack";
 
@@ -140,14 +140,14 @@ export default function Externals() {
           }
         } else {
           setSelectedBlock(null);
-          setExternals(null);
+          setExternals([]);
         }
       } else {
-        setExternals(null);
+        setExternals([]);
       }
     } else {
       setSelectedBlock(null);
-      setExternals(null);
+      setExternals([]);
     }
   }, [blocks, selectedBlock]);
 
@@ -174,7 +174,7 @@ export default function Externals() {
       }
     } else {
       setSelectedExternal(null);
-      setSubnets(null);
+      setSubnets([]);
     }
   }, [externals, selectedExternal]);
 
@@ -197,7 +197,7 @@ export default function Externals() {
   }, [subnets, selectedSubnet]);
 
   return (
-    <ExternalContext.Provider value={{ externalRef, refreshing, refresh }}>
+    <ExternalContext value={{ externalRef, refreshing, refresh }}>
       <Wrapper ref={externalRef}>
         <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
             <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
@@ -215,7 +215,7 @@ export default function Externals() {
                   (option, value) => {
                     const newOption = pick(option, ['name']);
                     const newValue = pick(value, ['name']);
-  
+
                     return isEqual(newOption, newValue);
                   }
                 }
@@ -226,25 +226,29 @@ export default function Externals() {
                     {...params}
                     label="Space"
                     placeholder="Please Select Space..."
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <React.Fragment>
-                          {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </React.Fragment>
-                      ),
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input,
+                        endAdornment: (
+                          <React.Fragment>
+                            {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
+                            {params.slotProps.input.endAdornment}
+                          </React.Fragment>
+                        ),
+                      }
                     }}
                   />
                 )}
                 renderOption={(props, option) => {
                   return (
-                    <li {...props} key={option.name}>
+                    <li key={option.name} {...props}>
                       {option.name}
                     </li>
                   );
                 }}
-                componentsProps={{
+                slotProps={{
                   paper: {
                     sx: {
                       width: 'fit-content'
@@ -267,7 +271,7 @@ export default function Externals() {
                   (option, value) => {
                     const newOption = pick(option, ['id', 'name']);
                     const newValue = pick(value, ['id', 'name']);
-  
+
                     return isEqual(newOption, newValue);
                   }
                 }
@@ -277,19 +281,23 @@ export default function Externals() {
                     {...params}
                     label="Block"
                     placeholder="Please Select Block..."
-                    InputProps={{
-                      ...params.InputProps
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input
+                      }
                     }}
                   />
                 )}
                 renderOption={(props, option) => {
                   return (
-                    <li {...props} key={option.id}>
+                    <li key={option.id} {...props}>
                       {option.name}
                     </li>
                   );
                 }}
-                componentsProps={{
+                slotProps={{
                   paper: {
                     sx: {
                       width: 'fit-content'
@@ -347,6 +355,6 @@ export default function Externals() {
           </BottomSection>
         </MainBody>
       </Wrapper>
-    </ExternalContext.Provider>
+    </ExternalContext>
   );
 }

@@ -4,7 +4,7 @@ import { styled } from "@mui/material/styles";
 
 import { useSnackbar } from "notistack";
 
-import Draggable from "react-draggable";
+import DraggablePaper from "../../../../../global/DraggablePaper";
 
 import {
   Box,
@@ -17,10 +17,9 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
-  Paper
 } from "@mui/material";
 
-import LoadingButton from "@mui/lab/LoadingButton";
+
 
 import { deleteBlockExternalAsync } from "../../../../ipam/ipamSlice";
 
@@ -28,21 +27,6 @@ const Spotlight = styled("span")(({ theme }) => ({
   fontWeight: 'bold',
   color: theme.palette.mode === 'dark' ? 'cornflowerblue' : 'mediumblue'
 }));
-
-function DraggablePaper(props) {
-  const nodeRef = React.useRef(null);
-
-  return (
-    <Draggable
-      nodeRef={nodeRef}
-      handle="#draggable-dialog-title"
-      cancel={'[class*="MuiDialogContent-root"]'}
-      bounds="parent"
-    >
-      <Paper {...props} ref={nodeRef}/>
-    </Draggable>
-  );
-}
 
 export default function DeleteExtNetwork(props) {
   const { open, handleClose, space, block, external } = props;
@@ -102,7 +86,7 @@ export default function DeleteExtNetwork(props) {
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Please confirm you want to delete External Network <Spotlight>'{external}'</Spotlight>
+            Please confirm you want to delete External Network <Spotlight>{`'${external}'`}</Spotlight>
           </DialogContentText>
           <Box sx={{ display: "flex", justifyContent: "center", width: "100%", pt: 3 }}>
             <FormGroup sx={{ pl: 2.5, pr: 1, border: "1px solid rgba(224, 224, 224, 1)", borderRadius: "4px" }}>
@@ -122,13 +106,13 @@ export default function DeleteExtNetwork(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancel}>Cancel</Button>
-          <LoadingButton
+          <Button
             onClick={checkForce}
             color={verify ? "error" : "primary" }
             loading={sending}
           >
             Delete
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

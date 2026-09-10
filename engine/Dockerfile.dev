@@ -14,7 +14,7 @@ ENV PORT=$PORT
 COPY ./requirements.txt /code/requirements.txt
 
 # Upgrade PIP
-RUN pip install --upgrade pip --progress-bar off
+RUN pip install --no-cache-dir --upgrade pip --progress-bar off
 
 # Install Dependencies
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
@@ -26,4 +26,4 @@ COPY ./app /code/app
 EXPOSE $PORT
 
 # Execute Startup Script
-CMD uvicorn "app.main:app" --reload --host "0.0.0.0" --port $PORT
+CMD ["/bin/sh", "-c", "uvicorn app.main:app --reload --host 0.0.0.0 --port $PORT"]

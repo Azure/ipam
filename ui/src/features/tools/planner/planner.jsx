@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector } from "react-redux";
 import { ThemeProvider, createTheme, styled } from "@mui/material/styles";
 
-import { find,isEqual, orderBy } from "lodash";
+import { find,isEqual, orderBy } from "lodash-es";
 
 import {
   Box,
@@ -130,10 +130,22 @@ const Planner = () => {
       if (showAll) {
         setVNetData(vNets);
       } else {
+        // Don't process if blocks haven't loaded yet
+        if (!blocks) {
+          setVNetData(null);
+          return;
+        }
+
         const data = vNets.reduce((vAcc, vCurr) => {
           if (vCurr['parent_block'] !== null) {
             vCurr['parent_block'].forEach((p) => {
               const block = blocks.find((block) => block.name === p && block['parent_space'] === vCurr['parent_space']);
+
+              // Guard against block not being found
+              if (!block) {
+                console.warn(`Block not found: ${p} in space ${vCurr['parent_space']} for VNet ${vCurr.name}`);
+                return;
+              }
 
               const blockPrefixes = vCurr.prefixes.reduce((bAcc, bCurr) => {
                 if (isSubnetOverlap(bCurr, [block.cidr])) {
@@ -159,12 +171,14 @@ const Planner = () => {
 
             vAcc.push(temp)
           }
-        
+
           return vAcc;
         }, []);
 
         setVNetData(data);
       }
+    } else {
+      setVNetData(null);
     }
   }, [blocks, vNets, showAll]);
 
@@ -266,14 +280,18 @@ const Planner = () => {
                   {...params}
                   label="Virtual Network"
                   placeholder={showAll ? "By Subscription" : "By Space ➜ Block"}
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <React.Fragment>
-                        {!vNetData ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
-                      </React.Fragment>
-                    ),
+                  slotProps={{
+                    ...params.slotProps,
+
+                    input: {
+                      ...params.slotProps.input,
+                      endAdornment: (
+                        <React.Fragment>
+                          {!vNetData ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.slotProps.input.endAdornment}
+                        </React.Fragment>
+                      ),
+                    }
                   }}
                 />
               )}
@@ -285,12 +303,12 @@ const Planner = () => {
               )}
               renderOption={(props, option) => {
                 return (
-                  <li {...props} key={option.id}>
+                  <li key={option.id} {...props}>
                     {option.name}
                   </li>
                 );
               }}
-              componentsProps={{
+              slotProps={{
                 paper: {
                   sx: {
                     width: 'fit-content'
@@ -314,10 +332,12 @@ const Planner = () => {
                 onChange={(event) => setSelectedPrefix(event.target.value)}
                 sx={{ width: '22ch' }}
                 MenuProps={{
-                  PaperProps: {
-                    style: {
-                      maxHeight: 36 * 10,
-                    }
+                  slotProps: {
+                    paper: {
+                      style: {
+                        maxHeight: 36 * 10,
+                      }
+                    },
                   },
                 }}
               >
@@ -332,7 +352,7 @@ const Planner = () => {
                   )) : null
                 }
               </Select>
-            </FormControl> 
+            </FormControl>
             <Autocomplete
               forcePopupIcon={false}
               disabled={selectedPrefix === ''}

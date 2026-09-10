@@ -18,25 +18,23 @@
 #Requires -Modules @{ ModuleName="Az.ContainerRegistry"; ModuleVersion="4.1.3" }
 
 # Intake and set global parameters
+[CmdletBinding()]
 param(
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $true)]
+  [Parameter(Mandatory = $true)]
   [string]
   $AppName,
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $true)]
+  [Parameter(Mandatory = $true)]
   [string]
   $ResourceGroupName,
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false)]
+  [Parameter(Mandatory = $false)]
   [ValidateScript({
-    if (-Not ($_ | Test-Path) ) {
-      throw [System.ArgumentException]::New("Target file or does not exist.")
+    if (-not ($_ | Test-Path) ) {
+      throw [System.ArgumentException]::New("The specified 'JsonFile' path does not exist.")
     }
-    if (-Not ($_ | Test-Path -PathType Leaf) ) {
-      throw [System.ArgumentException]::New("The 'JsonFile' argument must be a file, folder paths are not allowed.")
+    if (-not ($_ | Test-Path -PathType Leaf) ) {
+      throw [System.ArgumentException]::New("The 'JsonFile' argument must be a path to a file, not a folder.")
     }
     if ($_ -notmatch "(\.json|\.jsonc)$") {
       throw [System.ArgumentException]::New("The file specified in the 'JsonFile' argument must be of type json or jsonc.")
@@ -53,15 +51,18 @@ param(
   [System.IO.FileInfo]
   $JsonFile,
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false)]
+  [Parameter(Mandatory = $false)]
   [switch]
   $NoVerify,
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false)]
+  [Parameter(Mandatory = $false)]
   [switch]
-  $Force
+  $Force,
+
+  [Parameter(Mandatory = $false)]
+  [ValidateSet('Debian', 'RHEL')]
+  [string]
+  $ContainerType
 )
 
 # Root Directory
@@ -70,16 +71,34 @@ $ROOT_DIR = (Get-Item $($MyInvocation.MyCommand.Path)).Directory.Parent.FullName
 # Minimum Required Azure CLI Version - Required for ACR build functionality
 $MIN_AZ_CLI_VER = [System.Version]'2.35.0'
 
+# Azure IPAM-managed registries. Element [0] is the current registry; any other entry
+# (legacy production or the dev/test registry) is auto-repointed to [0].
+$IPAM_PUBLIC_ACR = @("registry.azureipam.com", "azureipam.azurecr.io", "azureipamdev.azurecr.io")
+
 # Set preference variables
 $ErrorActionPreference = "Stop"
+$DebugPreference = 'SilentlyContinue'
+
+# Check for Debug Flag (native -Debug common parameter)
+$DEBUG_MODE = [bool]$PSCmdlet.MyInvocation.BoundParameters["Debug"].IsPresent
+$debugSetting = $DEBUG_MODE ? 'Continue' : 'SilentlyContinue'
+
+# Hide Azure PowerShell SDK Warnings
+$Env:SuppressAzurePowerShellBreakingChangeWarnings = $true
+
+# Hide Azure PowerShell SDK & Azure CLI Survey Prompts
+$Env:AzSurveyMessage = $false
+$Env:AZURE_CORE_SURVEY_MESSAGE = $false
 
 # Set Log File Location
 $logPath = Join-Path -Path $ROOT_DIR -ChildPath "logs"
-New-Item -ItemType Directory -Path $logpath -Force | Out-Null
+New-Item -ItemType Directory -Path $logPath -Force | Out-Null
 
 # Initialize detailed logging system
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$logFile = Join-Path -Path $logPath -ChildPath "migrate_$timestamp.log"
+$transcriptLog = Join-Path -Path $logPath -ChildPath "migrate_$timestamp.log"
+$logFile = Join-Path -Path $logPath -ChildPath "detail_$timestamp.log"
+$debugLog = Join-Path -Path $logPath -ChildPath "debug_$timestamp.log"
 
 # Logging function
 function Write-LogFile {
@@ -120,49 +139,256 @@ function Write-LogFile {
   }
 }
 
-# Override error handling to capture detailed logs
-$originalErrorActionPreference = $ErrorActionPreference
-$ErrorActionPreference = "Continue"
-
-# Trap for unhandled errors
-trap {
-  Write-LogFile -Message "UNHANDLED ERROR: $($_.Exception.Message)" -Level "ERROR" -ErrorRecord $_
-  $ErrorActionPreference = $originalErrorActionPreference
-  throw $_
-}
-
-$ErrorActionPreference = $originalErrorActionPreference
-
 # Global variables set during resource discovery
 $location = $null      # Azure region extracted from source WebApp
 $azureCloud = $null    # Azure cloud environment (AZURE_PUBLIC, AZURE_US_GOV, etc.)
 $privateAcr = $false   # Flag indicating if private ACR is used vs public registry
 
 # Helper Functions
-function Get-UserConfirmation {
+function Get-AccessToken {
+  [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '', Justification = 'Normalizes an ephemeral Azure access token across Az module versions (older Az returns a String, newer returns a SecureString). This is not a stored credential.')]
   param(
-    [Parameter(Mandatory = $true)]
-    [string]$Message,
-    [string]$PromptText = "Enter Y to continue or N to exit (Y/N)"
+    [Parameter(Mandatory = $false)]
+    [string]$Resource,
+    [Parameter(Mandatory = $false)]
+    [switch]$AsPlainText
   )
 
-  Write-Host $Message -ForegroundColor Yellow
+  $params = @{}
+  if ($Resource) { $params['ResourceUrl'] = $Resource }
+
+  $token = (Get-AzAccessToken @params).Token
+
+  if ($AsPlainText) {
+    if ($token -is [System.Security.SecureString]) {
+      return ConvertFrom-SecureString $token -AsPlainText -Force
+    }
+    return $token
+  } else {
+    if ($token -isnot [System.Security.SecureString]) {
+      return ConvertTo-SecureString $token -AsPlainText -Force
+    }
+    return $token
+  }
+}
+
+function Get-UserConfirmation {
+  param(
+    [Parameter(Mandatory = $false)]
+    [string]$Message,
+    [Parameter(Mandatory = $true)]
+    [string]$PromptText
+  )
+
+  if ($Message) {
+    Write-Host $Message -ForegroundColor Yellow
+  }
+
   do {
-    $confirmation = Read-Host $PromptText
+    $confirmation = Read-Host "$PromptText (Y/N)"
     switch ($confirmation.Trim().ToUpper()) {
-      { $_ -in @("Y", "YES") } {
-        Write-Host
-        return $true
-      }
-      { $_ -in @("N", "NO") } {
-        Write-Host
-        return $false
-      }
-      default {
-        Write-Host "Invalid input. Please enter Y or N." -ForegroundColor Red
-      }
+      { $_ -in @("Y", "YES") } { Write-Host; return $true }
+      { $_ -in @("N", "NO") }  { Write-Host; return $false }
+      default { Write-Host "Invalid input. Please enter Y or N." -ForegroundColor Red }
     }
   } while ($true)
+}
+
+function Write-Section {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Title
+  )
+
+  Write-Host
+  Write-Host "=====================================================" -ForegroundColor Blue
+  Write-Host $Title -ForegroundColor Yellow
+  Write-Host "=====================================================" -ForegroundColor Blue
+}
+
+function Restart-IpamApp {
+  param(
+    [Parameter(Mandatory=$true)]
+    [string]$AppName,
+    [Parameter(Mandatory=$true)]
+    [string]$ResourceGroupName,
+    [Parameter(Mandatory=$false)]
+    [switch]$Function
+  )
+
+  $restartRetries = 5
+  $restartSuccess = $False
+
+  do {
+    Write-Host "🔄 Restarting application..." -ForegroundColor Cyan -NoNewline
+
+    try {
+      if ($Function) {
+        Restart-AzFunctionApp `
+          -Name $AppName `
+          -ResourceGroupName $ResourceGroupName `
+          -ErrorVariable restartErr `
+          -ErrorAction SilentlyContinue `
+          -Force `
+          | Out-Null
+      } else {
+        Restart-AzWebApp `
+          -Name $AppName `
+          -ResourceGroupName $ResourceGroupName `
+          -ErrorVariable restartErr `
+          -ErrorAction SilentlyContinue `
+          | Out-Null
+      }
+
+      if ($restartErr) {
+        throw $restartErr
+      }
+
+      $restartSuccess = $True
+      Write-Host " ✅ Success" -ForegroundColor Green
+    } catch {
+      if($restartRetries -gt 0) {
+        Write-Host " ⚠️ Restart failed, retrying..." -ForegroundColor Yellow
+        $restartRetries--
+      } else {
+        Write-Host " ❌ Unable to restart application!" -ForegroundColor Red
+        throw $_
+      }
+    }
+  } while ($restartSuccess -eq $False -and $restartRetries -gt 0)
+}
+
+function Get-AppSettingValue {
+  param(
+    [Parameter(Mandatory = $true)]
+    [AllowNull()]
+    $AppSettings,
+    [Parameter(Mandatory = $true)]
+    [string]$Name
+  )
+
+  $setting = $AppSettings | Where-Object { $_.Name -eq $Name } | Select-Object -First 1
+  return $setting ? $setting.Value : $null
+}
+
+function Get-RegistryHost {
+  <#
+    Extracts the container registry host from an App Service LinuxFxVersion value.
+    Handles both the legacy Docker Compose form ('COMPOSE|<base64>') by decoding the
+    compose file and reading the IPAM image reference, and the single-container form
+    ('DOCKER|<host>/<repo>:<tag>'). Returns the host (e.g. 'azureipam.azurecr.io',
+    'contoso.azurecr.io') or $null when it cannot be determined.
+  #>
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$LinuxFxVersion
+  )
+
+  if ($LinuxFxVersion.StartsWith("COMPOSE|")) {
+    $base64 = $LinuxFxVersion.Substring($LinuxFxVersion.IndexOf('|') + 1)
+    try {
+      $compose = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($base64))
+    }
+    catch {
+      throw [System.InvalidOperationException]::new("Failed to decode the Docker Compose content from LinuxFxVersion: $($_.Exception.Message)", $_.Exception)
+    }
+
+    # Capture the registry host preceding the IPAM image reference (e.g. '<host>/ipam-engine:latest')
+    if ($compose -match 'image:\s*"?(?<host>[^\s"/]+)/ipam') {
+      return $Matches['host']
+    }
+
+    return $null
+  }
+  elseif ($LinuxFxVersion.StartsWith("DOCKER|")) {
+    return $LinuxFxVersion.Split('|')[1].Split('/')[0]
+  }
+
+  return $null
+}
+
+function Resolve-RegistryConfig {
+  <#
+    Classifies a container registry into one of three cases:
+      - PublicManaged  : the Azure IPAM public registry (current or legacy) -> new public registry, anonymous.
+      - PrivateManaged : a private ACR our automation produced. In auto-discovery this is an ACR co-located
+                         in the App Service's resource group; in JSON override mode the caller passes the
+                         customer-declared ACR resource id, which we trust (trust-but-verify happens elsewhere).
+      - Divergent      : anything else (foreign registry, cross-RG ACR, etc.) - not a state our automation
+                         produces. The caller decides how to handle (auto-discovery stops with guidance).
+  #>
+  param(
+    [Parameter(Mandatory = $false)]
+    [string]$RegistryHost,
+    [Parameter(Mandatory = $true)]
+    [string]$ResourceGroupName,
+    [Parameter(Mandatory = $false)]
+    [string]$AcrResourceId
+  )
+
+  # Case 1: Azure IPAM public registry (current or legacy)
+  if ($RegistryHost -in $IPAM_PUBLIC_ACR) {
+    return [PSCustomObject]@{
+      Mode          = 'PublicManaged'
+      RegistryHost  = $RegistryHost
+      AcrResourceId = $null
+    }
+  }
+
+  # Override path: trust an explicitly-declared ACR resource regardless of resource group
+  if (-not [string]::IsNullOrWhiteSpace($AcrResourceId)) {
+    return [PSCustomObject]@{
+      Mode          = 'PrivateManaged'
+      RegistryHost  = $RegistryHost
+      AcrResourceId = $AcrResourceId
+    }
+  }
+
+  # Case 2: private ACR co-located in the same resource group as the App Service
+  $acrName = $RegistryHost.Split('.')[0]
+  $acr = Get-AzContainerRegistry -Name $acrName -ResourceGroupName $ResourceGroupName -ErrorAction SilentlyContinue
+
+  if ($acr) {
+    return [PSCustomObject]@{
+      Mode          = 'PrivateManaged'
+      RegistryHost  = $RegistryHost
+      AcrResourceId = $acr.Id
+    }
+  }
+
+  # Case 3: not a configuration our automation produces
+  return [PSCustomObject]@{
+    Mode          = 'Divergent'
+    RegistryHost  = $RegistryHost
+    AcrResourceId = $null
+  }
+}
+
+function Resolve-ContainerType {
+  <#
+    Resolves the container distro ('Debian' or 'RHEL') used to select the Dockerfile for the
+    private-ACR image build. An explicit -ContainerType override always wins; otherwise the
+    value auto-detected from the source app's /api/status (container.image_id) is normalized.
+    Returns $null when neither is available so the caller can guide the user rather than fail.
+  #>
+  param(
+    [Parameter(Mandatory = $false)]
+    [string]$Override,
+    [Parameter(Mandatory = $false)]
+    [string]$ProbedImage
+  )
+
+  # Explicit override wins (already constrained by the -ContainerType ValidateSet)
+  if (-not [string]::IsNullOrWhiteSpace($Override)) {
+    return $Override
+  }
+
+  switch ("$ProbedImage".Trim().ToLower()) {
+    'debian' { return 'Debian' }
+    'rhel'   { return 'RHEL' }
+  }
+
+  return $null
 }
 
 function New-ResourceId {
@@ -242,8 +468,8 @@ function Get-ResourceDetailsFromId {
   }
 }
 
-Function Get-BuildLogs {
-  Param(
+function Get-BuildLog {
+  param(
     [Parameter(Mandatory=$true)]
     [string]$SubscriptionId,
     [Parameter(Mandatory=$true)]
@@ -251,7 +477,9 @@ Function Get-BuildLogs {
     [Parameter(Mandatory=$true)]
     [string]$RegistryName,
     [Parameter(Mandatory=$true)]
-    [string]$BuildId
+    [string]$BuildId,
+    [Parameter(Mandatory=$true)]
+    [string]$AzureCloud
   )
 
   # Azure management endpoint mapping for different cloud environments
@@ -261,13 +489,13 @@ Function Get-BuildLogs {
     AZURE_US_GOV_SECRET  = "management.azure.microsoft.scloud"
     AZURE_GERMANY        = "management.microsoftazure.de"
     AZURE_CHINA          = "management.chinacloudapi.cn"
-  };
+  }
 
-  $accessToken = (Get-AzAccessToken).Token
+  $accessToken = Get-AccessToken
 
   $response = Invoke-RestMethod `
     -Method POST `
-    -Uri "https://$($msArmMap[$script:azureCloud])/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroupName/providers/Microsoft.ContainerRegistry/registries/$RegistryName/runs/$BuildId/listLogSasUrl?api-version=2019-04-01" `
+    -Uri "https://$($msArmMap[$AzureCloud])/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroupName/providers/Microsoft.ContainerRegistry/registries/$RegistryName/runs/$BuildId/listLogSasUrl?api-version=2019-04-01" `
     -Authentication Bearer `
     -Token $accessToken
 
@@ -280,7 +508,7 @@ Function Get-BuildLogs {
   return $logs
 }
 
-function Get-WebAppDetails {
+function Get-WebAppDetail {
   param(
     [Parameter(Mandatory = $true)]
     [string]$ResourceGroupName,
@@ -519,109 +747,76 @@ function Get-WebAppDetails {
     throw $_.Exception
   }
 
-  # Check for Container Registry configuration from Docker Compose
-  # Azure IPAM can use either public azureipam.azurecr.io or private ACR
+  # Determine the container registry from the Docker Compose configuration and classify it.
+  # Azure IPAM deployments use one of two registries our automation produces: the public
+  # Azure IPAM registry, or a private ACR co-located in the App Service's resource group.
   Write-Host "🔍 Discovering Container Registry configuration..." -ForegroundColor Cyan -NoNewline
   $containerRegistryResourceId = $null
+
+  # A non-Compose deployment isn't an error — this script only migrates legacy Docker Compose
+  # deployments. Explain calmly and point the user to update.ps1 instead of throwing.
+  $linuxFxVersion = $webApp.SiteConfig.LinuxFxVersion
+  if ([string]::IsNullOrWhiteSpace($linuxFxVersion) -or -not $linuxFxVersion.StartsWith("COMPOSE|")) {
+    Write-Host " ℹ️ Skipped" -ForegroundColor Cyan
+
+    Write-Section -Title "Migration Not Required"
+    Write-Host "WebApp '$AppName' is not a Docker Compose deployment. This script only migrates legacy" -ForegroundColor Yellow
+    Write-Host "Docker Compose deployments to the modern single-container model." -ForegroundColor Yellow
+    Write-Host
+    Write-Host "If this app is already a single-container deployment, use update.ps1 instead:" -ForegroundColor Yellow
+    Write-Host "  https://azure.github.io/ipam/#/update/README" -ForegroundColor Cyan
+    Write-Host
+    exit
+  }
+
   try {
-    # Get Docker Compose file content from LinuxFxVersion if available
-    $dockerComposeContent = $null
-    if ($webApp.SiteConfig.LinuxFxVersion -and $webApp.SiteConfig.LinuxFxVersion.Contains("COMPOSE|")) {
-      # Extract and decode the Base64 Docker Compose content
-      $base64Content = $webApp.SiteConfig.LinuxFxVersion.Substring($webApp.SiteConfig.LinuxFxVersion.IndexOf("COMPOSE|") + 8)
-      try {
-        $dockerComposeBytes = [System.Convert]::FromBase64String($base64Content)
-        $dockerComposeContent = [System.Text.Encoding]::UTF8.GetString($dockerComposeBytes)
-      }
-      catch {
-        throw [System.InvalidOperationException]::new("Failed to decode Docker Compose Base64 content from LinuxFxVersion: $($_.Exception.Message). This WebApp does not appear to be properly configured for Docker Compose migration.", $_.Exception)
-      }
-    }
-    elseif ($webApp.SiteConfig.LinuxFxVersion -and $webApp.SiteConfig.LinuxFxVersion.Contains("DOCKER|")) {
-      # If only DOCKER| is present, extract the Docker image reference
-      $dockerImageRef = $webApp.SiteConfig.LinuxFxVersion.Substring($webApp.SiteConfig.LinuxFxVersion.IndexOf("DOCKER|") + 7)
-
-      if ($dockerImageRef -match "azureipam\.azurecr\.io") {
-        # Using public Microsoft-provided Azure IPAM registry
-        Write-Host " ℹ️ Skipped (using public registry)" -ForegroundColor Cyan
-        $containerRegistryResourceId = $null
-        $discoveredCount++  # Count as discovered even when using public registry
-      }
-      elseif ($dockerImageRef -match "([a-zA-Z0-9\-]+)\.azurecr\.io") {
-        # Using private ACR - need to locate the registry
-        $acrName = $matches[1]
-
-        # Search for the ACR in the subscription
-        $acrResources = Get-AzContainerRegistry -ErrorAction SilentlyContinue
-        $matchedAcr = $acrResources | Where-Object { $_.Name -eq $acrName }
-
-        if ($matchedAcr) {
-          $containerRegistryResourceId = $matchedAcr.Id
-          Write-Host " ✅ Found '$($matchedAcr.Name)'" -ForegroundColor Green
-          $discoveredCount++
-        }
-        else {
-          Write-Host " ⚠️  ACR '$acrName' referenced in Docker Compose but not found in subscription" -ForegroundColor Yellow
-          $containerRegistryResourceId = $null
-        }
-      }
-    }
-    else {
-      throw [System.InvalidOperationException]::new("No Docker Compose configuration or Docker Image references found in LinuxFxVersion for WebApp '$AppName'. This script is designed to migrate Docker Compose-based Azure IPAM deployments. Please verify this is the correct WebApp or check the LinuxFxVersion property.")
+    $registryHost = Get-RegistryHost -LinuxFxVersion $linuxFxVersion
+    if ([string]::IsNullOrWhiteSpace($registryHost)) {
+      throw [System.InvalidOperationException]::new("Unable to determine the container registry from the Docker Compose configuration for WebApp '$AppName'.")
     }
 
-    # Parse Docker Compose content to determine registry type
-    if ($dockerComposeContent) {
-      if ($dockerComposeContent -match "azureipam\.azurecr\.io") {
-        # Using public Microsoft-provided Azure IPAM registry
-        Write-Host " ℹ️ Skipped (using public registry)" -ForegroundColor Cyan
-        $containerRegistryResourceId = $null
-        $discoveredCount++  # Count as discovered even when using public registry
-      }
-      elseif ($dockerComposeContent -match "([a-zA-Z0-9\-]+)\.azurecr\.io") {
-        # Using private ACR - need to locate the registry
-        $acrName = $matches[1]
+    $registryConfig = Resolve-RegistryConfig -RegistryHost $registryHost -ResourceGroupName $ResourceGroupName
+    $containerRegistryResourceId = $registryConfig.AcrResourceId
 
-        # Search for the ACR in the subscription
-        $acrResources = Get-AzContainerRegistry -ErrorAction SilentlyContinue
-        $matchedAcr = $acrResources | Where-Object { $_.Name -eq $acrName }
-
-        if ($matchedAcr) {
-          $containerRegistryResourceId = $matchedAcr.Id
-          Write-Host " ✅ Found '$($matchedAcr.Name)'" -ForegroundColor Green
-          $discoveredCount++
-        }
-        else {
-          Write-Host " ⚠️  ACR '$acrName' referenced in Docker Compose but not found in subscription" -ForegroundColor Yellow
-          $containerRegistryResourceId = $null
-        }
-      }
-      else {
-        throw [System.InvalidOperationException]::new("No Azure Container Registry references found in Docker Compose configuration for WebApp '$AppName'. Azure IPAM requires ACR references (either azureipam.azurecr.io or a private registry). Please verify the Docker Compose configuration is valid for Azure IPAM migration.")
-      }
+    switch ($registryConfig.Mode) {
+      'PublicManaged'  { Write-Host " ✅ Public registry ($registryHost)" -ForegroundColor Green; $discoveredCount++ }
+      'PrivateManaged' { Write-Host " ✅ Private ACR ($registryHost)" -ForegroundColor Green; $discoveredCount++ }
+      'Divergent'      { Write-Host " ⚠️ Non-standard ($registryHost)" -ForegroundColor Yellow }
     }
   }
   catch {
     Write-Host " ❌ Error" -ForegroundColor Red
+    Write-LogFile -Message "Failed to discover Container Registry: $($_.Exception.Message)" -Level "ERROR" -ErrorRecord $_
     $missingResources += [PSCustomObject]@{
-      ResourceType = "Docker Compose Configuration"
+      ResourceType = "Container Registry"
       ResourceName = "LinuxFxVersion"
       Error = $_.Exception.Message
     }
     throw $_.Exception
   }
 
-  # Fail if no Docker Compose content was found
-  if(-not $dockerComposeContent) {
-    Write-Host
-
-    throw [System.InvalidOperationException]::new("No Docker Compose configuration found in LinuxFxVersion for WebApp '$AppName'. This script is designed to migrate Docker Compose-based Azure IPAM deployments. Please verify this is the correct WebApp or check the LinuxFxVersion property.")
-  }
-
-  # Set global variables for Location, Azure Cloud and Private ACR for use in later functions
+  # Set global variables for Location, Azure Cloud and registry mode for use in later functions
   $script:location = $webApp.Location
-  $script:azureCloud = $($appSettings | Where-Object { $_.Name -eq "AZURE_ENV" }).Value
-  $script:privateAcr = -not [string]::IsNullOrWhiteSpace($containerRegistryResourceId)
+  $script:azureCloud = Get-AppSettingValue -AppSettings $appSettings -Name 'AZURE_ENV'
+  $script:registryMode = $registryConfig.Mode
+  $script:registryHost = $registryConfig.RegistryHost
+  $script:privateAcr = ($registryConfig.Mode -eq 'PrivateManaged')
+
+  # Divergent registry: the container registry could not be resolved automatically (not the
+  # public registry, and no matching ACR in the App Service's resource group). Stop and direct
+  # the user to supply the exact configuration via the -JsonFile override.
+  if ($registryConfig.Mode -eq 'Divergent') {
+    Write-Section -Title "Container Registry Not Detected"
+    Write-Host "The container registry '$registryHost' could not be resolved automatically. It is not" -ForegroundColor Yellow
+    Write-Host "the Azure IPAM public registry, and no matching Azure Container Registry was found in" -ForegroundColor Yellow
+    Write-Host "resource group '$ResourceGroupName'." -ForegroundColor Yellow
+    Write-Host
+    Write-Host "Re-run the migration with the -JsonFile override to specify the container registry and" -ForegroundColor Yellow
+    Write-Host "resource details explicitly. For guidance, see:" -ForegroundColor Yellow
+    Write-Host "  https://azure.github.io/ipam/#/migration/README" -ForegroundColor Cyan
+    Write-Host
+    exit
+  }
 
   Write-Host "=====================================================" -ForegroundColor Blue
   Write-Host "Discovery Summary: $discoveredCount/$totalExpectedResources resources found" -ForegroundColor Yellow
@@ -939,7 +1134,7 @@ function Read-JsonData {
     }
   }
 
-  # Return PSCustomObject matching the structure from Get-WebAppDetails
+  # Return PSCustomObject matching the structure from Get-WebAppDetail
   return [PSCustomObject]@{
     WebAppResourceId             = $resourceIds["Microsoft.Web/sites"]
     ManagedIdentityResourceId    = $resourceIds["Microsoft.ManagedIdentity/userAssignedIdentities"]
@@ -951,7 +1146,7 @@ function Read-JsonData {
   }
 }
 
-function Get-WebAppStatusDetails {
+function Get-WebAppStatusDetail {
   param(
     [Parameter(Mandatory = $true)]
     [PSCustomObject]$Details
@@ -1098,8 +1293,8 @@ function ConvertTo-MigrationObject {
   }
 }
 
-Function Deploy-Bicep {
-  Param(
+function Deploy-Bicep {
+  param(
     [Parameter(Mandatory = $false)]
     [PSCustomObject]$Details
   )
@@ -1141,12 +1336,18 @@ Function Deploy-Bicep {
 
     # Deploy IPAM bicep template
     Write-LogFile -Message "Executing New-AzDeployment with template: main.bicep" -Level "INFO"
+
+    # Capture the Azure deployment debug stream to the debug log when -Debug is set
+    $DebugPreference = $debugSetting
+
     $deployment = New-AzDeployment `
       -Name $deploymentName `
       -Location $script:location `
       -TemplateFile main.bicep `
       -TemplateParameterObject $deploymentParameters `
-      -ErrorAction Stop
+      -ErrorAction Stop 5>$($DEBUG_MODE ? $debugLog : $null)
+
+    $DebugPreference = 'SilentlyContinue'
 
     Write-Host " ✅ Success" -ForegroundColor Green
     Write-LogFile -Message "Bicep deployment completed successfully" -Level "SUCCESS"
@@ -1167,12 +1368,14 @@ Function Deploy-Bicep {
   }
 }
 
-Function Build-ContainerImage {
-  Param(
+function Build-ContainerImage {
+  param(
     [Parameter(Mandatory = $true)]
-    [PSCustomObject]$ContainerDetails,
+    [string]$ContainerType,
     [Parameter(Mandatory = $true)]
-    [string]$TargetAcrResourceId
+    [string]$TargetAcrResourceId,
+    [Parameter(Mandatory = $true)]
+    [string]$WebAppResourceId
   )
 
   Write-Host "=====================================================" -ForegroundColor Blue
@@ -1181,7 +1384,7 @@ Function Build-ContainerImage {
 
   Write-LogFile -Message "=== Starting Container Image Build ===" -Level "INFO"
   Write-LogFile -Message "Target ACR Resource ID: $TargetAcrResourceId" -Level "INFO"
-  Write-LogFile -Message "Container Details: $(ConvertTo-Json $ContainerDetails -Depth 3 -Compress)" -Level "INFO"
+  Write-LogFile -Message "Container Type: $ContainerType" -Level "INFO"
 
   try {
     # Extract ACR details from Resource ID
@@ -1193,38 +1396,33 @@ Function Build-ContainerImage {
     Write-LogFile -Message "ACR Details - Name: $targetAcrName, ResourceGroup: $acrResourceGroup, Subscription: $subscriptionId" -Level "INFO"
 
     # Determine container type from the container details
-    $containerType = $ContainerDetails.ContainerImage
-    Write-LogFile -Message "Container type determined: $containerType" -Level "INFO"
-    if ([string]::IsNullOrWhiteSpace($containerType)) {
-      throw [System.InvalidOperationException]::new("Container image information is not available from the status API. Cannot determine the appropriate Dockerfile to use for building the image.")
-    }
+    Write-LogFile -Message "Container type: $ContainerType" -Level "INFO"
 
-    # Define container configuration mapping
+    # Container configuration mapping (kept in sync with deploy.ps1)
     $containerMap = @{
-      debian = @{
+      Debian = @{
         Extension = 'deb'
-        Port = 80
-        Images = @{
+        Port      = 8080
+        Images    = @{
           Build = 'node:22-slim'
           Serve = 'python:3.11-slim'
         }
       }
-      rhel = @{
+      RHEL = @{
         Extension = 'rhel'
-        Port = 8080
-        Images = @{
-          Build = 'registry.access.redhat.com/ubi8/nodejs-22'
-          Serve = 'registry.access.redhat.com/ubi8/python-311'
+        Port      = 8080
+        Images    = @{
+          Build = 'registry.access.redhat.com/ubi9/nodejs-22'
+          Serve = 'registry.access.redhat.com/ubi9/python-311'
         }
       }
     }
-    Write-LogFile -Message "Container mapping configuration loaded for types: $(($containerMap.Keys -join ', '))" -Level "INFO"
 
     # Validate container type
-    if (-not $containerMap.ContainsKey($containerType)) {
+    if (-not $containerMap.ContainsKey($ContainerType)) {
       $availableTypes = $containerMap.Keys -join ', '
-      Write-LogFile -Message "Invalid container type '$containerType'. Available types: $availableTypes" -Level "ERROR"
-      throw [System.InvalidOperationException]::new("Unsupported container type '$containerType'. Supported types are: $availableTypes")
+      Write-LogFile -Message "Invalid container type '$ContainerType'. Available types: $availableTypes" -Level "ERROR"
+      throw [System.InvalidOperationException]::new("Unsupported container type '$ContainerType'. Supported types are: $availableTypes")
     }
 
     # Determine Dockerfile path
@@ -1292,8 +1490,8 @@ Function Build-ContainerImage {
           }
 
           # Fetch detailed build logs
-          Write-LogFile -Message "Calling Get-BuildLogs function for detailed error analysis" -Level "INFO"
-          $buildLogs = Get-BuildLogs -SubscriptionId $subscriptionId -ResourceGroupName $acrResourceGroup -RegistryName $targetAcrName -BuildId $buildId
+          Write-LogFile -Message "Calling Get-BuildLog function for detailed error analysis" -Level "INFO"
+          $buildLogs = Get-BuildLog -SubscriptionId $subscriptionId -ResourceGroupName $acrResourceGroup -RegistryName $targetAcrName -BuildId $buildId -AzureCloud $script:azureCloud
 
           Write-Host " ✅ Success" -ForegroundColor Green
           # Write-Host "📋 Build logs retrieved successfully:" -ForegroundColor Yellow
@@ -1327,16 +1525,12 @@ Function Build-ContainerImage {
     # Generate new image reference
     $newImageReference = "$targetAcrName.azurecr.io/ipam:latest"
 
-    # Restart the WebApp to pick up the new image
-    Write-Host "🔄 Restarting WebApp to apply new container image..." -ForegroundColor Cyan -NoNewline
+    # Restart the WebApp to pick up the new image (non-fatal: the image is already pushed)
     try {
-      # Extract WebApp details for restart
-      $webAppDetails = Get-ResourceDetailsFromId -ResourceId $details.WebAppResourceId
-      Restart-AzWebApp -ResourceGroupName $webAppDetails.ResourceGroupName -Name $webAppDetails.ResourceName -ErrorAction Stop | Out-Null
-      Write-Host " ✅ Success" -ForegroundColor Green
+      $webAppDetails = Get-ResourceDetailsFromId -ResourceId $WebAppResourceId
+      Restart-IpamApp -AppName $webAppDetails.ResourceName -ResourceGroupName $webAppDetails.ResourceGroupName
     }
     catch {
-      Write-Host " ❌ Failed" -ForegroundColor Red
       Write-Warning "WebApp restart failed: $($_.Exception.Message). You may need to manually restart the WebApp to apply the new container image."
     }
 
@@ -1360,143 +1554,199 @@ Write-LogFile -Message "Parameters: AppName=$AppName, ResourceGroupName=$Resourc
 Write-LogFile -Message "Root Directory: $ROOT_DIR" -Level "INFO"
 Write-LogFile -Message "Log File: $logFile" -Level "INFO"
 
+# Begin capturing the full console session to the transcript (always stopped in the finally block)
+Start-Transcript -Path $transcriptLog | Out-Null
+
 # Console output start
 Write-Host
 
-# Determine resource discovery method based on whether JSON override file is provided
-if ([string]::IsNullorEmpty($JsonFile)) {
-  # Auto-discovery mode: Extract configuration from existing WebApp
-  Write-Host "⚙️ Auto-Discovering Resource Details from WebApp Config..." -ForegroundColor Magenta
-  Write-Host
-  Write-LogFile -Message "Starting auto-discovery mode for ResourceGroup: $ResourceGroupName, AppName: $AppName" -Level "INFO"
-
-  $details = Get-WebAppDetails -ResourceGroupName $ResourceGroupName -AppName $AppName
-  Write-LogFile -Message "Auto-discovery completed successfully" -Level "SUCCESS"
-
-  # Display the table summary
-  Format-WebAppDetailsTable -Details $details
-}
-else {
-  # Override mode: Use administrator-provided JSON configuration
-  Write-Host "📄 Reading Resource Overrides from specified JSON File: " -ForegroundColor Magenta -NoNewline
-  Write-Host "$($JsonFile.FullName)" -ForegroundColor Yellow
-  Write-Host
-  Write-LogFile -Message "Using JSON override mode with file: $($JsonFile.FullName)" -Level "INFO"
-
-  $jsonFilePath = Get-Item -Path $script:JsonFile
-  $details = Read-JsonData -JsonFilePath $jsonFilePath
-  Write-LogFile -Message "JSON override data loaded successfully" -Level "SUCCESS"
-
-  # Display the table summary
-  Format-WebAppDetailsTable -Details $details
-}
-
-# User confirmation before proceeding with migration
-if (-not $Force -and -not (Get-UserConfirmation -Message "Please confirm the above resources should be used for the conversion process." -PromptText "Is this information accurate? Enter Y to continue or N to exit (Y/N)")) {
-  exit 1
-}
-
-# Verify resource existence before proceeding (unless NoVerify switch is set)
-if ($NoVerify -eq $false) {
-  # Verify that all resources exist before proceeding
-  Test-ResourceExistence -ResourceDetails $details
-}
-
-# Probe the WebApp Status API to get container details for image building
-$containerDetails = Get-WebAppStatusDetails -Details $details
-
-# Azure CLI validation only required for private ACR scenarios (for ACR build command)
-if($script:privateAcr) {
-  Write-Host "=====================================================" -ForegroundColor Blue
-  Write-Host "Verifying Azure CLI Configuration..." -ForegroundColor Yellow
-  Write-Host "=====================================================" -ForegroundColor Blue
-
-  # Verify Minimum Azure CLI Version
-  Write-Host "🔍 Checking Azure CLI version..." -ForegroundColor Cyan -NoNewline
-  try {
-    $azureCliVer = [System.Version](az version | ConvertFrom-Json).'azure-cli'
-
-    if($azureCliVer -lt $MIN_AZ_CLI_VER) {
-      Write-Host " ❌ Version $azureCliVer (Required: $MIN_AZ_CLI_VER or greater)" -ForegroundColor Red
-      throw [System.InvalidOperationException]::new("Azure CLI must be version $MIN_AZ_CLI_VER or greater! Current version: $azureCliVer")
-    }
-    else {
-      Write-Host " ✅ v$azureCliVer" -ForegroundColor Green
-    }
-  }
-  catch {
-    Write-Host " ❌ Error checking version" -ForegroundColor Red
-    throw [System.InvalidOperationException]::new("Failed to verify Azure CLI version: $($_.Exception.Message)", $_.Exception)
-  }
-
-  # Verify Azure PowerShell and Azure CLI Contexts Match
-  # This ensures ACR build operations target the correct subscription
-  Write-Host "🔍 Verifying Azure CLI authentication..." -ForegroundColor Cyan -NoNewline
-  try {
-    $azureCliContext = $(az account show | ConvertFrom-Json) 2>$null
-
-    if(-not $azureCliContext) {
-      Write-Host " ❌ Not authenticated" -ForegroundColor Red
-      throw [System.InvalidOperationException]::new("Azure CLI not logged in or no subscription has been selected!")
-    }
-    else {
-      Write-Host " ✅ Authenticated" -ForegroundColor Green
-    }
-  }
-  catch {
-    Write-Host " ❌ Authentication failed" -ForegroundColor Red
-    throw [System.InvalidOperationException]::new("Azure CLI authentication verification failed: $($_.Exception.Message)", $_.Exception)
-  }
-
-  # Synchronize Azure PowerShell and CLI contexts to prevent deployment/build mismatches
-  Write-Host "🔍 Verifying Azure CLI context..." -ForegroundColor Cyan -NoNewline
-  try {
-    $azureCliSub = $azureCliContext.id
-    $azurePowerShellSub = (Get-AzContext).Subscription.Id
-
-    if ($azurePowerShellSub -ne $azureCliSub) {
-      Write-Host " ❌ Context Mismatch" -ForegroundColor Red
-      Write-Host "   ↳Azure PowerShell: $azurePowerShellSub" -ForegroundColor Gray
-      Write-Host "   ↳Azure CLI: $azureCliSub" -ForegroundColor Gray
-
-      Write-Host "🔧 Switching Azure CLI context..." -ForegroundColor Cyan -NoNewline
-
-      $null = az account set --subscription $azurePowerShellSub 2>&1
-      if ($LASTEXITCODE -ne 0) {
-        Write-Host " ❌ Failed" -ForegroundColor Red
-        throw "Failed to switch Azure CLI context to subscription '$azurePowerShellSub'"
-      }
-
-      Write-Host " ✅ Success" -ForegroundColor Green
-    }
-    else {
-      Write-Host " ✅ Synchronized" -ForegroundColor Green
-    }
-  }
-  catch {
-    Write-Host " ❌ Context verification failed" -ForegroundColor Red
-    throw [System.InvalidOperationException]::new("Failed to verify context synchronization: $($_.Exception.Message)", $_.Exception)
-  }
-
-  Write-Host "=====================================================" -ForegroundColor Blue
-  Write-Host "✅ Azure CLI configuration verified successfully!" -ForegroundColor Green
+if ($DEBUG_MODE) {
+  Write-Host "🐛 Debug mode enabled — verbose Azure logs will be written to:" -ForegroundColor Gray
+  Write-Host "   $debugLog" -ForegroundColor Gray
   Write-Host
 }
-
-Write-Host "🔄 Converting Resource Details to Migration Object..." -ForegroundColor Cyan
-# Transform discovered resource details into format expected by Bicep templates
-$migrationObject = ConvertTo-MigrationObject -Details $details
-Write-Host
-
-# Final user confirmation before executing deployment and container operations
-if (-not $Force -and -not (Get-UserConfirmation -Message "Please confirm you are ready to proceed with the Azure IPAM migration process." -PromptText "Proceed with migration? Enter Y to continue or N to exit (Y/N)")) {
-  Write-LogFile -Message "User declined to proceed with migration" -Level "INFO"
-  exit 1
-}
-
-Write-LogFile -Message "User confirmed migration process, beginning deployment phase" -Level "INFO"
 
 try {
+
+  # Determine resource discovery method based on whether JSON override file is provided
+  if ([string]::IsNullorEmpty($JsonFile)) {
+    # Auto-discovery mode: Extract configuration from existing WebApp
+    Write-Host "⚙️ Auto-Discovering Resource Details from WebApp Config..." -ForegroundColor Magenta
+    Write-Host
+    Write-LogFile -Message "Starting auto-discovery mode for ResourceGroup: $ResourceGroupName, AppName: $AppName" -Level "INFO"
+
+    $details = Get-WebAppDetail -ResourceGroupName $ResourceGroupName -AppName $AppName
+    Write-LogFile -Message "Auto-discovery completed successfully" -Level "SUCCESS"
+
+    # Display the table summary
+    Format-WebAppDetailsTable -Details $details
+  }
+  else {
+    # Override mode: Use administrator-provided JSON configuration
+    Write-Host "📄 Reading Resource Overrides from specified JSON File: " -ForegroundColor Magenta -NoNewline
+    Write-Host "$($JsonFile.FullName)" -ForegroundColor Yellow
+    Write-Host
+    Write-LogFile -Message "Using JSON override mode with file: $($JsonFile.FullName)" -Level "INFO"
+
+    $jsonFilePath = Get-Item -Path $script:JsonFile
+    $details = Read-JsonData -JsonFilePath $jsonFilePath
+    Write-LogFile -Message "JSON override data loaded successfully" -Level "SUCCESS"
+
+    # Establish registry context from the live App Service and the customer-declared resources.
+    # We trust the declared structure/location but still resolve (and later verify) the registry.
+    $overrideWebAppInfo = Get-ResourceDetailsFromId -ResourceId $details.WebAppResourceId
+    $overrideWebApp = Get-AzWebApp -ResourceGroupName $overrideWebAppInfo.ResourceGroupName -Name $overrideWebAppInfo.ResourceName -ErrorAction Stop
+
+    $registryHost = Get-RegistryHost -LinuxFxVersion $overrideWebApp.SiteConfig.LinuxFxVersion
+    $registryConfig = Resolve-RegistryConfig -RegistryHost $registryHost -ResourceGroupName $overrideWebAppInfo.ResourceGroupName -AcrResourceId $details.ContainerRegistryResourceId
+
+    $script:location = $overrideWebApp.Location
+    $script:azureCloud = Get-AppSettingValue -AppSettings $overrideWebApp.SiteConfig.AppSettings -Name 'AZURE_ENV'
+    $script:registryMode = $registryConfig.Mode
+    $script:registryHost = $registryConfig.RegistryHost
+    $script:privateAcr = ($registryConfig.Mode -eq 'PrivateManaged')
+
+    # Display the table summary
+    Format-WebAppDetailsTable -Details $details
+  }
+
+  # User confirmation before proceeding with migration
+  if (-not $Force -and -not (Get-UserConfirmation -Message "Please confirm the above resources should be used for the conversion process." -PromptText "Is this information accurate?")) {
+    exit 1
+  }
+
+  # Verify resource existence before proceeding (unless NoVerify switch is set)
+  if ($NoVerify -eq $false) {
+    # Verify that all resources exist before proceeding
+    Test-ResourceExistence -ResourceDetails $details
+  }
+
+  # Resolve the container distro for the private-ACR image build (the public path never builds).
+  # An explicit -ContainerType wins; otherwise auto-detect from the source app's status API. Fail
+  # early here so we don't deploy and only then discover we cannot build the correct image.
+  $effectiveContainerType = $null
+  if ($script:privateAcr) {
+    if ([string]::IsNullOrWhiteSpace($ContainerType)) {
+      $containerDetails = Get-WebAppStatusDetail -Details $details
+      $effectiveContainerType = Resolve-ContainerType -Override $ContainerType -ProbedImage $containerDetails.ContainerImage
+    }
+    else {
+      $effectiveContainerType = Resolve-ContainerType -Override $ContainerType
+    }
+
+    if (-not $effectiveContainerType) {
+      Write-Host "=====================================================" -ForegroundColor Blue
+      Write-Host "Building and Pushing Container Image..." -ForegroundColor Yellow
+      Write-Host "=====================================================" -ForegroundColor Blue
+      Write-Host "The container distro could not be detected from the source application, so the" -ForegroundColor Yellow
+      Write-Host "correct Dockerfile cannot be selected for the image build." -ForegroundColor Yellow
+      Write-Host
+      Write-Host "Re-run the migration specifying the distro explicitly:" -ForegroundColor Yellow
+      Write-Host "  -ContainerType Debian" -ForegroundColor Cyan -NoNewline
+      Write-Host "  (default)" -ForegroundColor Gray
+      Write-Host "  -ContainerType RHEL" -ForegroundColor Cyan
+      Write-Host
+
+      Write-LogFile -Message "Container distro could not be resolved and no -ContainerType override was supplied." -Level "ERROR"
+
+      exit
+    }
+
+    Write-Host "ℹ️ Container distro: $effectiveContainerType" -ForegroundColor Cyan
+    Write-Host
+  }
+
+  # Azure CLI validation only required for private ACR scenarios (for ACR build command)
+  if($script:privateAcr) {
+    Write-Host "=====================================================" -ForegroundColor Blue
+    Write-Host "Verifying Azure CLI Configuration..." -ForegroundColor Yellow
+    Write-Host "=====================================================" -ForegroundColor Blue
+
+    # Verify Minimum Azure CLI Version
+    Write-Host "🔍 Checking Azure CLI version..." -ForegroundColor Cyan -NoNewline
+    try {
+      $azureCliVer = [System.Version](az version | ConvertFrom-Json).'azure-cli'
+
+      if($azureCliVer -lt $MIN_AZ_CLI_VER) {
+        Write-Host " ❌ Version $azureCliVer (Required: $MIN_AZ_CLI_VER or greater)" -ForegroundColor Red
+        throw [System.InvalidOperationException]::new("Azure CLI must be version $MIN_AZ_CLI_VER or greater! Current version: $azureCliVer")
+      }
+      else {
+        Write-Host " ✅ v$azureCliVer" -ForegroundColor Green
+      }
+    }
+    catch {
+      Write-Host " ❌ Error checking version" -ForegroundColor Red
+      throw [System.InvalidOperationException]::new("Failed to verify Azure CLI version: $($_.Exception.Message)", $_.Exception)
+    }
+
+    # Verify Azure PowerShell and Azure CLI Contexts Match
+    # This ensures ACR build operations target the correct subscription
+    Write-Host "🔍 Verifying Azure CLI authentication..." -ForegroundColor Cyan -NoNewline
+    try {
+      $azureCliContext = $(az account show | ConvertFrom-Json) 2>$null
+
+      if(-not $azureCliContext) {
+        Write-Host " ❌ Not authenticated" -ForegroundColor Red
+        throw [System.InvalidOperationException]::new("Azure CLI not logged in or no subscription has been selected!")
+      }
+      else {
+        Write-Host " ✅ Authenticated" -ForegroundColor Green
+      }
+    }
+    catch {
+      Write-Host " ❌ Authentication failed" -ForegroundColor Red
+      throw [System.InvalidOperationException]::new("Azure CLI authentication verification failed: $($_.Exception.Message)", $_.Exception)
+    }
+
+    # Synchronize Azure PowerShell and CLI contexts to prevent deployment/build mismatches
+    Write-Host "🔍 Verifying Azure CLI context..." -ForegroundColor Cyan -NoNewline
+    try {
+      $azureCliSub = $azureCliContext.id
+      $azurePowerShellSub = (Get-AzContext).Subscription.Id
+
+      if ($azurePowerShellSub -ne $azureCliSub) {
+        Write-Host " ❌ Context Mismatch" -ForegroundColor Red
+        Write-Host "   ↳Azure PowerShell: $azurePowerShellSub" -ForegroundColor Gray
+        Write-Host "   ↳Azure CLI: $azureCliSub" -ForegroundColor Gray
+
+        Write-Host "🔧 Switching Azure CLI context..." -ForegroundColor Cyan -NoNewline
+
+        $null = az account set --subscription $azurePowerShellSub 2>&1
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host " ❌ Failed" -ForegroundColor Red
+          throw "Failed to switch Azure CLI context to subscription '$azurePowerShellSub'"
+        }
+
+        Write-Host " ✅ Success" -ForegroundColor Green
+      }
+      else {
+        Write-Host " ✅ Synchronized" -ForegroundColor Green
+      }
+    }
+    catch {
+      Write-Host " ❌ Context verification failed" -ForegroundColor Red
+      throw [System.InvalidOperationException]::new("Failed to verify context synchronization: $($_.Exception.Message)", $_.Exception)
+    }
+
+    Write-Host "=====================================================" -ForegroundColor Blue
+    Write-Host "✅ Azure CLI configuration verified successfully!" -ForegroundColor Green
+    Write-Host
+  }
+
+  Write-Host "🔄 Converting Resource Details to Migration Object..." -ForegroundColor Cyan
+  # Transform discovered resource details into format expected by Bicep templates
+  $migrationObject = ConvertTo-MigrationObject -Details $details
+  Write-Host
+
+  # Final user confirmation before executing deployment and container operations
+  if (-not $Force -and -not (Get-UserConfirmation -Message "Please confirm you are ready to proceed with the Azure IPAM migration process." -PromptText "Proceed with migration?")) {
+    Write-LogFile -Message "User declined to proceed with migration" -Level "INFO"
+    exit 1
+  }
+
+  Write-LogFile -Message "User confirmed migration process, beginning deployment phase" -Level "INFO"
+
   # Deploy Bicep templates to update Azure IPAM infrastructure
   Write-LogFile -Message "Starting Bicep template deployment" -Level "INFO"
   Deploy-Bicep -Details $migrationObject | Out-Null
@@ -1515,7 +1765,7 @@ try {
     else {
       Write-LogFile -Message "Building and pushing container image to ACR: $targetAcrResourceId" -Level "INFO"
       # Build custom container image and push to private ACR, then restart WebApp
-      $newImageReference = Build-ContainerImage -ContainerDetails $containerDetails -TargetAcrResourceId $targetAcrResourceId
+      $newImageReference = Build-ContainerImage -ContainerType $effectiveContainerType -TargetAcrResourceId $targetAcrResourceId -WebAppResourceId $details.WebAppResourceId
       Write-Host "🎉 Migration complete!" -ForegroundColor Green
       Write-LogFile -Message "Migration completed successfully with private ACR. New image reference: $newImageReference" -Level "SUCCESS"
     }
@@ -1530,11 +1780,16 @@ try {
 }
 catch {
   Write-LogFile -Message "=== CRITICAL ERROR: Migration Failed ===" -Level "ERROR" -ErrorRecord $_
-  Write-LogFile -Message "Migration failed at main execution level: $($_.Exception.Message)" -Level "ERROR" -ErrorRecord $_
   Write-Host
   Write-Host "💥 Migration failed! Check the log file for details." -ForegroundColor Red
   Write-Host "📋 Log file location: $logFile" -ForegroundColor Yellow
+  if ($DEBUG_MODE) {
+    Write-Host "🐛 Debug log location: $debugLog" -ForegroundColor Yellow
+  }
   throw
+}
+finally {
+  Stop-Transcript | Out-Null
 }
 
 Write-Host
