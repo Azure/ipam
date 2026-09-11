@@ -365,7 +365,7 @@ process {
   $MIN_AZ_CLI_VER = [System.Version]'2.35.0'
 
   # Check for Debug Flag
-  $DEBUG_MODE = [bool]$PSCmdlet.MyInvocation.BoundParameters[“Debug”].IsPresent
+  $DEBUG_MODE = [bool]$PSCmdlet.MyInvocation.BoundParameters["Debug"].IsPresent
 
   # Set preference variables
   $ErrorActionPreference = "Stop"

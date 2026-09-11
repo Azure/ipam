@@ -317,7 +317,7 @@ function Restart-IpamApp {
       Write-Host " ✅ Success" -ForegroundColor Green
     } catch {
       if($restartRetries -gt 0) {
-        Write-Host " ⚠️ Restart failed, retrying..." -ForegroundColor Yellow
+        Write-Host " ⚠️  Restart failed, retrying..." -ForegroundColor Yellow
         $restartRetries--
       } else {
         Write-Host " ❌ Unable to restart application!" -ForegroundColor Red
@@ -379,7 +379,7 @@ function Publish-ZipFile {
   )
 
   if ($UseAPI) {
-    Write-Host "ℹ️ Using Kudu API for ZIP Deploy" -ForegroundColor Cyan
+    Write-Host "ℹ️  Using Kudu API for ZIP Deploy" -ForegroundColor Cyan
   }
 
   $publishRetries = 3
@@ -421,7 +421,7 @@ function Publish-ZipFile {
       $publishSuccess = $True
     } catch {
       if($publishRetries -gt 0) {
-        Write-Host "  ⚠️ Upload failed, retrying..." -ForegroundColor Yellow
+        Write-Host "  ⚠️  Upload failed, retrying..." -ForegroundColor Yellow
         $publishRetries--
       } else {
         Write-Host "  ❌ Unable to upload ZIP Deploy archive!" -ForegroundColor Red
@@ -1017,7 +1017,7 @@ function New-IpamStagingSlot {
     $bicepPath = Join-Path -Path $ROOT_DIR -ChildPath "update" -AdditionalChildPath "main.bicep"
 
     if (-not (Test-Path -Path $bicepPath)) {
-      Write-Host "⚠️ Infrastructure template not found at '$bicepPath'; skipping slot creation" -ForegroundColor Yellow
+      Write-Host "⚠️  Infrastructure template not found at '$bicepPath'; skipping slot creation" -ForegroundColor Yellow
       return
     }
 
@@ -1057,7 +1057,7 @@ function New-IpamStagingSlot {
       $isVnetFailure = $hasVnet -and ($deployError.ToString() -match 'subnet|virtualnetwork|delegat')
 
       if ($isVnetFailure) {
-        Write-Host " ⚠️ Retrying without vNet integration" -ForegroundColor Yellow
+        Write-Host " ⚠️  Retrying without vNet integration" -ForegroundColor Yellow
         Write-LogFile -Message "Slot deployment failed; retrying without vNet integration." -Level "ERROR" -ErrorRecord $deployError
 
         $deploymentParameters.replicateVnet = $false
@@ -1099,7 +1099,7 @@ function New-IpamStagingSlot {
         }
 
         Write-Host
-        Write-Host "⚠️ vNet integration was not applied to the slot automatically." -ForegroundColor Yellow
+        Write-Host "⚠️  vNet integration was not applied to the slot automatically." -ForegroundColor Yellow
         Write-Host "   To make the slot swap-ready, manually add regional vNet integration" -ForegroundColor Yellow
         Write-Host "   to the '$IPAM_SLOT_NAME' slot using the subnet below:" -ForegroundColor Yellow
         Write-Host
@@ -1130,7 +1130,7 @@ function New-IpamStagingSlot {
     Write-Host " ❌ Failed" -ForegroundColor Red
     Write-LogFile -Message "Staging slot creation failed (non-fatal): $($_.Exception.Message)" -Level "ERROR" -ErrorRecord $_
 
-    Write-Host "  ⚠️ The staging slot could not be created." -ForegroundColor Yellow
+    Write-Host "  ⚠️  The staging slot could not be created." -ForegroundColor Yellow
     Write-Host "     The application update will continue — only this step was skipped." -ForegroundColor Yellow
     Write-Host "     This is most often caused by insufficient deployment permissions at the" -ForegroundColor Yellow
     Write-Host "     subscription scope. Review the prerequisites, or re-run with -SkipInfraUpdate" -ForegroundColor Yellow
@@ -1417,7 +1417,7 @@ function Show-IpamDriftPlan {
   Write-Host
 
   if ($Plan.SlotContext -and -not $Plan.SlotContext.Supported) {
-    Write-Host "ℹ️ The staging slot cannot be created because $($Plan.SlotContext.Reason)." -ForegroundColor Cyan
+    Write-Host "ℹ️  The staging slot cannot be created because $($Plan.SlotContext.Reason)." -ForegroundColor Cyan
     Write-Host
   }
 }
@@ -1482,7 +1482,7 @@ function Invoke-IpamDriftRemediation {
       Write-Host " ✅ Done" -ForegroundColor Green
     }
     catch {
-      Write-Host " ⚠️ Skipped" -ForegroundColor Yellow
+      Write-Host " ⚠️  Skipped" -ForegroundColor Yellow
       Write-LogFile -Message "Unable to update slotConfigNames: $($_.Exception.Message)" -Level "WARNING" -ErrorRecord $_
     }
   }
@@ -1598,7 +1598,7 @@ try {
       $existingApp = Get-AzWebApp -ResourceGroupName $ResourceGroupName -Name $AppName
     }
     else {
-      Write-Host "ℹ️ Configuration changes skipped by user" -ForegroundColor Cyan
+      Write-Host "ℹ️  Configuration changes skipped by user" -ForegroundColor Cyan
     }
   }
 
@@ -1611,7 +1611,7 @@ try {
     if (-not $privateAcr -and $registryRepointed) {
       Write-Section -Title "Azure IPAM Update Complete"
       Write-Host "✅ Azure IPAM registry updated; the App Service is restarting to pull the latest image" -ForegroundColor Green
-      Write-Host "ℹ️ Please allow a few minutes for the container to restart and load the updated image" -ForegroundColor Cyan
+      Write-Host "ℹ️  Please allow a few minutes for the container to restart and load the updated image" -ForegroundColor Cyan
       Write-Host
       exit
     }
@@ -1619,8 +1619,8 @@ try {
     # Restarting a stopped app accomplishes nothing - it stays stopped and never pulls the image.
     if (-not $privateAcr -and $isStopped) {
       Write-Section -Title "Azure IPAM Update Complete"
-      Write-Host "ℹ️ The application is stopped, so no restart was performed" -ForegroundColor Cyan
-      Write-Host "ℹ️ Start the application to pull the latest image from the public registry" -ForegroundColor Cyan
+      Write-Host "ℹ️  The application is stopped, so no restart was performed" -ForegroundColor Cyan
+      Write-Host "ℹ️  Start the application to pull the latest image from the public registry" -ForegroundColor Cyan
       Write-Host
       exit
     }
@@ -1657,15 +1657,15 @@ try {
           $restartNeeded = $false
         }
         elseif ($versionState -eq [IpamVersionState]::Newer) {
-          Write-Host " ⚠️ Update available (v$runningVersion -> v$latestVersion)" -ForegroundColor Yellow
+          Write-Host " ⚠️  Update available (v$runningVersion -> v$latestVersion)" -ForegroundColor Yellow
         }
         elseif ($versionState -eq [IpamVersionState]::Older) {
-          Write-Host " ⚠️ Registry image is older (v$runningVersion -> v$latestVersion)" -ForegroundColor Yellow
+          Write-Host " ⚠️  Registry image is older (v$runningVersion -> v$latestVersion)" -ForegroundColor Yellow
           $restartNeeded = $false
           $downgradeBlocked = $true
         }
         else {
-          Write-Host " ℹ️ Unknown" -ForegroundColor Cyan
+          Write-Host " ℹ️  Unknown" -ForegroundColor Cyan
         }
       }
 
@@ -1673,8 +1673,8 @@ try {
         Write-Section -Title "Azure IPAM Update Complete"
 
         if ($downgradeBlocked) {
-          Write-Host "⚠️ The registry image (v$latestVersion) is older than the running version (v$runningVersion)" -ForegroundColor Yellow
-          Write-Host "ℹ️ No restart was performed; re-run with -Force to pull the older image anyway" -ForegroundColor Cyan
+          Write-Host "⚠️  The registry image (v$latestVersion) is older than the running version (v$runningVersion)" -ForegroundColor Yellow
+          Write-Host "ℹ️  No restart was performed; re-run with -Force to pull the older image anyway" -ForegroundColor Cyan
         }
         else {
           Write-Host "✅ Azure IPAM is already running the latest version (v$latestVersion)" -ForegroundColor Green
@@ -1684,13 +1684,13 @@ try {
         exit
       }
 
-      Write-Host "ℹ️ Restarting to pull the latest image from " -ForegroundColor Cyan -NoNewline
+      Write-Host "ℹ️  Restarting to pull the latest image from " -ForegroundColor Cyan -NoNewline
       Write-Host $appAcr -ForegroundColor White
       Restart-IpamApp -AppName $AppName -ResourceGroupName $ResourceGroupName
 
       Write-Section -Title "Azure IPAM Update Complete"
       Write-Host "✅ Azure IPAM solution updated successfully" -ForegroundColor Green
-      Write-Host "ℹ️ Please allow a few minutes for the container to restart and load the updated image" -ForegroundColor Cyan
+      Write-Host "ℹ️  Please allow a few minutes for the container to restart and load the updated image" -ForegroundColor Cyan
       Write-Host
       exit
     }
@@ -1724,19 +1724,19 @@ try {
           exit
         }
         elseif ($versionState -eq [IpamVersionState]::Newer) {
-          Write-Host " ⚠️ Update available (v$runningVersion -> v$ipamVersion)" -ForegroundColor Yellow
+          Write-Host " ⚠️  Update available (v$runningVersion -> v$ipamVersion)" -ForegroundColor Yellow
         }
         elseif ($versionState -eq [IpamVersionState]::Older) {
-          Write-Host " ⚠️ Repository is older (v$runningVersion -> v$ipamVersion)" -ForegroundColor Yellow
+          Write-Host " ⚠️  Repository is older (v$runningVersion -> v$ipamVersion)" -ForegroundColor Yellow
 
           Write-Section -Title "Azure IPAM Update Complete"
-          Write-Host "⚠️ The repository version (v$ipamVersion) is older than the running version (v$runningVersion)" -ForegroundColor Yellow
-          Write-Host "ℹ️ No image was built; re-run with -Force to build the older version anyway" -ForegroundColor Cyan
+          Write-Host "⚠️  The repository version (v$ipamVersion) is older than the running version (v$runningVersion)" -ForegroundColor Yellow
+          Write-Host "ℹ️  No image was built; re-run with -Force to build the older version anyway" -ForegroundColor Cyan
           Write-Host
           exit
         }
         else {
-          Write-Host " ℹ️ Unable to determine; proceeding with build" -ForegroundColor Cyan
+          Write-Host " ℹ️  Unable to determine; proceeding with build" -ForegroundColor Cyan
         }
       }
 
@@ -1751,7 +1751,7 @@ try {
       if ($acrErr) {
         Write-LogFile -Message "ACR lookup error: $acrErr" -Level "ERROR"
 
-        Write-Host " ⚠️ Not found" -ForegroundColor Yellow
+        Write-Host " ⚠️  Not found" -ForegroundColor Yellow
 
         $appNoun = $isFunction ? 'Function App' : 'App Service'
 
@@ -1823,14 +1823,14 @@ try {
             $probedImage = $status.container.image_id
 
             if ([string]::IsNullOrWhiteSpace($probedImage)) {
-              Write-Host " ⚠️ Unavailable" -ForegroundColor Yellow
+              Write-Host " ⚠️  Unavailable" -ForegroundColor Yellow
               Write-LogFile -Message "Container distro probe returned no container.image_id value." -Level "WARNING"
             }
             else {
               Write-Host " ✅ Detected" -ForegroundColor Green
             }
           } catch {
-            Write-Host " ⚠️ Unavailable" -ForegroundColor Yellow
+            Write-Host " ⚠️  Unavailable" -ForegroundColor Yellow
             Write-LogFile -Message "Container distro probe failed: $($_.Exception.Message)" -Level "WARNING" -ErrorRecord $_
           }
         }
@@ -1885,15 +1885,15 @@ try {
         $skipZipDeploy = $true
       }
       elseif ($versionState -eq [IpamVersionState]::Newer) {
-        Write-Host " ⚠️ Update available (v$runningClean -> v$latestClean)" -ForegroundColor Yellow
+        Write-Host " ⚠️  Update available (v$runningClean -> v$latestClean)" -ForegroundColor Yellow
       }
       elseif ($versionState -eq [IpamVersionState]::Older) {
-        Write-Host " ⚠️ Release is older (v$runningClean -> v$latestClean)" -ForegroundColor Yellow
+        Write-Host " ⚠️  Release is older (v$runningClean -> v$latestClean)" -ForegroundColor Yellow
         $skipZipDeploy = $true
         $zipDowngradeBlocked = $true
       }
       else {
-        Write-Host " ℹ️ Unable to determine; proceeding with deploy" -ForegroundColor Cyan
+        Write-Host " ℹ️  Unable to determine; proceeding with deploy" -ForegroundColor Cyan
       }
     }
   }
@@ -1966,7 +1966,7 @@ try {
           }
           catch {
             Write-Host " ❌ Failed" -ForegroundColor Red
-            Write-Host "⚠️ Failed to retrieve build logs: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host "⚠️  Failed to retrieve build logs: $($_.Exception.Message)" -ForegroundColor Yellow
             Write-LogFile -Message "Failed to retrieve build logs: $($_.Exception.Message)" -Level "ERROR" -ErrorRecord $_
           }
         }
@@ -2020,7 +2020,7 @@ try {
           }
           catch {
             Write-Host " ❌ Failed" -ForegroundColor Red
-            Write-Host "⚠️ Failed to retrieve build logs: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host "⚠️  Failed to retrieve build logs: $($_.Exception.Message)" -ForegroundColor Yellow
             Write-LogFile -Message "Failed to retrieve build logs: $($_.Exception.Message)" -Level "ERROR" -ErrorRecord $_
           }
         }
@@ -2043,16 +2043,16 @@ try {
       Write-Host "✅ Azure IPAM solution updated successfully" -ForegroundColor Green
 
       if ($isStopped) {
-        Write-Host "ℹ️ The application is stopped; start it to pull the updated image" -ForegroundColor Cyan
+        Write-Host "ℹ️  The application is stopped; start it to pull the updated image" -ForegroundColor Cyan
       }
       else {
-        Write-Host "ℹ️ Please allow a few minutes for the container to restart and load the updated image" -ForegroundColor Cyan
+        Write-Host "ℹ️  Please allow a few minutes for the container to restart and load the updated image" -ForegroundColor Cyan
       }
 
       Write-Host
     } else {
       Write-Section -Title "Azure IPAM Update Completed With Errors"
-      Write-Host "⚠️ Azure IPAM solution deployed with errors, see logs for details!" -ForegroundColor Yellow
+      Write-Host "⚠️  Azure IPAM solution deployed with errors, see logs for details!" -ForegroundColor Yellow
       Write-Host "   Run Log:    $transcriptLog" -ForegroundColor Yellow
       Write-Host "   Detail Log: $logFile" -ForegroundColor Yellow
       Write-Host
@@ -2061,8 +2061,8 @@ try {
     Write-Section -Title "Azure IPAM Update Complete"
 
     if ($zipDowngradeBlocked) {
-      Write-Host "⚠️ The latest release (v$latestClean) is older than the running version (v$runningClean)" -ForegroundColor Yellow
-      Write-Host "ℹ️ No deployment was performed; re-run with -Force to deploy the older release anyway" -ForegroundColor Cyan
+      Write-Host "⚠️  The latest release (v$latestClean) is older than the running version (v$runningClean)" -ForegroundColor Yellow
+      Write-Host "ℹ️  No deployment was performed; re-run with -Force to deploy the older release anyway" -ForegroundColor Cyan
     }
     else {
       Write-Host "✅ Azure IPAM is already running the latest version (v$runningClean)" -ForegroundColor Green
@@ -2100,7 +2100,7 @@ try {
     try {
       Publish-ZipFile -AppName $AppName -ResourceGroupName $ResourceGroupName -ZipFilePath $ZipFilePath
     } catch {
-      Write-Host "  ⚠️ Standard ZIP Deploy failed, retrying with Kudu API..." -ForegroundColor Yellow
+      Write-Host "  ⚠️  Standard ZIP Deploy failed, retrying with Kudu API..." -ForegroundColor Yellow
       Publish-ZipFile -AppName $AppName -ResourceGroupName $ResourceGroupName -ZipFilePath $ZipFilePath -UseAPI
     }
 
@@ -2113,7 +2113,7 @@ try {
 
     Write-Section -Title "Azure IPAM Update Complete"
     Write-Host "✅ Azure IPAM solution updated successfully" -ForegroundColor Green
-    Write-Host "ℹ️ Please allow ~5 minutes for the ZIP Deploy process to complete" -ForegroundColor Cyan
+    Write-Host "ℹ️  Please allow ~5 minutes for the ZIP Deploy process to complete" -ForegroundColor Cyan
     Write-Host
   }
 }

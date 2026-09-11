@@ -248,7 +248,7 @@ function Restart-IpamApp {
       Write-Host " ✅ Success" -ForegroundColor Green
     } catch {
       if($restartRetries -gt 0) {
-        Write-Host " ⚠️ Restart failed, retrying..." -ForegroundColor Yellow
+        Write-Host " ⚠️  Restart failed, retrying..." -ForegroundColor Yellow
         $restartRetries--
       } else {
         Write-Host " ❌ Unable to restart application!" -ForegroundColor Red
@@ -757,7 +757,7 @@ function Get-WebAppDetail {
   # deployments. Explain calmly and point the user to update.ps1 instead of throwing.
   $linuxFxVersion = $webApp.SiteConfig.LinuxFxVersion
   if ([string]::IsNullOrWhiteSpace($linuxFxVersion) -or -not $linuxFxVersion.StartsWith("COMPOSE|")) {
-    Write-Host " ℹ️ Skipped" -ForegroundColor Cyan
+    Write-Host " ℹ️  Skipped" -ForegroundColor Cyan
 
     Write-Section -Title "Migration Not Required"
     Write-Host "WebApp '$AppName' is not a Docker Compose deployment. This script only migrates legacy" -ForegroundColor Yellow
@@ -781,7 +781,7 @@ function Get-WebAppDetail {
     switch ($registryConfig.Mode) {
       'PublicManaged'  { Write-Host " ✅ Public registry ($registryHost)" -ForegroundColor Green; $discoveredCount++ }
       'PrivateManaged' { Write-Host " ✅ Private ACR ($registryHost)" -ForegroundColor Green; $discoveredCount++ }
-      'Divergent'      { Write-Host " ⚠️ Non-standard ($registryHost)" -ForegroundColor Yellow }
+      'Divergent'      { Write-Host " ⚠️  Non-standard ($registryHost)" -ForegroundColor Yellow }
     }
   }
   catch {
@@ -966,7 +966,7 @@ function Test-ResourceExistence {
       # Special handling for ContainerRegistryResourceId - it can be null (indicating public ACR)
       if ($property.Name -eq "ContainerRegistryResourceId") {
         Write-Host "🔍 Verifying Container Registry..." -ForegroundColor Cyan -NoNewline
-        Write-Host " ℹ️ Skipped (using public registry)" -ForegroundColor Cyan
+        Write-Host " ℹ️  Skipped (using public registry)" -ForegroundColor Cyan
         $verifiedCount++
         continue
       }
@@ -1504,7 +1504,7 @@ function Build-ContainerImage {
         }
         catch {
           Write-Host " ❌ Failed" -ForegroundColor Red
-          Write-Host "⚠️ Failed to retrieve build logs: $($_.Exception.Message)" -ForegroundColor Yellow
+          Write-Host "⚠️  Failed to retrieve build logs: $($_.Exception.Message)" -ForegroundColor Yellow
           Write-LogFile -Message "Failed to retrieve build logs: $($_.Exception.Message)" -Level "ERROR" -ErrorRecord $_
           $errorMessage = "Container build failed with exit code $LASTEXITCODE. Build ID: $buildId. Output: $($appBuildOutput -join ' '). Failed to retrieve detailed logs: $($_.Exception.Message)"
         }
@@ -1571,7 +1571,7 @@ try {
   # Determine resource discovery method based on whether JSON override file is provided
   if ([string]::IsNullorEmpty($JsonFile)) {
     # Auto-discovery mode: Extract configuration from existing WebApp
-    Write-Host "⚙️ Auto-Discovering Resource Details from WebApp Config..." -ForegroundColor Magenta
+    Write-Host "⚙️  Auto-Discovering Resource Details from WebApp Config..." -ForegroundColor Magenta
     Write-Host
     Write-LogFile -Message "Starting auto-discovery mode for ResourceGroup: $ResourceGroupName, AppName: $AppName" -Level "INFO"
 
@@ -1652,7 +1652,7 @@ try {
       exit
     }
 
-    Write-Host "ℹ️ Container distro: $effectiveContainerType" -ForegroundColor Cyan
+    Write-Host "ℹ️  Container distro: $effectiveContainerType" -ForegroundColor Cyan
     Write-Host
   }
 
