@@ -243,6 +243,40 @@ async def _baseline_v4():
     else:
         logger.info("No existing external subnets to patch...")
 
+    # Collapse duplicate vNet associations left by pre-v4 Reservation auto-fulfillment,
+    # which appended the network once per Reservation fulfilled against it.
+    dedupe_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
+
+    deduped = 0
+
+    for space in dedupe_query:
+        space_data = copy.deepcopy(space)
+        changed = False
+
+        for block in space_data['blocks']:
+            unique_nets = {}
+
+            for net in block['vnets']:
+                key = net['id'].lower()
+
+                if key in unique_nets:
+                    unique_nets[key]['active'] = unique_nets[key].get('active') or net.get('active')
+                    changed = True
+                else:
+                    unique_nets[key] = net
+
+            block['vnets'] = list(unique_nets.values())
+
+        if changed:
+            await cosmos_replace(space, space_data)
+
+            deduped += 1
+
+    if deduped:
+        logger.warning('Duplicate network association cleanup complete!')
+    else:
+        logger.info("No duplicate network associations to clean up...")
+
 
 # Ordered list of convergence steps. Append new steps with the next version
 # number; never renumber or mutate an already-released step. Keep the highest
