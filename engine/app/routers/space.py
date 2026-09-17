@@ -1484,7 +1484,8 @@ async def create_block_net(
     if not target_block:
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
-    if vnet.id in [v['id'] for v in target_block['vnets']]:
+    # Azure reports resource IDs with inconsistent casing, and stored IDs keep the caller's.
+    if vnet.id.lower() in [v['id'].lower() for v in target_block['vnets']]:
         raise HTTPException(status_code=400, detail="Network already exists in block.")
 
     # Occupancy check for overlap against every network in the Block.
