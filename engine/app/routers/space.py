@@ -1618,8 +1618,10 @@ async def update_block_vnets(
 
     invalid_nets = []
     outside_block_cidr = []
+    net_overlap = []
+    resv_overlap = []
+    ext_overlap = []
     net_ipset = IPSet([])
-    net_overlap = False
     resv_cidrs = IPSet(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
     ext_cidrs = IPSet(x['cidr'] for x in target_block['externals'])
 
@@ -1636,22 +1638,30 @@ async def update_block_vnets(
             else:
                 target_ipset = IPSet(target_cidrs)
 
+                # Compared per network rather than against the merged set, so the caller is told
+                # which of the networks it submitted is the problem.
+                if target_ipset & resv_cidrs:
+                    resv_overlap.append(v)
+
+                if target_ipset & ext_cidrs:
+                    ext_overlap.append(v)
+
                 if not net_ipset & target_ipset:
                     net_ipset.update(target_ipset)
                 else:
-                    net_overlap = True
+                    net_overlap.append(v)
 
     if len(invalid_nets) > 0:
         raise HTTPException(status_code=400, detail="Invalid network ID(s): {}".format(invalid_nets))
 
     if net_overlap:
-        raise HTTPException(status_code=400, detail="Network list contains overlapping CIDRs.")
+        raise HTTPException(status_code=400, detail="Network list contains overlapping CIDRs: {}".format(net_overlap))
 
-    if (net_ipset & resv_cidrs):
-        raise HTTPException(status_code=400, detail="Network list contains CIDR(s) that overlap outstanding reservations.")
+    if resv_overlap:
+        raise HTTPException(status_code=400, detail="Network list contains CIDR(s) that overlap outstanding reservations: {}".format(resv_overlap))
 
-    if (net_ipset & ext_cidrs):
-        raise HTTPException(status_code=400, detail="Network list contains CIDR(s) that overlap external networks.")
+    if ext_overlap:
+        raise HTTPException(status_code=400, detail="Network list contains CIDR(s) that overlap external networks: {}".format(ext_overlap))
 
     if len(outside_block_cidr) > 0:
         raise HTTPException(status_code=400, detail="Network CIDR(s) not within Block CIDR: {}".format(outside_block_cidr))
