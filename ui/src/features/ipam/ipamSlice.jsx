@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSelector, createSlice } from '@reduxjs/toolkit';
 
-import { concat, merge, cloneDeep, isEqual } from 'lodash-es';
+import { concat, merge, cloneDeep, isEqual, uniq } from 'lodash-es';
 
 // import SnackbarUtils from '../../utils/snackbar';
 
@@ -476,21 +476,18 @@ export const ipamSlice = createSlice({
               return block;
             });
 
-            state.vNets = state.vNets.map((vnet) => {
-              if(vnet.parent_space === spaceName) {
-                vnet.parent_space = updatedSpace.name;
+            const renameSpace = (network) => {
+              if(Array.isArray(network.parent_containers)) {
+                network.parent_containers = network.parent_containers.map((container) => (
+                  container.space === spaceName ? { ...container, space: updatedSpace.name } : container
+                ));
               }
 
-              return vnet;
-            });
+              return network;
+            };
 
-            state.vHubs = state.vHubs.map((vhub) => {
-              if(vhub.parent_space === spaceName) {
-                vhub.parent_space = updatedSpace.name;
-              }
-
-              return vhub;
-            });
+            state.vNets = state.vNets.map(renameSpace);
+            state.vHubs = state.vHubs.map(renameSpace);
           }
         }
       })
@@ -547,21 +544,20 @@ export const ipamSlice = createSlice({
             state.spaces[spaceIndex].blocks[blockIndex] = merge(state.spaces[spaceIndex].blocks[blockIndex], updatedBlock);
 
             if(blockName !== updatedBlock.name) {
-              state.vNets = state.vNets.map((vnet) => {
-                if(vnet.parent_block === blockName) {
-                  vnet.parent_block = updatedBlock.name;
+              const renameBlock = (network) => {
+                if(Array.isArray(network.parent_containers)) {
+                  network.parent_containers = network.parent_containers.map((container) => (
+                    container.space === spaceName && container.block === blockName
+                      ? { ...container, block: updatedBlock.name }
+                      : container
+                  ));
                 }
 
-                return vnet;
-              });
+                return network;
+              };
 
-              state.vHubs = state.vHubs.map((vhub) => {
-                if(vhub.parent_block === blockName) {
-                  vhub.parent_block = updatedBlock.name;
-                }
-
-                return vhub;
-              });
+              state.vNets = state.vNets.map(renameBlock);
+              state.vHubs = state.vHubs.map(renameBlock);
             }
           }
         }
@@ -1156,6 +1152,10 @@ export const selectUpdatedVNets = createSelector(
 
       newVNet.subscription_name = subscriptions?.find((x) => x.subscription_id === vnet.subscription_id)?.name || 'Unknown';
 
+      // Flattened projections of parent_containers, for grid display, filtering and search.
+      newVNet.parent_spaces = uniq(vnet.parent_containers?.map((container) => container.space) ?? []);
+      newVNet.parent_blocks = vnet.parent_containers?.map((container) => container.block) ?? [];
+
       return newVNet;
     });
   }
@@ -1168,6 +1168,10 @@ export const selectUpdatedVHubs = createSelector(
       var newVHub = cloneDeep(vhub);
 
       newVHub.subscription_name = subscriptions?.find((x) => x.subscription_id === vhub.subscription_id)?.name || 'Unknown';
+
+      // Flattened projections of parent_containers, for grid display, filtering and search.
+      newVHub.parent_spaces = uniq(vhub.parent_containers?.map((container) => container.space) ?? []);
+      newVHub.parent_blocks = vhub.parent_containers?.map((container) => container.block) ?? [];
 
       return newVHub;
     });
@@ -1225,12 +1229,12 @@ export const selectParentSpaceNames = createSelector(
 
 export const selectBlocksWithVNets = createSelector(
   [selectVNets],
-  (vnets) => new Set(vnets?.flatMap((v) => v.parent_block ?? []) ?? [])
+  (vnets) => new Set(vnets?.flatMap((v) => v.parent_containers?.map((c) => c.block) ?? []) ?? [])
 );
 
 export const selectBlocksWithVHubs = createSelector(
   [selectVHubs],
-  (vhubs) => new Set(vhubs?.flatMap((v) => v.parent_block ?? []) ?? [])
+  (vhubs) => new Set(vhubs?.flatMap((v) => v.parent_containers?.map((c) => c.block) ?? []) ?? [])
 );
 
 export const selectParentVNetNames = createSelector(

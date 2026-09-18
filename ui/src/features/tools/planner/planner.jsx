@@ -137,13 +137,13 @@ const Planner = () => {
         }
 
         const data = vNets.reduce((vAcc, vCurr) => {
-          if (vCurr['parent_block'] !== null) {
-            vCurr['parent_block'].forEach((p) => {
-              const block = blocks.find((block) => block.name === p && block['parent_space'] === vCurr['parent_space']);
+          if (vCurr['parent_containers']?.length) {
+            vCurr['parent_containers'].forEach((container) => {
+              const block = blocks.find((block) => block.name === container.block && block['parent_space'] === container.space);
 
               // Guard against block not being found
               if (!block) {
-                console.warn(`Block not found: ${p} in space ${vCurr['parent_space']} for VNet ${vCurr.name}`);
+                console.warn(`Block not found: ${container.block} in space ${container.space} for VNet ${vCurr.name}`);
                 return;
               }
 
@@ -157,7 +157,8 @@ const Planner = () => {
 
               const temp = {
                 ...vCurr,
-                parent_block: p,
+                parent_space: container.space,
+                parent_block: container.block,
                 prefixes: blockPrefixes
               };
 
@@ -166,6 +167,7 @@ const Planner = () => {
           } else {
             const temp = {
               ...vCurr,
+              parent_space: null,
               parent_block: null
             }
 

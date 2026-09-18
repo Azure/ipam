@@ -96,6 +96,12 @@ class IPv4Address(str):
 #   RESPONSE MODELS   #
 #######################
 
+class CIDRContainer(BaseModel):
+    """The Space and Block containing a given network or CIDR range."""
+
+    space: str
+    block: str
+
 class VNet(BaseModel):
     """Reference to an Azure Virtual Network associated with a Block, tracked by resource ID and active status."""
 
@@ -502,15 +508,14 @@ class VNetPeering(BaseModel):
     state: str
 
 class VWanHub(BaseModel):
-    """An Azure Virtual WAN hub with its address prefix, parent space/block, and peerings."""
+    """An Azure Virtual WAN hub with its address prefix, containing Spaces/Blocks, and peerings."""
 
     name: str
     id: str
     prefix: IPv4Network
     vwan_name: str
     vwan_id: str
-    parent_space: Union[str,  None] = None
-    parent_block: Union[List[str], None] = None
+    parent_containers: List[CIDRContainer] = []
     resource_group: str
     subscription_id: UUID
     tenant_id: str
@@ -663,10 +668,6 @@ class NewVNetCIDR(BaseModel):
     space: str
     block: str
     cidr: str
-
-class CIDRContainer(BaseModel):
-    space: str
-    block: str
 
 class CIDRCheckReq(BaseModel):
     """Request body for checking whether a CIDR overlaps existing IPAM-managed networks."""

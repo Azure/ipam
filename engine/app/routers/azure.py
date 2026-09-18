@@ -366,6 +366,16 @@ async def fetch_vnets(authorization, tenant_id, all_networks):
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
+    # Azure reports resource IDs with inconsistent casing, and stored IDs keep the caller's.
+    ip_blocks = [
+        {
+            'space': space['name'],
+            'block': block['name'],
+            'vnet_ids': {v['id'].lower() for v in block['vnets']}
+        }
+        for space in space_query for block in space['blocks']
+    ]
+
     vnet_list = await arg_query(authorization, all_networks, argquery.VNET)
     vnet_list = vnet_fixup(vnet_list)
 
@@ -386,14 +396,11 @@ async def fetch_vnets(authorization, tenant_id, all_networks):
 
         vnet['used'] = total_used
 
-        # Python 3.9+
-        # ip_blocks = [(block | {'parent_space': space['name']}) for space in space_query for block in space['blocks']]
-        ip_blocks = [{**block , **{'parent_space': space['name']}} for space in space_query for block in space['blocks']]
-        parent_space = next((x['parent_space'] for x in ip_blocks if vnet['id'] in [v['id'] for v in x['vnets']]), None)
-        parent_blocks = list(x['name'] for x in ip_blocks if vnet['id'] in [v['id'] for v in x['vnets']])
-
-        vnet['parent_space'] = parent_space
-        vnet['parent_block'] = parent_blocks or None
+        # A network can sit in Blocks across several Spaces, so each Block is paired with its own Space.
+        vnet['parent_containers'] = [
+            {'space': x['space'], 'block': x['block']}
+            for x in ip_blocks if vnet['id'].lower() in x['vnet_ids']
+        ]
 
         updated_vnet_list.append(vnet)
 
@@ -481,6 +488,16 @@ async def fetch_vhubs(authorization, tenant_id, all_networks):
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
+    # Azure reports resource IDs with inconsistent casing, and stored IDs keep the caller's.
+    ip_blocks = [
+        {
+            'space': space['name'],
+            'block': block['name'],
+            'vnet_ids': {v['id'].lower() for v in block['vnets']}
+        }
+        for space in space_query for block in space['blocks']
+    ]
+
     vwan_hubs = await arg_query(authorization, all_networks, argquery.VHUB)
     vwan_hubs_update = await update_vhub_data(authorization, all_networks, vwan_hubs)
 
@@ -490,14 +507,11 @@ async def fetch_vhubs(authorization, tenant_id, all_networks):
         hub['size'] = IPNetwork(hub['prefix']).size
         hub['used'] = None
 
-        # Python 3.9+
-        # ip_blocks = [(block | {'parent_space': space['name']}) for space in space_query for block in space['blocks']]
-        ip_blocks = [{**block , **{'parent_space': space['name']}} for space in space_query for block in space['blocks']]
-        parent_space = next((x['parent_space'] for x in ip_blocks if hub['id'] in [v['id'] for v in x['vnets']]), None)
-        parent_blocks = list(x['name'] for x in ip_blocks if hub['id'] in [v['id'] for v in x['vnets']])
-
-        hub['parent_space'] = parent_space
-        hub['parent_block'] = parent_blocks or None
+        # A network can sit in Blocks across several Spaces, so each Block is paired with its own Space.
+        hub['parent_containers'] = [
+            {'space': x['space'], 'block': x['block']}
+            for x in ip_blocks if hub['id'].lower() in x['vnet_ids']
+        ]
 
         updated_vhub_list.append(hub)
 

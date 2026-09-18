@@ -119,8 +119,8 @@ export const blocks = {
       cellRenderer: DrillDownCellRenderer,
       cellRendererParams: {
         targets: [
-          { label: 'Virtual Networks', path: '/discover/vnet', filterField: 'parent_block', hasChildrenSelector: selectBlocksWithVNets },
-          { label: 'Virtual Hubs', path: '/discover/vhub', filterField: 'parent_block', hasChildrenSelector: selectBlocksWithVHubs }
+          { label: 'Virtual Networks', path: '/discover/vnet', filterField: 'parent_blocks', hasChildrenSelector: selectBlocksWithVNets },
+          { label: 'Virtual Hubs', path: '/discover/vhub', filterField: 'parent_blocks', hasChildrenSelector: selectBlocksWithVHubs }
         ]
       }
     },
@@ -194,14 +194,14 @@ export const vnets = {
       cellRenderer: ProgressCellRenderer
     },
     {
-      field: "parent_block",
+      field: "parent_blocks",
       headerName: "Block",
       flex: 0.85,
       valueGetter: (params) => {
-        const value = params.data?.parent_block;
-        return Array.isArray(value) ? value.join(", ") : "<Unassigned>";
+        const value = params.data?.parent_blocks;
+        return value?.length ? value.join(", ") : "<Unassigned>";
       },
-      filterValueGetter: (params) => params.data?.parent_block?.join(", ") ?? ""
+      filterValueGetter: (params) => params.data?.parent_blocks?.join(", ") ?? ""
     },
     { field: "resource_group", headerName: "Resource Group", flex: 0.75, hide: true },
     { field: "subscription_name", headerName: "Subscription Name", flex: 0.85, hide: true },
@@ -237,8 +237,8 @@ export const vnets = {
     progressUsed: "used",
     fieldMap: [
       { name: "vNet Name", value: "name" },
-      { name: "Space", value: "parent_space" },
-      { name: "Block(s)", value: "parent_block" },
+      { name: "Space(s)", value: "parent_spaces" },
+      { name: "Block(s)", value: "parent_blocks" },
       { name: "Address Space", value: "prefixes" },
       { name: "Resource Group", value: "resource_group" },
       { name: "Subscription Name", value: "subscription_name" },
@@ -353,14 +353,14 @@ export const vhubs = {
     },
     { field: "vwan_name", headerName: "Parent vWAN", flex: 0.6 },
     {
-      field: "parent_block",
+      field: "parent_blocks",
       headerName: "Block",
       flex: 0.75,
       valueGetter: (params) => {
-        const value = params.data?.parent_block;
-        return Array.isArray(value) ? value.join(", ") : "<Unassigned>";
+        const value = params.data?.parent_blocks;
+        return value?.length ? value.join(", ") : "<Unassigned>";
       },
-      filterValueGetter: (params) => params.data?.parent_block?.join(", ") ?? ""
+      filterValueGetter: (params) => params.data?.parent_blocks?.join(", ") ?? ""
     },
     { field: "subscription_name", headerName: "Subscription Name", flex: 0.75, hide: true },
     { field: "subscription_id", headerName: "Subscription ID", flex: 0.75, hide: true },
@@ -383,8 +383,8 @@ export const vhubs = {
     fieldMap: [
       { name: "vHub Name", value: "name" },
       { name: "vWAN Name", value: "vwan_name" },
-      { name: "Space", value: "parent_space" },
-      { name: "Block(s)", value: "parent_block" },
+      { name: "Space(s)", value: "parent_spaces" },
+      { name: "Block(s)", value: "parent_blocks" },
       { name: "Address Space", value: "prefixes" },
       { name: "Resource Group", value: "resource_group" },
       { name: "Subscription Name", value: "subscription_name" },

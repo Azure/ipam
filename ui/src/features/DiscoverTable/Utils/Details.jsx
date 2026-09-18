@@ -152,17 +152,25 @@ export default function ItemDetails(props) {
           </React.Fragment>
         }
         <Fields>
-          {map.fieldMap.map((field) => (
-            get(rowData, field.value) != null &&
-            <React.Fragment key={field.value}>
-              <Typography variant="overline" sx={{ fontSize: 10, fontWeight: "bold", textAlign: "left", pl: 3 }}>
-                {field.name}:&nbsp;
-              </Typography>
-              <Typography noWrap variant="overline" sx={{ fontSize: 10, textAlign: "left", pl: 5 }}>
-                {get(rowData, field.value) != null ? Array.isArray(get(rowData, field.value)) ? get(rowData, field.value).join(', ') : get(rowData, field.value).toString() : "N/A"}
-              </Typography>
-            </React.Fragment>
-          ))}
+          {map.fieldMap.map((field) => {
+            const value = get(rowData, field.value);
+
+            // An empty array carries no values, so omit the field rather than render a blank row.
+            if (value == null || (Array.isArray(value) && value.length === 0)) {
+              return null;
+            }
+
+            return (
+              <React.Fragment key={field.value}>
+                <Typography variant="overline" sx={{ fontSize: 10, fontWeight: "bold", textAlign: "left", pl: 3 }}>
+                  {field.name}:&nbsp;
+                </Typography>
+                <Typography noWrap variant="overline" sx={{ fontSize: 10, textAlign: "left", pl: 5 }}>
+                  {Array.isArray(value) ? value.join(', ') : value.toString()}
+                </Typography>
+              </React.Fragment>
+            );
+          })}
         </Fields>
         {map.showLink &&
           <React.Fragment>

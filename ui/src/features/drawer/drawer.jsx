@@ -110,8 +110,8 @@ import {
   setUserId,
   getAdminStatus,
   getMeLoaded,
-  selectVNets,
-  selectVHubs,
+  selectUpdatedVNets,
+  selectUpdatedVHubs,
   selectSubnets,
   selectEndpoints
 } from "../ipam/ipamSlice";
@@ -196,8 +196,8 @@ export default function NavDrawer() {
 
   const isAdmin = useSelector(getAdminStatus);
   const meLoaded = useSelector(getMeLoaded);
-  const vNets = useSelector(selectVNets);
-  const vHubs = useSelector(selectVHubs);
+  const vNets = useSelector(selectUpdatedVNets);
+  const vHubs = useSelector(selectUpdatedVHubs);
   const subnets = useSelector(selectSubnets);
   const endpoints = useSelector(selectEndpoints);
 
@@ -515,7 +515,7 @@ export default function NavDrawer() {
     var newSearchData = [];
 
     if(vNets) {
-      const vNetExclusions = ['id', 'peerings', 'resv', 'type', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_space', 'subscription_id', 'tenant_id', 'metadata'];
+      const vNetExclusions = ['id', 'peerings', 'resv', 'type', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_containers', 'parent_spaces', 'subscription_id', 'subscription_name', 'tenant_id', 'metadata'];
       const vNetFiltered = objToFilter(vNets, 'Virtual Networks', '/discover/vnet', vNetExclusions);
       const vNetResults = orderBy(vNetFiltered, 'phrase', 'asc');
 
@@ -527,7 +527,7 @@ export default function NavDrawer() {
     }
 
     if(vHubs) {
-      const vHubExclusions = ['id', 'peerings', 'vwan_id', 'resv', 'type', 'size', 'used', 'available', 'utilization', 'parent_space'];
+      const vHubExclusions = ['id', 'peerings', 'vwan_id', 'resv', 'type', 'size', 'used', 'available', 'utilization', 'parent_containers', 'parent_spaces', 'subscription_name'];
       const vHubFiltered = objToFilter(vHubs, 'Virtual Hubs', '/discover/vhub', vHubExclusions);
       const vHubResults = orderBy(vHubFiltered, 'phrase', 'asc');
 

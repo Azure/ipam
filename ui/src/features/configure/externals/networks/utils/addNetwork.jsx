@@ -165,10 +165,12 @@ export default function AddExtNetwork(props) {
 
       if(space && block && networks) {
         blockNetworks = networks?.reduce((acc, curr) => {
-          if(curr['parent_space'] && curr['parent_block']) {
-            if(curr['parent_space'] === space && curr['parent_block'].includes(block.name)) {
-              acc = acc.concat(curr['prefixes']);
-            }
+          const inBlock = curr['parent_containers']?.some((container) => (
+            container.space === space && container.block === block.name
+          ));
+
+          if(inBlock) {
+            acc = acc.concat(curr['prefixes']);
           }
 
           return acc;
