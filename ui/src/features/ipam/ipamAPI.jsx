@@ -127,6 +127,7 @@ export function fetchBlockAvailable(space, block) {
   var urlParams = url.searchParams;
 
   urlParams.append('expand', true);
+  urlParams.append('include_blocked', true);
 
   return api.get(url);
 }

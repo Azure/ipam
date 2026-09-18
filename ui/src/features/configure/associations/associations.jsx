@@ -22,6 +22,8 @@ import {
 import {
   Refresh,
   SaveAlt,
+  VisibilityOffOutlined,
+  VisibilityOutlined,
 } from "@mui/icons-material";
 
 import {
@@ -56,6 +58,7 @@ const Associations = () => {
   const [selectedRows, setSelectedRows] = React.useState([]);
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [filterBlocked, setFilterBlocked] = React.useState(true);
 
   const [unchanged, setUnchanged] = React.useState(true);
 
@@ -69,7 +72,22 @@ const Associations = () => {
 
   // Column definitions for AG Grid
   const columns = React.useMemo(() => [
-    { field: "name", headerName: "Name", flex: 1 },
+    {
+      field: "name",
+      headerName: "Name",
+      flex: 1,
+      tooltipValueGetter: (params) => {
+        const blockedBy = params.data?.blocked_by;
+
+        if (!blockedBy?.length) return null;
+
+        const reasons = blockedBy.map((x) => (
+          `${x.prefix} overlaps ${x.type === 'external' ? 'External Network' : 'Reservation'} '${x.name}' (${x.cidr})`
+        ));
+
+        return `Cannot be associated: ${reasons.join(', ')}`;
+      }
+    },
     { field: "type", headerName: "Type", flex: 0.45 },
     { field: "resource_group", headerName: "Resource Group", flex: 1 },
     { field: "subscription_name", headerName: "Subscription Name", flex: 1 },
@@ -89,11 +107,24 @@ const Associations = () => {
     },
   ], []);
 
-  // Row class rules for AG Grid (stale vs normal rows)
+  // Row class rules for AG Grid (stale vs blocked vs normal rows)
   const rowClassRules = React.useMemo(() => ({
     'ipam-block-vnet-stale': (params) => !params.data?.active,
+    'ipam-block-vnet-blocked': (params) => params.data?.blocked_by?.length > 0,
     'ipam-block-vnet-normal': (params) => params.data?.active,
   }), []);
+
+  const associatedIds = React.useMemo(() => {
+    const blockVnets = Array.isArray(selectedBlock?.vnets) ? selectedBlock.vnets : [];
+
+    return new Set(blockVnets.map((vnet) => vnet.id.toLowerCase()));
+  }, [selectedBlock]);
+
+  // A Network can become blocked after it was associated, if its prefixes change in Azure. AG Grid
+  // deselects rows it treats as unselectable, which would drop the association on the next save.
+  const isRowSelectable = React.useCallback((node) => (
+    !node.data?.blocked_by?.length || associatedIds.has(node.data.id.toLowerCase())
+  ), [associatedIds]);
 
   React.useEffect(() => {
     if (spaces) {
@@ -288,6 +319,30 @@ const Associations = () => {
     }
   }, [selectedBlock, subscriptions, prevBlock, refreshData]);
 
+  // Derive filtered grid data synchronously to prevent a flash of
+  // the no-rows overlay when networks or filter state changes.
+  const gridData = React.useMemo(() => {
+    if (!vNets || !filterBlocked) return vNets;
+
+    // An associated Network is never hidden, as it is a state the user has to act on and a hidden
+    // row would still be submitted on save.
+    return vNets.filter((vnet) => !vnet.blocked_by?.length || associatedIds.has(vnet.id.toLowerCase()));
+  }, [vNets, filterBlocked, associatedIds]);
+
+  const hiddenBlockedCount = React.useMemo(() => (
+    (vNets || []).filter((vnet) => vnet.blocked_by?.length && !associatedIds.has(vnet.id.toLowerCase())).length
+  ), [vNets, associatedIds]);
+
+  const extraMenuItems = React.useMemo(() => [
+    {
+      icon: filterBlocked ? VisibilityOffOutlined : VisibilityOutlined,
+      label: filterBlocked
+        ? `Showing Available${hiddenBlockedCount > 0 ? ` (${hiddenBlockedCount} Blocked)` : ''}`
+        : 'Showing All',
+      onClick: () => setFilterBlocked(prev => !prev)
+    }
+  ], [filterBlocked, hiddenBlockedCount]);
+
   // Handle selection changes from the grid
   const handleSelectionChanged = React.useCallback((rows) => {
     if (isAdmin) {
@@ -306,13 +361,15 @@ const Associations = () => {
             mt: 1
           }}>
           { selectedBlock
-            ? "No Virtual Networks Found for Selected Block CIDR"
+            ? filterBlocked
+              ? "No Available Virtual Networks Found for Selected Block CIDR"
+              : "No Virtual Networks Found for Selected Block CIDR"
             : "Please Select a Space & Block"
           }
         </Typography>
       </Box>
     );
-  }, [selectedBlock]);
+  }, [selectedBlock, filterBlocked]);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
@@ -509,19 +566,26 @@ const Associations = () => {
               '--ag-selected-row-background-color': theme.palette.mode === 'dark' ? 'rgb(120, 40, 40)' : 'rgb(255, 210, 210)',
               backgroundColor: theme.palette.mode === 'dark' ? 'rgb(120, 40, 40) !important' : 'rgb(255, 210, 210) !important',
             },
+            // Blocked row styling (vNets overlapping an External Network or Reservation)
+            '& .ag-row.ipam-block-vnet-blocked': {
+              '--ag-selected-row-background-color': theme.palette.mode === 'dark' ? 'rgb(120, 90, 30)' : 'rgb(255, 235, 200)',
+              backgroundColor: theme.palette.mode === 'dark' ? 'rgb(120, 90, 30) !important' : 'rgb(255, 235, 200) !important',
+            },
           }}
         >
           <DataGrid
             viewSettingKey="networks"
             idProperty="id"
-            rowData={vNets}
+            rowData={gridData}
             columnDefs={columns}
+            extraMenuItems={extraMenuItems}
             multiSelect={true}
             checkboxSelect={isAdmin}
             isLoading={sending || refreshing}
             initialSelectedRows={initialSelection}
             onRowSelectionChanged={handleSelectionChanged}
             rowClassRules={rowClassRules}
+            isRowSelectable={isRowSelectable}
             noRowsOverlay={NoRowsOverlay}
           />
         </Box>

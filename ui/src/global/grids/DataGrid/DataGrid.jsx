@@ -498,6 +498,7 @@ CombinedOverlay.displayName = 'CombinedOverlay';
  * @param {Array} props.extraMenuItems - Additional menu items for the header dropdown
  * @param {Array} props.initialSelectedRows - Rows to select initially
  * @param {Object} props.rowClassRules - AG Grid row class rules for conditional row styling
+ * @param {Function} props.isRowSelectable - Callback receiving a row node, returning false for rows which cannot be selected
  * @param {boolean} props.isLoading - Show loading overlay (default: false)
  * @param {React.Component} props.noRowsOverlay - Custom component to display when grid has no rows (reactive via OverlayContext)
  * @param {boolean} props.copyOnDoubleClick - Copy cell value to clipboard on double-click (default: true)
@@ -517,6 +518,7 @@ const DataGrid = ({
   extraMenuItems = [],
   initialSelectedRows = [],
   rowClassRules = {},
+  isRowSelectable = null,
   isLoading = false,
   noRowsOverlay = null,
   copyOnDoubleClick = true,
@@ -801,7 +803,8 @@ const DataGrid = ({
     // For single-select, we handle click selection manually to support toggle behavior
     enableClickSelection: multiSelect ? !checkboxSelect : false,
     headerCheckbox: checkboxSelect && multiSelect,
-  }), [multiSelect, checkboxSelect]);
+    ...(isRowSelectable && { isRowSelectable }),
+  }), [multiSelect, checkboxSelect, isRowSelectable]);
 
   // ============================================================================
   // Event Handlers
