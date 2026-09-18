@@ -78,7 +78,7 @@ const Associations = () => {
       flex: 1,
       tooltipValueGetter: (params) => {
         if (params.data?.active === false) {
-          return "Cannot be associated: this Network no longer exists in Azure, or is no longer visible to IPAM";
+          return "Cannot be associated: this Network no longer exists in Azure, or no longer has address space within this Block";
         }
 
         const blockedBy = params.data?.blocked_by;

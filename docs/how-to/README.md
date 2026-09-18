@@ -209,14 +209,16 @@ Azure IPAM's background reconciliation process runs every minute and checks each
 Not every virtual network in your Azure environment is eligible for association with a given Block. When you open the associations page for a Block, Azure IPAM queries for all virtual networks and virtual hubs across your subscriptions that meet the following requirements:
 
 1. **CIDR containment** — The virtual network must have at least one address prefix that falls within the Block's CIDR range
-2. **No CIDR overlap with Reservations** — The virtual network's address prefixes must not overlap with any unsettled (active) CIDR Reservations in the Block
-3. **No CIDR overlap with External Networks** — The virtual network's address prefixes must not overlap with any External Network CIDRs in the Block
+2. **No CIDR overlap with Reservations** — None of the virtual network's prefixes within the Block may overlap an unsettled (active) CIDR Reservation
+3. **No CIDR overlap with External Networks** — None of the virtual network's prefixes within the Block may overlap an External Network CIDR
+
+Rules 2 and 3 apply to the **whole virtual network**, not to individual prefixes. A virtual network with several prefixes inside the Block is ineligible if *any one* of them overlaps a Reservation or an External Network, and the remaining prefixes cannot be associated on their own. A Block cannot contain overlapping CIDR ranges, and an association covers an entire network rather than a chosen part of it.
 
 Virtual networks that are already associated with the Block are included in the available list (they appear as pre-selected in the table). Overlap with existing associations is validated when you save your changes.
 
 Spaces are independent logical boundaries — a virtual network associated with a Block in one Space can still appear as available for Blocks in other Spaces. Within the same Space, a virtual network with multiple address prefixes can be associated with different Blocks, since Blocks in a Space cannot have overlapping CIDRs and each prefix is evaluated independently.
 
-> **Tip:** If a virtual network or virtual hub you expect to see is missing from the available list, check whether its address space falls within the Block's CIDR range and whether it overlaps with an existing Reservation or External Network in the target Block.
+> **Tip:** If a virtual network or virtual hub you expect to see is missing from the available list, first confirm that its address space falls within the Block's CIDR range. If it does, toggle the grid to **Showing All** to display the ineligible networks together with the reason each one is ineligible.
 
 ### Managing Associations via the UI
 
@@ -230,7 +232,7 @@ Virtual Network Associations are managed from the **Configure** section of the A
 
 #### The Associations Page
 
-The Associations page displays a toolbar at the top with selectors for **Space** and **Block**, a read-only **Network** field showing the Block's CIDR, and a selection counter showing how many virtual networks are currently selected out of the total available.
+The Associations page displays a toolbar at the top with selectors for **Space** and **Block**, a read-only **Network** field showing the Block's CIDR, and a selection counter showing how many virtual networks are currently selected out of the total available. If the Block contains networks that cannot be associated, an **Error** count and a **Blocked** count appear alongside the selection counter.
 
 Below the toolbar is a data grid showing all eligible virtual networks for the selected Block. The grid displays the following columns:
 
@@ -251,24 +253,46 @@ To associate virtual networks with a Block, place a checkmark next to each virtu
 
 Click **Save** to apply your changes. On success, you'll see a confirmation notification and the Block's virtual network list has been updated. Note that saving performs a **full replacement** — the Block's entire list of associated networks is replaced with whatever is currently selected in the grid.
 
+If your selection includes a network that cannot be associated, the **Save** button is disabled and its tooltip names the network to un-check. Because saving replaces the Block's entire network list, a single ineligible entry would otherwise cause the whole save to be rejected, including any unrelated change made at the same time.
+
 ![IPAM Associate vNETs Update](./images/virtual_network_association_update.png)
 
 #### Disassociating Virtual Networks
 
 To disassociate a virtual network from a Block, simply un-check it in the grid and click **Save**. Disassociating a virtual network releases its address prefixes from the Block's utilization calculations, making that space available for new allocations.
 
+#### Blocked Networks
+
+A virtual network can be ineligible for a Block even though its address space falls inside the Block's CIDR range. This happens when one of its prefixes overlaps an **External Network** or an unsettled **CIDR Reservation**, and it disqualifies the entire network rather than the offending prefix alone.
+
+By default, the grid hides these networks, so the list shows only what can actually be associated. To view them, open the action menu and click **Showing Available** to toggle to **Showing All**. Click it again to switch back to the available-only view. When blocked networks are present, the menu item reports how many, for example **Showing Available (3 Blocked)**.
+
+![Toggle Blocked Network Filter](./images/virtual_network_association_toggle_filter.png)
+
+Blocked networks are displayed with an **amber background**. Hovering over the **Name** cell explains what is in the way:
+
+```text
+Cannot be associated: 10.1.4.0/24 overlaps External Network 'DataCenterA' (10.1.4.0/24)
+```
+
+![IPAM Associate vNETs Blocked](./images/virtual_network_association_blocked.png)
+
+Blocked networks cannot be checked, because the association would be rejected when saved. The exception is a network that became blocked *after* it was associated, for example because a prefix was added to it in Azure that collides with an External Network. That network stays checked and selectable so that you can un-check it to resolve the conflict.
+
 #### Stale Associations
 
 A virtual network association can become stale for two reasons:
 
-- **Deleted network** — The virtual network or virtual hub has been removed from Azure entirely. In this case, the prefixes column displays `ErrNotFound` because IPAM can no longer retrieve information about the resource.
-- **Address space mismatch** — The virtual network still exists in Azure, but its address space has been changed so that it no longer overlaps with the Block's CIDR range. In this case, the prefixes column shows the network's **current address space**, making it easier to understand what changed.
+- **Deleted network** — The virtual network or virtual hub has been removed from Azure entirely.
+- **Address space mismatch** — The virtual network still exists in Azure, but its address space has been changed so that it no longer falls within the Block's CIDR range.
 
-Azure IPAM's background reconciliation process detects both conditions and marks the affected associations as inactive. Stale associations are displayed at the top of the grid with a **red background** to draw attention.
+In both cases the prefixes column displays `ErrNotFound`, since Azure IPAM has no address space to report for the network within this Block.
+
+Azure IPAM's background reconciliation process detects both conditions and marks the affected associations as inactive. Stale associations are displayed at the top of the grid with a **red background** to draw attention, and hovering over the **Name** cell explains that the network either no longer exists or no longer has address space within the Block.
 
 ![IPAM Associate vNETs Stale](./images/virtual_network_association_stale.png)
 
-To clean up stale associations, un-check the stale entries and click **Save** to remove them from the Block.
+To clean up stale associations, un-check the stale entries and click **Save** to remove them from the Block. While a stale entry remains checked the **Save** button is disabled, since Azure IPAM cannot save a network list that refers to a resource it is unable to resolve.
 
 #### Admin vs. Non-Admin View
 
@@ -512,6 +536,8 @@ Space
 ```
 
 When Azure IPAM calculates available address space within a Block (for example, when creating a new CIDR reservation or evaluating utilization), it accounts for External Networks alongside Azure virtual networks and existing Reservations. This ensures that externally allocated space is never accidentally double-assigned.
+
+> **Important:** Creating an External Network also withdraws the address space it covers from Azure association. Any Azure virtual network with a prefix overlapping the External Network's CIDR becomes ineligible for that Block, in full, even where its other prefixes are free. Reserve External Networks for address space that is genuinely managed outside of Azure.
 
 ### Managing External Networks via the UI
 
