@@ -57,11 +57,11 @@ export default function DrillDownCellRenderer(props) {
   const handleNavigate = (target) => {
     const { filterField, path } = target;
 
-    // Support single-field (string) or multi-field (array) filter definitions
+    // A drill-down asks for the children of one named parent, so the match is exact.
     if (Array.isArray(filterField)) {
       const filters = filterField.map((entry) => ({
         name: entry.field,
-        operator: "contains",
+        operator: "equals",
         type: "string",
         value: data?.[entry.valueFrom] ?? "",
       }));
@@ -70,7 +70,7 @@ export default function DrillDownCellRenderer(props) {
       navigate(path, {
         state: {
           name: filterField,
-          operator: "contains",
+          operator: "equals",
           type: "string",
           value: value,
         },

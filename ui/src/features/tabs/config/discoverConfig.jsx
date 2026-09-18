@@ -17,6 +17,8 @@ import InfoCellRenderer from '../../DiscoverTable/Utils/InfoCellRenderer';
 import ProgressCellRenderer from '../../DiscoverTable/Utils/ProgressCellRenderer';
 import DrillDownCellRenderer from '../../DiscoverTable/Utils/DrillDownCellRenderer';
 
+import { arrayTextMatcher } from '../../../global/grids';
+
 /**
  * Value formatter for N/A fallback on empty values
  */
@@ -201,7 +203,8 @@ export const vnets = {
         const value = params.data?.parent_blocks;
         return value?.length ? value.join(", ") : "<Unassigned>";
       },
-      filterValueGetter: (params) => params.data?.parent_blocks?.join(", ") ?? ""
+      filterValueGetter: (params) => params.data?.parent_blocks?.join(", ") ?? "",
+      filterParams: { textMatcher: arrayTextMatcher }
     },
     { field: "resource_group", headerName: "Resource Group", flex: 0.75, hide: true },
     { field: "subscription_name", headerName: "Subscription Name", flex: 0.85, hide: true },
@@ -360,7 +363,8 @@ export const vhubs = {
         const value = params.data?.parent_blocks;
         return value?.length ? value.join(", ") : "<Unassigned>";
       },
-      filterValueGetter: (params) => params.data?.parent_blocks?.join(", ") ?? ""
+      filterValueGetter: (params) => params.data?.parent_blocks?.join(", ") ?? "",
+      filterParams: { textMatcher: arrayTextMatcher }
     },
     { field: "subscription_name", headerName: "Subscription Name", flex: 0.75, hide: true },
     { field: "subscription_id", headerName: "Subscription ID", flex: 0.75, hide: true },

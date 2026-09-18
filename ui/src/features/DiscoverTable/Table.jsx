@@ -43,10 +43,19 @@ const closedStyle = {
 // ============================================================================
 
 /**
+ * Maps an IPAM filter operator to its AG Grid text filter type.
+ * Anything unrecognised falls back to a substring match.
+ */
+const TEXT_FILTER_TYPES = {
+  equals: 'equals',
+  contains: 'contains'
+};
+
+/**
  * Converts a single filter entry to its AG Grid filter model fragment.
  */
 function toAgGridFilter(entry) {
-  const { name, type, value } = entry;
+  const { name, operator, type, value } = entry;
 
   if (type === 'number') {
     return {
@@ -61,7 +70,7 @@ function toAgGridFilter(entry) {
   return {
     [name]: {
       filterType: 'text',
-      type: 'contains',
+      type: TEXT_FILTER_TYPES[operator] ?? 'contains',
       filter: value
     }
   };
