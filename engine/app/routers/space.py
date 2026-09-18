@@ -38,6 +38,7 @@ from app.models import (
     ExtSubnetUpdate,
     Network,
     NetworkExpand,
+    NetworkExpandBlocked,
     ReservationExpand,
     Space,
     SpaceBasic,
@@ -1337,6 +1338,7 @@ async def delete_block(
     "/{space}/blocks/{block}/available",
     summary = "List Available Block Networks",
     response_model = Union[
+        List[NetworkExpandBlocked],
         List[NetworkExpand],
         List[str]
     ],
@@ -1346,6 +1348,7 @@ async def available_block_nets(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     expand: bool = Query(False, description="Expand network references to full network objects"),
+    include_blocked: bool = Query(False, description="Include networks which cannot be associated to the target Block"),
     authorization: str = Header(None, description="Azure Bearer token"),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
@@ -1353,14 +1356,24 @@ async def available_block_nets(
     """
     Get a list of Azure networks which can be associated to the target Block.
     This list is a combination on Virtual Networks and vWAN Virtual Hubs.
-    A Network is excluded in full if any of its prefixes inside the Block overlaps
-    an External Network or an outstanding Reservation.
+
+    A network is excluded in full if any of its prefixes within the Block overlaps an External Network or an unfulfilled Reservation, as a Block cannot contain overlapping CIDR ranges.
+
+    - **expand**:
+        - **true**: Networks are returned as full network objects
+        - **false (default)**: Networks are returned as an array of Azure Resource ID's
+    - **include_blocked**:
+        - **true**: Networks which cannot be associated are also returned, each with a **blocked_by** entry naming the External Network(s) and/or unfulfilled Reservation(s) which overlap its prefixes (*requires 'expand'*)
+        - **false (default)**: Networks which cannot be associated are omitted
     """
 
     available_vnets = []
 
     # if not is_admin:
     #     raise HTTPException(status_code=403, detail="API restricted to admins.")
+
+    if include_blocked and not expand:
+        raise HTTPException(status_code=400, detail="Include blocked parameter can only be used with the expand parameter.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
@@ -1379,10 +1392,15 @@ async def available_block_nets(
     # the fields this query already returns, so it serves the expanded response as well.
     net_list = await fetch_network_prefixes(authorization, is_admin)
 
-    resv_cidrs = IPSet(x['cidr'] for x in target_block['resv'] if not x['settledOn'])
-    ext_cidrs = IPSet(x['cidr'] for x in target_block['externals'])
+    # Occupants are kept individually as well as merged, so a blocked Network can be reported
+    # against the specific External Network or Reservation standing in its way.
+    occupants = [
+        {'type': 'reservation', 'name': x['id'], 'cidr': x['cidr']} for x in target_block['resv'] if not x['settledOn']
+    ] + [
+        {'type': 'external', 'name': x['name'], 'cidr': x['cidr']} for x in target_block['externals']
+    ]
 
-    excluded_cidrs = (resv_cidrs | ext_cidrs)
+    excluded_cidrs = IPSet(x['cidr'] for x in occupants)
     block_network = IPNetwork(target_block['cidr'])
 
     for net in net_list:
@@ -1394,10 +1412,22 @@ async def available_block_nets(
 
         # Association is refused for the whole network if any of those prefixes is occupied,
         # so offering the network on the strength of its remaining prefixes would be a lie.
-        if IPSet(in_block) & excluded_cidrs:
+        blocked = bool(IPSet(in_block) & excluded_cidrs)
+
+        if blocked and not include_blocked:
             continue
 
         net['prefixes'] = in_block
+
+        if include_blocked:
+            # Attribution costs a comparison per prefix per occupant, so it is only paid when asked for.
+            net['blocked_by'] = [
+                {**occupant, 'prefix': prefix}
+                for prefix in in_block
+                for occupant in occupants
+                if IPSet([prefix]) & IPSet([occupant['cidr']])
+            ] if blocked else []
+
         available_vnets.append(net)
 
     if expand:

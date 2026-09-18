@@ -1593,6 +1593,56 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
 
       ($externals | Select-Object -ExpandProperty name) | Should -Not -Contain 'ExternalNetPartial'
     }
+
+    # GET /api/spaces/{space}/blocks/{block}/available
+    It 'Reject the Include Blocked Flag Without Expansion' -Tag @('AzureLive') {
+      # An unexpanded response is a list of resource IDs with nowhere to carry a reason,
+      # so the combination is refused rather than silently dropping the attribution.
+      { Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/available?include_blocked=true' } | Should -Throw -ExpectedMessage '*400*'
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}/available
+    It 'Return a Blocked Network and Name What Blocks It' -Tag @('AzureLive') {
+      # Recreated here rather than carried over, so this test sets up the state it asserts on.
+      $partialExternal = @{
+        name = 'ExternalNetPartial'
+        desc = 'Overlaps one prefix of a two prefix network'
+        cidr = '10.1.4.0/24'
+      }
+
+      New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals' $partialExternal
+
+      $available, $availableStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/available?expand=true&include_blocked=true'
+
+      $availableStatus | Should -Be 200
+
+      # The same network the default response withholds is returned once asked for.
+      $blockedNet = $available | Where-Object { $_.id -eq $script:newNetD.Id }
+
+      $blockedNet | Should -Not -BeNullOrEmpty
+      $blockedNet.blocked_by.Count | Should -Be 1
+
+      # The reason has to identify the offending range, not merely report that one exists.
+      $blockedNet.blocked_by[0].type | Should -Be 'external'
+      $blockedNet.blocked_by[0].name | Should -Be 'ExternalNetPartial'
+      $blockedNet.blocked_by[0].cidr | Should -Be '10.1.4.0/24'
+      $blockedNet.blocked_by[0].prefix | Should -Be '10.1.4.0/24'
+
+      # A network clear of the External Network is returned unblocked, so the field
+      # distinguishes between networks rather than being populated for every result.
+      $clearNet = $available | Where-Object { $_.id -eq $script:newNetE.Id }
+
+      $clearNet | Should -Not -BeNullOrEmpty
+      $clearNet.blocked_by.Count | Should -Be 0
+
+      Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetPartial'
+
+      $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
+
+      $externalsStatus | Should -Be 200
+
+      ($externals | Select-Object -ExpandProperty name) | Should -Not -Contain 'ExternalNetPartial'
+    }
   }
 
   Context 'Utilization & Expansion' -Tag @('AzureLive') {

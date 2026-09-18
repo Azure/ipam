@@ -197,6 +197,14 @@ class SubnetUtil(BaseModel):
     size: int
     used: int
 
+class BlockedBy(BaseModel):
+    """An External Network or Reservation occupying one of a network's prefixes."""
+
+    type: Literal['external', 'reservation']
+    name: str
+    cidr: str
+    prefix: str
+
 class NetworkExpand(BaseModel):
     """A network resource with expanded details including its prefixes and Azure resource context."""
 
@@ -206,6 +214,18 @@ class NetworkExpand(BaseModel):
     resource_group: str
     subscription_id: str
     tenant_id: str
+
+class NetworkExpandBlocked(BaseModel):
+    """A network resource with expanded details and the External Network(s) and/or Reservation(s) overlapping its prefixes."""
+
+    name: str
+    id: str
+    prefixes: List[str]
+    resource_group: str
+    subscription_id: str
+    tenant_id: str
+    # Required rather than defaulted, so an unblocked response cannot match this model.
+    blocked_by: List[BlockedBy]
 
 class VNetExpand(BaseModel):
     """A Virtual Network with expanded details including its prefixes, subnets, and Azure resource context."""
