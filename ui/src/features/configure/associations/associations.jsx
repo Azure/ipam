@@ -77,6 +77,10 @@ const Associations = () => {
       headerName: "Name",
       flex: 1,
       tooltipValueGetter: (params) => {
+        if (params.data?.active === false) {
+          return "Cannot be associated: this Network no longer exists in Azure, or is no longer visible to IPAM";
+        }
+
         const blockedBy = params.data?.blocked_by;
 
         if (!blockedBy?.length) return null;
@@ -329,19 +333,31 @@ const Associations = () => {
     return vNets.filter((vnet) => !vnet.blocked_by?.length || associatedIds.has(vnet.id.toLowerCase()));
   }, [vNets, filterBlocked, associatedIds]);
 
-  const hiddenBlockedCount = React.useMemo(() => (
-    (vNets || []).filter((vnet) => vnet.blocked_by?.length && !associatedIds.has(vnet.id.toLowerCase())).length
-  ), [vNets, associatedIds]);
+  const blockedCount = React.useMemo(() => (
+    (vNets || []).filter((vnet) => vnet.blocked_by?.length).length
+  ), [vNets]);
+
+  const errorCount = React.useMemo(() => (
+    (vNets || []).filter((vnet) => vnet.active === false).length
+  ), [vNets]);
 
   const extraMenuItems = React.useMemo(() => [
     {
       icon: filterBlocked ? VisibilityOffOutlined : VisibilityOutlined,
       label: filterBlocked
-        ? `Showing Available${hiddenBlockedCount > 0 ? ` (${hiddenBlockedCount} Blocked)` : ''}`
+        ? `Showing Available${blockedCount > 0 ? ` (${blockedCount} Blocked)` : ''}`
         : 'Showing All',
       onClick: () => setFilterBlocked(prev => !prev)
     }
-  ], [filterBlocked, hiddenBlockedCount]);
+  ], [filterBlocked, blockedCount]);
+
+  // A blocked or unresolved Network anywhere in the selection fails the whole save, so it is called
+  // out here rather than left to a refusal from the engine.
+  const refusedSelection = React.useMemo(() => (
+    selectedRows.filter((row) => row.blocked_by?.length || row.active === false)
+  ), [selectedRows]);
+
+  const countsPending = sending || !subscriptions || !spaces || !blocks || !vNets || refreshing;
 
   // Handle selection changes from the grid
   const handleSelectionChanged = React.useCallback((rows) => {
@@ -512,16 +528,50 @@ const Associations = () => {
                 userSelect: 'none'
               }}>
               {
-                (sending || !subscriptions || !spaces || !blocks || !vNets || refreshing ) ?
+                countsPending ?
                 <span style={{ fontStyle: 'italic', userSelect: 'none' }}>(...)</span> :
                 <span style={{ fontStyle: 'italic', userSelect: 'none' }}>({selectedRows.length}/{vNets ? vNets.length : '?'})</span>
               }
             </Typography>
           </Box>
+          {
+            !countsPending && errorCount > 0 &&
+            <Box sx={{ ml: 2 }}>
+              <Typography
+                variant='body1'
+                color='error.main'
+                sx={{
+                  display: 'block',
+                  fontStyle: 'italic',
+                  userSelect: 'none'
+                }}>
+                Error: {errorCount}
+              </Typography>
+            </Box>
+          }
+          {
+            !countsPending && blockedCount > 0 &&
+            <Box sx={{ ml: 2 }}>
+              <Typography
+                variant='body1'
+                color='warning.main'
+                sx={{
+                  display: 'block',
+                  fontStyle: 'italic',
+                  userSelect: 'none'
+                }}>
+                Blocked: {blockedCount}
+              </Typography>
+            </Box>
+          }
         </Box>
         <Box sx={{ display: 'flex', ml: 'auto' }}>
           <Tooltip
-            title="Save"
+            title={
+              refusedSelection.length > 0
+              ? `Deselect ${refusedSelection.map((row) => row.name).join(', ')}, which cannot be associated to this Block`
+              : "Save"
+            }
             placement="top"
             style={{
               visibility: (unchanged || refreshing) ? 'hidden' : 'visible'
@@ -532,7 +582,7 @@ const Associations = () => {
                 color="success"
                 aria-label="save associations"
                 component="span"
-                disabled={sending}
+                disabled={sending || refusedSelection.length > 0}
                 onClick={onSubmit}
               >
                 <SaveAlt />
