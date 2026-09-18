@@ -1353,7 +1353,8 @@ async def available_block_nets(
     """
     Get a list of Azure networks which can be associated to the target Block.
     This list is a combination on Virtual Networks and vWAN Virtual Hubs.
-    Any Networks which overlap outstanding reservations are excluded.
+    A Network is excluded in full if any of its prefixes inside the Block overlaps
+    an External Network or an outstanding Reservation.
     """
 
     available_vnets = []
@@ -1382,13 +1383,22 @@ async def available_block_nets(
     ext_cidrs = IPSet(x['cidr'] for x in target_block['externals'])
 
     excluded_cidrs = (resv_cidrs | ext_cidrs)
+    block_network = IPNetwork(target_block['cidr'])
 
     for net in net_list:
-        valid = list(filter(lambda x: (IPNetwork(x) in IPNetwork(target_block['cidr']) and not (IPSet([x]) & excluded_cidrs)), net['prefixes']))
+        # Prefixes outside the Block are not consulted, matching the association handlers.
+        in_block = [x for x in net['prefixes'] if IPNetwork(x) in block_network]
 
-        if valid:
-            net['prefixes'] = valid
-            available_vnets.append(net)
+        if not in_block:
+            continue
+
+        # Association is refused for the whole network if any of those prefixes is occupied,
+        # so offering the network on the strength of its remaining prefixes would be a lie.
+        if IPSet(in_block) & excluded_cidrs:
+            continue
+
+        net['prefixes'] = in_block
+        available_vnets.append(net)
 
     if expand:
         return available_vnets

@@ -1560,6 +1560,39 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
 
       ($externals | Select-Object -ExpandProperty name) | Should -Not -Contain $script:forceDeleteEndpointExternal.name
     }
+
+    # GET /api/spaces/{space}/blocks/{block}/available
+    It 'Exclude an Available Network Whose In-Block Prefix Overlaps an External Network' -Tag @('AzureLive') {
+      # TestVNet04 holds two prefixes inside TestBlockA and was never associated, so an
+      # External Network can still be created over one of them.
+      $partialExternal = @{
+        name = 'ExternalNetPartial'
+        desc = 'Overlaps one prefix of a two prefix network'
+        cidr = '10.1.4.0/24'
+      }
+
+      New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals' $partialExternal
+
+      $available, $availableStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/available?expand=true'
+
+      $availableStatus | Should -Be 200
+
+      # Association is refused for the whole network, so offering it on the strength of its
+      # remaining prefix would hand back a network that cannot be associated.
+      ($available | Select-Object -ExpandProperty id) | Should -Not -Contain $script:newNetD.Id
+
+      # A network clear of the External Network is still offered, so the assertion above
+      # cannot pass by the endpoint returning nothing at all.
+      ($available | Select-Object -ExpandProperty id) | Should -Contain $script:newNetE.Id
+
+      Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetPartial'
+
+      $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
+
+      $externalsStatus | Should -Be 200
+
+      ($externals | Select-Object -ExpandProperty name) | Should -Not -Contain 'ExternalNetPartial'
+    }
   }
 
   Context 'Utilization & Expansion' -Tag @('AzureLive') {
