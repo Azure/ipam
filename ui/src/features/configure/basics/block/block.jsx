@@ -143,7 +143,7 @@ export default function BlockDataGrid(props) {
   };
 
   // Custom no rows overlay component
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <React.Fragment>
         { selectedSpace
@@ -333,7 +333,7 @@ export default function BlockDataGrid(props) {
           onRowClick={handleRowClick}
           selectedRow={selectedBlock}
           idProperty="name"
-          noRowsOverlay={NoRowsOverlay}
+          noRowsOverlay={noRowsOverlay}
         />
       </GridBody>
     </React.Fragment>

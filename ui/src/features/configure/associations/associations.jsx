@@ -367,7 +367,7 @@ const Associations = () => {
   }, [isAdmin]);
 
   // No rows overlay component
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
         <Typography
@@ -636,7 +636,7 @@ const Associations = () => {
             onRowSelectionChanged={handleSelectionChanged}
             rowClassRules={rowClassRules}
             isRowSelectable={isRowSelectable}
-            noRowsOverlay={NoRowsOverlay}
+            noRowsOverlay={noRowsOverlay}
           />
         </Box>
       </Box>

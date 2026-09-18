@@ -427,7 +427,7 @@ const Reservations = () => {
     })();
   }
 
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <React.Fragment>
         { selectedBlock
@@ -629,7 +629,7 @@ const Reservations = () => {
               checkboxSelect={true}
               extraMenuItems={extraMenuItems}
               isLoading={sending || refreshing}
-              noRowsOverlay={NoRowsOverlay}
+              noRowsOverlay={noRowsOverlay}
               actionsCellRenderer={actionsCellRenderer}
             />
           </Box>

@@ -115,7 +115,7 @@ const Subnets = (props) => {
   }, [subnets, setSelectedSubnet]);
 
   // No rows overlay component
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
         <Typography
@@ -187,7 +187,7 @@ const Subnets = (props) => {
             isLoading={selectedExternal && refreshing}
             onRowSelectionChanged={handleRowSelectionChanged}
             extraMenuItems={extraMenuItems}
-            noRowsOverlay={NoRowsOverlay}
+            noRowsOverlay={noRowsOverlay}
             noBorder={true}
           />
         </Box>

@@ -399,7 +399,7 @@ const OverlayContext = React.createContext(null);
 /**
  * CombinedOverlay - Single overlay component for both loading and no-rows states.
  *
- * Reads the consumer-provided noRowsOverlay component from OverlayContext
+ * Reads the consumer-provided noRowsOverlay element from OverlayContext
  * rather than from AG Grid props, so that React context reactivity drives
  * re-renders independently of AG Grid's overlay lifecycle.
  *
@@ -408,7 +408,7 @@ const OverlayContext = React.createContext(null);
  */
 const CombinedOverlay = React.memo(({ overlayType }) => {
   const overlayConfig = React.use(OverlayContext);
-  const NoRowsContent = overlayConfig?.noRowsOverlay;
+  const noRowsContent = overlayConfig?.noRowsOverlay;
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
@@ -445,8 +445,8 @@ const CombinedOverlay = React.memo(({ overlayType }) => {
   }
 
   // noRows / noMatchingRows
-  if (NoRowsContent) {
-    return <NoRowsContent />;
+  if (noRowsContent) {
+    return noRowsContent;
   }
 
   return (
@@ -500,7 +500,7 @@ CombinedOverlay.displayName = 'CombinedOverlay';
  * @param {Object} props.rowClassRules - AG Grid row class rules for conditional row styling
  * @param {Function} props.isRowSelectable - Callback receiving a row node, returning false for rows which cannot be selected
  * @param {boolean} props.isLoading - Show loading overlay (default: false)
- * @param {React.Component} props.noRowsOverlay - Custom component to display when grid has no rows (reactive via OverlayContext)
+ * @param {React.ReactNode} props.noRowsOverlay - Custom element to display when grid has no rows (reactive via OverlayContext)
  * @param {boolean} props.copyOnDoubleClick - Copy cell value to clipboard on double-click (default: true)
  * @param {string} props.idProperty - Property to use as row ID (default: 'id')
  * @param {boolean} props.noBorder - Remove grid wrapper border (default: false) - useful when grid is inside a bordered container

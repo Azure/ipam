@@ -94,7 +94,7 @@ const OverlayContext = React.createContext(null);
 const CombinedOverlay = React.memo(({ overlayType }) => {
   const overlayConfig = React.use(OverlayContext);
   const loadingMessage = overlayConfig?.loadingMessage;
-  const NoRowsContent = overlayConfig?.noRowsOverlay;
+  const noRowsContent = overlayConfig?.noRowsOverlay;
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
@@ -131,8 +131,8 @@ const CombinedOverlay = React.memo(({ overlayType }) => {
   }
 
   // noRows / noMatchingRows
-  if (NoRowsContent) {
-    return <NoRowsContent />;
+  if (noRowsContent) {
+    return noRowsContent;
   }
 
   return (

@@ -105,7 +105,7 @@ const Networks = (props) => {
   }, [externals, setSelectedExternal]);
 
   // No rows overlay component
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
         <Typography
@@ -166,7 +166,7 @@ const Networks = (props) => {
             isLoading={refreshing}
             onRowSelectionChanged={handleRowSelectionChanged}
             extraMenuItems={extraMenuItems}
-            noRowsOverlay={NoRowsOverlay}
+            noRowsOverlay={noRowsOverlay}
             noBorder={true}
           />
         </Box>

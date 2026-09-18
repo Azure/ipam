@@ -151,6 +151,14 @@ function RenderType(props) {
   );
 }
 
+function TypeHeaderComponent() {
+  return (
+    <span style={{ display: "flex", height: "100%", width: "100%", alignItems: "center", justifyContent: "center" }}>
+      <PersonSearch />
+    </span>
+  );
+}
+
 const popperStyle = {
   popper: {
     width: "fit-content"
@@ -179,12 +187,6 @@ export default function Administration() {
 
   const adminLoadedRef = React.useRef(false);
 
-  const TypeHeaderComponent = React.useCallback(() => (
-    <span style={{ display: "flex", height: "100%", width: "100%", alignItems: "center", justifyContent: "center" }}>
-      <PersonSearch />
-    </span>
-  ), []);
-
   const columns = React.useMemo(() => [
     {
       field: "type",
@@ -205,7 +207,7 @@ export default function Administration() {
     { field: "name", headerName: "Name", flex: 0.5, filter: true },
     { field: "email", headerName: "Email", flex: 1, filter: true, valueFormatter: (params) => params.value || "N/A" },
     { field: "id", headerName: "Object ID", flex: 0.75, filter: true }
-  ], [TypeHeaderComponent]);
+  ], []);
 
   const actionsCellRenderer = React.useCallback((params) => {
     return <RenderDelete data={params.data} />;
@@ -326,7 +328,7 @@ export default function Administration() {
     setSelectedId(prevId => prevId === data.id ? null : data.id);
   }, []);
 
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <React.Fragment>
         <Shrug />
@@ -472,7 +474,7 @@ export default function Administration() {
                 rowData={admins}
                 columnDefs={columns}
                 isLoading={loading || sending}
-                noRowsOverlay={NoRowsOverlay}
+                noRowsOverlay={noRowsOverlay}
                 onRowClicked={handleRowClicked}
                 actionsCellRenderer={actionsCellRenderer}
               />

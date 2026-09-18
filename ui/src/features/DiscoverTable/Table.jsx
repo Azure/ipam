@@ -237,7 +237,7 @@ export default function DiscoverTable(props) {
   }
 
   // No rows overlay component
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <React.Fragment>
         <Shrug />
@@ -263,7 +263,7 @@ export default function DiscoverTable(props) {
           columnDefs={columns}
           idProperty={config.idProp}
           isLoading={loading}
-          noRowsOverlay={NoRowsOverlay}
+          noRowsOverlay={noRowsOverlay}
           actionsCellRenderer={actionsCellRenderer}
           onGridReady={handleGridReady}
         />

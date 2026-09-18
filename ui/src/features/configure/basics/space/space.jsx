@@ -120,7 +120,7 @@ export default function SpaceDataGrid(props) {
   };
 
   // Custom no rows overlay component
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <React.Fragment>
         <Typography
@@ -268,7 +268,7 @@ export default function SpaceDataGrid(props) {
           onRowClick={handleRowClick}
           selectedRow={selectedSpace}
           idProperty="name"
-          noRowsOverlay={NoRowsOverlay}
+          noRowsOverlay={noRowsOverlay}
           isLoading={!spaces}
         />
       </GridBody>

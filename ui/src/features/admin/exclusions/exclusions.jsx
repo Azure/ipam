@@ -218,7 +218,7 @@ export default function ManageExclusions() {
     });
   }
 
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <React.Fragment>
         <Shrug />
@@ -273,7 +273,7 @@ export default function ManageExclusions() {
                 rowData={gridData}
                 columnDefs={columns}
                 isLoading={loading || sending || !subscriptions || !loadedExclusions}
-                noRowsOverlay={NoRowsOverlay}
+                noRowsOverlay={noRowsOverlay}
                 extraMenuItems={extraMenuItems}
                 rowClassRules={rowClassRules}
                 onRowClicked={(event) => onRowClick(event.data)}
