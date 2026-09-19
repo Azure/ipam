@@ -89,12 +89,17 @@ function mapFilterStateToAgGridModel(filterState) {
   // Array of filters (multi-field drill-down)
   if (Array.isArray(filterState)) {
     if (filterState.length === 0) return null;
-    return filterState.reduce((model, entry) => {
+
+    const model = filterState.reduce((acc, entry) => {
       if (entry?.name && entry?.value) {
-        Object.assign(model, toAgGridFilter(entry));
+        Object.assign(acc, toAgGridFilter(entry));
       }
-      return model;
+      return acc;
     }, {});
+
+    // An empty model would clear every filter, which reads as a successful
+    // drill-down into the full table. Treat it as no filter at all instead.
+    return Object.keys(model).length > 0 ? model : null;
   }
 
   // Single filter object (search bar / simple drill-down)

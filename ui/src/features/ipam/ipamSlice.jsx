@@ -402,6 +402,18 @@ export const updateMeAsync = createAsyncThunk(
   }
 );
 
+/**
+ * Stamps a Block with its row identity.
+ *
+ * A Block name is only unique within its Space, so the two are paired. This has
+ * to be reapplied whenever either name changes, or the identity goes stale.
+ */
+const setBlockId = (block) => {
+  block.id = `${block.name}@${block.parent_space}`;
+
+  return block;
+};
+
 export const ipamSlice = createSlice({
   name: 'ipam',
   initialState,
@@ -429,9 +441,8 @@ export const ipamSlice = createSlice({
             block.parent_space = space.name;
             block.available = (block.size - block.used);
             block.utilization = Math.round((block.used / block.size) * 100);
-            block.id = `${block.name}@${block.parent_space}`;
 
-            return block;
+            return setBlockId(block);
           });
 
           return space;
@@ -473,7 +484,7 @@ export const ipamSlice = createSlice({
                 block.parent_space = updatedSpace.name;
               }
 
-              return block;
+              return setBlockId(block);
             });
 
             const renameSpace = (network) => {
@@ -523,7 +534,7 @@ export const ipamSlice = createSlice({
         newBlock.available = 0;
         newBlock.utilization = 0;
 
-        state.spaces[spaceIndex].blocks.push(newBlock);
+        state.spaces[spaceIndex].blocks.push(setBlockId(newBlock));
       })
       .addCase(createBlockAsync.rejected, (state, action) => {
         console.log("createBlockAsync Rejected");
@@ -542,6 +553,7 @@ export const ipamSlice = createSlice({
 
           if(blockIndex > -1) {
             state.spaces[spaceIndex].blocks[blockIndex] = merge(state.spaces[spaceIndex].blocks[blockIndex], updatedBlock);
+            setBlockId(state.spaces[spaceIndex].blocks[blockIndex]);
 
             if(blockName !== updatedBlock.name) {
               const renameBlock = (network) => {
@@ -597,6 +609,34 @@ export const ipamSlice = createSlice({
           if(blockIndex > -1) {
             state.spaces[spaceIndex].blocks[blockIndex].vnets = action.payload;
           }
+        }
+
+        // The engine derives parent_containers by cross referencing the Space
+        // documents, so the networks are patched here rather than refetched.
+        // Azure reports resource IDs with inconsistent casing.
+        const associated = new Set(action.payload.map((network) => network.id.toLowerCase()));
+
+        const reassociate = (network) => {
+          const containers = Array.isArray(network.parent_containers) ? network.parent_containers : [];
+
+          // This Block is dropped and re-added, so the payload decides membership.
+          const others = containers.filter((container) => (
+            !(container.space === spaceName && container.block === blockName)
+          ));
+
+          network.parent_containers = associated.has(network.id.toLowerCase())
+            ? [...others, { space: spaceName, block: blockName }]
+            : others;
+
+          return network;
+        };
+
+        if(Array.isArray(state.vNets)) {
+          state.vNets = state.vNets.map(reassociate);
+        }
+
+        if(Array.isArray(state.vHubs)) {
+          state.vHubs = state.vHubs.map(reassociate);
         }
       })
       .addCase(replaceBlockNetworksAsync.rejected, (state, action) => {
@@ -957,9 +997,8 @@ export const ipamSlice = createSlice({
               block.parent_space = space.name;
               block.available = (block.size - block.used);
               block.utilization = Math.round((block.used / block.size) * 100);
-              block.id = `${block.name}@${block.parent_space}`;
 
-              return block;
+              return setBlockId(block);
             });
 
             return space;
@@ -1218,38 +1257,37 @@ export const selectUpdatedNetworks = createSelector(
 );
 
 // ============================================================================
-// Drill-Down Parent Selectors
-// Pre-computed Sets for O(1) lookups used by DrillDownCellRenderer
+// Drill-Down Index
+// Pre-computed Sets of parent identities, used by DrillDownCellRenderer to
+// decide whether a given row actually has children. These are keyed on
+// identity rather than name, because only a Space name is unique on its own.
 // ============================================================================
 
-export const selectParentSpaceNames = createSelector(
-  [selectBlocks],
-  (blocks) => new Set(blocks?.map((b) => b.parent_space) ?? [])
-);
+/**
+ * Normalizes a value into a drill-down index key.
+ *
+ * ARM does not guarantee the casing of resource ID segments, so both sides of
+ * a comparison are lowered before they are matched.
+ */
+export const drillKey = (value) => (value == null ? null : String(value).toLowerCase());
 
-export const selectBlocksWithVNets = createSelector(
-  [selectVNets],
-  (vnets) => new Set(vnets?.flatMap((v) => v.parent_containers?.map((c) => c.block) ?? []) ?? [])
-);
+// A Block name is only unique within its Space, so the two are paired.
+const blockDrillKey = (block, space) => drillKey(`${block}@${space}`);
 
-export const selectBlocksWithVHubs = createSelector(
-  [selectVHubs],
-  (vhubs) => new Set(vhubs?.flatMap((v) => v.parent_containers?.map((c) => c.block) ?? []) ?? [])
-);
-
-export const selectParentVNetNames = createSelector(
-  [selectSubnets],
-  (subnets) => new Set(subnets?.map((s) => s.vnet_name).filter(Boolean) ?? [])
-);
-
-export const selectParentSubnetNames = createSelector(
-  [selectEndpoints],
-  (endpoints) => new Set(endpoints?.map((e) => e.subnet_name).filter(Boolean) ?? [])
-);
-
-export const selectParentNetworkNames = createSelector(
-  [selectEndpoints],
-  (endpoints) => new Set(endpoints?.map((e) => e.vnet_name).filter(Boolean) ?? [])
+export const selectDrillIndex = createSelector(
+  [selectBlocks, selectVNets, selectVHubs, selectSubnets, selectEndpoints],
+  (blocks, vnets, vhubs, subnets, endpoints) => ({
+    blocksBySpace: new Set(blocks?.map((b) => drillKey(b.parent_space)).filter(Boolean) ?? []),
+    vnetsByBlock: new Set(
+      vnets?.flatMap((v) => v.parent_containers?.map((c) => blockDrillKey(c.block, c.space)) ?? []) ?? []
+    ),
+    vhubsByBlock: new Set(
+      vhubs?.flatMap((v) => v.parent_containers?.map((c) => blockDrillKey(c.block, c.space)) ?? []) ?? []
+    ),
+    subnetsByVNet: new Set(subnets?.map((s) => drillKey(s.vnet_id)).filter(Boolean) ?? []),
+    endpointsBySubnet: new Set(endpoints?.map((e) => drillKey(e.subnet_id)).filter(Boolean) ?? []),
+    endpointsByNetwork: new Set(endpoints?.map((e) => drillKey(e.vnet_id)).filter(Boolean) ?? [])
+  })
 );
 
 const getSettingName = (_, settingName) => settingName;

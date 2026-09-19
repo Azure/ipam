@@ -12,6 +12,8 @@ import {
 
 import { SubdirectoryArrowRight } from "@mui/icons-material";
 
+import { selectDrillIndex, drillKey } from "../../ipam/ipamSlice";
+
 /**
  * AG Grid cell renderer that displays the cell value with an optional
  * drill-down icon. The icon navigates to a child Discover tab with a
@@ -19,63 +21,42 @@ import { SubdirectoryArrowRight } from "@mui/icons-material";
  *
  * cellRendererParams:
  *   targets: Array<{
- *     label: string,          - Menu item label (e.g. "Blocks")
- *     path: string,           - Route path (e.g. "/discover/block")
- *     filterField: string | Array<{ field: string, valueFrom: string }>,
- *       - string: single filter using the cell value (e.g. "parent_space")
- *       - array:  multi-field filter; each entry maps a target column (field)
- *                 to a source row field (valueFrom) resolved from props.data
- *     hasChildrenSelector: Function - Redux selector returning a Set of parent names
+ *     label: string,   - Menu item label (e.g. "Blocks")
+ *     path: string,    - Route path (e.g. "/discover/block")
+ *     index: string,   - Key into the drill-down index, naming the Set of
+ *                        parent identities that actually have children
+ *     keyFrom: string, - Field on this row holding its identity, matched
+ *                        against the index (e.g. "id")
+ *     filter: Array<{ field: string, valueFrom: string }>
+ *                      - Filter applied on the child tab; each entry maps a
+ *                        target column (field) to a source row field
+ *                        (valueFrom) resolved from props.data
  *   }>
  */
-/**
- * Internal hook that resolves which targets have children for a given value.
- * Accepts up to two targets (the maximum in our config). Each selector is
- * called unconditionally to satisfy the rules-of-hooks constraint.
- */
-function useActiveTargets(targets, value) {
-  const set0 = useSelector(targets[0]?.hasChildrenSelector ?? selectNone);
-  const set1 = useSelector(targets[1]?.hasChildrenSelector ?? selectNone);
-  const sets = [set0, set1];
-
-  return targets.filter((_, i) => sets[i]?.has(value));
-}
-
-// Fallback selector that returns an empty Set (never matches)
-const emptySet = new Set();
-const selectNone = () => emptySet;
-
 export default function DrillDownCellRenderer(props) {
   const { value, data, colDef } = props;
   const { targets = [] } = colDef.cellRendererParams || {};
 
   const navigate = useNavigate();
+  const drillIndex = useSelector(selectDrillIndex);
   const [menuAnchor, setMenuAnchor] = React.useState(null);
 
-  const activeTargets = useActiveTargets(targets, value);
+  const activeTargets = targets.filter((target) => {
+    const key = drillKey(data?.[target.keyFrom]);
+
+    return key !== null && Boolean(drillIndex[target.index]?.has(key));
+  });
 
   const handleNavigate = (target) => {
-    const { filterField, path } = target;
+    // A drill-down asks for the children of one named parent, so every match is exact.
+    const filters = target.filter.map((entry) => ({
+      name: entry.field,
+      operator: "equals",
+      type: "string",
+      value: data?.[entry.valueFrom] ?? ""
+    }));
 
-    // A drill-down asks for the children of one named parent, so the match is exact.
-    if (Array.isArray(filterField)) {
-      const filters = filterField.map((entry) => ({
-        name: entry.field,
-        operator: "equals",
-        type: "string",
-        value: data?.[entry.valueFrom] ?? "",
-      }));
-      navigate(path, { state: filters });
-    } else {
-      navigate(path, {
-        state: {
-          name: filterField,
-          operator: "equals",
-          type: "string",
-          value: value,
-        },
-      });
-    }
+    navigate(target.path, { state: filters });
   };
 
   const handleIconClick = (e) => {
