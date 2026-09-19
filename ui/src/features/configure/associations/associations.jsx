@@ -41,6 +41,27 @@ import {
 const vNetPattern = "/Microsoft.Network/virtualNetworks/";
 const vHubPattern = "/Microsoft.Network/virtualHubs/";
 
+function LegendItem({ color, label }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+      <Box
+        sx={{
+          width: 12,
+          height: 12,
+          flexShrink: 0,
+          borderRadius: '2px',
+          backgroundColor: color,
+          border: '1px solid',
+          borderColor: 'divider'
+        }}
+      />
+      <Typography variant='body1' sx={{ fontStyle: 'italic', userSelect: 'none' }}>
+        {label}
+      </Typography>
+    </Box>
+  );
+}
+
 const Associations = () => {
   const { enqueueSnackbar } = useSnackbar();
 
@@ -70,36 +91,43 @@ const Associations = () => {
   const dispatch = useDispatch();
   const theme = useTheme();
 
+  // Shared by the grid row styling and the toolbar legend so the two cannot drift apart.
+  // Selected mirrors AG Grid's own accentMix(0.12) over the grid background, not the toolbar's.
+  const rowColors = React.useMemo(() => ({
+    selected: `color-mix(in srgb, #2196f3 12%, ${theme.palette.mode === 'dark' ? 'hsl(217, 0%, 17%)' : '#ffffff'})`,
+    error: theme.palette.mode === 'dark' ? 'rgb(120, 40, 40)' : 'rgb(255, 210, 210)',
+    blocked: theme.palette.mode === 'dark' ? 'rgb(120, 90, 30)' : 'rgb(255, 235, 200)'
+  }), [theme]);
+
+  // Attached to every column, so the reason is reachable wherever the pointer happens to land.
+  const refusalTooltip = React.useCallback((params) => {
+    if (params.data?.active === false) {
+      return "Cannot be associated: this Network no longer exists in Azure, or no longer has address space within this Block";
+    }
+
+    const blockedBy = params.data?.blocked_by;
+
+    if (!blockedBy?.length) return null;
+
+    const reasons = blockedBy.map((x) => (
+      `${x.prefix} overlaps ${x.type === 'external' ? 'External Network' : 'Reservation'} '${x.name}' (${x.cidr})`
+    ));
+
+    return `Cannot be associated:\n${reasons.join('\n')}`;
+  }, []);
+
   // Column definitions for AG Grid
   const columns = React.useMemo(() => [
-    {
-      field: "name",
-      headerName: "Name",
-      flex: 1,
-      tooltipValueGetter: (params) => {
-        if (params.data?.active === false) {
-          return "Cannot be associated: this Network no longer exists in Azure, or no longer has address space within this Block";
-        }
-
-        const blockedBy = params.data?.blocked_by;
-
-        if (!blockedBy?.length) return null;
-
-        const reasons = blockedBy.map((x) => (
-          `${x.prefix} overlaps ${x.type === 'external' ? 'External Network' : 'Reservation'} '${x.name}' (${x.cidr})`
-        ));
-
-        return `Cannot be associated: ${reasons.join(', ')}`;
-      }
-    },
-    { field: "type", headerName: "Type", flex: 0.45 },
-    { field: "resource_group", headerName: "Resource Group", flex: 1 },
-    { field: "subscription_name", headerName: "Subscription Name", flex: 1 },
-    { field: "subscription_id", headerName: "Subscription ID", flex: 1, hide: true },
+    { field: "name", headerName: "Name", flex: 1, tooltipValueGetter: refusalTooltip },
+    { field: "type", headerName: "Type", flex: 0.45, tooltipValueGetter: refusalTooltip },
+    { field: "resource_group", headerName: "Resource Group", flex: 1, tooltipValueGetter: refusalTooltip },
+    { field: "subscription_name", headerName: "Subscription Name", flex: 1, tooltipValueGetter: refusalTooltip },
+    { field: "subscription_id", headerName: "Subscription ID", flex: 1, hide: true, tooltipValueGetter: refusalTooltip },
     {
       field: "prefixes",
       headerName: "Prefixes",
       flex: 0.75,
+      tooltipValueGetter: refusalTooltip,
       valueGetter: (params) => {
         const value = params.data?.prefixes;
         return Array.isArray(value) ? value.join(', ') : '';
@@ -109,7 +137,7 @@ const Associations = () => {
         return Array.isArray(value) ? value.join(' ') : '';
       }
     },
-  ], []);
+  ], [refusalTooltip]);
 
   // Row class rules for AG Grid (stale vs blocked vs normal rows)
   const rowClassRules = React.useMemo(() => ({
@@ -341,15 +369,23 @@ const Associations = () => {
     (vNets || []).filter((vnet) => vnet.active === false).length
   ), [vNets]);
 
+  // gridData is vNets when nothing is filtered, so this is zero without consulting filterBlocked.
+  // It can be lower than blockedCount, as a blocked Network which is associated is never hidden.
+  const hiddenCount = (vNets?.length ?? 0) - (gridData?.length ?? 0);
+
+  const blockedLabel = hiddenCount === 0
+    ? `Blocked: ${blockedCount}`
+    : hiddenCount === blockedCount
+      ? `Blocked: ${blockedCount} (Hidden)`
+      : `Blocked: ${blockedCount} (${hiddenCount} Hidden)`;
+
   const extraMenuItems = React.useMemo(() => [
     {
       icon: filterBlocked ? VisibilityOffOutlined : VisibilityOutlined,
-      label: filterBlocked
-        ? `Showing Available${blockedCount > 0 ? ` (${blockedCount} Blocked)` : ''}`
-        : 'Showing All',
+      label: filterBlocked ? 'Showing Available' : 'Showing All',
       onClick: () => setFilterBlocked(prev => !prev)
     }
-  ], [filterBlocked, blockedCount]);
+  ], [filterBlocked]);
 
   // A blocked or unresolved Network anywhere in the selection fails the whole save, so it is called
   // out here rather than left to a refusal from the engine.
@@ -507,63 +543,13 @@ const Associations = () => {
             }}
           />
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'row', ml: 4 }}>
-          <Box sx={{ mr: 1 }}>
-            <Typography
-              variant='body1'
-              sx={{
-                display: 'block',
-                fontStyle: 'italic',
-                userSelect: 'none'
-              }}>
-              Selected:
-            </Typography>
-          </Box>
-          <Box>
-            <Typography
-              variant='body1'
-              sx={{
-                display: 'block',
-                fontStyle: 'italic',
-                userSelect: 'none'
-              }}>
-              {
-                countsPending ?
-                <span style={{ fontStyle: 'italic', userSelect: 'none' }}>(...)</span> :
-                <span style={{ fontStyle: 'italic', userSelect: 'none' }}>({selectedRows.length}/{vNets ? vNets.length : '?'})</span>
-              }
-            </Typography>
-          </Box>
-          {
-            !countsPending && errorCount > 0 &&
-            <Box sx={{ ml: 2 }}>
-              <Typography
-                variant='body1'
-                color='error.main'
-                sx={{
-                  display: 'block',
-                  fontStyle: 'italic',
-                  userSelect: 'none'
-                }}>
-                Error: {errorCount}
-              </Typography>
-            </Box>
-          }
-          {
-            !countsPending && blockedCount > 0 &&
-            <Box sx={{ ml: 2 }}>
-              <Typography
-                variant='body1'
-                color='warning.main'
-                sx={{
-                  display: 'block',
-                  fontStyle: 'italic',
-                  userSelect: 'none'
-                }}>
-                Blocked: {blockedCount}
-              </Typography>
-            </Box>
-          }
+        <Box sx={{ display: 'flex', flexDirection: 'row', ml: 4, alignItems: 'center', gap: 2 }}>
+          <LegendItem
+            color={rowColors.selected}
+            label={countsPending ? 'Selected: ...' : `Selected: ${selectedRows.length}/${vNets ? vNets.length : '?'}`}
+          />
+          { !countsPending && errorCount > 0 && <LegendItem color={rowColors.error} label={`Error: ${errorCount}`} /> }
+          { !countsPending && blockedCount > 0 && <LegendItem color={rowColors.blocked} label={blockedLabel} /> }
         </Box>
         <Box sx={{ display: 'flex', ml: 'auto' }}>
           <Tooltip
@@ -613,13 +599,13 @@ const Associations = () => {
             // Stale row styling (vNets no longer present)
             // Override selection background to prevent AG Grid's blue tint
             '& .ag-row.ipam-block-vnet-stale': {
-              '--ag-selected-row-background-color': theme.palette.mode === 'dark' ? 'rgb(120, 40, 40)' : 'rgb(255, 210, 210)',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgb(120, 40, 40) !important' : 'rgb(255, 210, 210) !important',
+              '--ag-selected-row-background-color': rowColors.error,
+              backgroundColor: `${rowColors.error} !important`,
             },
             // Blocked row styling (vNets overlapping an External Network or Reservation)
             '& .ag-row.ipam-block-vnet-blocked': {
-              '--ag-selected-row-background-color': theme.palette.mode === 'dark' ? 'rgb(120, 90, 30)' : 'rgb(255, 235, 200)',
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgb(120, 90, 30) !important' : 'rgb(255, 235, 200) !important',
+              '--ag-selected-row-background-color': rowColors.blocked,
+              backgroundColor: `${rowColors.blocked} !important`,
             },
           }}
         >
