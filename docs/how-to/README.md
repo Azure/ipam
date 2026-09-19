@@ -265,19 +265,21 @@ To disassociate a virtual network from a Block, simply un-check it in the grid a
 
 A virtual network can be ineligible for a Block even though its address space falls inside the Block's CIDR range. This happens when one of its prefixes overlaps an **External Network** or an unsettled **CIDR Reservation**, and it disqualifies the entire network rather than the offending prefix alone.
 
-By default, the grid hides these networks, so the list shows only what can actually be associated. To view them, open the action menu and click **Showing Available** to toggle to **Showing All**. Click it again to switch back to the available-only view. When blocked networks are present, the menu item reports how many, for example **Showing Available (3 Blocked)**.
+By default, the grid hides these networks, so the list shows only what can actually be associated. To view them, open the action menu and click **Showing Available** to toggle to **Showing All**. Click it again to switch back to the available-only view.
 
 ![Toggle Blocked Network Filter](./images/virtual_network_association_toggle_filter.png)
 
-Blocked networks are displayed with an **amber background**. Hovering over the **Name** cell explains what is in the way:
+Blocked networks are displayed with an **amber background**. Hovering over any cell in the row explains what is in the way, listing one entry per overlapping range:
 
 ```text
-Cannot be associated: 10.1.4.0/24 overlaps External Network 'DataCenterA' (10.1.4.0/24)
+Cannot be associated:
+10.1.4.0/24 overlaps External Network 'DataCenterA' (10.1.4.0/24)
+10.1.9.0/24 overlaps Reservation 'jXCgmX8Wje7iDSmfRor7KD' (10.1.9.0/24)
 ```
 
 ![IPAM Associate vNETs Blocked](./images/virtual_network_association_blocked.png)
 
-Blocked networks cannot be checked, because the association would be rejected when saved. The exception is a network that became blocked *after* it was associated, for example because a prefix was added to it in Azure that collides with an External Network. That network stays checked and selectable so that you can un-check it to resolve the conflict.
+Blocked networks are shown without a checkbox, since the association would be rejected when saved. The exception is a network that became blocked *after* it was associated, for example because a prefix was added to it in Azure that collides with an External Network. That network stays checked and selectable so that you can un-check it to resolve the conflict.
 
 #### Stale Associations
 
@@ -288,7 +290,7 @@ A virtual network association can become stale for two reasons:
 
 In both cases the prefixes column displays `ErrNotFound`, since Azure IPAM has no address space to report for the network within this Block.
 
-Azure IPAM's background reconciliation process detects both conditions and marks the affected associations as inactive. Stale associations are displayed at the top of the grid with a **red background** to draw attention, and hovering over the **Name** cell explains that the network either no longer exists or no longer has address space within the Block.
+Azure IPAM's background reconciliation process detects both conditions and marks the affected associations as inactive. Stale associations are displayed at the top of the grid with a **red background** to draw attention, and hovering over any cell in the row explains that the network either no longer exists or no longer has address space within the Block.
 
 ![IPAM Associate vNETs Stale](./images/virtual_network_association_stale.png)
 

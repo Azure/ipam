@@ -342,6 +342,14 @@ The API base path for Virtual Network Association operations is:
 
 The `GET /available` and `GET /networks` endpoints accept an optional `expand` query parameter (default: `false`). When set to `true`, the response includes full network details (name, resource group, subscription, prefixes) rather than just resource IDs.
 
+`GET /available` accepts an additional optional `include_blocked` query parameter (default: `false`). When set to `true`, the response also contains the networks which *cannot* be associated to the Block, each carrying a `blocked_by` array naming the External Network or unfulfilled Reservation which overlaps each of its prefixes:
+
+```text
+blocked_by : {@{type=external; name=DataCenterA; cidr=10.1.4.0/24; prefix=10.1.4.0/24}}
+```
+
+Networks which can be associated are returned with an empty `blocked_by` array. The parameter requires `expand`, as the unexpanded response is an array of resource IDs with nowhere to carry a reason; using it on its own returns `400 Bad Request`.
+
 ### Example API Calls
 
 The following examples demonstrate common Virtual Network Association operations using Azure PowerShell. As with the other examples, you'll need to obtain an Azure AD token and set up your common variables first.
