@@ -803,7 +803,8 @@ const DataGrid = ({
     // For single-select, we handle click selection manually to support toggle behavior
     enableClickSelection: multiSelect ? !checkboxSelect : false,
     headerCheckbox: checkboxSelect && multiSelect,
-    ...(isRowSelectable && { isRowSelectable }),
+    // A checkbox that can never be checked still takes focus, so it is hidden rather than disabled.
+    ...(isRowSelectable && { isRowSelectable, hideDisabledCheckboxes: true }),
   }), [multiSelect, checkboxSelect, isRowSelectable]);
 
   // ============================================================================
@@ -1036,6 +1037,8 @@ const DataGrid = ({
           cellSelection={false}
           suppressCellFocus={true}
           suppressColumnVirtualisation={true}
+          // AG Grid waits two seconds by default, which reads as no tooltip at all.
+          tooltipShowDelay={500}
           colResizeDefault="shift"
           onColumnMoved={onColumnMoved}
           onColumnResized={onColumnResized}
