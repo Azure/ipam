@@ -9,8 +9,8 @@ from fastapi.responses import PlainTextResponse
 from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
-    get_authorization,
     get_tenant_id,
+    get_token_auth_header,
     require_admin,
 )
 from app.models import Admin, Subscription
@@ -52,7 +52,7 @@ async def new_admin_db(admin_list, exclusion_list, tenant_id):
     dependencies = [Depends(require_admin)]
 )
 async def get_admins(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -80,7 +80,7 @@ async def get_admins(
 )
 async def create_admin(
     admin: Admin,
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -122,7 +122,7 @@ async def create_admin(
 )
 async def update_admins(
     admin_list: List[Admin],
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -163,7 +163,7 @@ async def update_admins(
 )
 async def get_admin_by_id(
     objectId: UUID = Path(..., description="Azure AD ObjectID for the target user"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -196,7 +196,7 @@ async def get_admin_by_id(
 )
 async def delete_admin(
     objectId: UUID = Path(..., description="Azure AD ObjectID for the target user"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -229,7 +229,7 @@ async def delete_admin(
     dependencies = [Depends(require_admin)]
 )
 async def get_exclusions(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -257,7 +257,7 @@ async def get_exclusions(
 )
 async def add_exclusions(
     exclusions: List[Subscription],
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -297,7 +297,7 @@ async def add_exclusions(
 )
 async def update_exclusions(
     exclusions: List[Subscription],
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -337,7 +337,7 @@ async def update_exclusions(
 )
 async def remove_exclusion(
     subscriptionId: Subscription = Path(..., description="Azure Subscription ID"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """

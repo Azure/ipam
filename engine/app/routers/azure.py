@@ -16,8 +16,8 @@ from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
     get_admin,
-    get_authorization,
     get_tenant_id,
+    get_token_auth_header,
 )
 from app.globals import globals
 from app.logs.logs import ipam_logger as logger
@@ -113,14 +113,13 @@ async def get_subscriptions_sdk(credentials, *, tenant_id=None, include_excluded
 
     return subscriptions
 
-async def update_vhub_data(auth, admin, hubs):
+async def update_vhub_data(token, admin, hubs):
     """Populate each vWAN hub with its virtual network connection (peering) data using admin or on-behalf-of credentials."""
 
     if admin:
         creds = await get_client_credentials()
     else:
-        user_assertion=auth.split(' ')[1]
-        creds = await get_obo_credentials(user_assertion)
+        creds = await get_obo_credentials(token)
 
     azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
     azure_arm_scope = '{}/.default'.format(azure_arm_url)
@@ -155,16 +154,15 @@ async def update_vhub_data(auth, admin, hubs):
 
     return hubs
 
-async def get_vmss(auth, admin):
+async def get_vmss(token, admin):
     """Return the network interfaces of all Virtual Machine Scale Set instances across every accessible subscription."""
 
     if admin:
         creds = await get_client_credentials()
         tenant_id = globals.TENANT_ID
     else:
-        user_assertion=auth.split(' ')[1]
-        creds = await get_obo_credentials(user_assertion)
-        tenant_id = get_tenant_from_jwt(user_assertion)
+        creds = await get_obo_credentials(token)
+        tenant_id = get_tenant_from_jwt(token)
 
     try:
         subscriptions = await get_subscriptions_sdk(
@@ -343,20 +341,19 @@ async def get_factory_endpoints_sdk(credentials, factories):
     summary = "Get All Subscriptions"
 )
 async def subscription(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
     Get a list of Azure subscriptions.
     """
 
-    subscription_list = await arg_query(authorization, admin, argquery.SUBSCRIPTION)
+    subscription_list = await arg_query(token, admin, argquery.SUBSCRIPTION)
 
     # if admin:
     #     creds = await get_client_credentials()
     # else:
-    #     user_assertion=authorization.split(' ')[1]
-    #     creds = await get_obo_credentials(user_assertion)
+    #    #     creds = await get_obo_credentials(token)
 
     # subscription_list = await get_subscriptions_sdk(creds)
 
@@ -368,7 +365,7 @@ async def subscription(
 # The first must always be answered from every network in the tenant or IPAM will allocate over
 # networks the caller cannot see; the second is legitimately scoped to the caller's Azure RBAC.
 # `all_networks` selects between them, and is a required argument so callers must decide deliberately.
-async def fetch_vnets(authorization, tenant_id, all_networks):
+async def fetch_vnets(token, tenant_id, all_networks):
     """Return Azure Virtual Networks: every one in the tenant, or only those the caller can read."""
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
@@ -383,7 +380,7 @@ async def fetch_vnets(authorization, tenant_id, all_networks):
         for space in space_query for block in space['blocks']
     ]
 
-    vnet_list = await arg_query(authorization, all_networks, argquery.VNET)
+    vnet_list = await arg_query(token, all_networks, argquery.VNET)
     vnet_list = vnet_fixup(vnet_list)
 
     updated_vnet_list = []
@@ -418,7 +415,7 @@ async def fetch_vnets(authorization, tenant_id, all_networks):
     summary = "Get All Virtual Networks"
 )
 async def get_vnet(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     admin: str = Depends(get_admin)
 ):
@@ -426,14 +423,14 @@ async def get_vnet(
     Get a list of Azure Virtual Networks.
     """
 
-    return await fetch_vnets(authorization, tenant_id, admin)
+    return await fetch_vnets(token, tenant_id, admin)
 
 @router.get(
     "/subnet",
     summary = "Get All Subnets"
 )
 async def get_subnet(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
@@ -467,7 +464,7 @@ async def get_subnet(
     #     }
     # ]
 
-    subnet_list = await arg_query(authorization, admin, argquery.SUBNET)
+    subnet_list = await arg_query(token, admin, argquery.SUBNET)
     subnet_list = subnet_fixup(subnet_list)
 
     updated_subnet_list = []
@@ -490,7 +487,7 @@ async def get_subnet(
 
     return updated_subnet_list
 
-async def fetch_vhubs(authorization, tenant_id, all_networks):
+async def fetch_vhubs(token, tenant_id, all_networks):
     """Return Azure Virtual Hubs: every one in the tenant, or only those the caller can read."""
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
@@ -505,8 +502,8 @@ async def fetch_vhubs(authorization, tenant_id, all_networks):
         for space in space_query for block in space['blocks']
     ]
 
-    vwan_hubs = await arg_query(authorization, all_networks, argquery.VHUB)
-    vwan_hubs_update = await update_vhub_data(authorization, all_networks, vwan_hubs)
+    vwan_hubs = await arg_query(token, all_networks, argquery.VHUB)
+    vwan_hubs_update = await update_vhub_data(token, all_networks, vwan_hubs)
 
     updated_vhub_list = []
 
@@ -530,7 +527,7 @@ async def fetch_vhubs(authorization, tenant_id, all_networks):
     response_model = List[VWanHub]
 )
 async def get_vhub(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     admin: str = Depends(get_admin)
 ):
@@ -538,14 +535,14 @@ async def get_vhub(
     Get a list of Virtual Hubs.
     """
 
-    return await fetch_vhubs(authorization, tenant_id, admin)
+    return await fetch_vhubs(token, tenant_id, admin)
 
-async def fetch_networks(authorization, tenant_id, all_networks):
+async def fetch_networks(token, tenant_id, all_networks):
     """Return Azure Networks (vNets & vHubs): every one in the tenant, or only those the caller can read."""
 
     tasks = [
-        asyncio.create_task(fetch_vnets(authorization, tenant_id, all_networks)),
-        asyncio.create_task(fetch_vhubs(authorization, tenant_id, all_networks))
+        asyncio.create_task(fetch_vnets(token, tenant_id, all_networks)),
+        asyncio.create_task(fetch_vhubs(token, tenant_id, all_networks))
     ]
 
     networks = await asyncio.gather(*tasks)
@@ -587,7 +584,7 @@ async def fetch_networks(authorization, tenant_id, all_networks):
     # response_model = List[AzureNetwork]
 )
 async def get_network(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     admin: str = Depends(get_admin)
 ):
@@ -595,9 +592,9 @@ async def get_network(
     Get a list of Azure Networks (vNets & vHubs).
     """
 
-    return await fetch_networks(authorization, tenant_id, admin)
+    return await fetch_networks(token, tenant_id, admin)
 
-async def fetch_network_prefixes(authorization, all_networks):
+async def fetch_network_prefixes(token, all_networks):
     """Return Azure Networks (vNets & vHubs) carrying address prefixes only.
 
     Cheap counterpart to `fetch_networks` for overlap checks: one ARG query with no subnet expansion,
@@ -605,7 +602,7 @@ async def fetch_network_prefixes(authorization, all_networks):
     smaller, so callers that read anything beyond `id` and `prefixes` must use `fetch_networks`.
     """
 
-    net_list = await arg_query(authorization, all_networks, argquery.NET_BASIC)
+    net_list = await arg_query(token, all_networks, argquery.NET_BASIC)
 
     return vnet_fixup(net_list)
 
@@ -614,14 +611,14 @@ async def fetch_network_prefixes(authorization, all_networks):
     summary = "Get All Private Endpoints"
 )
 async def pe(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
     Get a list of Azure Private Endpoints.
     """
 
-    results = await arg_query(authorization, admin, argquery.PRIVATE_ENDPOINT)
+    results = await arg_query(token, admin, argquery.PRIVATE_ENDPOINT)
 
     return results
 
@@ -630,20 +627,19 @@ async def pe(
     summary = "Get All Data Factories"
 )
 async def df(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
     Get a list of Azure Data Factories.
     """
 
-    factories = await arg_query(authorization, admin, argquery.DATA_FACTORY)
+    factories = await arg_query(token, admin, argquery.DATA_FACTORY)
 
     if admin:
         creds = await get_client_credentials()
     else:
-        user_assertion=authorization.split(' ')[1]
-        creds = await get_obo_credentials(user_assertion)
+        creds = await get_obo_credentials(token)
 
     data_factory_list = await get_factory_endpoints_sdk(creds, factories)
 
@@ -656,7 +652,7 @@ async def df(
     summary = "Get All Azure Private Endpoints (PE's & Data Factories)"
 )
 async def endpoint(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     admin: str = Depends(get_admin)
 ):
@@ -665,8 +661,8 @@ async def endpoint(
     """
 
     tasks = [
-        asyncio.create_task(pe(authorization, admin)),
-        asyncio.create_task(df(authorization, admin))
+        asyncio.create_task(pe(token, admin)),
+        asyncio.create_task(df(token, admin))
     ]
 
     endpoints = await asyncio.gather(*tasks)
@@ -689,14 +685,14 @@ async def endpoint(
     summary = "Get All Virtual Machines"
 )
 async def vm(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
     Get a list of Azure Virtual Machines
     """
 
-    results = await arg_query(authorization, admin, argquery.VIRTUAL_MACHINE)
+    results = await arg_query(token, admin, argquery.VIRTUAL_MACHINE)
 
     return results
 
@@ -705,7 +701,7 @@ async def vm(
     summary = "Get All VM Scale Sets"
 )
 async def vmss(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
@@ -713,9 +709,9 @@ async def vmss(
     """
 
     if globals.AZURE_ENV == "AZURE_PUBLIC":
-        vm_scale_sets = await arg_query(authorization, admin, argquery.VM_SCALE_SET)
+        vm_scale_sets = await arg_query(token, admin, argquery.VM_SCALE_SET)
     else:
-        vm_scale_sets = await get_vmss(authorization, admin)
+        vm_scale_sets = await get_vmss(token, admin)
 
     results = []
 
@@ -738,14 +734,14 @@ async def vmss(
     summary = "Get All vNet Firewalls"
 )
 async def fwvnet(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
     Get a list of vNet integrated Azure Firewalls.
     """
 
-    results = await arg_query(authorization, admin, argquery.FIREWALL_VNET)
+    results = await arg_query(token, admin, argquery.FIREWALL_VNET)
 
     return results
 
@@ -754,14 +750,14 @@ async def fwvnet(
 #     summary = "Get all vWAN Hub Firewalls"
 # )
 # async def fwvhub(
-#     authorization: str = Depends(get_authorization),
+#     token: str = Depends(get_token_auth_header),
 #     admin: str = Depends(get_admin)
 # ):
 #     """
 #     Get a list of all vWAN Hub integrated Azure Firewalls.
 #     """
 
-#     results = await arg_query(authorization, admin, argquery.FIREWALL_VHUB)
+#     results = await arg_query(token, admin, argquery.FIREWALL_VHUB)
 
 #     return results
 
@@ -770,14 +766,14 @@ async def fwvnet(
     summary = "Get All Bastion Hosts"
 )
 async def bastion(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
     Get a list of all Azure Bastions hosts.
     """
 
-    results = await arg_query(authorization, admin, argquery.BASTION)
+    results = await arg_query(token, admin, argquery.BASTION)
 
     return results
 
@@ -786,14 +782,14 @@ async def bastion(
     summary = "Get All Virtual Network Gateways"
 )
 async def vnetgw(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
     Get a list of all Azure Virtual Network Gateways.
     """
 
-    results = await arg_query(authorization, admin, argquery.VNET_GATEWAY)
+    results = await arg_query(token, admin, argquery.VNET_GATEWAY)
 
     return results
 
@@ -802,14 +798,14 @@ async def vnetgw(
     summary = "Get All Application Gateways"
 )
 async def appgw(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
     Get a list of all Azure Application Gateways.
     """
 
-    results = await arg_query(authorization, admin, argquery.APP_GATEWAY)
+    results = await arg_query(token, admin, argquery.APP_GATEWAY)
 
     return results
 
@@ -818,14 +814,14 @@ async def appgw(
     summary = "Get All API Management Instances"
 )
 async def apim(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
     Get a list of all Azure API Management instances.
     """
 
-    results = await arg_query(authorization, admin, argquery.APIM)
+    results = await arg_query(token, admin, argquery.APIM)
 
     return results
 
@@ -834,14 +830,14 @@ async def apim(
     summary = "Get All Load Balancers"
 )
 async def lb(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
     Get a list of all Azure Load Balancers.
     """
 
-    results = await arg_query(authorization, admin, argquery.LB)
+    results = await arg_query(token, admin, argquery.LB)
 
     return results
 
@@ -850,14 +846,14 @@ async def lb(
     summary = "Get All Load Balancers"
 )
 async def vhub_ep(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
     Get a list of all endpoints within a vWAN vHub
     """
 
-    results = await arg_query(authorization, admin, argquery.VHUB_ENDPOINT)
+    results = await arg_query(token, admin, argquery.VHUB_ENDPOINT)
 
     return results
 
@@ -866,14 +862,14 @@ async def vhub_ep(
     summary = "Get All Standalone Network Interfaces"
 )
 async def nic(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
     Get a list of standalone Azure Network Interfaces (not attached to a VM or Private Endpoint).
     """
 
-    results = await arg_query(authorization, admin, argquery.NETWORK_INTERFACE)
+    results = await arg_query(token, admin, argquery.NETWORK_INTERFACE)
 
     return results
 
@@ -888,7 +884,7 @@ async def multi_helper(func, list, *args):
     summary = "Get All Endpoints"
 )
 async def multi(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     admin: str = Depends(get_admin)
 ):
     """
@@ -898,17 +894,17 @@ async def multi(
     tasks = []
     result_list = []
 
-    tasks.append(asyncio.create_task(multi_helper(endpoint, result_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vm, result_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vmss, result_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(fwvnet, result_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(bastion, result_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vnetgw, result_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(appgw, result_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(apim, result_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(lb, result_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(nic, result_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vhub_ep, result_list, authorization, admin)))
+    tasks.append(asyncio.create_task(multi_helper(endpoint, result_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(vm, result_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(vmss, result_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(fwvnet, result_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(bastion, result_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(vnetgw, result_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(appgw, result_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(apim, result_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(lb, result_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(nic, result_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(vhub_ep, result_list, token, admin)))
 
     await asyncio.gather(*tasks)
 

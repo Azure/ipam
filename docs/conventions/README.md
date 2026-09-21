@@ -68,7 +68,7 @@ A count of `0`, or a `WARNING` that the markings could not be applied, means the
 
 ## Authenticating API Endpoints
 
-Never declare `authorization` as a `Header(...)` parameter. Use `Depends(get_authorization)` when a route body needs the raw header value.
+Never declare `authorization` as a `Header(...)` parameter. Use `Depends(get_token_auth_header)` when a route needs the caller's token.
 
 The OpenAPI specification requires that a header parameter named `Authorization` be ignored. Swagger UI honours that literally, rendering the input box and then silently dropping whatever you type into it when the request is built. The interactive documentation was unusable for this reason, and every **Try it out** call returned a `401` even with a valid token pasted in.
 

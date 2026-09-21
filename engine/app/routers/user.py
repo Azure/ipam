@@ -12,8 +12,8 @@ from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
     get_admin,
-    get_authorization,
     get_tenant_id,
+    get_token_auth_header,
     require_admin,
 )
 from app.models import User, UserExpand, UserUpdate, ViewSettings
@@ -102,7 +102,7 @@ async def scrub_patch(patch):
     dependencies = [Depends(require_admin)]
 )
 async def get_users(
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -144,15 +144,14 @@ async def get_users(
 )
 async def get_user(
     expand: bool = Query(False, description="Show expanded user details"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get your IPAM user details.
     """
 
-    user_assertion = authorization.split(' ')[1]
-    user_id = get_user_id_from_jwt(user_assertion)
+    user_id = get_user_id_from_jwt(token)
 
     user_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND c['data']['id'] = '{}')".format(user_id), tenant_id)
 
@@ -192,7 +191,7 @@ async def get_user(
 )
 async def update_user(
     updates: UserUpdate,
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -208,8 +207,7 @@ async def update_user(
     - **/apiRefresh**
     """
 
-    user_assertion = authorization.split(' ')[1]
-    user_id = get_user_id_from_jwt(user_assertion)
+    user_id = get_user_id_from_jwt(token)
 
     user_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND c['data']['id'] = '{}')".format(user_id), tenant_id)
 

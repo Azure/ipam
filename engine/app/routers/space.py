@@ -17,8 +17,8 @@ from app.dependencies import (
     admin_expand,
     api_auth_checks,
     get_admin,
-    get_authorization,
     get_tenant_id,
+    get_token_auth_header,
     require_admin,
 )
 from app.models import (
@@ -592,7 +592,7 @@ async def scrub_ext_endpoint_patch(patch, space_name, block_name, external_name,
 async def get_spaces(
     expand: bool = Depends(admin_expand),
     utilization: bool = Query(False, description="Append utilization information for each network"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -600,14 +600,13 @@ async def get_spaces(
     Get a list of all Spaces.
     """
 
-    user_assertion = authorization.split(' ')[1]
 
     if expand:
         # Expand hands back whole network objects, so this needs the full query; admin-gated by `admin_expand`.
-        nets = await fetch_networks(authorization, tenant_id, True)
+        nets = await fetch_networks(token, tenant_id, True)
     elif utilization:
         # Utilization only sums prefixes, but it is occupancy, so it still needs every network.
-        nets = await fetch_network_prefixes(authorization, True)
+        nets = await fetch_network_prefixes(token, True)
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
@@ -633,7 +632,7 @@ async def get_spaces(
                 space['used'] += block['used']
 
             if not is_admin:
-                user_name = get_username_from_jwt(user_assertion)
+                user_name = get_username_from_jwt(token)
                 block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, block['resv']))
 
     if not is_admin:
@@ -657,7 +656,7 @@ async def get_spaces(
 )
 async def create_space(
     space: SpaceReq,
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str =  Depends(get_tenant_id)
 ):
     """
@@ -709,7 +708,7 @@ async def get_space(
     space: str = Path(..., description="Name of the target Space"),
     expand: bool = Depends(admin_expand),
     utilization: bool = Query(False, description="Append utilization information for each network"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -717,7 +716,6 @@ async def get_space(
     Get the details of a specific Space.
     """
 
-    user_assertion = authorization.split(' ')[1]
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -728,10 +726,10 @@ async def get_space(
 
     if expand:
         # Expand hands back whole network objects, so this needs the full query; admin-gated by `admin_expand`.
-        nets = await fetch_networks(authorization, tenant_id, True)
+        nets = await fetch_networks(token, tenant_id, True)
     elif utilization:
         # Utilization only sums prefixes, but it is occupancy, so it still needs every network.
-        nets = await fetch_network_prefixes(authorization, True)
+        nets = await fetch_network_prefixes(token, True)
 
     if utilization:
         target_space['size'] = 0
@@ -754,7 +752,7 @@ async def get_space(
             target_space['used'] += block['used']
 
         if not is_admin:
-            user_name = get_username_from_jwt(user_assertion)
+            user_name = get_username_from_jwt(token)
             block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, block['resv']))
 
     if not is_admin:
@@ -779,7 +777,7 @@ async def get_space(
 async def update_space(
     updates: SpaceUpdate,
     space: str = Path(..., description="Name of the target Space"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -827,7 +825,7 @@ async def update_space(
 async def delete_space(
     space: str = Path(..., description="Name of the target Space"),
     force: Optional[bool] = Query(False, description="Forcefully delete a Space with existing Blocks"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -858,7 +856,7 @@ async def delete_space(
 async def get_multi_block_reservations(
     space: str = Path(..., description="Name of the target Space"),
     settled: bool = Query(False, description="Include settled reservations."),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -866,7 +864,6 @@ async def get_multi_block_reservations(
     Get a list of CIDR Reservations for all Blocks within the target Space.
     """
 
-    user_assertion = authorization.split(' ')[1]
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -890,7 +887,7 @@ async def get_multi_block_reservations(
         resv_list += reservations
 
     if not is_admin:
-        user_name = get_username_from_jwt(user_assertion)
+        user_name = get_username_from_jwt(token)
         return list(filter(lambda x: x['createdBy'] == user_name, resv_list))
     else:
         return resv_list
@@ -908,7 +905,7 @@ async def get_multi_block_reservations(
 async def create_multi_block_reservation(
     req: SpaceCIDRReq,
     space: str = Path(..., description="Name of the target Space"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -925,8 +922,7 @@ async def create_multi_block_reservation(
         - **false (default)**: New networks will be created using the first available block, regardless of size
     """
 
-    user_assertion = authorization.split(' ')[1]
-    decoded = jwt.decode(user_assertion, options={"verify_signature": False})
+    decoded = jwt.decode(token, options={"verify_signature": False})
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -944,7 +940,7 @@ async def create_multi_block_reservation(
 
     # Reservations are allocations: a CIDR must not overlap any existing network, including ones the
     # caller cannot see, so this deliberately asks for every network rather than the caller's scope.
-    net_list = await fetch_network_prefixes(authorization, True)
+    net_list = await fetch_network_prefixes(token, True)
 
     available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
     next_selector = -1 if req.reverse_search else 0
@@ -1029,7 +1025,7 @@ async def get_blocks(
     space: str = Path(..., description="Name of the target Space"),
     expand: bool = Depends(admin_expand),
     utilization: bool = Query(False, description="Append utilization information for each network"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1037,7 +1033,6 @@ async def get_blocks(
     Get a list of all Blocks within a specific Space.
     """
 
-    user_assertion = authorization.split(' ')[1]
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1050,10 +1045,10 @@ async def get_blocks(
 
     if expand:
         # Expand hands back whole network objects, so this needs the full query; admin-gated by `admin_expand`.
-        nets = await fetch_networks(authorization, tenant_id, True)
+        nets = await fetch_networks(token, tenant_id, True)
     elif utilization:
         # Utilization only sums prefixes, but it is occupancy, so it still needs every network.
-        nets = await fetch_network_prefixes(authorization, True)
+        nets = await fetch_network_prefixes(token, True)
 
     for block in block_list:
         if expand:
@@ -1069,7 +1064,7 @@ async def get_blocks(
             add_block_utilization(block, nets, expand)
 
         if not is_admin:
-            user_name = get_username_from_jwt(user_assertion)
+            user_name = get_username_from_jwt(token)
             block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, block['resv']))
 
     if not is_admin:
@@ -1094,7 +1089,7 @@ async def get_blocks(
 async def create_block(
     block: BlockReq,
     space: str = Path(..., description="Name of the target Space"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -1160,7 +1155,7 @@ async def get_block(
     block: str = Path(..., description="Name of the target Block"),
     expand: bool = Depends(admin_expand),
     utilization: bool = Query(False, description="Append utilization information for each network"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1168,7 +1163,6 @@ async def get_block(
     Get the details of a specific Block.
     """
 
-    user_assertion = authorization.split(' ')[1]
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1184,10 +1178,10 @@ async def get_block(
 
     if expand:
         # Expand hands back whole network objects, so this needs the full query; admin-gated by `admin_expand`.
-        nets = await fetch_networks(authorization, tenant_id, True)
+        nets = await fetch_networks(token, tenant_id, True)
     elif utilization:
         # Utilization only sums prefixes, but it is occupancy, so it still needs every network.
-        nets = await fetch_network_prefixes(authorization, True)
+        nets = await fetch_network_prefixes(token, True)
 
     if expand:
         expanded_nets = []
@@ -1202,7 +1196,7 @@ async def get_block(
         add_block_utilization(target_block, nets, expand)
 
     if not is_admin:
-        user_name = get_username_from_jwt(user_assertion)
+        user_name = get_username_from_jwt(token)
         target_block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, target_block['resv']))
 
     if not is_admin:
@@ -1228,7 +1222,7 @@ async def update_block(
     updates: BlockUpdate,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -1283,7 +1277,7 @@ async def delete_block(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     force: Optional[bool] = Query(False, description="Forcefully delete a Block with existing networks and/or reservations"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -1328,7 +1322,7 @@ async def available_block_nets(
     block: str = Path(..., description="Name of the target Block"),
     expand: bool = Query(False, description="Expand network references to full network objects"),
     include_blocked: bool = Query(False, description="Include networks which cannot be associated to the target Block"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1369,7 +1363,7 @@ async def available_block_nets(
     # Resource enumeration rather than occupancy: non-admins should only be offered networks they
     # can actually see and associate, so this stays scoped to the caller. NetworkExpand carries only
     # the fields this query already returns, so it serves the expanded response as well.
-    net_list = await fetch_network_prefixes(authorization, is_admin)
+    net_list = await fetch_network_prefixes(token, is_admin)
 
     # Occupants are kept individually as well as merged, so a blocked Network can be reported
     # against the specific External Network or Reservation standing in its way.
@@ -1428,7 +1422,7 @@ async def get_block_nets(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     expand: bool = Query(False, description="Expand network references to full network objects"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -1451,7 +1445,7 @@ async def get_block_nets(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     if expand:
-        net_list = await fetch_networks(authorization, tenant_id, True)
+        net_list = await fetch_networks(token, tenant_id, True)
 
         for block_net in target_block['vnets']:
             target_vnet = next((x for x in net_list if x['id'].lower() == block_net['id'].lower()), None)
@@ -1476,7 +1470,7 @@ async def create_block_net(
     vnet: VNet,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -1502,7 +1496,7 @@ async def create_block_net(
         raise HTTPException(status_code=400, detail="Network already exists in block.")
 
     # Occupancy check for overlap against every network in the Block.
-    net_list = await fetch_network_prefixes(authorization, True)
+    net_list = await fetch_network_prefixes(token, True)
 
     target_net = next((x for x in net_list if x['id'].lower() == vnet.id.lower()), None)
 
@@ -1557,7 +1551,7 @@ async def update_block_vnets(
     vnets: VNetsUpdate,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -1584,7 +1578,7 @@ async def update_block_vnets(
         raise HTTPException(status_code=400, detail="List contains duplicate networks.")
 
     # Occupancy check for overlap against every network in the Block.
-    net_list = await fetch_network_prefixes(authorization, True)
+    net_list = await fetch_network_prefixes(token, True)
 
     invalid_nets = []
     outside_block_cidr = []
@@ -1666,7 +1660,7 @@ async def delete_block_nets(
     req: VNetsUpdate,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -1726,7 +1720,7 @@ async def delete_block_nets(
 async def get_external_networks(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -1762,7 +1756,7 @@ async def create_external_network(
     req: ExtNetReq,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -1795,7 +1789,7 @@ async def create_external_network(
         raise HTTPException(status_code=400, detail="External network name already exists in block.")
 
     # Occupancy check: the external network must not overlap anything already in the Block.
-    net_list = await fetch_network_prefixes(authorization, True)
+    net_list = await fetch_network_prefixes(token, True)
 
     block_net_cidrs = []
 
@@ -1866,7 +1860,7 @@ async def get_external_network(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target external network"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -1908,7 +1902,7 @@ async def update_ext_network(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -1970,7 +1964,7 @@ async def delete_external_network(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target external network"),
     force: Optional[bool] = Query(False, description="Forcefully delete an External Network with existing Subnets"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -2015,7 +2009,7 @@ async def get_external_subnets(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -2057,7 +2051,7 @@ async def create_external_subnet(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -2152,7 +2146,7 @@ async def get_external_subnet(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target external network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -2200,7 +2194,7 @@ async def update_ext_subnet(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -2268,7 +2262,7 @@ async def delete_external_subnet(
     external: str = Path(..., description="Name of the target external network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
     force: Optional[bool] = Query(False, description="Forcefully delete an External Network with existing Subnets"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -2319,7 +2313,7 @@ async def get_external_subnet_endpoints(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target External Network Subnet"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -2367,7 +2361,7 @@ async def create_external_subnet_endpoint(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target External Network Subnet"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -2459,7 +2453,7 @@ async def update_external_subnet_enpoints(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target External Network Subnet"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -2572,7 +2566,7 @@ async def delete_external_subnet_endpoints(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target External Network Subnet"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -2638,7 +2632,7 @@ async def get_external_subnet_endpoint(
     external: str = Path(..., description="Name of the target external network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
     endpoint: str = Path(..., description="Name of the target external subnet endpoint"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -2692,7 +2686,7 @@ async def update_ext_endpoint(
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
     endpoint: str = Path(..., description="Name of the target external subnet endpoint"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -2765,7 +2759,7 @@ async def delete_external_subnet_endpoint(
     external: str = Path(..., description="Name of the target external network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
     endpoint: str = Path(..., description="Name of the target external subnet endpoint"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -2815,7 +2809,7 @@ async def get_block_reservations(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     settled: bool = Query(False, description="Include settled reservations."),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2823,7 +2817,6 @@ async def get_block_reservations(
     Get a list of CIDR Reservations for the target Block.
     """
 
-    user_assertion = authorization.split(' ')[1]
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -2847,7 +2840,7 @@ async def get_block_reservations(
         resv['block'] = target_block['name']
 
     if not is_admin:
-        user_name = get_username_from_jwt(user_assertion)
+        user_name = get_username_from_jwt(token)
         return list(filter(lambda x: x['createdBy'] == user_name, reservations))
     else:
         return reservations
@@ -2866,7 +2859,7 @@ async def create_block_reservation(
     req: BlockCIDRReq,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -2924,8 +2917,7 @@ async def create_block_reservation(
     ```
     """
 
-    user_assertion = authorization.split(' ')[1]
-    decoded = jwt.decode(user_assertion, options={"verify_signature": False})
+    decoded = jwt.decode(token, options={"verify_signature": False})
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -2941,7 +2933,7 @@ async def create_block_reservation(
 
     # Reservations are allocations, so occupancy needs every network or IPAM can hand out a CIDR that
     # overlaps a network the caller cannot see.
-    net_list = await fetch_network_prefixes(authorization, True)
+    net_list = await fetch_network_prefixes(token, True)
 
     block_all_cidrs = []
 
@@ -3024,7 +3016,7 @@ async def delete_block_reservations(
     req: DeleteResvReq,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -3034,8 +3026,7 @@ async def delete_block_reservations(
     - **[&lt;str&gt;]**: Array of CIDR Reservation ID's
     """
 
-    user_assertion = authorization.split(' ')[1]
-    user_name = get_username_from_jwt(user_assertion)
+    user_name = get_username_from_jwt(token)
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -3095,7 +3086,7 @@ async def get_block_reservation(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     reservation: str = Path(..., description="ID of the target Reservation"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -3103,7 +3094,6 @@ async def get_block_reservation(
     Get the details of a specific CIDR Reservation.
     """
 
-    user_assertion = authorization.split(' ')[1]
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -3126,7 +3116,7 @@ async def get_block_reservation(
     target_reservation['block'] = target_block['name']
 
     if not is_admin:
-        user_name = get_username_from_jwt(user_assertion)
+        user_name = get_username_from_jwt(token)
 
         if target_reservation['createdBy'] == user_name:
             return target_reservation
@@ -3148,7 +3138,7 @@ async def delete_block_reservation(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     reservation: str = Path(..., description="ID of the target Reservation"),
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -3156,8 +3146,7 @@ async def delete_block_reservation(
     Remove a specific CIDR Reservation.
     """
 
-    user_assertion = authorization.split(' ')[1]
-    user_name = get_username_from_jwt(user_assertion)
+    user_name = get_username_from_jwt(token)
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 

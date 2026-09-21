@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
-    get_authorization,
+    get_token_auth_header,
     require_admin,
 )
 from app.notifications import get_notifications, get_resolver
@@ -51,7 +51,7 @@ async def list_notifications():
 async def resolve_notification(
     notification_id: str,
     background_tasks: BackgroundTasks,
-    authorization: str = Depends(get_authorization)
+    token: str = Depends(get_token_auth_header)
 ):
     """
     Invoke the server-owned remediation for a notification.

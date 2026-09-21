@@ -8,8 +8,8 @@ from netaddr import IPNetwork, IPSet
 from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
-    get_authorization,
     get_tenant_id,
+    get_token_auth_header,
 )
 from app.models import (
     CIDRCheckReq,
@@ -43,7 +43,7 @@ router = APIRouter(
 )
 async def next_available_subnet(
     req: SubnetCIDRReq,
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
 ):
     """
     Get the next available Subnet CIDR in a Virtual Network with the following information:
@@ -65,7 +65,7 @@ async def next_available_subnet(
     if not valid_vnet:
         raise HTTPException(status_code=400, detail="Invalid Virtual Network ID.")
 
-    vnet_list = await arg_query(authorization, True, argquery.VNET)
+    vnet_list = await arg_query(token, True, argquery.VNET)
     vnet_list = vnet_fixup(vnet_list)
 
     vnet_all_cidrs = []
@@ -123,7 +123,7 @@ async def next_available_subnet(
 )
 async def next_available_vnet(
     req: VNetCIDRReq,
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -156,7 +156,7 @@ async def next_available_vnet(
 
     # Allocation: the next available CIDR must not overlap any existing network, including ones the
     # caller cannot see, so this deliberately asks for every network.
-    net_list = await fetch_network_prefixes(authorization, True)
+    net_list = await fetch_network_prefixes(token, True)
 
     available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
     next_selector = -1 if req.reverse_search else 0
@@ -219,7 +219,7 @@ async def next_available_vnet(
 )
 async def cidr_check(
     req: CIDRCheckReq,
-    authorization: str = Depends(get_authorization),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -233,7 +233,7 @@ async def cidr_check(
 
     spaces = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
-    nets = await arg_query(authorization, True, argquery.NET_BASIC)
+    nets = await arg_query(token, True, argquery.NET_BASIC)
 
     nets = vnet_fixup(nets)
 

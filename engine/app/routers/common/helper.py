@@ -328,7 +328,7 @@ def cosmos_retry(error_msg, max_retry = 5):
         return func_with_retries
     return cosmos_retry_decorator
 
-async def arg_query(auth, admin, query):
+async def arg_query(token, admin, query):
     """Run an Azure Resource Graph query (as admin or on-behalf-of the caller), injecting the tenant's subscription exclusions."""
 
     app_only = bool(admin)
@@ -337,9 +337,8 @@ async def arg_query(auth, admin, query):
         creds = await get_client_credentials()
         tenant_id = globals.TENANT_ID
     else:
-        user_assertion=auth.split(' ')[1]
-        creds = await get_obo_credentials(user_assertion)
-        tenant_id = get_tenant_from_jwt(user_assertion)
+        creds = await get_obo_credentials(token)
+        tenant_id = get_tenant_from_jwt(token)
 
     exclusions_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
@@ -372,12 +371,11 @@ async def arg_query_client(query):
 
     return results
 
-async def arg_query_obo(auth, query):
+async def arg_query_obo(token, query):
     """Run an Azure Resource Graph query on-behalf-of the caller using their bearer token."""
 
-    user_assertion=auth.split(' ')[1]
 
-    obo_creds = await get_obo_credentials(user_assertion)
+    obo_creds = await get_obo_credentials(token)
 
     try:
         results = await arg_query_helper(obo_creds, query, app_only=False)

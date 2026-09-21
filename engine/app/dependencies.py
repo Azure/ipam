@@ -25,11 +25,6 @@ ipam_security = HTTPBearer(
     auto_error = False
 )
 
-async def get_authorization(request: Request):
-    """Return the raw Authorization header, without declaring an OpenAPI parameter."""
-
-    return request.headers.get("Authorization")
-
 # Documents the failure mode of the scheme above. Attached to every router that
 # enforces authentication, so Swagger stops reporting these as "Undocumented".
 # The shape is {"error": ...} because the global exception handler in main.py
