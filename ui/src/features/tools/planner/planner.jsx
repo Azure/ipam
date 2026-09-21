@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useSelector } from "react-redux";
-import { ThemeProvider, createTheme, styled } from "@mui/material/styles";
+import { styled } from "@mui/material/styles";
 
 import { find,isEqual, orderBy } from "lodash-es";
 
@@ -20,8 +20,6 @@ import {
   CircularProgress
 } from "@mui/material";
 
-import Grid from "@mui/material/Grid";
-
 import {
   FilterList as FilterListIcon,
   FilterListOff as FilterListOffIcon
@@ -34,28 +32,26 @@ import {
 
 import { availableSubnets, isSubnetOverlap } from "./utils/iputils";
 
-const plannerTheme = (theme) => createTheme({
-  ...theme,
-  breakpoints: {
-    values: {
-      xs: 0,
-      sm: 600,
-      md: 900,
-      lg: 1200,
-      xl: 1536,
-      xxl: 1920
-    },
-  },
-});
+// Wide enough to fit the longest possible CIDR (255.255.255.255/32) plus padding.
+// Kept in px to stay in sync with the px-based font clamp on Item, which does not
+// scale with the browser's root font size.
+const TILE_MIN_WIDTH = '160px';
 
 const Item = styled(Paper)(({ theme, overlap }) => ({
-  padding: theme.spacing(1),
+  padding: theme.spacing(1, 1.5),
   textAlign: 'center',
   color: theme.palette.text.secondary,
-  fontSize: 'clamp(12px, 1vw, 15px)',
+  fontSize: 'clamp(12px, 0.9vw, 14px)',
+  whiteSpace: 'nowrap',
   textOverflow: 'ellipsis',
   overflow: 'hidden',
   backgroundColor: overlap ? (theme.palette.mode === 'dark' ? 'darkred' : 'orangered') : (theme.palette.mode === 'dark' ? 'darkgreen' : 'lawngreen')
+}));
+
+const TileGrid = styled(Box)(({ theme }) => ({
+  display: 'grid',
+  gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${TILE_MIN_WIDTH}), 1fr))`,
+  gap: theme.spacing(2)
 }));
 
 const cidrMasks = [
@@ -260,171 +256,168 @@ const Planner = () => {
   };
 
   return (
-    <ThemeProvider theme={plannerTheme}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
-        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
-          <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
-            <Autocomplete
-              forcePopupIcon={false}
-              id="grouped-demo"
-              size="small"
-              options={vNetOptions}
-              groupBy={(option) => showAll ? option.subscription_name : `${option.parent_space} ➜ ${option.parent_block}`}
-              getOptionLabel={(option) => option.name}
-              inputValue={vNetInput}
-              onInputChange={(event, newInputValue) => setVNetInput(newInputValue)}
-              value={selectedVNet}
-              onChange={(event, newValue) => setSelectedVNet(newValue)}
-              isOptionEqualToValue={(option, value) => isEqual(option, value)}
-              sx={{ width: 300 }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Virtual Network"
-                  placeholder={showAll ? "By Subscription" : "By Space ➜ Block"}
-                  slotProps={{
-                    ...params.slotProps,
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
+      <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
+          <Autocomplete
+            forcePopupIcon={false}
+            id="grouped-demo"
+            size="small"
+            options={vNetOptions}
+            groupBy={(option) => showAll ? option.subscription_name : `${option.parent_space} ➜ ${option.parent_block}`}
+            getOptionLabel={(option) => option.name}
+            inputValue={vNetInput}
+            onInputChange={(event, newInputValue) => setVNetInput(newInputValue)}
+            value={selectedVNet}
+            onChange={(event, newValue) => setSelectedVNet(newValue)}
+            isOptionEqualToValue={(option, value) => isEqual(option, value)}
+            sx={{ width: 300 }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Virtual Network"
+                placeholder={showAll ? "By Subscription" : "By Space ➜ Block"}
+                slotProps={{
+                  ...params.slotProps,
 
-                    input: {
-                      ...params.slotProps.input,
-                      endAdornment: (
-                        <React.Fragment>
-                          {!vNetData ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.slotProps.input.endAdornment}
-                        </React.Fragment>
-                      ),
-                    }
-                  }}
-                />
-              )}
-              renderGroup={(params) => (
-                <li key={params.group}>
-                  <Box sx={{ top: '-8px', padding: '4px 10px', whiteSpace: 'nowrap' }}>{params.group}</Box>
-                  <ul style={{ padding: 0 }}>{params.children}</ul>
-                </li>
-              )}
-              renderOption={(props, option) => {
-                return (
-                  <li key={option.id} {...props}>
-                    {option.name}
-                  </li>
-                );
-              }}
-              slotProps={{
-                paper: {
-                  sx: {
-                    width: 'fit-content'
+                  input: {
+                    ...params.slotProps.input,
+                    endAdornment: (
+                      <React.Fragment>
+                        {!vNetData ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.slotProps.input.endAdornment}
+                      </React.Fragment>
+                    ),
                   }
-                }
-              }}
-            />
-            <FormControl size="small">
-              <InputLabel
-                disabled={selectedVNet === null}
-                id="prefix-select-label"
-              >
-                Address Space
-              </InputLabel>
-              <Select
-                disabled={selectedVNet === null}
-                labelId="prefix-select-label"
-                id="vnet-select"
-                value={selectedPrefix}
-                label="Address Space"
-                onChange={(event) => setSelectedPrefix(event.target.value)}
-                sx={{ width: '22ch' }}
-                MenuProps={{
-                  slotProps: {
-                    paper: {
-                      style: {
-                        maxHeight: 36 * 10,
-                      }
-                    },
-                  },
                 }}
-              >
-                {prefixOptions ?
-                  prefixOptions.map((opt) => (
-                    <MenuItem
-                      key={opt}
-                      value={opt}
-                    >
-                      {opt}
-                    </MenuItem>
-                  )) : null
+              />
+            )}
+            renderGroup={(params) => (
+              <li key={params.group}>
+                <Box sx={{ top: '-8px', padding: '4px 10px', whiteSpace: 'nowrap' }}>{params.group}</Box>
+                <ul style={{ padding: 0 }}>{params.children}</ul>
+              </li>
+            )}
+            renderOption={(props, option) => {
+              return (
+                <li key={option.id} {...props}>
+                  {option.name}
+                </li>
+              );
+            }}
+            slotProps={{
+              paper: {
+                sx: {
+                  width: 'fit-content'
                 }
-              </Select>
-            </FormControl>
-            <Autocomplete
-              forcePopupIcon={false}
-              disabled={selectedPrefix === ''}
-              id="cidr-mask-max"
-              size="small"
-              options={maskOptions}
-              getOptionLabel={(option) => option.name}
-              inputValue={maskInput}
-              onInputChange={(event, newInputValue) => setMaskInput(newInputValue)}
-              value={selectedMask}
-              onChange={(event, newValue) => setSelectedMask(newValue)}
-              sx={{ width: '5ch' }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Mask"
-                  placeholder="Mask"
-                />
-              )}
-            />
-          </Box>
-          <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', marginLeft: 'auto' }}>
-            <ToggleButtonGroup
-              size="small"
-              color="primary"
-              value={showAll}
-              exclusive
-              onChange={handleShowAll}
+              }
+            }}
+          />
+          <FormControl size="small">
+            <InputLabel
+              disabled={selectedVNet === null}
+              id="prefix-select-label"
             >
-              <ToggleButton value={false} aria-label="list">
-                <Tooltip title="Filter Networks">
-                  <FilterListIcon />
-                </Tooltip>
-              </ToggleButton>
-              <ToggleButton value={true} aria-label="module">
-                <Tooltip title="All Networks">
-                  <FilterListOffIcon />
-                </Tooltip>
-              </ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
+              Address Space
+            </InputLabel>
+            <Select
+              disabled={selectedVNet === null}
+              labelId="prefix-select-label"
+              id="vnet-select"
+              value={selectedPrefix}
+              label="Address Space"
+              onChange={(event) => setSelectedPrefix(event.target.value)}
+              sx={{ width: '22ch' }}
+              MenuProps={{
+                slotProps: {
+                  paper: {
+                    style: {
+                      maxHeight: 36 * 10,
+                    }
+                  },
+                },
+              }}
+            >
+              {prefixOptions ?
+                prefixOptions.map((opt) => (
+                  <MenuItem
+                    key={opt}
+                    value={opt}
+                  >
+                    {opt}
+                  </MenuItem>
+                )) : null
+              }
+            </Select>
+          </FormControl>
+          <Autocomplete
+            forcePopupIcon={false}
+            disabled={selectedPrefix === ''}
+            id="cidr-mask-max"
+            size="small"
+            options={maskOptions}
+            getOptionLabel={(option) => option.name}
+            inputValue={maskInput}
+            onInputChange={(event, newInputValue) => setMaskInput(newInputValue)}
+            value={selectedMask}
+            onChange={(event, newValue) => setSelectedMask(newValue)}
+            sx={{ width: '5ch' }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Mask"
+                placeholder="Mask"
+              />
+            )}
+          />
         </Box>
-        <Box sx={{ flexGrow: 1, pb: 3, pr: 3, pl: 3, overflowY: 'auto', overflowX: 'hidden' }}>
-          {
-            subnetData &&
-            [...new Set(subnetData.map((x) => x.mask))].map((mask) => {
-            return (
-              <React.Fragment key={`fragment-${mask}`}>
-                <Separator key={`sep-${mask}`} name={mask} total={subnetData.filter((x) => x.mask === mask).length} used={subnetData.filter((x) => x.mask === mask && x.overlap).length} />
-                <Grid key={`grid-container-${mask}`} container spacing={2}>
-                  {
-                    subnetData?.filter((x) => x.mask === mask).map((item) => {
-                      return (
-                        <Grid key={`grid-item-${item.network}-${mask}`} size={{ xs: 5, sm: 3, md: 2, xxl: 1 }}>
-                          <Item
-                            overlap={+item.overlap}
-                          >
-                            {item.network}/{mask}
-                          </Item>
-                        </Grid>
-                      );
-                    })
-                  }
-                </Grid>
-              </React.Fragment>
-            );
-          })}
+        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', marginLeft: 'auto' }}>
+          <ToggleButtonGroup
+            size="small"
+            color="primary"
+            value={showAll}
+            exclusive
+            onChange={handleShowAll}
+          >
+            <ToggleButton value={false} aria-label="list">
+              <Tooltip title="Filter Networks">
+                <FilterListIcon />
+              </Tooltip>
+            </ToggleButton>
+            <ToggleButton value={true} aria-label="module">
+              <Tooltip title="All Networks">
+                <FilterListOffIcon />
+              </Tooltip>
+            </ToggleButton>
+          </ToggleButtonGroup>
         </Box>
       </Box>
-    </ThemeProvider>
+      <Box sx={{ flexGrow: 1, pb: 3, pr: 3, pl: 3, overflowY: 'auto', overflowX: 'hidden' }}>
+        {
+          subnetData &&
+          [...new Set(subnetData.map((x) => x.mask))].map((mask) => {
+          return (
+            <React.Fragment key={`fragment-${mask}`}>
+              <Separator key={`sep-${mask}`} name={mask} total={subnetData.filter((x) => x.mask === mask).length} used={subnetData.filter((x) => x.mask === mask && x.overlap).length} />
+              <TileGrid key={`grid-container-${mask}`}>
+                {
+                  subnetData?.filter((x) => x.mask === mask).map((item) => {
+                    return (
+                      <Item
+                        key={`grid-item-${item.network}-${mask}`}
+                        overlap={+item.overlap}
+                      >
+                        {item.network}/{mask}
+                      </Item>
+                    );
+                  })
+                }
+              </TileGrid>
+            </React.Fragment>
+          );
+        })}
+      </Box>
+    </Box>
   );
 }
 
