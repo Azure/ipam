@@ -220,11 +220,14 @@ async def validate_token(
     else:
         raise HTTPException(status_code=401, detail="Unable to find appropriate signing key.")
 
-    request.state.tenant_id = payload['tid']
-
     return payload
 
-async def check_admin(request: Request, user_oid: str, user_tid: str):
+async def check_admin(payload: dict = Depends(validate_token)) -> bool:
+    """Resolve whether the caller is an IPAM admin."""
+
+    user_oid = payload['oid']
+    user_tid = payload['tid']
+
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", user_tid)
 
     if admin_query:
@@ -237,13 +240,15 @@ async def check_admin(request: Request, user_oid: str, user_tid: str):
     else:
         is_admin = True
 
-    request.state.admin = True if is_admin else False
+    return True if is_admin else False
 
-async def api_auth_checks(request: Request, token_payload: dict = Depends(validate_token)):
-    await check_admin(request, token_payload['oid'], token_payload['tid'])
+# Router-level gate. Resolving `check_admin` runs the whole chain (bearer scheme,
+# token validation, admin lookup), so declaring this alone protects a router.
+async def api_auth_checks(is_admin: bool = Depends(check_admin)) -> bool:
+    return is_admin
 
-async def get_admin(request: Request):
-    return request.state.admin
+async def get_admin(is_admin: bool = Depends(check_admin)) -> bool:
+    return is_admin
 
-async def get_tenant_id(request: Request):
-    return request.state.tenant_id
+async def get_tenant_id(payload: dict = Depends(validate_token)) -> str:
+    return payload['tid']
