@@ -21,7 +21,15 @@ from app.routers.common.helper import cosmos_query
 # declarative only: it never raises, so `validate_token` stays the sole gate.
 ipam_security = HTTPBearer(
     scheme_name = "IPAM Token",
-    description = "Azure IPAM access token. Retrieve one from the Azure IPAM UI by selecting <b>Token</b> in the user avatar menu, or see the <a href='https://azure.github.io/ipam/#/api/README?id=obtaining-an-azure-ad-token' target='_blank'>API documentation</a>. Paste the raw token value below, the 'Bearer' prefix is added for you.",
+    # Rendered as Markdown by the Swagger UI, so blank lines produce real
+    # paragraphs and links pick up target="_blank" rel="noopener noreferrer".
+    description = (
+        "Azure IPAM access token.<br><br>"
+        "Retrieve one from the Azure IPAM UI by selecting **Token** in the user avatar menu, "
+        "or see the [API documentation]"
+        "(https://azure.github.io/ipam/#/api/README?id=obtaining-an-azure-ad-token).<br><br>"
+        "Paste the raw token value below, the 'Bearer' prefix is added for you.<br><br>"
+    ),
     auto_error = False
 )
 
