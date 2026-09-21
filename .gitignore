@@ -1,6 +1,7 @@
 # Global
 .env
 .eslintcache
+.venv
 
 # Root Project
 .VSCodeCounter

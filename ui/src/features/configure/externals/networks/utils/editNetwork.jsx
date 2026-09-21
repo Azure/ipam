@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 
 import { useSnackbar } from "notistack";
 
-import Draggable from "react-draggable";
+import DraggablePaper from "../../../../../global/DraggablePaper";
 
 import {
   Box,
@@ -14,10 +14,9 @@ import {
   DialogTitle,
   DialogActions,
   DialogContent,
-  Paper
 } from "@mui/material";
 
-import LoadingButton from "@mui/lab/LoadingButton";
+
 
 import {
   selectNetworks,
@@ -34,21 +33,6 @@ import {
   EXTERNAL_DESC_REGEX,
   CIDR_REGEX
 } from "../../../../../global/globals";
-
-function DraggablePaper(props) {
-  const nodeRef = React.useRef(null);
-
-  return (
-    <Draggable
-      nodeRef={nodeRef}
-      handle="#draggable-dialog-title"
-      cancel={'[class*="MuiDialogContent-root"]'}
-      bounds="parent"
-    >
-      <Paper {...props} ref={nodeRef}/>
-    </Draggable>
-  );
-}
 
 export default function EditExtNetwork(props) {
   const { open, handleClose, space, block, externals, selectedExternal } = props;
@@ -181,10 +165,12 @@ export default function EditExtNetwork(props) {
 
       if(space && block && networks) {
         blockNetworks = networks?.reduce((acc, curr) => {
-          if(curr['parent_space'] && curr['parent_block']) {
-            if(curr['parent_space'] === space && curr['parent_block'].includes(block.name)) {
-              acc = acc.concat(curr['prefixes']);
-            }
+          const inBlock = curr['parent_containers']?.some((container) => (
+            container.space === space && container.block === block.name
+          ));
+
+          if(inBlock) {
+            acc = acc.concat(curr['prefixes']);
           }
 
           return acc;
@@ -223,11 +209,8 @@ export default function EditExtNetwork(props) {
   }, [selectedExternal, extName, extDesc, extCidr]);
 
   const hasError = React.useMemo(() => {
-    var emptyCheck = false;
-    var errorCheck = false;
-
-    errorCheck = (extName.error || extDesc.error || extCidr.error);
-    emptyCheck = (extName.value.length === 0 || extDesc.value.length === 0 || extCidr.value.length === 0);
+    const errorCheck = (extName.error || extDesc.error || extCidr.error);
+    const emptyCheck = (extName.value.length === 0 || extDesc.value.length === 0 || extCidr.value.length === 0);
 
     return (errorCheck || emptyCheck);
   }, [extName, extDesc, extCidr]);
@@ -259,7 +242,12 @@ export default function EditExtNetwork(props) {
           Edit External Network
         </DialogTitle>
         <DialogContent>
-          <Box display="flex" flexDirection="column" alignItems="center">
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center"
+            }}>
             <Tooltip
               arrow
               disableFocusListener
@@ -284,8 +272,10 @@ export default function EditExtNetwork(props) {
                 variant="standard"
                 value={extName.value}
                 onChange={(event) => onNameChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -311,8 +301,10 @@ export default function EditExtNetwork(props) {
                 variant="standard"
                 value={extDesc.value}
                 onChange={(event) => onDescChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -336,8 +328,10 @@ export default function EditExtNetwork(props) {
                 variant="standard"
                 value={extCidr.value}
                 onChange={(event) => onCidrChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
           </Box>
@@ -349,13 +343,13 @@ export default function EditExtNetwork(props) {
           >
             Cancel
           </Button>
-          <LoadingButton
+          <Button
             onClick={onSubmit}
             loading={sending}
             disabled={hasError || unchanged}
           >
             Update
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

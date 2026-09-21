@@ -1,12 +1,13 @@
-RESERVATION = """
+RESERVATION = r"""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
-| where isnotnull(tags["ipam-res-id"])
+| extend resv = coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id'])
+| where isnotnull(resv)
 | extend prefixes = properties.addressSpace.addressPrefixes
-| project id, prefixes, resv = tags["ipam-res-id"]
+| project id, prefixes, resv = tostring(resv)
 """
 
-# SUBSCRIPTION = """
+# SUBSCRIPTION = r"""
 # resourcecontainers
 # | where type =~ 'microsoft.resources/subscriptions'
 # | extend quotaId = properties.subscriptionPolicies.quotaId
@@ -20,7 +21,7 @@ resources
 # | project name, id, type, subscription_id = subscriptionId, tenant_id = tenantId
 # """
 
-SUBSCRIPTION = """
+SUBSCRIPTION = r"""
 resourcecontainers
 | where type=~ 'microsoft.resources/subscriptions'
 | extend mgParent = properties.managementGroupAncestorsChain
@@ -42,20 +43,20 @@ resourcecontainers
 | project name, id, type, subscription_id = subscriptionId, mg_id = mgId, mg_name = mgDisplayName, tenant_id = tenantId
 """
 
-SPACE = """
+SPACE = r"""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
 | project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes = properties.addressSpace.addressPrefixes
 """
 
-BLOCK = """
+BLOCK = r"""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
 | project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes = properties.addressSpace.addressPrefixes
 """
 
 # This version gets both IPv4 and IPv6 vNET/Subnet address spaces
-# VNET = """
+# VNET = r"""
 # resources
 # | where type =~ 'Microsoft.Network/virtualNetworks'
 # | where subscriptionId !in~ {}
@@ -87,7 +88,7 @@ resources
 # | project name, id, todynamic(prefixes), todynamic(subnets), peerings, resource_group, subscription_id, tenant_id, todynamic(resv)
 # """
 
-VNET = """
+VNET = r"""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
 | where subscriptionId !in~ {}
@@ -123,7 +124,7 @@ resources
 """
 
 # This version gets both the IPv4 and IPv6 Subnet address space
-# SUBNET = """
+# SUBNET = r"""
 # resources
 # | where type =~ 'Microsoft.Network/virtualNetworks'
 # | where subscriptionId !in~ {}
@@ -137,7 +138,7 @@ resources
 # | project name = subnet.name, id = subnet.id, prefix = subnet.properties.addressPrefix, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), type = todynamic(subnetType)
 # """
 
-SUBNET = """
+SUBNET = r"""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
 | where subscriptionId !in~ {}
@@ -153,13 +154,13 @@ resources
 | project name = subnet.name, id = subnet.id, prefix = iff(isnotnull(subnetPrefixes), subnetPrefixes, pack_array(subnetPrefix)), resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId,vnet_name = name, vnet_id = id, used = (iif(isnull(subnet_size), 0, subnet_size) + 5), type = todynamic(subnetType)
 """
 
-# VWAN_HUBS = """
+# VWAN_HUBS = r"""
 # resources
 # | where type =~ 'microsoft.network/virtualhubs'
 # | project name, resource_group = resourceGroup, subscription_id = subscriptionId
 # """
 
-# VHUB = """
+# VHUB = r"""
 # resources
 # | where type =~ 'microsoft.network/virtualhubs'
 # | where subscriptionId !in~ {}
@@ -174,7 +175,7 @@ resources
 # | project name, id, prefix, resource_group, subscription_id, tenant_id, metadata = pack('vwan_name', vwan_name, 'vwan_id', vwan_id)
 # """
 
-VHUB = """
+VHUB = r"""
 resources
 | where type =~ 'microsoft.network/virtualhubs'
 | where subscriptionId !in~ {}
@@ -190,21 +191,49 @@ resources
 | project name, id, prefix, vwan_name, vwan_id, resource_group, subscription_id, tenant_id, resv
 """
 
-NET_BASIC = """
+NET_BASIC = r"""
 resources
 | where type =~ 'Microsoft.Network/virtualNetworks'
-| project name, id, resourceGroup, subscriptionId, tenantId, prefixes = properties.addressSpace.addressPrefixes
+| project name, id, resourceGroup, subscriptionId, tenantId, prefixes = properties.addressSpace.addressPrefixes, resv = todynamic(tostring(coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id'])))
 | union (
     resources
     | where type =~ 'microsoft.network/virtualhubs'
     | where isempty(kind)
-    | project name, id, resourceGroup, subscriptionId, tenantId, prefixes = pack_array(properties.addressPrefix)
+    | project name, id, resourceGroup, subscriptionId, tenantId, prefixes = pack_array(properties.addressPrefix), resv = todynamic(tostring(coalesce(tags['X-IPAM-RES-ID'], tags['ipam-res-id'])))
 )
 | where subscriptionId !in~ {}
-| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes
+| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, prefixes, resv
 """
 
-PRIVATE_ENDPOINT = """
+NETWORK_INTERFACE = r"""
+resources
+| where type =~ 'microsoft.network/networkinterfaces'
+| where subscriptionId !in~ {}
+| where isempty(properties.virtualMachine)
+| where isempty(properties.privateEndpoint)
+| mv-expand ipconfig = properties.ipConfigurations
+| project name, id, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId, private_ip = ipconfig.properties.privateIPAddress, private_ip_alloc_method = ipconfig.properties.privateIPAllocationMethod, subnet_id = tostring(ipconfig.properties.subnet.id), public_ip_id = tostring(ipconfig.properties.publicIPAddress.id)
+| extend subnet_id_lower = tolower(subnet_id)
+| extend public_ip_id_lower = tolower(public_ip_id)
+| join kind = leftouter (
+    resources
+    | where type =~ 'microsoft.network/virtualnetworks'
+    | extend subnets = array_length(properties.subnets)
+    | mv-expand subnet = properties.subnets
+    | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
+    | extend subnet_id_lower = tolower(subnet_id)
+) on subnet_id_lower
+| join kind = leftouter (
+    resources
+    | where type =~ 'Microsoft.Network/PublicIpAddresses'
+    | project public_ip_id = tostring(id), public_ip = properties.ipAddress, public_ip_alloc_method = properties.publicIPAllocationMethod
+    | extend public_ip_id_lower = tolower(public_ip_id)
+) on public_ip_id_lower
+| extend metadata = pack('kind', 'Network Interface', 'orphaned', true, 'public_ip', public_ip, 'public_ip_id', public_ip_id, 'private_ip_alloc_method', private_ip_alloc_method, 'public_ip_alloc_method', public_ip_alloc_method)
+| project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
+"""
+
+PRIVATE_ENDPOINT = r"""
 resources
 | where type =~ 'microsoft.network/networkinterfaces'
 | where subscriptionId !in~ {}
@@ -232,7 +261,14 @@ resources
 | project name = iff(notempty(name), name, pe_name), id = iff(notempty(id), id, pe_id), private_ip, resource_group = iff(notempty(resource_group), resource_group, pe_rg), subscription_id = iff(notempty(subscription_id), subscription_id, pe_sid), tenant_id = iff(notempty(tenant_id), tenant_id, pe_tid), vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-VIRTUAL_MACHINE = """
+DATA_FACTORY = r"""
+resources
+| where type =~ 'Microsoft.DataFactory/factories'
+| where subscriptionId !in~ {}
+| project id, name, resource_group = resourceGroup, subscription_id = subscriptionId, tenant_id = tenantId
+"""
+
+VIRTUAL_MACHINE = r"""
 resources
 | where type =~ 'microsoft.compute/virtualmachines'
 | where subscriptionId !in~ {}
@@ -268,7 +304,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-# VM_SCALE_SET = """
+# VM_SCALE_SET = r"""
 # ComputeResources
 # | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines"
 # | where subscriptionId !in~ {}
@@ -296,7 +332,7 @@ resources
 # | project name = strcat(vmss_name, '_', vmss_vm_num), id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 # """
 
-VM_SCALE_SET = """
+VM_SCALE_SET = r"""
 ComputeResources
 | where type =~ "microsoft.compute/virtualmachinescalesets/virtualmachines"
 | where subscriptionId !in~ {}
@@ -325,10 +361,10 @@ ComputeResources
 | extend vmss_vm_num = todynamic(replace(@'.*\/virtualMachines/', '', id))
 | extend vmss_id = replace(@'/virtualMachines.*', '', id)
 | extend metadata = pack('kind', 'VM Scale Set', 'vmss_name', vmss_name, 'vmss_vm_num', vmss_vm_num, 'vmss_id', vmss_id)
-| project name = strcat(vmss_name, '_', vmss_vm_num), id, private_ips, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata 
+| project name = strcat(vmss_name, '_', vmss_vm_num), id, private_ips, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-FIREWALL_VNET = """
+FIREWALL_VNET = r"""
 resources
 | where type =~ 'Microsoft.Network/azureFirewalls'
 | where subscriptionId !in~ {}
@@ -356,7 +392,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-# FIREWALL_VHUB = """
+# FIREWALL_VHUB = r"""
 # resources
 # | where type =~ 'Microsoft.Network/azureFirewalls'
 # | where subscriptionId !in~ {}
@@ -372,7 +408,7 @@ resources
 # | project-away id1
 # """
 
-BASTION = """
+BASTION = r"""
 resources
 | where type =~ 'Microsoft.Network/bastionHosts'
 | where subscriptionId !in~ {}
@@ -399,7 +435,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-VNET_GATEWAY = """
+VNET_GATEWAY = r"""
 resources
 | where type =~ 'microsoft.Network/virtualNetworkGateways'
 | where subscriptionId !in~ {}
@@ -435,7 +471,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata = iff(tolower(type) == 'vpn', metadata_vpn, metadata_exr)
 """
 
-APP_GATEWAY = """
+APP_GATEWAY = r"""
 resources
 | where type =~ 'Microsoft.Network/applicationGateways'
 | where subscriptionId !in~ {}
@@ -471,7 +507,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-APIM = """
+APIM = r"""
 resources
 | where type =~ 'Microsoft.ApiManagement/service'
 | where subscriptionId !in~ {}
@@ -492,7 +528,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-LB = """
+LB = r"""
 resources
 | where type =~ 'microsoft.Network/LoadBalancers'
 | where subscriptionId !in~ {}
@@ -519,7 +555,7 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
-VHUB_ENDPOINT = """
+VHUB_ENDPOINT = r"""
 resources
 | where subscriptionId !in~ {}
 | where isnotnull(properties.virtualHub.id)

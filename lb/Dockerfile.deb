@@ -9,4 +9,4 @@ RUN ln -sf /dev/stderr /var/log/nginx/error.log
 COPY nginx.conf /etc/nginx/nginx.conf
 
 # Run script uses standard ways to run the application
-CMD nginx -g "daemon off;"
+CMD ["nginx", "-g", "daemon off;"]

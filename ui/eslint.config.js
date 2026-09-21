@@ -1,141 +1,106 @@
 import js from "@eslint/js";
 import globals from "globals";
 
-import react from "eslint-plugin-react";
-import hooks from "eslint-plugin-react-hooks";
-import jest from "eslint-plugin-jest";
+import eslintReact from "@eslint-react/eslint-plugin";
+import reactHooks from "eslint-plugin-react-hooks";
 
 export default [
+  // Ignore build output
+  { ignores: ["dist/"] },
+
+  // Base ESLint recommended rules
   js.configs.recommended,
+
+  // Configuration for root-level JS files (config files, etc.)
   {
     files: ["*.js", "*.mjs", "*.cjs"],
     languageOptions: {
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-      },
+      ecmaVersion: "latest",
+      sourceType: "module",
       globals: {
         ...globals.node,
-      }
+      },
     },
     rules: {
       "no-unused-vars": "off",
       "no-prototype-builtins": "off",
-      "no-constant-binary-expression": "off"
+      "no-constant-binary-expression": "off",
     },
   },
+
+  // Configuration for source JS files (non-JSX)
   {
     files: ["src/**/*.js"],
-    plugins: {
-      jest
-    },
     languageOptions: {
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-      },
+      ecmaVersion: "latest",
+      sourceType: "module",
       globals: {
         ...globals.node,
         ...globals.browser,
-        ...globals.jest
-      }
+      },
     },
     rules: {
       "no-unused-vars": "off",
       "no-prototype-builtins": "off",
-      "no-constant-binary-expression": "off"
+      "no-constant-binary-expression": "off",
     },
   },
+
+  // React recommended rules (scoped to JSX files)
+  {
+    ...eslintReact.configs.recommended,
+    files: ["src/**/*.jsx"],
+  },
+
+  // Disable RSC rules (Vite SPA, not using React Server Components)
+  // Disable rules-of-hooks and exhaustive-deps (covered by react-hooks)
+  // Disable set-state-in-effect (widespread pattern, to be addressed incrementally)
   {
     files: ["src/**/*.jsx"],
-    plugins: {
-      react,
-      "react-hooks": hooks,
-      jest
+    rules: {
+      "@eslint-react/rsc-function-definition": "off",
+      "@eslint-react/no-nested-component-definitions": "warn",
+      "@eslint-react/rules-of-hooks": "off",
+      "@eslint-react/exhaustive-deps": "off",
+      "@eslint-react/set-state-in-effect": "off",
     },
-    settings: {
-      react: {
-        version: "detect",
-      }
+  },
+
+  // React Hooks + React Compiler rules (consolidated in eslint-plugin-react-hooks v7)
+  {
+    ...reactHooks.configs.flat["recommended-latest"],
+    files: ["src/**/*.jsx"],
+  },
+
+  // React Compiler rule overrides
+  // - set-state-in-effect: widespread pattern, to be addressed incrementally
+  {
+    files: ["src/**/*.jsx"],
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
     },
+  },
+
+  // Configuration for React JSX files
+  {
+    files: ["src/**/*.jsx"],
     languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
       parserOptions: {
         ecmaFeatures: {
           jsx: true,
         },
-        ecmaVersion: 'latest',
-        sourceType: 'module',
       },
       globals: {
         ...globals.node,
         ...globals.browser,
-        ...globals.jest
-      }
-    },
-    rules: {
-      "no-unused-vars": "off",
-      "no-prototype-builtins": "off",
-      "react/prop-types": "off",
-      "react/display-name": "off",
-      "react/no-unescaped-entities": "off",
-      "no-constant-binary-expression": "off"
-    },
-  },
-  {
-    files: ["src/**/*.ts"],
-    plugins: {
-      jest
-    },
-    languageOptions: {
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
       },
-      globals: {
-        ...globals.node,
-        ...globals.browser,
-        ...globals.jest
-      }
     },
     rules: {
       "no-unused-vars": "off",
       "no-prototype-builtins": "off",
-      "no-constant-binary-expression": "off"
-    },
-  },
-  {
-    files: ["src/**/*.tsx"],
-    plugins: {
-      react,
-      "react-hooks": hooks,
-      jest
-    },
-    settings: {
-      react: {
-        version: "detect",
-      }
-    },
-    languageOptions: {
-      parserOptions: {
-        ecmaFeatures: {
-          jsx: true,
-        },
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-      },
-      globals: {
-        ...globals.node,
-        ...globals.browser,
-        ...globals.jest
-      }
-    },
-    rules: {
-      "no-unused-vars": "off",
-      "no-prototype-builtins": "off",
-      "react/prop-types": "off",
-      "react/display-name": "off",
-      "react/no-unescaped-entities": "off",
-      "no-constant-binary-expression": "off"
+      "no-constant-binary-expression": "off",
     },
   },
 ];

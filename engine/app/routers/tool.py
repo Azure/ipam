@@ -1,39 +1,34 @@
-from fastapi import (
-    APIRouter,
-    HTTPException,
-    Depends,
-    Header
-)
-
+import copy
 from typing import List
 
 import regex
-import copy
-from netaddr import IPSet, IPNetwork
+from fastapi import APIRouter, Depends, HTTPException
+from netaddr import IPNetwork, IPSet
 
 from app.dependencies import (
+    UNAUTHORIZED,
     api_auth_checks,
-    get_tenant_id
+    get_tenant_id,
+    get_token_auth_header,
 )
+from app.models import (
+    CIDRCheckReq,
+    CIDRCheckRes,
+    NewSubnetCIDR,
+    NewVNetCIDR,
+    SubnetCIDRReq,
+    VNetCIDRReq,
+)
+from app.routers.azure import fetch_network_prefixes
+from app.routers.common.helper import arg_query, cosmos_query, cosmos_retry, vnet_fixup
 
-from app.models import *
 from . import argquery
-
-from app.routers.common.helper import (
-    cosmos_query,
-    cosmos_retry,
-    arg_query,
-    vnet_fixup
-)
-
-from app.routers.azure import (
-    get_network
-)
 
 router = APIRouter(
     prefix="/tools",
     tags=["tools"],
-    dependencies=[Depends(api_auth_checks)]
+    dependencies=[Depends(api_auth_checks)],
+    responses=UNAUTHORIZED
 )
 
 @router.post(
@@ -48,7 +43,7 @@ router = APIRouter(
 )
 async def next_available_subnet(
     req: SubnetCIDRReq,
-    authorization: str = Header(None, description="Azure Bearer token"),
+    token: str = Depends(get_token_auth_header),
 ):
     """
     Get the next available Subnet CIDR in a Virtual Network with the following information:
@@ -70,7 +65,7 @@ async def next_available_subnet(
     if not valid_vnet:
         raise HTTPException(status_code=400, detail="Invalid Virtual Network ID.")
 
-    vnet_list = await arg_query(authorization, True, argquery.VNET)
+    vnet_list = await arg_query(token, True, argquery.VNET)
     vnet_list = vnet_fixup(vnet_list)
 
     vnet_all_cidrs = []
@@ -96,14 +91,14 @@ async def next_available_subnet(
     if req.smallest_cidr:
         # cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
         cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set[available_slicer]))
-        min_mask = max(map(lambda x: x.prefixlen, cidr_list))
+        min_mask = max(map(lambda x: x.prefixlen, cidr_list), default = None)
         available_block = next((net for net in list(filter(lambda network: network.prefixlen == min_mask, cidr_list))), None)
     else:
         # available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
         available_block = next((net for net in available_set[available_slicer] if net.prefixlen <= req.size), None)
 
     if not available_block:
-        raise HTTPException(status_code=500, detail="Subnet of requested size unavailable in target virtual network.")
+        raise HTTPException(status_code=409, detail="Subnet of requested size unavailable in target virtual network.")
 
     next_cidr = list(available_block.subnet(req.size))[next_selector]
 
@@ -128,7 +123,7 @@ async def next_available_subnet(
 )
 async def next_available_vnet(
     req: VNetCIDRReq,
-    authorization: str = Header(None, description="Azure Bearer token"),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -149,7 +144,7 @@ async def next_available_vnet(
 
     try:
         target_space = copy.deepcopy(space_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     request_blocks = set(req.blocks)
@@ -159,7 +154,9 @@ async def next_available_vnet(
     if invalid_blocks:
         raise HTTPException(status_code=400, detail="Invalid Block(s) in Block list: {}.".format(list(invalid_blocks)))
 
-    net_list = await get_network(authorization, True)
+    # Allocation: the next available CIDR must not overlap any existing network, including ones the
+    # caller cannot see, so this deliberately asks for every network.
+    net_list = await fetch_network_prefixes(token, True)
 
     available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
     next_selector = -1 if req.reverse_search else 0
@@ -190,7 +187,7 @@ async def next_available_vnet(
 
             if req.smallest_cidr:
                 cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
-                min_mask = max(map(lambda x: x.prefixlen, cidr_list))
+                min_mask = max(map(lambda x: x.prefixlen, cidr_list), default = None)
                 available_block = next((net for net in list(filter(lambda network: network.prefixlen == min_mask, cidr_list))), None)
             else:
                 available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
@@ -198,7 +195,7 @@ async def next_available_vnet(
             available_block_name = block if available_block else None
 
     if not available_block:
-        raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block(s).")
+        raise HTTPException(status_code=409, detail="Network of requested size unavailable in target block(s).")
 
     next_cidr = list(available_block.subnet(req.size))[next_selector]
 
@@ -222,7 +219,7 @@ async def next_available_vnet(
 )
 async def cidr_check(
     req: CIDRCheckReq,
-    authorization: str = Header(None, description="Azure Bearer token"),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -236,7 +233,7 @@ async def cidr_check(
 
     spaces = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
-    nets = await arg_query(authorization, True, argquery.NET_BASIC)
+    nets = await arg_query(token, True, argquery.NET_BASIC)
 
     nets = vnet_fixup(nets)
 
@@ -256,7 +253,8 @@ async def cidr_check(
         for space in spaces:
             for block in space['blocks']:
                 for vnet in block['vnets']:
-                    if vnet['id'] == item['id']:
+                    # Azure reports resource IDs with inconsistent casing, and stored IDs keep the caller's.
+                    if vnet['id'].lower() == item['id'].lower():
                         container = {
                             "space": space['name'],
                             "block": block['name']

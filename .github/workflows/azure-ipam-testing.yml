@@ -6,6 +6,21 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - '.vscode/**'
+      - 'docs/**'
+      - 'examples/**'
+      - 'migrate/**'
+      - '.dockerignore'
+      - '.env.example'
+      - '.gitattributes'
+      - '.gitignore'
+      - 'LICENSE'
+      - '*.md'
+
+permissions:
+  id-token: write
+  contents: read
 
 env:
   ACR_NAME: ${{ vars.IPAM_TEST_ACR }}
@@ -13,9 +28,132 @@ env:
   IPAM_ENGINE_NAME: ipam-engine-${{ github.run_id }}-${{ github.run_attempt }}
 
 jobs:
+  lint:
+    name: Lint & Build Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Azure IPAM Code
+        id: checkoutCode
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        id: setupNode
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      # Must match the App Service runtime declared in engine/app/version.json
+      - name: Read Python Version
+        id: pythonVersion
+        run: echo "version=$(jq -r .python engine/app/version.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Python
+        id: setupPython
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ steps.pythonVersion.outputs.version }}
+
+      - name: Lint Azure IPAM UI (ESLint)
+        id: lintUI
+        working-directory: ui
+        run: |
+          npm ci
+          npm run lint
+
+      - name: Build Azure IPAM UI (Vite)
+        id: buildUI
+        working-directory: ui
+        run: npm run build
+
+      - name: Lint Azure IPAM Engine (Ruff)
+        id: lintEngine
+        run: |
+          pip install ruff
+          ruff check engine/
+
+      - name: Lint PowerShell Scripts (PSScriptAnalyzer)
+        id: lintScripts
+        shell: pwsh
+        run: |
+          Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.25.0 -Repository PSGallery -Scope CurrentUser -Force
+
+          # Scoped to the rules the settings file configures. Running PSUseCorrectCasing alongside the
+          # full default rule set intermittently crashes the analyzer, which would fail this step on a
+          # clean tree: https://github.com/PowerShell/PSScriptAnalyzer/issues/1708
+          # Drop -IncludeRule and rely on the settings file alone once that issue is resolved.
+          $rules = @(
+            'PSUseCorrectCasing'
+            'PSPlaceOpenBrace'
+            'PSUseCompatibleSyntax'
+            'PSAvoidSemicolonsAsLineTerminators'
+          )
+
+          # Enumerated explicitly: passing the settings file itself to the analyzer throws.
+          $scripts = Get-ChildItem -Path . -Recurse -Filter *.ps1 |
+            Where-Object { $_.FullName -notmatch 'node_modules' }
+
+          # Without this the step would pass green having analyzed nothing.
+          if (-not $scripts) {
+            Write-Host "::error::No PowerShell scripts were found to analyze"
+            exit 1
+          }
+
+          Write-Host "Analyzing $($scripts.Count) script(s)..."
+
+          $findings = $scripts | ForEach-Object {
+            Invoke-ScriptAnalyzer -Path $_.FullName -Settings ./PSScriptAnalyzerSettings.psd1 -IncludeRule $rules
+          }
+
+          if ($findings) {
+            $findings | Format-Table ScriptName, Severity, Line, RuleName, Message -AutoSize |
+              Out-String -Width 250 | Write-Host
+            Write-Host "::error::PSScriptAnalyzer reported $(@($findings).Count) finding(s)"
+            exit 1
+          }
+
+      - name: Lint Bicep Templates
+        id: lintBicep
+        run: az bicep build --file deploy/main.bicep --stdout > /dev/null
+
+      - name: Lint Dockerfiles Debian (Hadolint)
+        id: lintDockerfilesDeb
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: Dockerfile.deb
+          recursive: true
+
+      - name: Lint Dockerfiles RHEL (Hadolint)
+        id: lintDockerfilesRhel
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: Dockerfile.rhel
+          recursive: true
+
+      - name: Lint Dockerfiles Function (Hadolint)
+        id: lintDockerfilesFunc
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: Dockerfile.func
+          recursive: true
+
+      - name: Lint Dockerfiles Development (Hadolint)
+        id: lintDockerfilesDev
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: Dockerfile.dev
+          recursive: true
+
+      - name: Lint Dockerfiles Load Balancer (Hadolint)
+        id: lintDockerfilesLb
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: Dockerfile
+          recursive: true
+
   deploy:
     name: Deploy Azure IPAM
     runs-on: ubuntu-latest
+    needs: [ lint ]
     outputs:
       ipamURL: ${{ steps.deployScript.outputs.ipamURL }}
       ipamUIAppId: ${{ steps.deployScript.outputs.ipamUIAppId }}
@@ -28,18 +166,21 @@ jobs:
         shell: pwsh
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module Az, Microsoft.Graph -AllowClobber -Force
+          Install-Module Az -AllowClobber -Force
+          Install-Module Microsoft.Graph -AllowClobber -Force
 
       - name: Azure Login
         id: azureLogin
-        uses: azure/login@v2
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_TEST_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TEST_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_TEST_SUBSCRIPTION_ID }}
           enable-AzPSSession: true
 
       - name: Checkout Azure IPAM Code
         id: checkoutRepo
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
             deploy
@@ -49,7 +190,7 @@ jobs:
       - name: Build Azure IPAM Container
         id: buildContainer
         run: |
-          az acr build -r $ACR_NAME -t ipam:${{ github.run_id }}-${{ github.run_attempt }} -f ./Dockerfile.deb .
+          az acr build -r $ACR_NAME -t ipam:${{ github.run_id }}-${{ github.run_attempt }} -f ./Dockerfile.deb . --build-arg PROD_BUILD=false
 
       - name: Update Bicep File
         id: updateBicep
@@ -61,7 +202,7 @@ jobs:
 
           $bicepFile = Get-Content -Path ./modules/appService.bicep
 
-          $bicepFile = $bicepFile -replace "azureipam.azurecr.io", $acrName
+          $bicepFile = $bicepFile -replace "registry.azureipam.com", $acrName
           $bicepFile = $bicepFile -replace "ipam:latest", $containerName
 
           $bicepFile | Out-File -FilePath ./modules/appService.bicep -Force
@@ -74,7 +215,8 @@ jobs:
 
       - name: "Upload Logs"
         id: uploadLogs
-        working-directory: logs
+        # Always upload logs (success or failure) so deployment failures can be reviewed
+        if: always()
         env:
           AZURE_IPAM_SUFFIX: ${{ steps.deployScript.outputs.ipamSuffix }}
           STORAGE_ACCT_RG: ${{ vars.LOGGING_STORAGE_RG }}
@@ -82,9 +224,17 @@ jobs:
           STORAGE_ACCT_CTR: ${{ vars.LOGGING_STORAGE_CTR }}
         shell: pwsh
         run: |
-          $archiveName = "IPAM-RUN(${{ github.run_id }})-ATTEMPT(${{ github.run_attempt }})-SUFFIX($env:AZURE_IPAM_SUFFIX).zip"
+          $suffix = if ([string]::IsNullOrWhiteSpace($env:AZURE_IPAM_SUFFIX)) { "FAILED" } else { $env:AZURE_IPAM_SUFFIX }
+          $archiveName = "IPAM-RUN(${{ github.run_id }})-ATTEMPT(${{ github.run_attempt }})-SUFFIX($suffix).zip"
 
-          Compress-Archive -Path ./* -DestinationPath /tmp/$archiveName
+          $logDir = Join-Path $env:GITHUB_WORKSPACE "logs"
+
+          if (-not (Test-Path -Path $logDir) -or -not (Get-ChildItem -Path $logDir -File -Recurse -ErrorAction SilentlyContinue)) {
+            Write-Warning "No log files found to upload; skipping log upload."
+            return
+          }
+
+          Compress-Archive -Path (Join-Path $logDir '*') -DestinationPath /tmp/$archiveName
 
           $storage = Get-AzStorageAccount -Name $env:STORAGE_ACCT_NAME -ResourceGroupName $env:STORAGE_ACCT_RG
           $context = $storage.Context
@@ -137,18 +287,21 @@ jobs:
         shell: pwsh
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module Az, Pester -AllowClobber -Force
+          Install-Module Az -AllowClobber -Force
+          Install-Module Pester -AllowClobber -Force
 
       - name: Azure Login
         id: azureLogin
-        uses: azure/login@v2
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_TEST_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TEST_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_TEST_SUBSCRIPTION_ID }}
           enable-AzPSSession: true
 
       - name: Checkout Azure IPAM Code
         id: checkoutRepo
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
             tests
@@ -193,19 +346,16 @@ jobs:
 
       - name: Azure Login
         id: azureLogin
-        uses: azure/login@v2
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_TEST_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TEST_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_TEST_SUBSCRIPTION_ID }}
           enable-AzPSSession: true
-
-      - name : Remove Azure IPAM Resources
-        id: cleanupResources
-        shell: pwsh
-        run: |
-          Remove-AzResourceGroup -Name ${{ needs.deploy.outputs.ipamResourceGroup }} -Force
 
       - name : Remove Azure IPAM Identities
         id: cleanupIdentities
+        if: always()
         shell: pwsh
         run: |
           $tenantId = (Get-AzContext).Tenant.Id
@@ -215,13 +365,23 @@ jobs:
           $engineApp = Get-AzADApplication -ApplicationId ${{ needs.deploy.outputs.ipamEngineAppId }}
           $engineSpn = Get-AzADServicePrincipal -ApplicationId ${{ needs.deploy.outputs.ipamEngineAppId }}
 
+          Write-Host "Removing Engine SPN Role Assignment..."
           Remove-AzRoleAssignment -ObjectId $engineSpn.Id -Scope $scope -RoleDefinitionName Reader
 
-          $engineSpn | Remove-AzADServicePrincipal
+          Write-Host "Removing UI Application..."
           $uiApp | Remove-AzADApplication
+          Write-Host "Removing Engine Application..."
           $engineApp | Remove-AzADApplication
 
       - name: "Remove Azure IPAM Container"
         id: cleanupContainer
+        if: always()
         run: |
           az acr repository delete --name $ACR_NAME --repository ipam --yes
+
+      - name : Remove Azure IPAM Resources
+        id: cleanupResources
+        if: always()
+        shell: pwsh
+        run: |
+          Remove-AzResourceGroup -Name ${{ needs.deploy.outputs.ipamResourceGroup }} -Force

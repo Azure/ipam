@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSelector, createSlice } from '@reduxjs/toolkit';
 
-import { concat, merge, cloneDeep, isEqual } from 'lodash';
+import { concat, merge, cloneDeep, isEqual, uniq } from 'lodash-es';
 
 // import SnackbarUtils from '../../utils/snackbar';
 
@@ -12,6 +12,7 @@ import {
   createBlock,
   updateBlock,
   deleteBlock,
+  replaceBlockNetworks,
   createBlockExternal,
   updateBlockExternal,
   deleteBlockExternal,
@@ -159,6 +160,19 @@ export const deleteBlockAsync = createAsyncThunk(
   async (args, { rejectWithValue }) => {
     try {
       const response = await deleteBlock(args.space, args.block, args.force);
+
+      return response;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const replaceBlockNetworksAsync = createAsyncThunk(
+  'ipam/replaceBlockNetworks',
+  async (args, { rejectWithValue }) => {
+    try {
+      const response = await replaceBlockNetworks(args.space, args.block, args.body);
 
       return response;
     } catch (err) {
@@ -388,6 +402,18 @@ export const updateMeAsync = createAsyncThunk(
   }
 );
 
+/**
+ * Stamps a Block with its row identity.
+ *
+ * A Block name is only unique within its Space, so the two are paired. This has
+ * to be reapplied whenever either name changes, or the identity goes stale.
+ */
+const setBlockId = (block) => {
+  block.id = `${block.name}@${block.parent_space}`;
+
+  return block;
+};
+
 export const ipamSlice = createSlice({
   name: 'ipam',
   initialState,
@@ -415,9 +441,8 @@ export const ipamSlice = createSlice({
             block.parent_space = space.name;
             block.available = (block.size - block.used);
             block.utilization = Math.round((block.used / block.size) * 100);
-            block.id = `${block.name}@${block.parent_space}`;
 
-            return block;
+            return setBlockId(block);
           });
 
           return space;
@@ -459,24 +484,21 @@ export const ipamSlice = createSlice({
                 block.parent_space = updatedSpace.name;
               }
 
-              return block;
+              return setBlockId(block);
             });
 
-            state.vNets = state.vNets.map((vnet) => {
-              if(vnet.parent_space === spaceName) {
-                vnet.parent_space = updatedSpace.name;
+            const renameSpace = (network) => {
+              if(Array.isArray(network.parent_containers)) {
+                network.parent_containers = network.parent_containers.map((container) => (
+                  container.space === spaceName ? { ...container, space: updatedSpace.name } : container
+                ));
               }
 
-              return vnet;
-            });
+              return network;
+            };
 
-            state.vHubs = state.vHubs.map((vhub) => {
-              if(vhub.parent_space === spaceName) {
-                vhub.parent_space = updatedSpace.name;
-              }
-
-              return vhub;
-            });
+            state.vNets = state.vNets.map(renameSpace);
+            state.vHubs = state.vHubs.map(renameSpace);
           }
         }
       })
@@ -512,7 +534,7 @@ export const ipamSlice = createSlice({
         newBlock.available = 0;
         newBlock.utilization = 0;
 
-        state.spaces[spaceIndex].blocks.push(newBlock);
+        state.spaces[spaceIndex].blocks.push(setBlockId(newBlock));
       })
       .addCase(createBlockAsync.rejected, (state, action) => {
         console.log("createBlockAsync Rejected");
@@ -531,23 +553,23 @@ export const ipamSlice = createSlice({
 
           if(blockIndex > -1) {
             state.spaces[spaceIndex].blocks[blockIndex] = merge(state.spaces[spaceIndex].blocks[blockIndex], updatedBlock);
+            setBlockId(state.spaces[spaceIndex].blocks[blockIndex]);
 
             if(blockName !== updatedBlock.name) {
-              state.vNets = state.vNets.map((vnet) => {
-                if(vnet.parent_block === blockName) {
-                  vnet.parent_block = updatedBlock.name;
+              const renameBlock = (network) => {
+                if(Array.isArray(network.parent_containers)) {
+                  network.parent_containers = network.parent_containers.map((container) => (
+                    container.space === spaceName && container.block === blockName
+                      ? { ...container, block: updatedBlock.name }
+                      : container
+                  ));
                 }
 
-                return vnet;
-              });
+                return network;
+              };
 
-              state.vHubs = state.vHubs.map((vhub) => {
-                if(vhub.parent_block === blockName) {
-                  vhub.parent_block = updatedBlock.name;
-                }
-
-                return vhub;
-              });
+              state.vNets = state.vNets.map(renameBlock);
+              state.vHubs = state.vHubs.map(renameBlock);
             }
           }
         }
@@ -575,16 +597,65 @@ export const ipamSlice = createSlice({
         // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
+      .addCase(replaceBlockNetworksAsync.fulfilled, (state, action) => {
+        const spaceName = action.meta.arg.space;
+        const blockName = action.meta.arg.block;
+
+        const spaceIndex = state.spaces.findIndex((space) => space.name === spaceName);
+
+        if(spaceIndex > -1) {
+          const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+
+          if(blockIndex > -1) {
+            state.spaces[spaceIndex].blocks[blockIndex].vnets = action.payload;
+          }
+        }
+
+        // The engine derives parent_containers by cross referencing the Space
+        // documents, so the networks are patched here rather than refetched.
+        // Azure reports resource IDs with inconsistent casing.
+        const associated = new Set(action.payload.map((network) => network.id.toLowerCase()));
+
+        const reassociate = (network) => {
+          const containers = Array.isArray(network.parent_containers) ? network.parent_containers : [];
+
+          // This Block is dropped and re-added, so the payload decides membership.
+          const others = containers.filter((container) => (
+            !(container.space === spaceName && container.block === blockName)
+          ));
+
+          network.parent_containers = associated.has(network.id.toLowerCase())
+            ? [...others, { space: spaceName, block: blockName }]
+            : others;
+
+          return network;
+        };
+
+        if(Array.isArray(state.vNets)) {
+          state.vNets = state.vNets.map(reassociate);
+        }
+
+        if(Array.isArray(state.vHubs)) {
+          state.vHubs = state.vHubs.map(reassociate);
+        }
+      })
+      .addCase(replaceBlockNetworksAsync.rejected, (state, action) => {
+        console.log("replaceBlockNetworksAsync Rejected");
+        console.log(action);
+        throw action.payload;
+      })
       .addCase(createBlockExternalAsync.fulfilled, (state, action) => {
         const spaceName = action.meta.arg.space;
         const spaceIndex = state.spaces.findIndex((x) => x.name === spaceName);
         const blockName = action.meta.arg.block;
         const newExternal = action.payload
 
-        const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
+        if(spaceIndex > -1) {
+          const blockIndex = state.spaces[spaceIndex].blocks.findIndex((block) => block.name === blockName);
 
-        if(blockIndex > -1) {
-          state.spaces[spaceIndex].blocks[blockIndex].externals.push(newExternal);
+          if(blockIndex > -1) {
+            state.spaces[spaceIndex].blocks[blockIndex].externals.push(newExternal);
+          }
         }
       })
       .addCase(createBlockExternalAsync.rejected, (state, action) => {
@@ -792,7 +863,7 @@ export const ipamSlice = createSlice({
 
         const subnets = vnets.map((vnet) => {
           var subnetArray = [];
-        
+
           vnet.subnets.forEach((subnet) => {
             const subnetDetails = {
               name: subnet.name,
@@ -871,7 +942,7 @@ export const ipamSlice = createSlice({
 
         const subnets = vNetData.map((vnet) => {
           var subnetArray = [];
-        
+
           vnet.subnets.forEach((subnet) => {
             const subnetDetails = {
               name: subnet.name,
@@ -926,9 +997,8 @@ export const ipamSlice = createSlice({
               block.parent_space = space.name;
               block.available = (block.size - block.used);
               block.utilization = Math.round((block.used / block.size) * 100);
-              block.id = `${block.name}@${block.parent_space}`;
 
-              return block;
+              return setBlockId(block);
             });
 
             return space;
@@ -959,7 +1029,7 @@ export const ipamSlice = createSlice({
 
           const subnets = vNetData.map((vnet) => {
             var subnetArray = [];
-          
+
             vnet.subnets.forEach((subnet) => {
               const subnetDetails = {
                 name: subnet.name,
@@ -993,8 +1063,10 @@ export const ipamSlice = createSlice({
         }
 
         if(action.payload[3].status === 'fulfilled') {
-          const endpoints = action.payload[3].value.map((endpoint) => {
-            endpoint.uniqueId = `${endpoint.id}@$${endpoint.private_ip}`
+          const endpoints = action.payload[3].value.map((endpoint, index) => {
+            // Use index as fallback when private_ip is null to ensure uniqueness
+            const ipPart = endpoint.private_ip ?? `idx${index}`;
+            endpoint.uniqueId = `${endpoint.id}@$${ipPart}`;
 
             return endpoint;
           });
@@ -1119,6 +1191,10 @@ export const selectUpdatedVNets = createSelector(
 
       newVNet.subscription_name = subscriptions?.find((x) => x.subscription_id === vnet.subscription_id)?.name || 'Unknown';
 
+      // Flattened projections of parent_containers, for grid display, filtering and search.
+      newVNet.parent_spaces = uniq(vnet.parent_containers?.map((container) => container.space) ?? []);
+      newVNet.parent_blocks = vnet.parent_containers?.map((container) => container.block) ?? [];
+
       return newVNet;
     });
   }
@@ -1131,6 +1207,10 @@ export const selectUpdatedVHubs = createSelector(
       var newVHub = cloneDeep(vhub);
 
       newVHub.subscription_name = subscriptions?.find((x) => x.subscription_id === vhub.subscription_id)?.name || 'Unknown';
+
+      // Flattened projections of parent_containers, for grid display, filtering and search.
+      newVHub.parent_spaces = uniq(vhub.parent_containers?.map((container) => container.space) ?? []);
+      newVHub.parent_blocks = vhub.parent_containers?.map((container) => container.block) ?? [];
 
       return newVHub;
     });
@@ -1174,6 +1254,40 @@ export const selectUpdatedNetworks = createSelector(
       return newNetwork;
     });
   }
+);
+
+// ============================================================================
+// Drill-Down Index
+// Pre-computed Sets of parent identities, used by DrillDownCellRenderer to
+// decide whether a given row actually has children. These are keyed on
+// identity rather than name, because only a Space name is unique on its own.
+// ============================================================================
+
+/**
+ * Normalizes a value into a drill-down index key.
+ *
+ * ARM does not guarantee the casing of resource ID segments, so both sides of
+ * a comparison are lowered before they are matched.
+ */
+export const drillKey = (value) => (value == null ? null : String(value).toLowerCase());
+
+// A Block name is only unique within its Space, so the two are paired.
+const blockDrillKey = (block, space) => drillKey(`${block}@${space}`);
+
+export const selectDrillIndex = createSelector(
+  [selectBlocks, selectVNets, selectVHubs, selectSubnets, selectEndpoints],
+  (blocks, vnets, vhubs, subnets, endpoints) => ({
+    blocksBySpace: new Set(blocks?.map((b) => drillKey(b.parent_space)).filter(Boolean) ?? []),
+    vnetsByBlock: new Set(
+      vnets?.flatMap((v) => v.parent_containers?.map((c) => blockDrillKey(c.block, c.space)) ?? []) ?? []
+    ),
+    vhubsByBlock: new Set(
+      vhubs?.flatMap((v) => v.parent_containers?.map((c) => blockDrillKey(c.block, c.space)) ?? []) ?? []
+    ),
+    subnetsByVNet: new Set(subnets?.map((s) => drillKey(s.vnet_id)).filter(Boolean) ?? []),
+    endpointsBySubnet: new Set(endpoints?.map((e) => drillKey(e.subnet_id)).filter(Boolean) ?? []),
+    endpointsByNetwork: new Set(endpoints?.map((e) => drillKey(e.vnet_id)).filter(Boolean) ?? [])
+  })
 );
 
 const getSettingName = (_, settingName) => settingName;

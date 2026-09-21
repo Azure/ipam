@@ -1,45 +1,38 @@
-from fastapi import (
-    APIRouter,
-    Depends,
-    Header
-)
-
 import asyncio
+
+from fastapi import APIRouter, Depends
 from netaddr import IPNetwork
 
 from app.dependencies import (
+    UNAUTHORIZED,
     api_auth_checks,
     get_admin,
-    get_tenant_id
+    get_tenant_id,
+    get_token_auth_header,
 )
-
-from app.models import *
-
-from app.routers.space import (
-    get_spaces
-)
-
 from app.routers.azure import (
-    get_vnet,
+    apim,
+    appgw,
+    bastion,
+    fetch_vnets,
+    fwvnet,
     get_subnet,
     pe,
     vm,
     vmss,
-    fwvnet,
-    bastion,
     vnetgw,
-    appgw,
-    apim
 )
+from app.routers.space import get_spaces
 
 router = APIRouter(
     prefix="/internal",
     tags=["internal"],
-    dependencies=[Depends(api_auth_checks)]
+    dependencies=[Depends(api_auth_checks)],
+    responses=UNAUTHORIZED
 )
 
 async def multi_helper(func, list, *args):
-    """DOCSTRING"""
+    """Await the given coroutine function and append its result to the shared list (used to gather queries concurrently)."""
 
     results = await func(*args)
     list.append(results)
@@ -49,7 +42,7 @@ async def multi_helper(func, list, *args):
     summary = "Get Space Tree View"
 )
 async def tree(
-    authorization: str = Header(None),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
     admin: str = Depends(get_admin)
 ):
@@ -63,17 +56,17 @@ async def tree(
     subnet_list = []
     endpoint_list = []
 
-    tasks.append(asyncio.create_task(multi_helper(get_spaces, space_list, False, True, authorization, tenant_id, True)))
-    tasks.append(asyncio.create_task(multi_helper(get_vnet, vnet_list, authorization, tenant_id, admin)))
-    tasks.append(asyncio.create_task(multi_helper(get_subnet, subnet_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(pe, endpoint_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vm, endpoint_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vmss, endpoint_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(fwvnet, endpoint_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(bastion, endpoint_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vnetgw, endpoint_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(appgw, endpoint_list, authorization, admin)))
-    tasks.append(asyncio.create_task(multi_helper(apim, endpoint_list, authorization, admin)))
+    tasks.append(asyncio.create_task(multi_helper(get_spaces, space_list, False, True, token, tenant_id, True)))
+    tasks.append(asyncio.create_task(multi_helper(fetch_vnets, vnet_list, token, tenant_id, admin)))
+    tasks.append(asyncio.create_task(multi_helper(get_subnet, subnet_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(pe, endpoint_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(vm, endpoint_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(vmss, endpoint_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(fwvnet, endpoint_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(bastion, endpoint_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(vnetgw, endpoint_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(appgw, endpoint_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(apim, endpoint_list, token, admin)))
 
     await asyncio.gather(*tasks)
 

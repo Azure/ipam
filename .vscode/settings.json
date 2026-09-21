@@ -14,5 +14,6 @@
       "MD028": false,
       "MD033": false
   },
-  "files.trimTrailingWhitespace": true
+  "files.trimTrailingWhitespace": true,
+  "powershell.scriptAnalysis.settingsPath": "PSScriptAnalyzerSettings.psd1"
 }
