@@ -7,7 +7,7 @@ import time
 import aiohttp
 import jwt
 from cryptography.hazmat.primitives import serialization
-from fastapi import Depends, HTTPException, Request, Security
+from fastapi import Depends, HTTPException, Query, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.globals import globals
@@ -38,6 +38,20 @@ UNAUTHORIZED = {
     401: {
         "model": Error,
         "description": "Access token is missing, malformed, expired, or otherwise invalid."
+    }
+}
+
+# The 403 counterpart, attached by the OpenAPI generator rather than by routers.
+# It is a raw OpenAPI response object, not the `{status: {"model": ...}}` form used
+# above, because it is injected into the finished document: FastAPI only resolves
+# "model" into a schema reference while it is building the document, so that key
+# would survive verbatim and produce invalid JSON.
+ADMIN_FORBIDDEN = {
+    "description": "Caller is authenticated but is not an Azure IPAM administrator.",
+    "content": {
+        "application/json": {
+            "schema": {"$ref": "#/components/schemas/Error"}
+        }
     }
 }
 
@@ -252,3 +266,44 @@ async def get_admin(is_admin: bool = Depends(check_admin)) -> bool:
 
 async def get_tenant_id(payload: dict = Depends(validate_token)) -> str:
     return payload['tid']
+
+# Admin gates. Declaring one of these on a route is the single source of truth for
+# an admin restriction: it enforces the rule at runtime, and the OpenAPI generator
+# in app/openapi.py reads the dependency tree to mark the operation in the docs.
+# Never hand-write an admin note or a 403 response, it will drift from the enforcement.
+
+def admin_flag_gate(parameter: str):
+    """
+    Mark a dependency as a parameter-level admin gate guarding `parameter`.
+
+    The OpenAPI generator reads this marker off the dependency while walking a
+    route's tree, so the guarded parameter name stays attached to the gate that
+    guards it rather than living in a separate registry.
+    """
+
+    def decorate(gate):
+        gate.admin_flag_parameter = parameter
+
+        return gate
+
+    return decorate
+
+async def require_admin(is_admin: bool = Depends(check_admin)) -> bool:
+    """Endpoint-level admin gate. Use in a route's `dependencies=[...]`."""
+
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="API restricted to admins.")
+
+    return is_admin
+
+@admin_flag_gate("expand")
+async def admin_expand(
+    expand: bool = Query(False, description="Expand network references to full network objects"),
+    is_admin: bool = Depends(check_admin)
+) -> bool:
+    """Parameter-level admin gate: `expand` is only restricted when it is requested."""
+
+    if expand and not is_admin:
+        raise HTTPException(status_code=403, detail="Expand parameter can only be used by admins.")
+
+    return expand

@@ -14,10 +14,12 @@ from netaddr import IPAddress, IPNetwork, IPSet
 
 from app.dependencies import (
     UNAUTHORIZED,
+    admin_expand,
     api_auth_checks,
     get_admin,
     get_authorization,
     get_tenant_id,
+    require_admin,
 )
 from app.models import (
     Block,
@@ -588,7 +590,7 @@ async def scrub_ext_endpoint_patch(patch, space_name, block_name, external_name,
     status_code = 200
 )
 async def get_spaces(
-    expand: bool = Query(False, description="Expand network references to full network objects"),
+    expand: bool = Depends(admin_expand),
     utilization: bool = Query(False, description="Append utilization information for each network"),
     authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
@@ -600,11 +602,8 @@ async def get_spaces(
 
     user_assertion = authorization.split(' ')[1]
 
-    if expand and not is_admin:
-        raise HTTPException(status_code=403, detail="Expand parameter can only be used by admins.")
-
     if expand:
-        # Expand hands back whole network objects, so this needs the full query; admin-gated above.
+        # Expand hands back whole network objects, so this needs the full query; admin-gated by `admin_expand`.
         nets = await fetch_networks(authorization, tenant_id, True)
     elif utilization:
         # Utilization only sums prefixes, but it is occupancy, so it still needs every network.
@@ -649,7 +648,8 @@ async def get_spaces(
     "",
     summary = "Create New Space",
     response_model = Space,
-    status_code = 201
+    status_code = 201,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -658,8 +658,7 @@ async def get_spaces(
 async def create_space(
     space: SpaceReq,
     authorization: str = Depends(get_authorization),
-    tenant_id: str =  Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str =  Depends(get_tenant_id)
 ):
     """
     Create an new Space with the following details:
@@ -667,9 +666,6 @@ async def create_space(
     - **name**: Name of the Space
     - **desc**: A description for the Space
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
     if not re.match(SPACE_NAME_REGEX, space.name, re.IGNORECASE):
         raise HTTPException(status_code=400, detail="Space name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods.")
@@ -711,7 +707,7 @@ async def create_space(
 )
 async def get_space(
     space: str = Path(..., description="Name of the target Space"),
-    expand: bool = Query(False, description="Expand network references to full network objects"),
+    expand: bool = Depends(admin_expand),
     utilization: bool = Query(False, description="Append utilization information for each network"),
     authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
@@ -723,9 +719,6 @@ async def get_space(
 
     user_assertion = authorization.split(' ')[1]
 
-    if expand and not is_admin:
-        raise HTTPException(status_code=403, detail="Expand parameter can only be used by admins.")
-
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
@@ -734,7 +727,7 @@ async def get_space(
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     if expand:
-        # Expand hands back whole network objects, so this needs the full query; admin-gated above.
+        # Expand hands back whole network objects, so this needs the full query; admin-gated by `admin_expand`.
         nets = await fetch_networks(authorization, tenant_id, True)
     elif utilization:
         # Utilization only sums prefixes, but it is occupancy, so it still needs every network.
@@ -776,7 +769,8 @@ async def get_space(
     "/{space}",
     summary = "Update Space Details",
     # response_model = Space,
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -786,8 +780,7 @@ async def update_space(
     updates: SpaceUpdate,
     space: str = Path(..., description="Name of the target Space"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Update a Space with a JSON patch:
@@ -801,9 +794,6 @@ async def update_space(
     - **/name**
     - **/desc**
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -827,7 +817,8 @@ async def update_space(
 @router.delete(
     "/{space}",
     summary = "Delete a Space",
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -837,15 +828,11 @@ async def delete_space(
     space: str = Path(..., description="Name of the target Space"),
     force: Optional[bool] = Query(False, description="Forcefully delete a Space with existing Blocks"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Remove a specific Space.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1040,7 +1027,7 @@ async def create_multi_block_reservation(
 )
 async def get_blocks(
     space: str = Path(..., description="Name of the target Space"),
-    expand: bool = Query(False, description="Expand network references to full network objects"),
+    expand: bool = Depends(admin_expand),
     utilization: bool = Query(False, description="Append utilization information for each network"),
     authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
@@ -1052,9 +1039,6 @@ async def get_blocks(
 
     user_assertion = authorization.split(' ')[1]
 
-    if expand and not is_admin:
-        raise HTTPException(status_code=403, detail="Expand parameter can only be used by admins.")
-
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
     try:
@@ -1065,7 +1049,7 @@ async def get_blocks(
     block_list = target_space['blocks']
 
     if expand:
-        # Expand hands back whole network objects, so this needs the full query; admin-gated above.
+        # Expand hands back whole network objects, so this needs the full query; admin-gated by `admin_expand`.
         nets = await fetch_networks(authorization, tenant_id, True)
     elif utilization:
         # Utilization only sums prefixes, but it is occupancy, so it still needs every network.
@@ -1100,7 +1084,8 @@ async def get_blocks(
     "/{space}/blocks",
     summary = "Create a new Block",
     response_model = Block,
-    status_code = 201
+    status_code = 201,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1110,8 +1095,7 @@ async def create_block(
     block: BlockReq,
     space: str = Path(..., description="Name of the target Space"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Create an new Block within a Space with the following details:
@@ -1119,9 +1103,6 @@ async def create_block(
     - **name**: Name of the Block
     - **cidr**: IPv4 CIDR Range
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1177,7 +1158,7 @@ async def create_block(
 async def get_block(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    expand: bool = Query(False, description="Expand network references to full network objects"),
+    expand: bool = Depends(admin_expand),
     utilization: bool = Query(False, description="Append utilization information for each network"),
     authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
@@ -1188,9 +1169,6 @@ async def get_block(
     """
 
     user_assertion = authorization.split(' ')[1]
-
-    if expand and not is_admin:
-        raise HTTPException(status_code=403, detail="Expand parameter can only be used by admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1205,7 +1183,7 @@ async def get_block(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     if expand:
-        # Expand hands back whole network objects, so this needs the full query; admin-gated above.
+        # Expand hands back whole network objects, so this needs the full query; admin-gated by `admin_expand`.
         nets = await fetch_networks(authorization, tenant_id, True)
     elif utilization:
         # Utilization only sums prefixes, but it is occupancy, so it still needs every network.
@@ -1239,7 +1217,8 @@ async def get_block(
     "/{space}/blocks/{block}",
     summary = "Update Block Details",
     response_model = Block,
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1250,8 +1229,7 @@ async def update_block(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Update a Block with a JSON patch:
@@ -1265,9 +1243,6 @@ async def update_block(
     - **/name**
     - **/cidr**
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1297,7 +1272,8 @@ async def update_block(
 @router.delete(
     "/{space}/blocks/{block}",
     summary = "Delete a Block",
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1308,15 +1284,11 @@ async def delete_block(
     block: str = Path(..., description="Name of the target Block"),
     force: Optional[bool] = Query(False, description="Forcefully delete a Block with existing networks and/or reservations"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Remove a specific Block.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1449,15 +1421,15 @@ async def available_block_nets(
         List[NetworkExpand],
         List[Network]
     ],
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 async def get_block_nets(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     expand: bool = Query(False, description="Expand network references to full network objects"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a list of virtual networks which are currently associated to the target Block.
@@ -1465,9 +1437,6 @@ async def get_block_nets(
     """
 
     block_nets = []
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1496,7 +1465,8 @@ async def get_block_nets(
     "/{space}/blocks/{block}/networks",
     summary = "Add Block Network",
     response_model = BlockBasic,
-    status_code = 201
+    status_code = 201,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1507,17 +1477,13 @@ async def create_block_net(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Associate a network to the target Block with the following information:
 
     - **id**: Azure Resource ID
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1580,7 +1546,8 @@ async def create_block_net(
     "/{space}/blocks/{block}/networks",
     summary = "Replace Block Networks",
     response_model = List[Network],
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1591,17 +1558,13 @@ async def update_block_vnets(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Replace the list of networks currently associated to the target Block with the following information:
 
     - **[&lt;str&gt;]**: Array of Azure Resource ID's
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1692,7 +1655,8 @@ async def update_block_vnets(
 @router.delete(
     "/{space}/blocks/{block}/networks",
     summary = "Remove Block Networks",
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1703,17 +1667,13 @@ async def delete_block_nets(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Remove one or more networks currently associated to the target Block with the following information:
 
     - **[&lt;str&gt;]**: Array of Azure Resource ID's
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1760,21 +1720,18 @@ async def delete_block_nets(
     "/{space}/blocks/{block}/externals",
     summary = "List External Networks",
     response_model = List[ExtNet],
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 async def get_external_networks(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a list of External Networks which are currently associated to the target Block.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1794,7 +1751,8 @@ async def get_external_networks(
     "/{space}/blocks/{block}/externals",
     summary = "Create External Network",
     response_model = ExtNetExpand,
-    status_code = 201
+    status_code = 201,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1805,8 +1763,7 @@ async def create_external_network(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Create an External Network within the target Block with the following information:
@@ -1815,9 +1772,6 @@ async def create_external_network(
     - **desc**: Description of the external network
     - **cidr**: CIDR of the external network
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     if not re.match(EXTERNAL_NAME_REGEX, req.name, re.IGNORECASE):
         raise HTTPException(status_code=400, detail="External network name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods.")
@@ -1905,22 +1859,19 @@ async def create_external_network(
     "/{space}/blocks/{block}/externals/{external}",
     summary = "Get External Network",
     response_model = ExtNet,
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 async def get_external_network(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target external network"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get the details of a specific External Network.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1945,7 +1896,8 @@ async def get_external_network(
     "/{space}/blocks/{block}/externals/{external}",
     summary = "Update External Network Details",
     response_model = ExtNet,
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1957,8 +1909,7 @@ async def update_ext_network(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Update an External Network with a JSON patch:
@@ -1973,9 +1924,6 @@ async def update_ext_network(
     - **/desc**
     - **/cidr**
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -2010,7 +1958,8 @@ async def update_ext_network(
 @router.delete(
     "/{space}/blocks/{block}/externals/{external}",
     summary = "Remove External Network",
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2022,15 +1971,11 @@ async def delete_external_network(
     external: str = Path(..., description="Name of the target external network"),
     force: Optional[bool] = Query(False, description="Forcefully delete an External Network with existing Subnets"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Remove a specific External Network currently associated to the target Block
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -2063,22 +2008,19 @@ async def delete_external_network(
     "/{space}/blocks/{block}/externals/{external}/subnets",
     summary = "List External Network Subnets",
     response_model = List[ExtSubnet],
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 async def get_external_subnets(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a list of Subnets which are currently associated to the target External Network.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -2103,7 +2045,8 @@ async def get_external_subnets(
     "/{space}/blocks/{block}/externals/{external}/subnets",
     summary = "Create External Network Subnet",
     response_model = ExtSubnetExpand,
-    status_code = 201
+    status_code = 201,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2115,8 +2058,7 @@ async def create_external_subnet(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Create a Subnet within the target External Network with the following information:
@@ -2126,9 +2068,6 @@ async def create_external_subnet(
     - **size**: Network mask bits
     - **cidr**: Specific CIDR of the subnet (alternative to size)
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     if not re.match(EXTSUBNET_NAME_REGEX, req.name, re.IGNORECASE):
         raise HTTPException(status_code=400, detail="External subnet name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods.")
@@ -2205,7 +2144,8 @@ async def create_external_subnet(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}",
     summary = "Get External Network Subnet",
     response_model = ExtSubnet,
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 async def get_external_subnet(
     space: str = Path(..., description="Name of the target Space"),
@@ -2213,15 +2153,11 @@ async def get_external_subnet(
     external: str = Path(..., description="Name of the target external network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get the details of a specific External Subnet.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -2251,7 +2187,8 @@ async def get_external_subnet(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}",
     summary = "Update External Subnet Details",
     response_model = ExtSubnet,
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2264,8 +2201,7 @@ async def update_ext_subnet(
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Update an External Subnet with a JSON patch:
@@ -2280,9 +2216,6 @@ async def update_ext_subnet(
     - **/desc**
     - **/cidr**
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -2322,7 +2255,8 @@ async def update_ext_subnet(
 @router.delete(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}",
     summary = "Remove External Network Subnet",
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2335,15 +2269,11 @@ async def delete_external_subnet(
     subnet: str = Path(..., description="Name of the target external subnet"),
     force: Optional[bool] = Query(False, description="Forcefully delete an External Network with existing Subnets"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Remove a specific Subnet currently associated to the target External Network
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -2381,7 +2311,8 @@ async def delete_external_subnet(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints",
     summary = "List External Network Subnet Endpoints",
     response_model = List[ExtEndpoint],
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 async def get_external_subnet_endpoints(
     space: str = Path(..., description="Name of the target Space"),
@@ -2389,15 +2320,11 @@ async def get_external_subnet_endpoints(
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target External Network Subnet"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a list of Endpoints which are currently associated to the target External Network Subnet.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -2427,7 +2354,8 @@ async def get_external_subnet_endpoints(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints",
     summary = "Add External Network Subnet Endpoint",
     response_model = ExtEndpoint,
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2440,8 +2368,7 @@ async def create_external_subnet_endpoint(
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target External Network Subnet"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Create an Endpoint within the target External Network Subnet with the following information:
@@ -2450,9 +2377,6 @@ async def create_external_subnet_endpoint(
     - **desc**: Description of the endpoint
     - **ip**: IP Address of the endpoint or NONE to automatically assign the next available IP address
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -2522,7 +2446,8 @@ async def create_external_subnet_endpoint(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints",
     summary = "Replace External Network Subnet Endpoints",
     response_model = List[ExtEndpoint],
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2535,8 +2460,7 @@ async def update_external_subnet_enpoints(
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target External Network Subnet"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Replace the list of Endpoints currently associated to the target External Network Subnet with the following information:
@@ -2549,9 +2473,6 @@ async def update_external_subnet_enpoints(
     - **desc**: Description of the endpoint
     - **ip**: IP Address of the endpoint or NONE to automatically assign the next available IP address
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     endpoint_names = list(map(lambda x: x.name, endpoints))
     unique_endpoint_names = len(set(endpoint_names)) == len(endpoint_names)
@@ -2638,7 +2559,8 @@ async def update_external_subnet_enpoints(
 @router.delete(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints",
     summary = "Remove External Network Subnet Endpoints",
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2651,17 +2573,13 @@ async def delete_external_subnet_endpoints(
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target External Network Subnet"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Remove one or more Endpopints currently associated to the target External Network Subnet with the following information:
 
     - **[&lt;str&gt;]**: Array of Endpoint Names
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -2711,7 +2629,8 @@ async def delete_external_subnet_endpoints(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints/{endpoint}",
     summary = "Get External Network Subnet Endpoint",
     response_model = ExtEndpoint,
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 async def get_external_subnet_endpoint(
     space: str = Path(..., description="Name of the target Space"),
@@ -2720,15 +2639,11 @@ async def get_external_subnet_endpoint(
     subnet: str = Path(..., description="Name of the target external subnet"),
     endpoint: str = Path(..., description="Name of the target external subnet endpoint"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get the details of a specific External Subnet Endpoint.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -2763,7 +2678,8 @@ async def get_external_subnet_endpoint(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints/{endpoint}",
     summary = "Update External Endpoint Details",
     response_model = ExtEndpoint,
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2777,8 +2693,7 @@ async def update_ext_endpoint(
     subnet: str = Path(..., description="Name of the target external subnet"),
     endpoint: str = Path(..., description="Name of the target external subnet endpoint"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Update an External Endpoint with a JSON patch:
@@ -2793,9 +2708,6 @@ async def update_ext_endpoint(
     - **/desc**
     - **/ip**
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="This API is admin restricted.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -2840,7 +2752,8 @@ async def update_ext_endpoint(
 @router.delete(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints/{endpoint}",
     summary = "Remove External Network Subnet Endpoint",
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2853,15 +2766,11 @@ async def delete_external_subnet_endpoint(
     subnet: str = Path(..., description="Name of the target external subnet"),
     endpoint: str = Path(..., description="Name of the target external subnet endpoint"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Remove a specific Endpoint currently associated to the target External Network Subnet
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 

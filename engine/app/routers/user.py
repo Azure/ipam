@@ -14,6 +14,7 @@ from app.dependencies import (
     get_admin,
     get_authorization,
     get_tenant_id,
+    require_admin,
 )
 from app.models import User, UserExpand, UserUpdate, ViewSettings
 from app.routers.admin import new_admin_db
@@ -97,7 +98,8 @@ async def scrub_patch(patch):
     "",
     summary = "Get All Users",
     response_model = List[User],
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 async def get_users(
     authorization: str = Depends(get_authorization),
@@ -109,9 +111,6 @@ async def get_users(
     """
 
     user_list = []
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     users = await cosmos_query("SELECT VALUE c.data FROM c WHERE c.type = 'user'", tenant_id)
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)

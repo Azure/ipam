@@ -4,8 +4,8 @@ from fastapi.responses import JSONResponse
 from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
-    get_admin,
     get_authorization,
+    require_admin,
 )
 from app.notifications import get_notifications, get_resolver
 from app.notifications.models import NotificationActionResult
@@ -45,13 +45,13 @@ async def list_notifications():
     "/{notification_id}/resolve",
     summary="Resolve a Notification",
     response_model=NotificationActionResult,
-    status_code=202
+    status_code=202,
+    dependencies = [Depends(require_admin)]
 )
 async def resolve_notification(
     notification_id: str,
     background_tasks: BackgroundTasks,
-    authorization: str = Depends(get_authorization),
-    is_admin: str = Depends(get_admin)
+    authorization: str = Depends(get_authorization)
 ):
     """
     Invoke the server-owned remediation for a notification.
@@ -63,9 +63,6 @@ async def resolve_notification(
     notification is not currently active (e.g. it has already been resolved) — so
     a stale or duplicate request never triggers work.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     resolver = get_resolver(notification_id)
 

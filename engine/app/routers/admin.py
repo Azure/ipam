@@ -9,9 +9,9 @@ from fastapi.responses import PlainTextResponse
 from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
-    get_admin,
     get_authorization,
     get_tenant_id,
+    require_admin,
 )
 from app.models import Admin, Subscription
 from app.routers.common.helper import (
@@ -48,19 +48,16 @@ async def new_admin_db(admin_list, exclusion_list, tenant_id):
     "/admins",
     summary = "Get All Admins",
     response_model = List[Admin],
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 async def get_admins(
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a list of all IPAM admins.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
@@ -74,7 +71,8 @@ async def get_admins(
 @router.post(
     "/admins",
     summary = "Create IPAM Admin",
-    status_code=201
+    status_code=201,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -83,8 +81,7 @@ async def get_admins(
 async def create_admin(
     admin: Admin,
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Create an new IPAM Administrator with the following details:
@@ -94,9 +91,6 @@ async def create_admin(
     - **email**: Email address for the Administrator (not required for 'Principal' type)
     - **id**: Azure AD ObjectID for the Administrator user Service Principal
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
@@ -119,7 +113,8 @@ async def create_admin(
 @router.put(
     "/admins",
     summary = "Replace IPAM Admins",
-    status_code=200
+    status_code=200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -128,8 +123,7 @@ async def create_admin(
 async def update_admins(
     admin_list: List[Admin],
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Replace the list of IPAM Administrators with the following details:
@@ -140,9 +134,6 @@ async def update_admins(
         - **email**: Email address for the Administrator (not required for 'Principal' type)
         - **id**: Azure AD ObjectID for the Administrator user Service Principal
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     id_list = [x.id for x in admin_list]
     unique_admins = len(set(id_list)) == len(admin_list)
@@ -167,20 +158,17 @@ async def update_admins(
     "/admins/{objectId}",
     summary = "Get IPAM Admin",
     response_model = Admin,
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 async def get_admin_by_id(
     objectId: UUID = Path(..., description="Azure AD ObjectID for the target user"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a specific IPAM admin.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
@@ -199,7 +187,8 @@ async def get_admin_by_id(
 @router.delete(
     "/admins/{objectId}",
     summary = "Delete IPAM Admin",
-    status_code=200
+    status_code=200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -208,15 +197,11 @@ async def get_admin_by_id(
 async def delete_admin(
     objectId: UUID = Path(..., description="Azure AD ObjectID for the target user"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Remove a specific IPAM Administrator
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
@@ -240,19 +225,16 @@ async def delete_admin(
     "/exclusions",
     summary = "Get Excluded Subscriptions",
     response_model = List[Subscription],
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(require_admin)]
 )
 async def get_exclusions(
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a list of excluded subscriptions.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
@@ -266,7 +248,8 @@ async def get_exclusions(
 @router.post(
     "/exclusions",
     summary = "Add Excluded Subscription(s)",
-    status_code=200
+    status_code=200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -275,17 +258,13 @@ async def get_exclusions(
 async def add_exclusions(
     exclusions: List[Subscription],
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Add a list of excluded Subscriptions:
 
     - **[&lt;UUID&gt;]**: Array of Subscription ID's
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     subscription_list = await arg_query(None, True, argquery.SUBSCRIPTION)
     invalid_subscriptions = [str(x) for x in exclusions if str(x) not in [y['subscription_id'] for y in subscription_list]]
@@ -309,7 +288,8 @@ async def add_exclusions(
 @router.put(
     "/exclusions",
     summary = "Replace Excluded Subscriptions",
-    status_code=200
+    status_code=200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -318,17 +298,13 @@ async def add_exclusions(
 async def update_exclusions(
     exclusions: List[Subscription],
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Replace the list of excluded Subscriptions:
 
     - **[&lt;UUID&gt;]**: Array of Subscription ID's
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     subscription_list = await arg_query(None, True, argquery.SUBSCRIPTION)
     invalid_subscriptions = [str(x) for x in exclusions if str(x) not in [y['subscription_id'] for y in subscription_list]]
@@ -352,7 +328,8 @@ async def update_exclusions(
 @router.delete(
     "/exclusions/{subscriptionId}",
     summary = "Remove Excluded Subscription",
-    status_code=200
+    status_code=200,
+    dependencies = [Depends(require_admin)]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -361,15 +338,11 @@ async def update_exclusions(
 async def remove_exclusion(
     subscriptionId: Subscription = Path(..., description="Azure Subscription ID"),
     authorization: str = Depends(get_authorization),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Remove an excluded Subscription ID.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 

@@ -5,6 +5,7 @@ import tempfile
 import traceback
 import uuid
 from contextlib import asynccontextmanager
+from functools import partial
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -23,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.globals import globals
 from app.logs.logs import ipam_logger as logger
+from app.openapi import build_openapi
 from app.routers import (
     admin,
     azure,
@@ -281,6 +283,8 @@ async def serve_react_app(request: Request):
     """
 
     raise HTTPException(status_code=404, detail="Invalid API path.")
+
+app.openapi = partial(build_openapi, app)
 
 origins = [
     "http://localhost:3000"
