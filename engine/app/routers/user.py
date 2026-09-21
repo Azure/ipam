@@ -4,11 +4,17 @@ import uuid
 from typing import List, Union
 
 import jsonpatch
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 
-from app.dependencies import api_auth_checks, get_admin, get_tenant_id
+from app.dependencies import (
+    UNAUTHORIZED,
+    api_auth_checks,
+    get_admin,
+    get_authorization,
+    get_tenant_id,
+)
 from app.models import User, UserExpand, UserUpdate, ViewSettings
 from app.routers.admin import new_admin_db
 from app.routers.common.helper import (
@@ -22,7 +28,8 @@ from app.routers.common.helper import (
 router = APIRouter(
     prefix="/users",
     tags=["users"],
-    dependencies=[Depends(api_auth_checks)]
+    dependencies=[Depends(api_auth_checks)],
+    responses=UNAUTHORIZED
 )
 
 async def new_user(user_id, tenant_id):
@@ -93,7 +100,7 @@ async def scrub_patch(patch):
     status_code = 200
 )
 async def get_users(
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -138,7 +145,7 @@ async def get_users(
 )
 async def get_user(
     expand: bool = Query(False, description="Show expanded user details"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -186,7 +193,7 @@ async def get_user(
 )
 async def update_user(
     updates: UserUpdate,
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """

@@ -7,12 +7,18 @@ from typing import List, Optional, Union
 import jsonpatch
 import jwt
 import shortuuid
-from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import PlainTextResponse
 from netaddr import IPAddress, IPNetwork, IPSet
 
-from app.dependencies import api_auth_checks, get_admin, get_tenant_id
+from app.dependencies import (
+    UNAUTHORIZED,
+    api_auth_checks,
+    get_admin,
+    get_authorization,
+    get_tenant_id,
+)
 from app.models import (
     Block,
     BlockBasic,
@@ -75,7 +81,8 @@ EXTENDPOINT_DESC_REGEX = r"^(?![ /\._-])([a-zA-Z0-9 /\._-]){1,128}(?<![ /\._-])$
 router = APIRouter(
     prefix="/spaces",
     tags=["spaces"],
-    dependencies=[Depends(api_auth_checks)]
+    dependencies=[Depends(api_auth_checks)],
+    responses=UNAUTHORIZED
 )
 
 def add_block_utilization(block, nets, expand):
@@ -583,7 +590,7 @@ async def scrub_ext_endpoint_patch(patch, space_name, block_name, external_name,
 async def get_spaces(
     expand: bool = Query(False, description="Expand network references to full network objects"),
     utilization: bool = Query(False, description="Append utilization information for each network"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -650,7 +657,7 @@ async def get_spaces(
 )
 async def create_space(
     space: SpaceReq,
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str =  Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -706,7 +713,7 @@ async def get_space(
     space: str = Path(..., description="Name of the target Space"),
     expand: bool = Query(False, description="Expand network references to full network objects"),
     utilization: bool = Query(False, description="Append utilization information for each network"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -778,7 +785,7 @@ async def get_space(
 async def update_space(
     updates: SpaceUpdate,
     space: str = Path(..., description="Name of the target Space"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -829,7 +836,7 @@ async def update_space(
 async def delete_space(
     space: str = Path(..., description="Name of the target Space"),
     force: Optional[bool] = Query(False, description="Forcefully delete a Space with existing Blocks"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -864,7 +871,7 @@ async def delete_space(
 async def get_multi_block_reservations(
     space: str = Path(..., description="Name of the target Space"),
     settled: bool = Query(False, description="Include settled reservations."),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -914,7 +921,7 @@ async def get_multi_block_reservations(
 async def create_multi_block_reservation(
     req: SpaceCIDRReq,
     space: str = Path(..., description="Name of the target Space"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -1035,7 +1042,7 @@ async def get_blocks(
     space: str = Path(..., description="Name of the target Space"),
     expand: bool = Query(False, description="Expand network references to full network objects"),
     utilization: bool = Query(False, description="Append utilization information for each network"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1102,7 +1109,7 @@ async def get_blocks(
 async def create_block(
     block: BlockReq,
     space: str = Path(..., description="Name of the target Space"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1172,7 +1179,7 @@ async def get_block(
     block: str = Path(..., description="Name of the target Block"),
     expand: bool = Query(False, description="Expand network references to full network objects"),
     utilization: bool = Query(False, description="Append utilization information for each network"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1242,7 +1249,7 @@ async def update_block(
     updates: BlockUpdate,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1300,7 +1307,7 @@ async def delete_block(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     force: Optional[bool] = Query(False, description="Forcefully delete a Block with existing networks and/or reservations"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1349,7 +1356,7 @@ async def available_block_nets(
     block: str = Path(..., description="Name of the target Block"),
     expand: bool = Query(False, description="Expand network references to full network objects"),
     include_blocked: bool = Query(False, description="Include networks which cannot be associated to the target Block"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1448,7 +1455,7 @@ async def get_block_nets(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     expand: bool = Query(False, description="Expand network references to full network objects"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1499,7 +1506,7 @@ async def create_block_net(
     vnet: VNet,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1583,7 +1590,7 @@ async def update_block_vnets(
     vnets: VNetsUpdate,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1695,7 +1702,7 @@ async def delete_block_nets(
     req: VNetsUpdate,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1758,7 +1765,7 @@ async def delete_block_nets(
 async def get_external_networks(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1797,7 +1804,7 @@ async def create_external_network(
     req: ExtNetReq,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1904,7 +1911,7 @@ async def get_external_network(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target external network"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -1949,7 +1956,7 @@ async def update_ext_network(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2014,7 +2021,7 @@ async def delete_external_network(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target external network"),
     force: Optional[bool] = Query(False, description="Forcefully delete an External Network with existing Subnets"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2062,7 +2069,7 @@ async def get_external_subnets(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2107,7 +2114,7 @@ async def create_external_subnet(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2205,7 +2212,7 @@ async def get_external_subnet(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target external network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2256,7 +2263,7 @@ async def update_ext_subnet(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2327,7 +2334,7 @@ async def delete_external_subnet(
     external: str = Path(..., description="Name of the target external network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
     force: Optional[bool] = Query(False, description="Forcefully delete an External Network with existing Subnets"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2381,7 +2388,7 @@ async def get_external_subnet_endpoints(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target External Network Subnet"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2432,7 +2439,7 @@ async def create_external_subnet_endpoint(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target External Network Subnet"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2527,7 +2534,7 @@ async def update_external_subnet_enpoints(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target External Network Subnet"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2643,7 +2650,7 @@ async def delete_external_subnet_endpoints(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target External Network Subnet"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2712,7 +2719,7 @@ async def get_external_subnet_endpoint(
     external: str = Path(..., description="Name of the target external network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
     endpoint: str = Path(..., description="Name of the target external subnet endpoint"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2769,7 +2776,7 @@ async def update_ext_endpoint(
     external: str = Path(..., description="Name of the target External Network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
     endpoint: str = Path(..., description="Name of the target external subnet endpoint"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2845,7 +2852,7 @@ async def delete_external_subnet_endpoint(
     external: str = Path(..., description="Name of the target external network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
     endpoint: str = Path(..., description="Name of the target external subnet endpoint"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2899,7 +2906,7 @@ async def get_block_reservations(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     settled: bool = Query(False, description="Include settled reservations."),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -2950,7 +2957,7 @@ async def create_block_reservation(
     req: BlockCIDRReq,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -3108,7 +3115,7 @@ async def delete_block_reservations(
     req: DeleteResvReq,
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -3179,7 +3186,7 @@ async def get_block_reservation(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     reservation: str = Path(..., description="ID of the target Reservation"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -3232,7 +3239,7 @@ async def delete_block_reservation(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     reservation: str = Path(..., description="ID of the target Reservation"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):

@@ -9,10 +9,16 @@ from azure.mgmt.compute.aio import ComputeManagementClient
 from azure.mgmt.datafactory.aio import DataFactoryManagementClient
 from azure.mgmt.network.aio import NetworkManagementClient
 from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from netaddr import IPNetwork, IPSet
 
-from app.dependencies import api_auth_checks, get_admin, get_tenant_id
+from app.dependencies import (
+    UNAUTHORIZED,
+    api_auth_checks,
+    get_admin,
+    get_authorization,
+    get_tenant_id,
+)
 from app.globals import globals
 from app.logs.logs import ipam_logger as logger
 from app.models import VWanHub
@@ -33,7 +39,8 @@ from . import argquery
 router = APIRouter(
     prefix="/azure",
     tags=["azure"],
-    dependencies=[Depends(api_auth_checks)]
+    dependencies=[Depends(api_auth_checks)],
+    responses=UNAUTHORIZED
 )
 
 def str_to_list(input):
@@ -336,7 +343,7 @@ async def get_factory_endpoints_sdk(credentials, factories):
     summary = "Get All Subscriptions"
 )
 async def subscription(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """
@@ -411,7 +418,7 @@ async def fetch_vnets(authorization, tenant_id, all_networks):
     summary = "Get All Virtual Networks"
 )
 async def get_vnet(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     admin: str = Depends(get_admin)
 ):
@@ -426,7 +433,7 @@ async def get_vnet(
     summary = "Get All Subnets"
 )
 async def get_subnet(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """
@@ -523,7 +530,7 @@ async def fetch_vhubs(authorization, tenant_id, all_networks):
     response_model = List[VWanHub]
 )
 async def get_vhub(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     admin: str = Depends(get_admin)
 ):
@@ -580,7 +587,7 @@ async def fetch_networks(authorization, tenant_id, all_networks):
     # response_model = List[AzureNetwork]
 )
 async def get_network(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     admin: str = Depends(get_admin)
 ):
@@ -607,7 +614,7 @@ async def fetch_network_prefixes(authorization, all_networks):
     summary = "Get All Private Endpoints"
 )
 async def pe(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """
@@ -623,7 +630,7 @@ async def pe(
     summary = "Get All Data Factories"
 )
 async def df(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """
@@ -649,7 +656,7 @@ async def df(
     summary = "Get All Azure Private Endpoints (PE's & Data Factories)"
 )
 async def endpoint(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     admin: str = Depends(get_admin)
 ):
@@ -682,7 +689,7 @@ async def endpoint(
     summary = "Get All Virtual Machines"
 )
 async def vm(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """
@@ -698,7 +705,7 @@ async def vm(
     summary = "Get All VM Scale Sets"
 )
 async def vmss(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """
@@ -731,7 +738,7 @@ async def vmss(
     summary = "Get All vNet Firewalls"
 )
 async def fwvnet(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """
@@ -747,7 +754,7 @@ async def fwvnet(
 #     summary = "Get all vWAN Hub Firewalls"
 # )
 # async def fwvhub(
-#     authorization: str = Header(None),
+#     authorization: str = Depends(get_authorization),
 #     admin: str = Depends(get_admin)
 # ):
 #     """
@@ -763,7 +770,7 @@ async def fwvnet(
     summary = "Get All Bastion Hosts"
 )
 async def bastion(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """
@@ -779,7 +786,7 @@ async def bastion(
     summary = "Get All Virtual Network Gateways"
 )
 async def vnetgw(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """
@@ -795,7 +802,7 @@ async def vnetgw(
     summary = "Get All Application Gateways"
 )
 async def appgw(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """
@@ -811,7 +818,7 @@ async def appgw(
     summary = "Get All API Management Instances"
 )
 async def apim(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """
@@ -827,7 +834,7 @@ async def apim(
     summary = "Get All Load Balancers"
 )
 async def lb(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """
@@ -843,7 +850,7 @@ async def lb(
     summary = "Get All Load Balancers"
 )
 async def vhub_ep(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """
@@ -859,7 +866,7 @@ async def vhub_ep(
     summary = "Get All Standalone Network Interfaces"
 )
 async def nic(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """
@@ -881,7 +888,7 @@ async def multi_helper(func, list, *args):
     summary = "Get All Endpoints"
 )
 async def multi(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     admin: str = Depends(get_admin)
 ):
     """

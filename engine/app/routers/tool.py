@@ -2,10 +2,15 @@ import copy
 from typing import List
 
 import regex
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from netaddr import IPNetwork, IPSet
 
-from app.dependencies import api_auth_checks, get_tenant_id
+from app.dependencies import (
+    UNAUTHORIZED,
+    api_auth_checks,
+    get_authorization,
+    get_tenant_id,
+)
 from app.models import (
     CIDRCheckReq,
     CIDRCheckRes,
@@ -22,7 +27,8 @@ from . import argquery
 router = APIRouter(
     prefix="/tools",
     tags=["tools"],
-    dependencies=[Depends(api_auth_checks)]
+    dependencies=[Depends(api_auth_checks)],
+    responses=UNAUTHORIZED
 )
 
 @router.post(
@@ -37,7 +43,7 @@ router = APIRouter(
 )
 async def next_available_subnet(
     req: SubnetCIDRReq,
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
 ):
     """
     Get the next available Subnet CIDR in a Virtual Network with the following information:
@@ -117,7 +123,7 @@ async def next_available_subnet(
 )
 async def next_available_vnet(
     req: VNetCIDRReq,
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -213,7 +219,7 @@ async def next_available_vnet(
 )
 async def cidr_check(
     req: CIDRCheckReq,
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """

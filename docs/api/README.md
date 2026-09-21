@@ -2,7 +2,7 @@
 
 You can interface with the full set of capabilities of Azure IPAM via a REST API. We use Swagger to define API documentation in OpenAPI v3 Specification format.
 
-API docs can be found at the `/api/docs` path of your Azure IPAM website. Here you will find information on methods, parameters, and request body details for all available APIs.
+API docs can be found at the `/api/docs` path of your Azure IPAM website. Here you will find information on methods, parameters, and request body details for all available APIs. You can also call the endpoints directly from that page, see [Using the Swagger UI](#using-the-swagger-ui).
 
 ![IPAM OpenAPI specification](./images/openapispec.png)
 
@@ -29,6 +29,35 @@ $accessToken = (Get-AzAccessToken -ResourceUrl api://e3ff2k34-2271-58b5-9g2g-500
 ```
 
 > **Note:** As of [Azure PowerShell v14](https://learn.microsoft.com/powershell/azure/release-notes-azureps#1400---may-2025), `Get-AzAccessToken` returns the `.Token` property as a `SecureString`, which is the expected type for `Invoke-RestMethod -Token`. If you are using an earlier version, wrap the result with `ConvertTo-SecureString ... -AsPlainText -Force`.
+
+## Using the Swagger UI
+
+The API documentation at `/api/docs` is interactive. You can call any endpoint directly from your browser via the **Try it out** button, without needing a separate REST client. Every endpoint requires authentication, so you'll need to supply a token first.
+
+1. Obtain a token using either of the methods described in [Obtaining an Azure AD Token](#obtaining-an-azure-ad-token).
+
+2. Click the **Authorize** button near the top right of the page.
+
+   <!-- TODO: screenshot of the /api/docs page highlighting the Authorize button -->
+   ![IPAM Swagger Authorize button](./images/swagger_authorize_button.png)
+
+3. Paste your token into the **Value** field and click **Authorize**. Enter the raw token value only, the `Bearer` prefix is added for you.
+
+   <!-- TODO: screenshot of the Authorize dialog with a token entered -->
+   ![IPAM Swagger Authorize dialog](./images/swagger_authorize_dialog.png)
+
+4. Click **Close** to dismiss the dialog. The padlock icons next to each endpoint now appear locked, confirming your token will be attached to outgoing requests.
+
+   <!-- TODO: screenshot showing locked padlock icons on the endpoint list -->
+   ![IPAM Swagger authorized endpoints](./images/swagger_authorized_endpoints.png)
+
+5. Expand any endpoint, click **Try it out**, complete the required parameters, then click **Execute**.
+
+The **Curl** box shown with each response contains the full equivalent command, including the `Authorization` header, which is handy for reproducing a call outside the browser.
+
+Your token is held only in the current browser session. Reloading the page clears it, and you can remove it at any time via **Authorize** > **Logout**.
+
+> **Note:** Access tokens are short lived. If requests that previously succeeded start returning `401`, your token has most likely expired, repeat the steps above with a freshly issued one.
 
 ## Spaces
 

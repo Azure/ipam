@@ -743,3 +743,12 @@ class Status(BaseModel):
     start_time: str
     mode: Optional[str] = None
     container: Optional[ImageDetails] = None
+
+####################
+#   ERROR MODELS   #
+####################
+
+class Error(BaseModel):
+    """Error body returned by the global exception handler in ``main.py``."""
+
+    error: str

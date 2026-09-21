@@ -1,14 +1,20 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
-from app.dependencies import api_auth_checks, get_admin
+from app.dependencies import (
+    UNAUTHORIZED,
+    api_auth_checks,
+    get_admin,
+    get_authorization,
+)
 from app.notifications import get_notifications, get_resolver
 from app.notifications.models import NotificationActionResult
 
 router = APIRouter(
     prefix="/notifications",
     tags=["notifications"],
-    dependencies=[Depends(api_auth_checks)]
+    dependencies=[Depends(api_auth_checks)],
+    responses=UNAUTHORIZED
 )
 
 
@@ -44,7 +50,7 @@ async def list_notifications():
 async def resolve_notification(
     notification_id: str,
     background_tasks: BackgroundTasks,
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     is_admin: str = Depends(get_admin)
 ):
     """

@@ -3,7 +3,7 @@ import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
-from app.dependencies import validate_token
+from app.dependencies import UNAUTHORIZED, validate_token
 from app.globals import globals
 from app.routers.common.helper import arg_query_helper, get_client_credentials
 from app.schema.control import read_schema_doc
@@ -111,6 +111,7 @@ async def _evaluate_schema():
     "",
     summary="Azure IPAM Dependency Health Check",
     dependencies=[Depends(validate_token)],
+    responses=UNAUTHORIZED,
     status_code=200
 )
 async def get_health():

@@ -1,9 +1,15 @@
 import asyncio
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends
 from netaddr import IPNetwork
 
-from app.dependencies import api_auth_checks, get_admin, get_tenant_id
+from app.dependencies import (
+    UNAUTHORIZED,
+    api_auth_checks,
+    get_admin,
+    get_authorization,
+    get_tenant_id,
+)
 from app.routers.azure import (
     apim,
     appgw,
@@ -21,7 +27,8 @@ from app.routers.space import get_spaces
 router = APIRouter(
     prefix="/internal",
     tags=["internal"],
-    dependencies=[Depends(api_auth_checks)]
+    dependencies=[Depends(api_auth_checks)],
+    responses=UNAUTHORIZED
 )
 
 async def multi_helper(func, list, *args):
@@ -35,7 +42,7 @@ async def multi_helper(func, list, *args):
     summary = "Get Space Tree View"
 )
 async def tree(
-    authorization: str = Header(None),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     admin: str = Depends(get_admin)
 ):

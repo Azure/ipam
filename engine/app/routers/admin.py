@@ -2,11 +2,17 @@ import copy
 from typing import List
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Path, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import PlainTextResponse
 
-from app.dependencies import api_auth_checks, get_admin, get_tenant_id
+from app.dependencies import (
+    UNAUTHORIZED,
+    api_auth_checks,
+    get_admin,
+    get_authorization,
+    get_tenant_id,
+)
 from app.models import Admin, Subscription
 from app.routers.common.helper import (
     arg_query,
@@ -21,7 +27,8 @@ from . import argquery
 router = APIRouter(
     prefix="/admin",
     tags=["admin"],
-    dependencies=[Depends(api_auth_checks)]
+    dependencies=[Depends(api_auth_checks)],
+    responses=UNAUTHORIZED
 )
 
 async def new_admin_db(admin_list, exclusion_list, tenant_id):
@@ -44,7 +51,7 @@ async def new_admin_db(admin_list, exclusion_list, tenant_id):
     status_code = 200
 )
 async def get_admins(
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -75,7 +82,7 @@ async def get_admins(
 )
 async def create_admin(
     admin: Admin,
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -120,7 +127,7 @@ async def create_admin(
 )
 async def update_admins(
     admin_list: List[Admin],
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -164,7 +171,7 @@ async def update_admins(
 )
 async def get_admin_by_id(
     objectId: UUID = Path(..., description="Azure AD ObjectID for the target user"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -200,7 +207,7 @@ async def get_admin_by_id(
 )
 async def delete_admin(
     objectId: UUID = Path(..., description="Azure AD ObjectID for the target user"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -236,7 +243,7 @@ async def delete_admin(
     status_code = 200
 )
 async def get_exclusions(
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -267,7 +274,7 @@ async def get_exclusions(
 )
 async def add_exclusions(
     exclusions: List[Subscription],
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -310,7 +317,7 @@ async def add_exclusions(
 )
 async def update_exclusions(
     exclusions: List[Subscription],
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
@@ -353,7 +360,7 @@ async def update_exclusions(
 )
 async def remove_exclusion(
     subscriptionId: Subscription = Path(..., description="Azure Subscription ID"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    authorization: str = Depends(get_authorization),
     tenant_id: str = Depends(get_tenant_id),
     is_admin: str = Depends(get_admin)
 ):
