@@ -9,5 +9,7 @@
 - [Troubleshooting](/troubleshooting/README.md)
 - [API](/api/README.md)
 - [Automation](/automation/README.md)
-- [Questions/Comments](/questions-comments/README.md)
+- [Development](/development/README.md)
+- [Conventions](/conventions/README.md)
 - [Contributing](/contributing/README.md)
+- [Questions/Comments](/questions-comments/README.md)

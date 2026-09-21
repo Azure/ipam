@@ -576,9 +576,9 @@ az account set --subscription "your-subscription-id"
 2. Verify ACR permissions and storage capacity
 3. Review Azure Container Registry task logs in Azure Portal
 4. Ensure the application's `/api/status` endpoint is accessible for container type detection
-5. For manual container build instructions, see the [Contributing Guide](/contributing/README.md#building--updating-production-containers-images-using-a-private-acr)
+5. For manual container build instructions, see the [Development Guide](/development/README.md#building--updating-production-containers-images-using-a-private-acr)
 
-> **NOTE:** The update script will only attempt an automated build when the private ACR resides in the **same resource group** as the App Service. If your registry is in a different resource group, the script skips the build and directs you here — build and push a new image manually using the Contributing Guide instructions above, then restart the App Service or Function App to pull the new image.
+> **NOTE:** The update script will only attempt an automated build when the private ACR resides in the **same resource group** as the App Service. If your registry is in a different resource group, the script skips the build and directs you here — build and push a new image manually using the Development Guide instructions above, then restart the App Service or Function App to pull the new image.
 
 #### ZIP Deploy Failures
 

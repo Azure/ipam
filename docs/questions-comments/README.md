@@ -19,4 +19,4 @@ If you encounter a bug or have a feature request, please open a [GitHub Issue](h
 
 ## Contributing
 
-Interested in contributing code, documentation, or other improvements? See the [Contributing](/contributing/README) guide for details on setting up a development environment and building container images.
+Interested in contributing code, documentation, or other improvements? See the [Contributing](/contributing/README) guide for the process, and [Development](/development/README) for setting up a development environment and building container images.
