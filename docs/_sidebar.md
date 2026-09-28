@@ -4,6 +4,7 @@
 - [Welcome](/README.md)
 - [Deployment](/deployment/README.md)
 - [How-To](/how-to/README.md)
+- [Roles & Permissions](/roles-permissions/README.md)
 - [Update](/update/README.md)
 - [Migration](/migration/README.md)
 - [Troubleshooting](/troubleshooting/README.md)

@@ -20,4 +20,4 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 4. Commit your changes and push the branch to your fork
 5. Open a Pull Request against the `main` branch of the upstream repository
 
-Before changing the code, please read [Conventions](/conventions/README.md). It records the places where the obvious approach is the wrong one, such as how admin restrictions are declared and why the API token is not a header parameter.
+Before changing the code, please read [Conventions](/conventions/README.md). It records the places where the obvious approach is the wrong one, such as how Azure IPAM decides what a caller can see, how admin restrictions are declared, and why the API token is not a header parameter.

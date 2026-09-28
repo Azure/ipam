@@ -2,7 +2,7 @@
 
 ## Overview
 
-Azure IPAM has a handful of places where the obvious approach is the wrong one. This page records them, so you don't have to rediscover each one the hard way.
+Azure IPAM has a handful of places where the obvious approach is the wrong one. This page records them, so you don't have to rediscover each one the hard way. It opens with how Azure IPAM decides what a caller can see, which applies to almost every endpoint.
 
 These are not style preferences. Every entry exists because doing the natural thing produced a bug, a security gap, or documentation that quietly lied. If you are about to remove something described here because it looks redundant, read the relevant entry first.
 
@@ -15,6 +15,27 @@ Each entry covers three things:
 For setting up an environment to work in, see the [Development](/development/README.md) documentation. For the process of getting a change accepted, see the [Contributing](/contributing/README.md) documentation.
 
 > **Note:** Adding a new pattern to this page? Keep the same shape — the rule, the reason, and the failure mode. A convention nobody understands is a convention that gets reverted.
+
+## Deciding What a Caller Can See
+
+Azure IPAM often needs a broader view than the person asking to answer a question correctly. Use that broader view to work out the answer, and let the caller's own permissions decide what the response contains.
+
+For example, when a user checks whether a range overlaps anything, Azure IPAM considers every network within its scope, including networks that user can't see in Azure. Otherwise it might report a range as free when it isn't. The user learns that the range is in use, without learning anything about the network using it.
+
+To support this, Azure IPAM reads Azure in one of two ways. It can use its own read-only access, which covers everything within its scope. Or it can act on the caller's behalf through the [on-behalf-of](https://learn.microsoft.com/entra/identity-platform/v2-oauth2-on-behalf-of-flow) flow, which sees only what the caller can see. Which one a request uses depends on what the answer requires, not simply on whether the caller is an administrator.
+
+When you write or change an endpoint:
+
+- **Query with the scope the answer needs.** Allocation and overlap checks must consider every network, so they use Azure IPAM's own access. If a non-admin response would include details of virtual networks that aren't associated with a Block, either query on the caller's behalf or remove those details.
+- **Withhold details without changing the shape.** Set withheld fields to `null`, and keep every item in a response the same shape. Don't return a different model, or a placeholder such as `"unknown"` that automation would treat as a real value.
+- **Don't use on-behalf-of for service principals.** The flow only works for users. Treat a service principal that isn't an administrator as having no Azure visibility of its own.
+- **Treat Reservation IDs as sensitive.** A Reservation ID is what links a virtual network to its Reservation, so only return it to the user who created the Reservation and to administrators.
+- **Check every endpoint that returns the object.** The Spaces endpoints return Blocks together with their networks, External Networks and Reservations. A restriction on a dedicated endpoint only holds if every other endpoint returning the same data applies it too.
+- **Keep the tool endpoints stable.** The `/tools` endpoints are designed for automation as much as for people, so keep their responses consistent from release to release.
+
+Together, these keep allocation and overlap answers accurate for everyone, while the details each user sees match their Azure permissions and stay consistent across every endpoint.
+
+For the principles behind these rules, see the [Roles & Permissions](/roles-permissions/README.md#guiding-principles) documentation.
 
 ## Documenting Admin Restrictions
 
