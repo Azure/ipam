@@ -367,7 +367,7 @@ When you create a Reservation, Azure IPAM finds the next available CIDR range of
 3. **Cancelled by User** — An administrator or the user who created the Reservation manually cancelled it.
 4. **Cancelled by Timeout** — The Reservation expired based on the configured timeout policy.
 5. **Warning: CIDR Mismatch** — A virtual network with the Reservation's tag was found, but its address space does not match the reserved CIDR.
-6. **Error: CIDR Overlap** — A virtual network with an overlapping CIDR has already been associated with the Block through another path.
+6. **Error: CIDR Overlap** — One of the virtual network's address ranges in this Block overlaps an existing network, External Network, or Reservation.
 
 > **Tip:** When a Reservation is created, the response includes a `tag` object containing `X-IPAM-RES-ID`. Apply this tag to your new virtual network and Azure IPAM will automatically detect it, associate the vNET with the Block, and mark the reservation as fulfilled.
 

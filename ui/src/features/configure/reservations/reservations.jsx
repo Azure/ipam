@@ -80,7 +80,7 @@ const MESSAGE_MAP = {
     color: "warning"
   },
   "errCIDROverlap": {
-    msg: "A vNET with overlapping CIDR has already been associated with the target IP Block.",
+    msg: "One of the virtual network's address ranges in this Block overlaps an existing network, External Network, or Reservation.",
     icon: ErrorOutlined,
     color: "error"
   },

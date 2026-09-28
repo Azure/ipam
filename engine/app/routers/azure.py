@@ -970,25 +970,30 @@ async def match_resv_to_vnets():
                             # logging.info("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
                             resv['status'] = "warnCIDRMismatch"
 
-                        existing_block_cidrs = []
+                        # A mismatched range is the problem to report, so overlap is only evaluated for a match.
+                        if resv['status'] == "wait":
+                            block_network = IPNetwork(block['cidr'])
+                            net_cidrs = [x for x in net['prefixes'] if IPNetwork(x) in block_network]
 
-                        for v in block['vnets']:
-                            target_net = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
+                            # Every range the network has in the Block must be clear, as when a network is
+                            # associated directly. It can't conflict with itself, nor with the Reservations
+                            # its tag says it fulfils.
+                            net_resv_ids = str_to_list(net['resv'])
 
-                            if target_net:
-                                if target_net['id'] == net['id']:
-                                    target_cidrs = [x for x in target_net['prefixes'] if (IPNetwork(x) in IPNetwork(block['cidr'])) and x != resv['cidr']]
-                                else:
-                                    target_cidrs = [x for x in target_net['prefixes'] if IPNetwork(x) in IPNetwork(block['cidr'])]
+                            occupied_cidrs = [x['cidr'] for x in block['externals']]
+                            occupied_cidrs += [x['cidr'] for x in block['resv'] if x['settledOn'] is None and x['id'] not in net_resv_ids]
 
-                                existing_block_cidrs += target_cidrs
+                            for v in block['vnets']:
+                                if v['id'].lower() == net['id'].lower():
+                                    continue
 
-                        cidr_overlap = IPSet([resv['cidr']]) & IPSet(existing_block_cidrs)
+                                target_net = next((x for x in net_list if x['id'].lower() == v['id'].lower()), None)
 
-                        if cidr_overlap:
-                            # print("A vNET with the assigned CIDR has already been associated with the target IP Block.")
-                            # logging.info("A vNET with the assigned CIDR has already been associated with the target IP Block.")
-                            resv['status'] = "errCIDROverlap"
+                                if target_net:
+                                    occupied_cidrs += [x for x in target_net['prefixes'] if IPNetwork(x) in block_network]
+
+                            if IPSet(net_cidrs) & IPSet(occupied_cidrs):
+                                resv['status'] = "errCIDROverlap"
 
                         if resv['status'] == "wait":
                             # print("vNET is being added to IP Block...")
