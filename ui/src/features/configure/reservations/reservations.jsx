@@ -84,8 +84,9 @@ const MESSAGE_MAP = {
     icon: ErrorOutlined,
     color: "error"
   },
+  // Placeholder for a future exact-duplicate check; the engine currently reports all overlaps as errCIDROverlap.
   "errCIDRExists": {
-    msg: "A vNET with overlapping CIDR has already been associated with the target IP Block.",
+    msg: "A virtual network with the reserved address range is already associated with this Block.",
     icon: ErrorOutlined,
     color: "error"
   },
