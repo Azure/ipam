@@ -153,6 +153,23 @@ def get_user_id_from_jwt(token):
 
     return decoded['oid']
 
+def is_app_only_token(token):
+    """Return whether a JWT was issued to an application rather than a user.
+
+    Only user tokens carry the ``scp`` claim. App-only tokens can't be exchanged through the
+    on-behalf-of flow, so callers use this to avoid attempting an exchange that can't succeed.
+    """
+
+    decoded = jwt.decode(token, options={"verify_signature": False})
+
+    return "scp" not in decoded
+
+def associated_network_ids(spaces):
+    """Return the lowercased IDs of every network associated with a Block across the given Spaces."""
+
+    # Azure reports resource IDs with inconsistent casing, and stored IDs keep the caller's.
+    return {net['id'].lower() for space in spaces for block in space['blocks'] for net in block['vnets']}
+
 async def get_obo_token(assertion):
     """Exchange a user assertion for an on-behalf-of access token scoped to Azure Resource Manager."""
 

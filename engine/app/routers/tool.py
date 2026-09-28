@@ -8,6 +8,7 @@ from netaddr import IPNetwork, IPSet
 from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
+    get_admin,
     get_tenant_id,
     get_token_auth_header,
 )
@@ -20,7 +21,14 @@ from app.models import (
     VNetCIDRReq,
 )
 from app.routers.azure import fetch_network_prefixes
-from app.routers.common.helper import arg_query, cosmos_query, cosmos_retry, vnet_fixup
+from app.routers.common.helper import (
+    arg_query,
+    associated_network_ids,
+    cosmos_query,
+    cosmos_retry,
+    is_app_only_token,
+    vnet_fixup,
+)
 
 from . import argquery
 
@@ -44,6 +52,8 @@ router = APIRouter(
 async def next_available_subnet(
     req: SubnetCIDRReq,
     token: str = Depends(get_token_auth_header),
+    tenant_id: str = Depends(get_tenant_id),
+    is_admin: bool = Depends(get_admin)
 ):
     """
     Get the next available Subnet CIDR in a Virtual Network with the following information:
@@ -56,6 +66,8 @@ async def next_available_subnet(
     - **smallest_cidr**:
         - **true**: New subnets will be created using the smallest possible available CIDR (e.g. it will not break up large CIDR blocks when possible)
         - **false (default)**: New subnets will be created using the first available CIDR, regardless of size
+
+    Non-admin callers can target any Virtual Network associated with a Block, plus any other Virtual Network they can read in Azure. Service principals that aren't administrators can only target Virtual Networks associated with a Block.
     """
 
     vnet_pattern = regex.compile(r'(?i)^\/subscriptions\/[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}\/resourceGroups\/(?=.{1,90})([a-zA-Z0-9-_\.\p{L}\p{N}]*)(?<!\.)\/providers\/Microsoft.Network\/virtualNetworks\/(?=.{2,64})([a-zA-Z0-9-_\.]*)(?<=[a-zA-Z0-9_])$')
@@ -65,13 +77,29 @@ async def next_available_subnet(
     if not valid_vnet:
         raise HTTPException(status_code=400, detail="Invalid Virtual Network ID.")
 
-    vnet_list = await arg_query(token, True, argquery.VNET)
+    # Networks associated with a Block are Azure IPAM data, so anyone may target them. Any other
+    # network is looked up as the caller sees it in Azure.
+    if is_admin:
+        all_networks = True
+    else:
+        spaces = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
+        all_networks = req.vnet_id.lower() in associated_network_ids(spaces)
+
+    if all_networks:
+        vnet_list = await arg_query(token, True, argquery.VNET)
+    elif is_app_only_token(token):
+        # On-behalf-of only works for users, so a service principal has no Azure view of its own.
+        vnet_list = []
+    else:
+        vnet_list = await arg_query(token, False, argquery.VNET)
+
     vnet_list = vnet_fixup(vnet_list)
 
     vnet_all_cidrs = []
 
     target = next((x for x in vnet_list if x['id'].lower() == req.vnet_id.lower()), None)
 
+    # Deliberately identical whether the network doesn't exist or the caller can't see it.
     if not target:
         raise HTTPException(status_code=400, detail="Virtual Network not found.")
 
@@ -220,12 +248,15 @@ async def next_available_vnet(
 async def cidr_check(
     req: CIDRCheckReq,
     token: str = Depends(get_token_auth_header),
-    tenant_id: str = Depends(get_tenant_id)
+    tenant_id: str = Depends(get_tenant_id),
+    is_admin: bool = Depends(get_admin)
 ):
     """
     Get a list of Virtual Networks which overlap a given CIDR range with the following information:
 
     - **cidr**: CIDR range
+
+    For non-admin callers, overlapping networks that aren't associated with a Block are returned without their name, ID, resource group, subscription or tenant.
     """
 
     if IPNetwork(req.cidr).ip != IPNetwork(req.cidr).network:
@@ -263,6 +294,12 @@ async def cidr_check(
                         # container = "/spaces/{}/blocks/{}".format(space['name'], block['name'])
 
                         item['containers'].append(container)
+
+        # Overlap is always computed from every network, but a network that isn't associated with a
+        # Block belongs to Azure, so a non-admin learns the space is in use without learning what uses it.
+        if not is_admin and not item['containers']:
+            for field in ('name', 'id', 'resource_group', 'subscription_id', 'tenant_id'):
+                item[field] = None
 
     return overlap
 

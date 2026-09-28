@@ -695,13 +695,16 @@ class CIDRCheckReq(BaseModel):
     cidr: IPv4Network
 
 class CIDRCheckRes(BaseModel):
-    """Result describing an existing network that overlaps the requested CIDR."""
+    """Result describing an existing network that overlaps the requested CIDR.
 
-    name: str
-    id: str
-    resource_group: str
-    subscription_id: UUID
-    tenant_id: UUID
+    For non-admin callers, the identity fields are null when the network isn't associated with a Block.
+    """
+
+    name: Optional[str]
+    id: Optional[str]
+    resource_group: Optional[str]
+    subscription_id: Optional[UUID]
+    tenant_id: Optional[UUID]
     prefixes: List[IPv4Network]
     containers: List[CIDRContainer]
 
