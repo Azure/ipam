@@ -527,6 +527,9 @@ export const endpoints = {
       { name: "Subscription ID", value: "subscription_id" },
       { name: "Size", value: "metadata.size" },
       { name: "Private Endpoint Type", value: "metadata.group_id" },
+      { name: "Private Endpoint Name", value: "metadata.pe_name" },
+      { name: "Connection Status", value: "metadata.connection_status" },
+      { name: "Connection Alias", value: "metadata.alias" },
       { name: "VMSS Name", value: "metadata.vmss_name" },
       { name: "VMSS Instance ID", value: "metadata.vmss_vm_num" },
       { name: "Orphaned", value: "metadata.orphaned" }

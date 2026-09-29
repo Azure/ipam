@@ -176,7 +176,8 @@ export default function ItemDetails(props) {
           <React.Fragment>
             <Divider />
             <Link>
-              <Button variant="text" size="small" onClick={() => window.open(`https://${AZURE_PORTAL}/#@${rowData.tenant_id}/resource/${rowData.id}`, "_blank")}>VIEW IN PORTAL</Button>
+              {/* A private endpoint row describes its connected service, which the caller may not be able to read or which may no longer exist, so link to the endpoint itself. */}
+              <Button variant="text" size="small" onClick={() => window.open(`https://${AZURE_PORTAL}/#@${rowData.tenant_id}/resource/${rowData.metadata?.pe_id ?? rowData.id}`, "_blank")}>VIEW IN PORTAL</Button>
             </Link>
           </React.Fragment>
         }

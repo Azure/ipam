@@ -55,6 +55,18 @@ const initialState = {
   refreshing: false,
 };
 
+// A private endpoint row carries its connected service's ID, and address spaces can overlap across
+// networks, so the ID and IP alone don't identify a row. The subnet makes the key unique.
+function withEndpointKeys(endpoints) {
+  return endpoints.map((endpoint, index) => {
+    // Use index as fallback when private_ip is null to ensure uniqueness
+    const ipPart = endpoint.private_ip ?? `idx${index}`;
+    endpoint.uniqueId = `${endpoint.id}@${endpoint.subnet_id}@${ipPart}`;
+
+    return endpoint;
+  });
+}
+
 // The functions below are called thunks and allow us to perform async logic. It
 // can be dispatched like a regular action: `dispatch(incrementAsync(10))`. This
 // will call the thunk with the `dispatch` function as the first argument. Async
@@ -915,7 +927,7 @@ export const ipamSlice = createSlice({
         throw action.payload;
       })
       .addCase(fetchEndpointsAsync.fulfilled, (state, action) => {
-        state.endpoints = action.payload;
+        state.endpoints = withEndpointKeys(action.payload);
       })
       .addCase(fetchEndpointsAsync.rejected, (state, action) => {
         console.log("fetchEndpointsAsync Rejected");
@@ -1063,15 +1075,7 @@ export const ipamSlice = createSlice({
         }
 
         if(action.payload[3].status === 'fulfilled') {
-          const endpoints = action.payload[3].value.map((endpoint, index) => {
-            // Use index as fallback when private_ip is null to ensure uniqueness
-            const ipPart = endpoint.private_ip ?? `idx${index}`;
-            endpoint.uniqueId = `${endpoint.id}@$${ipPart}`;
-
-            return endpoint;
-          });
-
-          state.endpoints = endpoints;
+          state.endpoints = withEndpointKeys(action.payload[3].value);
         } else {
           state.endpoints ??= [];
         }

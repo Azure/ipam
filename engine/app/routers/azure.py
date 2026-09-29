@@ -660,25 +660,8 @@ async def endpoint(
     Get a list of Azure Private Endpoints (PE's & Data Factories).
     """
 
-    tasks = [
-        asyncio.create_task(pe(token, admin)),
-        asyncio.create_task(df(token, admin))
-    ]
-
-    endpoints = await asyncio.gather(*tasks)
-
-    private_endpoints = copy.deepcopy(endpoints[0])
-    data_factories = copy.deepcopy(endpoints[1])
-
-    for factory in data_factories:
-        df_pe = next((x for x in private_endpoints if x['metadata']['pe_id'] == factory['private_endpoint_id']), None)
-
-        if df_pe:
-            df_pe['id'] = factory['id']
-            df_pe['name'] = factory['name']
-            df_pe['metadata']['orphaned'] = False
-
-    return private_endpoints
+    # Data Factory targets are read from each private endpoint's own connection, like any other service.
+    return await pe(token=token, admin=admin)
 
 @router.get(
     "/vm",

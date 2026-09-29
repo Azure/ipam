@@ -233,32 +233,45 @@ resources
 | project name, id, private_ip, resource_group, subscription_id, tenant_id, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
+# The target and connection status are read from the private endpoint itself, so every caller who can
+# read the endpoint gets the same row, whether or not they can read the target. An endpoint is orphaned
+# when its connection is Disconnected. Only the first connection is used. Connections made by alias are
+# resolved to the Private Link Service when the caller can read it, and otherwise fall back to the
+# endpoint's own name. This query uses all three joins Resource Graph allows by default.
 PRIVATE_ENDPOINT = r"""
 resources
 | where type =~ 'microsoft.network/networkinterfaces'
 | where subscriptionId !in~ {}
 | where isnotempty(properties.privateEndpoint)
 | mv-expand ipconfig = properties.ipConfigurations
-| project pe_name = name, pe_rg = resourceGroup, pe_sid = subscriptionId, pe_tid = tenantId, pe_id = tostring(properties.privateEndpoint.id), subnet_id = tostring(ipconfig.properties.subnet.id), group_id = ipconfig.properties.privateLinkConnectionProperties.groupId, private_ip = ipconfig.properties.privateIPAddress
+| project nic_name = name, nic_rg = resourceGroup, nic_sid = subscriptionId, nic_tid = tenantId, pe_id = tostring(properties.privateEndpoint.id), subnet_id = tostring(ipconfig.properties.subnet.id), group_id = ipconfig.properties.privateLinkConnectionProperties.groupId, private_ip = ipconfig.properties.privateIPAddress
 | extend pe_id_lower = tolower(pe_id)
 | extend subnet_id_lower = tolower(subnet_id)
 | join kind = leftouter (
     resources
-    | where array_length(properties.privateEndpointConnections) > 0
-    | mv-expand peConn = properties.privateEndpointConnections
-    | project tenant_id = tenantId, resource_group = resourceGroup, subscription_id = subscriptionId, name = name, id = id, pe_id = tostring(peConn.properties.privateEndpoint.id)
-    | extend pe_id_lower = tolower(pe_id)
+    | where type =~ 'microsoft.network/privateendpoints'
+    | extend connection = coalesce(properties.privateLinkServiceConnections[0], properties.manualPrivateLinkServiceConnections[0])
+    | project pe_id_lower = tolower(id), pe_name = name, target_id = tostring(connection.properties.privateLinkServiceId), connection_status = tostring(connection.properties.privateLinkServiceConnectionState.status)
 ) on pe_id_lower
 | join kind = leftouter (
     resources
     | where type =~ 'microsoft.network/virtualnetworks'
-    | extend subnets = array_length(properties.subnets)
-    | mv-expand subnet = properties.subnets
+    | mv-expand subnet = properties.subnets limit 2000
     | project subnet_id = tostring(subnet.id), subnet_name = subnet.name, vnet_id = id, vnet_name = name
     | extend subnet_id_lower = tolower(subnet_id)
 ) on subnet_id_lower
-| extend metadata = pack('kind', 'Private Endpoint', 'group_id', group_id, 'pe_id', pe_id, 'orphaned', iff(isempty(id), true, false))
-| project name = iff(notempty(name), name, pe_name), id = iff(notempty(id), id, pe_id), private_ip, resource_group = iff(notempty(resource_group), resource_group, pe_rg), subscription_id = iff(notempty(subscription_id), subscription_id, pe_sid), tenant_id = iff(notempty(tenant_id), tenant_id, pe_tid), vnet_name, vnet_id, subnet_name, subnet_id, metadata
+| extend alias_lower = iff(target_id startswith '/subscriptions/', '', tolower(target_id))
+| join kind = leftouter (
+    resources
+    | where type =~ 'microsoft.network/privatelinkservices'
+    | where isnotempty(properties.alias)
+    | project alias_lower = tolower(tostring(properties.alias)), alias_service_id = id
+) on alias_lower
+| extend resolved_id = case(target_id startswith '/subscriptions/', target_id, isnotempty(alias_service_id), alias_service_id, '')
+| extend is_resource_id = isnotempty(resolved_id)
+| extend target_parts = split(resolved_id, '/')
+| extend metadata = pack('kind', 'Private Endpoint', 'group_id', group_id, 'pe_id', pe_id, 'pe_name', pe_name, 'alias', iff(isnotempty(alias_lower), pack_array(target_id)[0], dynamic(null)), 'connection_status', connection_status, 'orphaned', iff(isempty(connection_status), bool(null), connection_status =~ 'Disconnected'))
+| project name = iff(is_resource_id, tostring(target_parts[-1]), coalesce(pe_name, nic_name)), id = iff(is_resource_id, resolved_id, pe_id), private_ip, resource_group = iff(is_resource_id, tolower(tostring(target_parts[4])), nic_rg), subscription_id = iff(is_resource_id, tostring(target_parts[2]), nic_sid), tenant_id = nic_tid, vnet_name, vnet_id, subnet_name, subnet_id, metadata
 """
 
 DATA_FACTORY = r"""

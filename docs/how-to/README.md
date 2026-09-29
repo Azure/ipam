@@ -172,9 +172,21 @@ The **Endpoints** tab shows individual network endpoints (NICs and private endpo
 
 ![IPAM Endpoints](./images/discover_endpoints.png)
 
-> **Note:** Endpoints whose parent or target resource no longer exists are considered *orphaned* and are flagged with an informational indicator next to their name. For example, a private endpoint is orphaned when the resource it was created to connect to has been deleted, and a network interface is orphaned when it is no longer associated with a virtual machine or other compute resource.
+> **Note:** Endpoints that have been left behind are considered *orphaned* and are flagged with an informational indicator next to their name. A network interface is orphaned when it's no longer associated with a virtual machine or other compute resource. Private endpoints are described below.
 
 ![IPAM Endpoints Details](./images/discover_endpoints_details.png)
+
+#### Private Endpoints
+
+A private endpoint row describes the service it connects to. Its **Name**, **Resource Group**, and **Subscription** are the service's, while its **vNet**, **Subnet**, and **Private IP** are the private endpoint's own. The details panel adds the **Private Endpoint Name** and the **Connection Status**, along with the **Connection Alias** for private endpoints connected by alias.
+
+A private endpoint is **orphaned** when its connection to the service it was created for has been removed, because the service was deleted or soft-deleted, or because its owner removed the connection, while the private endpoint itself still exists. Azure reports this by setting the connection status to **Disconnected**. Recovering a soft-deleted service doesn't restore the connection, so the private endpoint needs to be recreated. A connection that is **Pending** or **Rejected** isn't orphaned, since the private endpoint was never connected, and its status is shown instead.
+
+A few things to keep in mind:
+
+- **Connections made by alias** are shown as the Private Link Service they connect to when you can read that service in Azure. Otherwise, including for services in other tenants, the row shows the private endpoint's own name, and the alias appears as the **Connection Alias**.
+- **Only the first connection is shown** if a private endpoint has more than one.
+- **Details come from Azure Resource Graph.** A change in connection status usually appears within a few minutes. After a connected service is moved to another resource group or subscription, however, its previous location can continue to appear for an hour or more.
 
 ## Virtual Network Associations
 
