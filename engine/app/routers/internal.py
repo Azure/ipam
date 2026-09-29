@@ -31,10 +31,12 @@ router = APIRouter(
     responses=UNAUTHORIZED
 )
 
-async def multi_helper(func, list, *args):
+async def multi_helper(func, list, **kwargs):
     """Await the given coroutine function and append its result to the shared list (used to gather queries concurrently)."""
 
-    results = await func(*args)
+    # Keyword arguments only: the route handlers take injected parameters, and a positional call can
+    # silently bind the admin flag to the wrong one.
+    results = await func(**kwargs)
     list.append(results)
 
 @router.get(
@@ -56,17 +58,20 @@ async def tree(
     subnet_list = []
     endpoint_list = []
 
-    tasks.append(asyncio.create_task(multi_helper(get_spaces, space_list, False, True, token, tenant_id, True)))
-    tasks.append(asyncio.create_task(multi_helper(fetch_vnets, vnet_list, token, tenant_id, admin)))
-    tasks.append(asyncio.create_task(multi_helper(get_subnet, subnet_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(pe, endpoint_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vm, endpoint_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vmss, endpoint_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(fwvnet, endpoint_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(bastion, endpoint_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vnetgw, endpoint_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(appgw, endpoint_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(apim, endpoint_list, token, admin)))
+    # The admin view of the Spaces is deliberate. The tree reads only names, sizes and CIDRs, which
+    # every user can already see, never the reservations that view adds, and it indexes the Spaces
+    # as dicts, which only the admin view returns.
+    tasks.append(asyncio.create_task(multi_helper(get_spaces, space_list, expand=False, utilization=True, token=token, tenant_id=tenant_id, is_admin=True)))
+    tasks.append(asyncio.create_task(multi_helper(fetch_vnets, vnet_list, token=token, tenant_id=tenant_id, all_networks=admin)))
+    tasks.append(asyncio.create_task(multi_helper(get_subnet, subnet_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(pe, endpoint_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(vm, endpoint_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(vmss, endpoint_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(fwvnet, endpoint_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(bastion, endpoint_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(vnetgw, endpoint_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(appgw, endpoint_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(apim, endpoint_list, token=token, admin=admin)))
 
     await asyncio.gather(*tasks)
 

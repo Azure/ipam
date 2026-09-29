@@ -856,10 +856,12 @@ async def nic(
 
     return results
 
-async def multi_helper(func, list, *args):
+async def multi_helper(func, list, **kwargs):
     """Await the given coroutine function and append its result to the shared list (used to gather endpoint queries concurrently)."""
 
-    results = await func(*args)
+    # Keyword arguments only: the route handlers take injected parameters, and a positional call can
+    # silently bind the admin flag to the wrong one.
+    results = await func(**kwargs)
     list.append(results)
 
 @router.get(
@@ -877,17 +879,17 @@ async def multi(
     tasks = []
     result_list = []
 
-    tasks.append(asyncio.create_task(multi_helper(endpoint, result_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vm, result_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vmss, result_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(fwvnet, result_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(bastion, result_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vnetgw, result_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(appgw, result_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(apim, result_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(lb, result_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(nic, result_list, token, admin)))
-    tasks.append(asyncio.create_task(multi_helper(vhub_ep, result_list, token, admin)))
+    tasks.append(asyncio.create_task(multi_helper(endpoint, result_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(vm, result_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(vmss, result_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(fwvnet, result_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(bastion, result_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(vnetgw, result_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(appgw, result_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(apim, result_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(lb, result_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(nic, result_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(vhub_ep, result_list, token=token, admin=admin)))
 
     await asyncio.gather(*tasks)
 
