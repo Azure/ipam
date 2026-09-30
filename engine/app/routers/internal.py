@@ -6,7 +6,7 @@ from netaddr import IPNetwork
 from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
-    get_admin,
+    get_azure_scope,
     get_tenant_id,
     get_token_auth_header,
 )
@@ -22,6 +22,7 @@ from app.routers.azure import (
     vmss,
     vnetgw,
 )
+from app.routers.common.helper import AzureScope
 from app.routers.space import get_spaces
 
 router = APIRouter(
@@ -46,7 +47,7 @@ async def multi_helper(func, list, **kwargs):
 async def tree(
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
-    admin: str = Depends(get_admin)
+    scope: AzureScope = Depends(get_azure_scope)
 ):
     """
     Get a hierarchical tree view of Spaces, Blocks, Virtual Networks, Subnets, and Endpoints.
@@ -61,17 +62,17 @@ async def tree(
     # The admin view of the Spaces is deliberate. The tree reads only names, sizes and CIDRs, which
     # every user can already see, never the reservations that view adds, and it indexes the Spaces
     # as dicts, which only the admin view returns.
-    tasks.append(asyncio.create_task(multi_helper(get_spaces, space_list, expand=False, utilization=True, token=token, tenant_id=tenant_id, is_admin=True)))
-    tasks.append(asyncio.create_task(multi_helper(fetch_vnets, vnet_list, token=token, tenant_id=tenant_id, all_networks=admin)))
-    tasks.append(asyncio.create_task(multi_helper(get_subnet, subnet_list, token=token, admin=admin)))
-    tasks.append(asyncio.create_task(multi_helper(pe, endpoint_list, token=token, admin=admin)))
-    tasks.append(asyncio.create_task(multi_helper(vm, endpoint_list, token=token, admin=admin)))
-    tasks.append(asyncio.create_task(multi_helper(vmss, endpoint_list, token=token, admin=admin)))
-    tasks.append(asyncio.create_task(multi_helper(fwvnet, endpoint_list, token=token, admin=admin)))
-    tasks.append(asyncio.create_task(multi_helper(bastion, endpoint_list, token=token, admin=admin)))
-    tasks.append(asyncio.create_task(multi_helper(vnetgw, endpoint_list, token=token, admin=admin)))
-    tasks.append(asyncio.create_task(multi_helper(appgw, endpoint_list, token=token, admin=admin)))
-    tasks.append(asyncio.create_task(multi_helper(apim, endpoint_list, token=token, admin=admin)))
+    tasks.append(asyncio.create_task(multi_helper(get_spaces, space_list, expand=False, utilization=True, token=token, tenant_id=tenant_id, is_admin=True, scope=scope)))
+    tasks.append(asyncio.create_task(multi_helper(fetch_vnets, vnet_list, token=token, tenant_id=tenant_id, scope=scope)))
+    tasks.append(asyncio.create_task(multi_helper(get_subnet, subnet_list, token=token, scope=scope)))
+    tasks.append(asyncio.create_task(multi_helper(pe, endpoint_list, token=token, scope=scope)))
+    tasks.append(asyncio.create_task(multi_helper(vm, endpoint_list, token=token, scope=scope)))
+    tasks.append(asyncio.create_task(multi_helper(vmss, endpoint_list, token=token, scope=scope)))
+    tasks.append(asyncio.create_task(multi_helper(fwvnet, endpoint_list, token=token, scope=scope)))
+    tasks.append(asyncio.create_task(multi_helper(bastion, endpoint_list, token=token, scope=scope)))
+    tasks.append(asyncio.create_task(multi_helper(vnetgw, endpoint_list, token=token, scope=scope)))
+    tasks.append(asyncio.create_task(multi_helper(appgw, endpoint_list, token=token, scope=scope)))
+    tasks.append(asyncio.create_task(multi_helper(apim, endpoint_list, token=token, scope=scope)))
 
     await asyncio.gather(*tasks)
 

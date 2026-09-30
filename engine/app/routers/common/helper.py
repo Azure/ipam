@@ -1,3 +1,4 @@
+from enum import Enum
 from functools import wraps
 
 import azure.cosmos.exceptions as exceptions
@@ -345,17 +346,33 @@ def cosmos_retry(error_msg, max_retry = 5):
         return func_with_retries
     return cosmos_retry_decorator
 
-async def arg_query(token, admin, query):
-    """Run an Azure Resource Graph query (as admin or on-behalf-of the caller), injecting the tenant's subscription exclusions."""
+class AzureScope(Enum):
+    """Whose view of Azure a query uses. Always passed by keyword, and never derived from a bare flag."""
 
-    app_only = bool(admin)
+    # Azure IPAM's own work, such as overlap checks, allocation and settlement. Computed from everything,
+    # whoever is asking, and used only to compute an answer. Never chosen from the caller.
+    SYSTEM = "system"
+    # A caller entitled to Azure IPAM's full view.
+    TENANT = "tenant"
+    # A caller limited to their own Azure access, through the on-behalf-of flow.
+    CALLER = "caller"
 
-    if admin:
-        creds = await get_client_credentials()
-        tenant_id = globals.TENANT_ID
-    else:
-        creds = await get_obo_credentials(token)
-        tenant_id = get_tenant_from_jwt(token)
+async def get_scope_credentials(scope, token):
+    """Return the credential and tenant to query Azure with for the given scope."""
+
+    if not isinstance(scope, AzureScope):
+        raise TypeError("scope must be an AzureScope, got {!r}".format(scope))
+
+    if scope is AzureScope.CALLER:
+        return await get_obo_credentials(token), get_tenant_from_jwt(token)
+
+    return await get_client_credentials(), globals.TENANT_ID
+
+async def arg_query(token, query, *, scope):
+    """Run an Azure Resource Graph query with the given scope's credentials, injecting the tenant's subscription exclusions."""
+
+    creds, tenant_id = await get_scope_credentials(scope, token)
+    app_only = scope is not AzureScope.CALLER
 
     exclusions_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 

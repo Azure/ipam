@@ -15,6 +15,7 @@ from app.dependencies import (
 )
 from app.models import Admin, Subscription
 from app.routers.common.helper import (
+    AzureScope,
     arg_query,
     cosmos_query,
     cosmos_replace,
@@ -266,7 +267,7 @@ async def add_exclusions(
     - **[&lt;UUID&gt;]**: Array of Subscription ID's
     """
 
-    subscription_list = await arg_query(None, True, argquery.SUBSCRIPTION)
+    subscription_list = await arg_query(None, argquery.SUBSCRIPTION, scope=AzureScope.SYSTEM)
     invalid_subscriptions = [str(x) for x in exclusions if str(x) not in [y['subscription_id'] for y in subscription_list]]
 
     if invalid_subscriptions:
@@ -306,7 +307,7 @@ async def update_exclusions(
     - **[&lt;UUID&gt;]**: Array of Subscription ID's
     """
 
-    subscription_list = await arg_query(None, True, argquery.SUBSCRIPTION)
+    subscription_list = await arg_query(None, argquery.SUBSCRIPTION, scope=AzureScope.SYSTEM)
     invalid_subscriptions = [str(x) for x in exclusions if str(x) not in [y['subscription_id'] for y in subscription_list]]
 
     if invalid_subscriptions:

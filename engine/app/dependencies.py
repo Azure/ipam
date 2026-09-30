@@ -13,7 +13,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.globals import globals
 from app.logs.logs import ipam_logger as logger
 from app.models import Error
-from app.routers.common.helper import cosmos_query
+from app.routers.common.helper import AzureScope, cosmos_query
 
 # The OpenAPI spec requires that an `Authorization` header declared as a normal
 # parameter be ignored, so the token has to be advertised as a security scheme for
@@ -266,6 +266,11 @@ async def api_auth_checks(is_admin: bool = Depends(check_admin)) -> bool:
 
 async def get_admin(is_admin: bool = Depends(check_admin)) -> bool:
     return is_admin
+
+async def get_azure_scope(is_admin: bool = Depends(check_admin)) -> AzureScope:
+    """The caller's view of Azure: Azure IPAM's full view for administrators, otherwise their own."""
+
+    return AzureScope.TENANT if is_admin else AzureScope.CALLER
 
 async def get_tenant_id(payload: dict = Depends(validate_token)) -> str:
     return payload['tid']

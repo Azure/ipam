@@ -9,6 +9,7 @@ from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
     get_admin,
+    get_azure_scope,
     get_tenant_id,
     get_token_auth_header,
 )
@@ -22,6 +23,7 @@ from app.models import (
 )
 from app.routers.azure import fetch_network_prefixes
 from app.routers.common.helper import (
+    AzureScope,
     arg_query,
     associated_network_ids,
     cosmos_query,
@@ -53,7 +55,7 @@ async def next_available_subnet(
     req: SubnetCIDRReq,
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
-    is_admin: bool = Depends(get_admin)
+    scope: AzureScope = Depends(get_azure_scope)
 ):
     """
     Get the next available Subnet CIDR in a Virtual Network with the following information:
@@ -77,21 +79,19 @@ async def next_available_subnet(
     if not valid_vnet:
         raise HTTPException(status_code=400, detail="Invalid Virtual Network ID.")
 
-    # Networks associated with a Block are Azure IPAM data, so anyone may target them. Any other
-    # network is looked up as the caller sees it in Azure.
-    if is_admin:
-        all_networks = True
-    else:
+    # Networks associated with a Block are Azure IPAM data, so anyone may target them with the full
+    # view. Any other network is looked up as the caller sees it in Azure.
+    if scope is AzureScope.CALLER:
         spaces = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
-        all_networks = req.vnet_id.lower() in associated_network_ids(spaces)
 
-    if all_networks:
-        vnet_list = await arg_query(token, True, argquery.VNET)
-    elif is_app_only_token(token):
+        if req.vnet_id.lower() in associated_network_ids(spaces):
+            scope = AzureScope.TENANT
+
+    if scope is AzureScope.CALLER and is_app_only_token(token):
         # On-behalf-of only works for users, so a service principal has no Azure view of its own.
         vnet_list = []
     else:
-        vnet_list = await arg_query(token, False, argquery.VNET)
+        vnet_list = await arg_query(token, argquery.VNET, scope=scope)
 
     vnet_list = vnet_fixup(vnet_list)
 
@@ -184,7 +184,7 @@ async def next_available_vnet(
 
     # Allocation: the next available CIDR must not overlap any existing network, including ones the
     # caller cannot see, so this deliberately asks for every network.
-    net_list = await fetch_network_prefixes(token, True)
+    net_list = await fetch_network_prefixes(token, scope=AzureScope.SYSTEM)
 
     available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
     next_selector = -1 if req.reverse_search else 0
@@ -264,7 +264,9 @@ async def cidr_check(
 
     spaces = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
-    nets = await arg_query(token, True, argquery.NET_BASIC)
+    # Overlap is Azure IPAM's own work, so it considers every network. What each caller may see of the
+    # overlapping networks is decided below.
+    nets = await arg_query(token, argquery.NET_BASIC, scope=AzureScope.SYSTEM)
 
     nets = vnet_fixup(nets)
 
