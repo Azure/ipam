@@ -1009,3 +1009,150 @@ Invoke-RestMethod `
     -Token $accessToken `
     -Headers $headers
 ```
+
+## Tools
+
+The Tools endpoints answer planning questions: where the next virtual network of a given size fits, where the next subnet fits within a virtual network, and whether a CIDR range overlaps a network that already exists. They are available to every signed-in user, and none of them change anything in Azure IPAM.
+
+The API base path for the Tools endpoints is:
+
+```text
+/api/tools
+```
+
+### Tool Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/tools/nextAvailableVNet` | Find the next available CIDR for a virtual network within a list of Blocks |
+| `POST` | `/tools/nextAvailableSubnet` | Find the next available CIDR for a subnet within a virtual network |
+| `POST` | `/tools/cidrCheck` | List the Azure virtual networks and virtual hubs that overlap a CIDR range |
+
+> **Note:** `nextAvailableVNet` finds address space but doesn't hold it, so the same CIDR can be returned to more than one caller until something occupies it. To hold address space within a Block, create a [Reservation](#reservations) instead, which accepts the same search options.
+
+### What Each Caller Receives
+
+The answers don't depend on who is asking. `nextAvailableVNet` takes into account every virtual network associated with each Block, along with unsettled Reservations and External Networks, including those you can't see yourself. `nextAvailableSubnet` takes into account every subnet in the virtual network, and `cidrCheck` checks every Azure virtual network and virtual hub within Azure IPAM's scope.
+
+What differs is how much a caller who isn't an administrator is told about networks that aren't associated with a Block:
+
+- `cidrCheck` returns such a network with its `name`, `id`, `resource_group`, `subscription_id` and `tenant_id` set to `null`. The overlapping `prefixes` are still returned, so you know the range is in use.
+- `nextAvailableSubnet` accepts such a virtual network only if you can read it in Azure. Otherwise it returns `400 Bad Request` with `Virtual Network not found.`, exactly as it does for a virtual network that doesn't exist. A service principal that isn't an administrator can only target virtual networks associated with a Block, as explained in [Roles & Permissions](/roles-permissions/README.md#service-principals-and-automation).
+
+> **Note:** `cidrCheck` reports existing Azure networks only. It doesn't check Reservations or External Networks, so use `nextAvailableVNet` or a Reservation to find space that is free within a Block.
+
+### Example API Calls
+
+```powershell
+$engineClientId = '<Engine App Registration Client ID>'
+$appName = 'ipamdev'
+
+$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
+
+$headers = @{
+    'Accept'       = 'application/json'
+    'Content-Type' = 'application/json'
+}
+```
+
+#### Find the Next Available Virtual Network
+
+Provide a Space, a list of Blocks and a mask size. The Blocks are evaluated in the order provided, and the first one with room for a network of that size is used.
+
+```powershell
+$body = @{
+    space  = 'TestSpace'
+    blocks = @('TestBlock', 'OverflowBlock')
+    size   = 24
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Post' `
+    -Uri "https://$appName.azurewebsites.net/api/tools/nextAvailableVNet" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+The response names the Block the CIDR was found in:
+
+```text
+$response
+
+space : TestSpace
+block : TestBlock
+cidr  : 10.1.11.0/24
+```
+
+The optional `reverse_search` and `smallest_cidr` settings work the same way as they do when [creating a Reservation by size](#create-a-reservation-by-size). If none of the Blocks has room for a network of the requested size, the call returns `409 Conflict`.
+
+#### Find the Next Available Subnet
+
+Provide the resource ID of the target virtual network and a mask size.
+
+```powershell
+$body = @{
+    vnet_id = '/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/rg-networking/providers/Microsoft.Network/virtualNetworks/my-vnet-01'
+    size    = 27
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Post' `
+    -Uri "https://$appName.azurewebsites.net/api/tools/nextAvailableSubnet" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+```text
+$response
+
+vnet_name       : my-vnet-01
+resource_group  : rg-networking
+subscription_id : xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+cidr            : 10.1.0.64/27
+```
+
+The same `reverse_search` and `smallest_cidr` settings are accepted here. If the virtual network has no room for a subnet of the requested size, the call returns `409 Conflict`.
+
+#### Check a CIDR for Overlaps
+
+Provide a CIDR range to find the Azure virtual networks and virtual hubs that overlap it. The CIDR must be a network address, so `10.1.0.0/16` is accepted but `10.1.0.1/16` returns `400 Bad Request`.
+
+```powershell
+$body = @{
+    cidr = '10.1.0.0/16'
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Post' `
+    -Uri "https://$appName.azurewebsites.net/api/tools/cidrCheck" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+Each overlapping network lists the prefixes that overlap the CIDR and the Space and Block it is associated with, if any. In this response, seen by a user who isn't an administrator, the second network isn't associated with a Block, so only its overlapping range is shown:
+
+```text
+$response
+
+name            : my-vnet-01
+id              : /subscriptions/.../providers/Microsoft.Network/virtualNetworks/my-vnet-01
+resource_group  : rg-networking
+subscription_id : xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+tenant_id       : xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+prefixes        : {10.1.0.0/24}
+containers      : {@{space=TestSpace; block=TestBlock}}
+
+name            :
+id              :
+resource_group  :
+subscription_id :
+tenant_id       :
+prefixes        : {10.1.8.0/24}
+containers      : {}
+```

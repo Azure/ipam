@@ -4,10 +4,12 @@
 
 ![Azure IPAM Homepage](./images/ipam_home_page.png)
 
-Azure IPAM leverages the [Microsoft Authentication Library (MSAL)](https://docs.microsoft.com/azure/active-directory/develop/msal-overview) to authenticate users with your existing Microsoft Entra ID credentials. Authorization is determined by whether the signed-in user is an **IPAM Administrator**:
+Azure IPAM leverages the [Microsoft Authentication Library (MSAL)](https://docs.microsoft.com/azure/active-directory/develop/msal-overview) to authenticate users with your existing Microsoft Entra ID credentials. What you can do once signed in depends on whether you are an **IPAM Administrator**:
 
-- **Administrators** view Azure resources through the Engine Service Principal, which by default has [Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#reader) at the [Tenant Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) (unless overridden during deployment). Administrators can also create and update [Spaces](#spaces) and [Blocks](#blocks), manage [subscription exclusions](#subscription-exclusioninclusion), and control who else is an admin.
-- **Non-administrators** see only the resources they already have access to in the Azure Portal, based on their own Azure RBAC permissions. Administrative functions such as the **Configure** and **Admin** menu sections are not available to them.
+- **Administrators** set up and maintain the address plan. They create and update [Spaces](#spaces), [Blocks](#blocks) and [External Networks](#external-networks), manage [Virtual Network Associations](#virtual-network-associations) and [subscription exclusions](#subscription-exclusioninclusion), and control who else is an admin. They view Azure resources through the Engine Service Principal, which by default has [Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#reader) at the [Tenant Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) (unless overridden during deployment).
+- **Non-administrators** work within the address plan. They can view every Space and Block, find available address space, and create and cancel their own [Reservations](#reservations). Azure resources that aren't associated with a Block are shown to them only as their own Azure RBAC permissions allow. Every section of the menu except **Admin** is available to them, and the **Configure** pages are read-only apart from **Reservations**.
+
+For the full picture of what each role can see and do, see [Roles & Permissions](/roles-permissions/README.md).
 
 > **Note:** Upon initial deployment, no administrators are defined. When the admin list is empty, **all** users are treated as administrators. This grants full access so you can complete initial setup, but you should designate at least one administrator promptly to restrict administrative functions.
 
@@ -310,13 +312,13 @@ To clean up stale associations, un-check the stale entries and click **Save** to
 
 #### Admin vs. Non-Admin View
 
-Non-admin users can navigate to the Associations page and view the current associations for any Block. However, the grid is displayed in **read-only mode** — checkboxes are not shown and the Save button is never visible. This allows everyone to see which virtual networks are associated with a Block without being able to modify the associations.
+Non-admin users can navigate to the Associations page and view the current associations for any Block. However, the grid is displayed in **read-only mode** — checkboxes are not shown and the Save button is never visible. This allows everyone to see which virtual networks are associated with a Block without being able to modify the associations. To associate a virtual network they own, non-admin users can use a Reservation instead, as described in [Associating an Existing Virtual Network](#associating-an-existing-virtual-network).
 
 > **Important:** Administrators see networks across the entire tenant. Non-admin users only see networks in subscriptions they have Azure RBAC read access to, so their available network list may be smaller.
 
 ### Automatic Association via Reservations
 
-Virtual networks created through the CIDR Reservation workflow are **automatically associated** with their Block — no manual step is needed. Azure IPAM's background reconciliation detects the tagged network, verifies its address space, and creates the association for you. See the [Reservations](#reservations) section for details on how this works.
+Virtual networks created through the CIDR Reservation workflow are **automatically associated** with their Block — no manual step is needed. Azure IPAM's background reconciliation detects the tagged network, verifies its address space, and creates the association for you. See the [Reservations](#reservations) section for details on how this works. The same workflow also works for a virtual network that already exists, as described in [Associating an Existing Virtual Network](#associating-an-existing-virtual-network).
 
 ### How Associations Affect Utilization
 
@@ -442,7 +444,7 @@ Azure IPAM automatically finds the next available CIDR of the requested size. Ch
 
 **Manual:**
 
-Enter a specific CIDR range in standard notation (e.g., `10.1.5.0/24`). The CIDR must be within the Block's range and cannot overlap any existing virtual networks, Reservations, or External Networks.
+Enter a specific CIDR range in standard notation (e.g., `10.1.5.0/24`). The CIDR must be within the Block's range and cannot overlap virtual networks already associated with the Block, unsettled Reservations, or External Networks.
 
 ![Create Reservation Manual](./images/resv_create_by_cidr.png)
 
@@ -509,6 +511,22 @@ Each Reservation ID in the list is evaluated independently. For every ID found, 
 Because each Reservation ID is processed separately, a virtual network with two address spaces can carry two Reservation IDs in a single tag and both Reservations will be fulfilled in the same reconciliation cycle.
 
 > **Note:** Each Reservation ID in the list is evaluated independently. The IDs do not need to belong to the same Block — a virtual network with two address spaces can have one address space associated to one Block and the other to an entirely different Block (or even a different Space), each with its own Reservation ID in the list. A mismatch between a reserved CIDR and the virtual network's address space will result in a `Warning: CIDR Mismatch` status for that individual Reservation, regardless of the other Reservation IDs in the list.
+
+### Associating an Existing Virtual Network
+
+Reservations can also bring a virtual network that already exists into Azure IPAM. This is how users who aren't administrators associate a network they own with a Block:
+
+1. Create a Reservation for exactly the virtual network's address space, using the **Manual** allocation mode (or the `cidr` field in the API).
+2. Add the `X-IPAM-RES-ID` tag to the virtual network, with the Reservation ID as its value.
+
+Azure IPAM's background reconciliation then fulfils the Reservation and associates the virtual network with the Block, just as it would for a newly created network.
+
+A few things to keep in mind:
+
+- The Reservation must match the virtual network's address space exactly. A Reservation for a larger or smaller range results in a `Warning: CIDR Mismatch` status.
+- A virtual network with more than one address space within a Block needs a Reservation for each one, as described in [Multiple Reservations on a Single Virtual Network](#multiple-reservations-on-a-single-virtual-network).
+- The Reservation can only be created if its range doesn't overlap a virtual network already associated with the Block, an unsettled Reservation, or an External Network.
+- The Reservation is fulfilled only if none of the virtual network's address ranges within the Block overlap one of those either. Otherwise it results in an `Error: CIDR Overlap` status.
 
 ### Managing Reservations via the API
 

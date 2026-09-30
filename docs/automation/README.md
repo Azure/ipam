@@ -49,7 +49,7 @@ Reservations lend themselves well to self-service workflows where application te
 3. The reserved CIDR is used to deploy the VNet (with the reservation tag applied)
 4. IPAM automatically settles the reservation once the tagged VNet is detected
 
-Because non-admin users can create (and cancel) their own reservations, this pattern works without granting broad IPAM admin permissions.
+Because non-admin users can create (and cancel) their own reservations, this pattern works without granting broad IPAM admin permissions. This applies to service principals and managed identities as well, with some limits on what a non-admin service principal can see, described in [Service Principals and Automation](/roles-permissions/README.md#service-principals-and-automation).
 
 ### Reservation Lifecycle Management
 
@@ -57,7 +57,7 @@ For long-running automation, consider monitoring reservation status to catch res
 
 ## Virtual Network Association Automation
 
-[Virtual Network Associations](/how-to/README.md#virtual-network-associations) map Azure virtual networks and virtual hubs to Blocks, which drives utilization tracking and overlap prevention. All association management endpoints are restricted to Azure IPAM administrators.
+[Virtual Network Associations](/how-to/README.md#virtual-network-associations) map Azure virtual networks and virtual hubs to Blocks, which drives utilization tracking and overlap prevention. Any signed-in user can list a Block's associations, but adding, replacing and removing them is restricted to Azure IPAM administrators.
 
 For the full set of association endpoints and example API calls, see the [Virtual Network Associations](/api/README.md#virtual-network-associations) section of the API documentation.
 
@@ -77,6 +77,8 @@ If your VNet deployments don't use the reservation workflow (for example, if add
 2. Call `POST /networks` to associate the new VNet with the appropriate Block
 
 This ensures that every deployed VNet is tracked in IPAM for utilization and overlap reporting, even if it wasn't provisioned through the reservation flow.
+
+Calling `POST /networks` requires an Azure IPAM administrator. A pipeline that runs without admin rights can reach the same result by reserving the VNet's exact address space and tagging the VNet with the Reservation ID, as described in [Associating an Existing Virtual Network](/how-to/README.md#associating-an-existing-virtual-network).
 
 ### Drift Detection and Reconciliation
 

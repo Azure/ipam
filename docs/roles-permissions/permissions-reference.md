@@ -26,7 +26,7 @@ Permissions are named `resource/action`, where the action is one of `read`, `cre
 These actions need no permission, so they're available to every signed-in user, whatever their role:
 
 - View Spaces and Blocks, including their utilization.
-- Find available address space and check for overlaps with the tools API (`nextAvailableVNet`, `nextAvailableSubnet` and `cidrCheck`). These always consider every network within Azure IPAM's scope, so the answers are complete.
+- Find available address space and check for overlaps with the tools API (`nextAvailableVNet`, `nextAvailableSubnet` and `cidrCheck`). The answers are the same whoever asks, because they take into account networks, Reservations and External Networks you can't see yourself.
 - Create Reservations, view and cancel their own, and see every other user's pending Reservations without their ID or description.
 - View Azure resources in the Discover section and through `/azure`, limited to what their own Azure permissions allow.
 - View the virtual networks available to associate with a Block, limited to what their own Azure permissions allow.
