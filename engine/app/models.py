@@ -287,26 +287,6 @@ class ReservationExpand(BaseModel):
 
                 return data
 
-class BlockBasic(BaseModel):
-    """A Block summary containing its CIDR, associated networks, externals, and reservations."""
-
-    name: str
-    cidr: str
-    vnets: List[VNet]
-    externals: List[ExtNet]
-    resv: List[Reservation]
-
-class BlockBasicUtil(BaseModel):
-    """A Block summary with address utilization (total and used address counts)."""
-
-    name: str
-    cidr: str
-    vnets: List[VNet]
-    externals: List[ExtNetUtil]
-    resv: List[Reservation]
-    size: int
-    used: int
-
 class Block(BaseModel):
     """A network Block within a Space, containing a CIDR, its Virtual Networks, externals, and reservations."""
 
@@ -344,22 +324,6 @@ class BlockExpandUtil(BaseModel):
     vnets: List[VNetExpandUtil]
     externals: List[ExtNetUtil]
     resv: List[Reservation]
-    size: int
-    used: int
-
-class SpaceBasic(BaseModel):
-    """A Space summary containing its description and basic Block information."""
-
-    name: str
-    desc: str
-    blocks: List[BlockBasic]
-
-class SpaceBasicUtil(BaseModel):
-    """A Space summary with per-Block and aggregate address utilization."""
-
-    name: str
-    desc: str
-    blocks: List[BlockBasicUtil]
     size: int
     used: int
 

@@ -20,8 +20,6 @@ from app.dependencies import (
 )
 from app.models import (
     Block,
-    BlockBasic,
-    BlockBasicUtil,
     BlockCIDRReq,
     BlockExpand,
     BlockExpandUtil,
@@ -46,8 +44,6 @@ from app.models import (
     NetworkExpandBlocked,
     ReservationExpand,
     Space,
-    SpaceBasic,
-    SpaceBasicUtil,
     SpaceCIDRReq,
     SpaceExpand,
     SpaceExpandUtil,
@@ -589,9 +585,7 @@ async def scrub_ext_endpoint_patch(patch, space_name, block_name, external_name,
         List[SpaceExpandUtil],
         List[SpaceExpand],
         List[SpaceUtil],
-        List[Space],
-        List[SpaceBasicUtil],
-        List[SpaceBasic]
+        List[Space]
     ],
     status_code = 200
 )
@@ -700,9 +694,7 @@ async def create_space(
         SpaceExpandUtil,
         SpaceExpand,
         SpaceUtil,
-        Space,
-        SpaceBasicUtil,
-        SpaceBasic
+        Space
     ],
     status_code = 200
 )
@@ -1013,9 +1005,7 @@ async def create_multi_block_reservation(
         List[BlockExpandUtil],
         List[BlockExpand],
         List[BlockUtil],
-        List[Block],
-        List[BlockBasicUtil],
-        List[BlockBasic]
+        List[Block]
     ],
     status_code = 200
 )
@@ -1138,9 +1128,7 @@ async def create_block(
         BlockExpandUtil,
         BlockExpand,
         BlockUtil,
-        Block,
-        BlockBasicUtil,
-        BlockBasic
+        Block
     ],
     status_code = 200
 )
@@ -1449,7 +1437,7 @@ async def get_block_nets(
 @router.post(
     "/{space}/blocks/{block}/networks",
     summary = "Add Block Network",
-    response_model = BlockBasic,
+    response_model = Block,
     status_code = 201,
     dependencies = [Depends(requires(Permission.ASSOCIATIONS_CREATE))]
 )
