@@ -5,10 +5,10 @@ from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
     get_token_auth_header,
-    require_admin,
 )
 from app.notifications import get_notifications, get_resolver
 from app.notifications.models import NotificationActionResult
+from app.permissions import Permission, requires
 
 router = APIRouter(
     prefix="/notifications",
@@ -46,7 +46,7 @@ async def list_notifications():
     summary="Resolve a Notification",
     response_model=NotificationActionResult,
     status_code=202,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.NOTIFICATIONS_UPDATE))]
 )
 async def resolve_notification(
     notification_id: str,

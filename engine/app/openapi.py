@@ -1,10 +1,10 @@
 """
 OpenAPI document generation for Azure IPAM.
 
-Builds the schema and then annotates it from the admin gates declared in
-``app.dependencies``. The gates are the single source of truth: an operation is
-marked because it actually enforces the restriction, so the published contract
-cannot drift away from the runtime behaviour.
+Builds the schema and then annotates it from the permissions each route declares
+with ``app.permissions``. The declarations are the single source of truth: an
+operation is marked because it actually enforces the restriction, so the published
+contract cannot drift away from the runtime behaviour.
 
 This module reads FastAPI's route structures, including
 ``fastapi.routing.iter_route_contexts``, which is not part of the documented
@@ -15,29 +15,40 @@ and never fatal, see :func:`build_openapi`.
 from fastapi import routing as fastapi_routing
 from fastapi.openapi.utils import get_openapi
 
-from app.dependencies import ADMIN_FORBIDDEN, require_admin
+from app.dependencies import ADMIN_FORBIDDEN
 from app.logs.logs import ipam_logger as logger
+from app.permissions import ROLES
 
 ADMIN_MARKER = "(Admin Only)"
 
-def _dependency_tree_contains(dependant, target):
-    """Recursively test whether `target` appears anywhere in a route's dependency tree."""
+def _admin_only(gate):
+    """Whether a declared permission gate restricts its route or parameter to administrators."""
+
+    permission = getattr(gate, "required_permission", None)
+
+    return permission is not None and permission not in ROLES["User"]
+
+def _requires_admin(dependant):
+    """Recursively test whether a route's dependency tree contains an admin-only route gate."""
 
     for dependency in dependant.dependencies:
-        if dependency.call is target or _dependency_tree_contains(dependency, target):
+        gate = dependency.call
+
+        if (_admin_only(gate) and not getattr(gate, "guarded_parameter", None)) or _requires_admin(dependency):
             return True
 
     return False
 
 def _collect_admin_flag_parameters(dependant):
-    """Collect the parameter names guarded by parameter-level admin gates."""
+    """Collect the parameter names guarded by admin-only parameter gates."""
 
     parameters = []
 
     for dependency in dependant.dependencies:
-        parameter = getattr(dependency.call, "admin_flag_parameter", None)
+        gate = dependency.call
+        parameter = getattr(gate, "guarded_parameter", None)
 
-        if parameter:
+        if parameter and _admin_only(gate):
             parameters.append(parameter)
 
         parameters.extend(_collect_admin_flag_parameters(dependency))
@@ -59,7 +70,7 @@ def _apply_admin_markings(app, schema):
         if not isinstance(context.original_route, fastapi_routing.APIRoute):
             continue
 
-        endpoint_admin = _dependency_tree_contains(context.dependant, require_admin)
+        endpoint_admin = _requires_admin(context.dependant)
         flagged_params = _collect_admin_flag_parameters(context.dependant)
 
         if not (endpoint_admin or flagged_params):

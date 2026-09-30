@@ -26,7 +26,7 @@ To support this, Azure IPAM reads Azure in one of two ways. It can use its own r
 
 When you write or change an endpoint:
 
-- **Query with the scope the answer needs.** Allocation and overlap checks must consider every network, so they use Azure IPAM's own access. If a non-admin response would include details of virtual networks that aren't associated with a Block, either query on the caller's behalf or remove those details.
+- **Query with the scope the answer needs.** Every Azure query states its scope with `AzureScope`. Allocation and overlap checks are Azure IPAM's own work, so they use `AzureScope.SYSTEM` and consider every network. Anything shown to a caller uses the caller's scope from `get_azure_scope`, which is `TENANT` for administrators and `CALLER` otherwise. If a non-admin response would include details of virtual networks that aren't associated with a Block, either query with the caller's scope or remove those details.
 - **Withhold details without changing the shape.** Set withheld fields to `null`, and keep every item in a response the same shape. Don't return a different model, or a placeholder such as `"unknown"` that automation would treat as a real value.
 - **Don't use on-behalf-of for service principals.** The flow only works for users. Treat a service principal that isn't an administrator as having no Azure visibility of its own.
 - **Treat Reservation IDs as sensitive.** A Reservation ID is what links a virtual network to its Reservation, so only return it to the user who created the Reservation and to administrators.
@@ -37,13 +37,15 @@ Together, these keep allocation and overlap answers accurate for everyone, while
 
 For the principles behind these rules, see the [Roles & Permissions](/roles-permissions/README.md#guiding-principles) documentation.
 
-## Documenting Admin Restrictions
+## Declaring Permissions
 
-Never hand-write an "admin only" note, and never hand-write a `403` response. Declare an admin gate instead, and let the documentation be generated from it.
+Never check whether the caller is an administrator, and never hand-write an "admin only" note or a `403` response. Declare the permission a route or decision needs, and let both enforcement and the documentation come from that declaration.
 
-Azure IPAM restricts many endpoints to administrators, and a few restrict only certain parameters. You declare both using dependencies from `app/dependencies.py`.
+Permissions live in `app/permissions.py`. Each `Permission` is a `resource/action` pair, such as `externals/update`, where the action matches the HTTP method: `read`, `create`, `update` or `delete`. The qualifier `/all` means "not just your own", as in `reservations/read/all`. `ROLES` states which role holds which permission.
 
-When an endpoint requires admin outright, declare the gate on the route:
+A permission exists only where the code makes a decision about it. Anything every signed-in user may do, such as reading Spaces or creating their own Reservations, needs no permission, so don't add one in anticipation of a future need.
+
+When a route requires a permission, declare it on the route:
 
 ```python
 @router.post(
@@ -51,31 +53,41 @@ When an endpoint requires admin outright, declare the gate on the route:
     summary = "Create New Space",
     response_model = Space,
     status_code = 201,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.SPACES_CREATE))]
 )
 async def create_space(...):
     ...
 ```
 
-When only a parameter is restricted, use the parameter-level gate. It declares the query parameter itself, so your route simply depends on it:
+When only a parameter is restricted, depend on a parameter gate made with `requires_param`. The gate declares the query parameter itself, so your route simply depends on it:
 
 ```python
 async def get_spaces(
-    expand: bool = Depends(admin_expand),
+    expand: bool = Depends(expand_gate),
     ...
 ):
 ```
 
+When a route is open to everyone but what it returns depends on the caller, ask the caller's grants:
+
+```python
+async def get_block_reservations(..., grants: Grants = Depends(get_grants)):
+    if not grants.can(Permission.RESERVATIONS_READ_ALL):
+        ...
+```
+
 The OpenAPI generator in `app/openapi.py` walks each route's dependency tree and annotates what it finds:
 
-- **`require_admin`** — Appends `(Admin Only)` to the operation summary and attaches a documented `403`
-- **A parameter-level gate** — Marks only the parameter it guards, because the endpoint itself is not restricted
+- **A route gate** for a permission the User role doesn't hold appends `(Admin Only)` to the operation summary and attaches a documented `403`.
+- **A parameter gate** marks only the parameter it guards, because the endpoint itself is not restricted.
 
 You can see the result in the [API](/api/README.md) documentation, where admin restricted operations are labelled in the endpoint list.
 
+Decisions made with `grants.can(...)` inside an open route aren't annotated, because the route itself isn't restricted. Describe what each caller receives in the route's docstring instead, as `cidrCheck` does.
+
 Enforcement and documentation come from a single declaration, so they cannot disagree. The alternative, annotating `responses={403: ...}` by hand on every restricted endpoint, was tried and rejected. That approach leaves roughly 46 pieces of metadata sitting next to, but not derived from, the actual check. The first time someone adds a guard and forgets the annotation, the published API contract is wrong and nothing catches it.
 
-To add a new parameter-level gate, write the gate function and mark it with `@admin_flag_gate("<parameter>")`. The generator reads that marker as it walks the dependency tree, so there is no registry for you to keep in sync.
+To add a permission, add it to `Permission` with a one-line description in `DESCRIPTIONS`, and to each role that holds it in `ROLES`. To add a parameter gate, create it with `requires_param`. The generator reads the markers these gates carry as it walks the dependency tree, so there is no registry for you to keep in sync.
 
 Marking is best effort and never fatal. If route introspection breaks, most likely after a FastAPI upgrade because it relies on `fastapi.routing.iter_route_contexts`, the engine still serves a valid schema and simply loses the annotations. Watch for this line at startup:
 
@@ -85,7 +97,7 @@ OpenAPI generated successfully (42 admin-marked operations)
 
 A count of `0`, or a `WARNING` that the markings could not be applied, means the generator needs attention. Enforcement is unaffected either way, because the gates are ordinary dependencies.
 
-> **Note:** A handful of `403` responses are ownership checks rather than admin checks, such as refusing to delete another user's reservation. Those stay inline, as they are not admin restrictions and marking them as such would be misleading.
+> **Note:** Ownership decisions, such as refusing to cancel another user's Reservation, are made with `grants.can(...)` inside routes that everyone may call. They aren't marked as admin restrictions in the API documentation, because the route itself isn't restricted.
 
 ## Authenticating API Endpoints
 

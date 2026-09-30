@@ -15,13 +15,13 @@ from netaddr import IPNetwork, IPSet
 from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
-    get_azure_scope,
     get_tenant_id,
     get_token_auth_header,
 )
 from app.globals import globals
 from app.logs.logs import ipam_logger as logger
 from app.models import VWanHub
+from app.permissions import get_azure_scope
 from app.routers.common.helper import (
     AzureScope,
     arg_query,

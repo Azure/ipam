@@ -6,10 +6,10 @@ from netaddr import IPNetwork
 from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
-    get_azure_scope,
     get_tenant_id,
     get_token_auth_header,
 )
+from app.permissions import Grants, get_azure_scope, get_grants
 from app.routers.azure import (
     apim,
     appgw,
@@ -47,6 +47,7 @@ async def multi_helper(func, list, **kwargs):
 async def tree(
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
+    grants: Grants = Depends(get_grants),
     scope: AzureScope = Depends(get_azure_scope)
 ):
     """
@@ -59,10 +60,7 @@ async def tree(
     subnet_list = []
     endpoint_list = []
 
-    # The admin view of the Spaces is deliberate. The tree reads only names, sizes and CIDRs, which
-    # every user can already see, never the reservations that view adds, and it indexes the Spaces
-    # as dicts, which only the admin view returns.
-    tasks.append(asyncio.create_task(multi_helper(get_spaces, space_list, expand=False, utilization=True, token=token, tenant_id=tenant_id, is_admin=True, scope=scope)))
+    tasks.append(asyncio.create_task(multi_helper(get_spaces, space_list, expand=False, utilization=True, token=token, tenant_id=tenant_id, grants=grants, scope=scope)))
     tasks.append(asyncio.create_task(multi_helper(fetch_vnets, vnet_list, token=token, tenant_id=tenant_id, scope=scope)))
     tasks.append(asyncio.create_task(multi_helper(get_subnet, subnet_list, token=token, scope=scope)))
     tasks.append(asyncio.create_task(multi_helper(pe, endpoint_list, token=token, scope=scope)))

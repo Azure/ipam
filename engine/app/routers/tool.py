@@ -8,8 +8,6 @@ from netaddr import IPNetwork, IPSet
 from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
-    get_admin,
-    get_azure_scope,
     get_tenant_id,
     get_token_auth_header,
 )
@@ -21,6 +19,7 @@ from app.models import (
     SubnetCIDRReq,
     VNetCIDRReq,
 )
+from app.permissions import Grants, Permission, get_azure_scope, get_grants
 from app.routers.azure import fetch_network_prefixes
 from app.routers.common.helper import (
     AzureScope,
@@ -249,7 +248,7 @@ async def cidr_check(
     req: CIDRCheckReq,
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
-    is_admin: bool = Depends(get_admin)
+    grants: Grants = Depends(get_grants)
 ):
     """
     Get a list of Virtual Networks which overlap a given CIDR range with the following information:
@@ -299,7 +298,7 @@ async def cidr_check(
 
         # Overlap is always computed from every network, but a network that isn't associated with a
         # Block belongs to Azure, so a non-admin learns the space is in use without learning what uses it.
-        if not is_admin and not item['containers']:
+        if not grants.can(Permission.AZURE_READ_ALL) and not item['containers']:
             for field in ('name', 'id', 'resource_group', 'subscription_id', 'tenant_id'):
                 item[field] = None
 

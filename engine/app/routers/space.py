@@ -14,13 +14,9 @@ from netaddr import IPAddress, IPNetwork, IPSet
 
 from app.dependencies import (
     UNAUTHORIZED,
-    admin_expand,
     api_auth_checks,
-    get_admin,
-    get_azure_scope,
     get_tenant_id,
     get_token_auth_header,
-    require_admin,
 )
 from app.models import (
     Block,
@@ -60,6 +56,14 @@ from app.models import (
     SpaceUtil,
     VNet,
     VNetsUpdate,
+)
+from app.permissions import (
+    Grants,
+    Permission,
+    expand_gate,
+    get_azure_scope,
+    get_grants,
+    requires,
 )
 from app.routers.azure import fetch_network_prefixes, fetch_networks
 from app.routers.common.helper import (
@@ -592,11 +596,11 @@ async def scrub_ext_endpoint_patch(patch, space_name, block_name, external_name,
     status_code = 200
 )
 async def get_spaces(
-    expand: bool = Depends(admin_expand),
+    expand: bool = Depends(expand_gate),
     utilization: bool = Query(False, description="Append utilization information for each network"),
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin),
+    grants: Grants = Depends(get_grants),
     scope: AzureScope = Depends(get_azure_scope)
 ):
     """
@@ -605,7 +609,7 @@ async def get_spaces(
 
 
     if expand:
-        # Expand hands back whole network objects, so it uses the caller's view, which `admin_expand`
+        # Expand hands back whole network objects, so it uses the caller's view, which `expand_gate`
         # limits to administrators today.
         nets = await fetch_networks(token, tenant_id, scope=scope)
     elif utilization:
@@ -635,24 +639,18 @@ async def get_spaces(
                 space['size'] += block['size']
                 space['used'] += block['used']
 
-            if not is_admin:
+            if not grants.can(Permission.RESERVATIONS_READ_ALL):
                 user_name = get_username_from_jwt(token)
                 block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, block['resv']))
 
-    if not is_admin:
-        if utilization:
-            return [SpaceBasicUtil(**item) for item in space_query]
-        else:
-            return [SpaceBasic(**item) for item in space_query]
-    else:
-        return space_query
+    return space_query
 
 @router.post(
     "",
     summary = "Create New Space",
     response_model = Space,
     status_code = 201,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.SPACES_CREATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -710,11 +708,11 @@ async def create_space(
 )
 async def get_space(
     space: str = Path(..., description="Name of the target Space"),
-    expand: bool = Depends(admin_expand),
+    expand: bool = Depends(expand_gate),
     utilization: bool = Query(False, description="Append utilization information for each network"),
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin),
+    grants: Grants = Depends(get_grants),
     scope: AzureScope = Depends(get_azure_scope)
 ):
     """
@@ -730,7 +728,7 @@ async def get_space(
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     if expand:
-        # Expand hands back whole network objects, so it uses the caller's view, which `admin_expand`
+        # Expand hands back whole network objects, so it uses the caller's view, which `expand_gate`
         # limits to administrators today.
         nets = await fetch_networks(token, tenant_id, scope=scope)
     elif utilization:
@@ -757,24 +755,18 @@ async def get_space(
             target_space['size'] += block['size']
             target_space['used'] += block['used']
 
-        if not is_admin:
+        if not grants.can(Permission.RESERVATIONS_READ_ALL):
             user_name = get_username_from_jwt(token)
             block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, block['resv']))
 
-    if not is_admin:
-        if utilization:
-            return SpaceBasicUtil(**target_space)
-        else:
-            return SpaceBasic(**target_space)
-    else:
-        return target_space
+    return target_space
 
 @router.patch(
     "/{space}",
     summary = "Update Space Details",
     # response_model = Space,
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.SPACES_UPDATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -822,7 +814,7 @@ async def update_space(
     "/{space}",
     summary = "Delete a Space",
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.SPACES_DELETE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -864,7 +856,7 @@ async def get_multi_block_reservations(
     settled: bool = Query(False, description="Include settled reservations."),
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    grants: Grants = Depends(get_grants)
 ):
     """
     Get a list of CIDR Reservations for all Blocks within the target Space.
@@ -892,7 +884,7 @@ async def get_multi_block_reservations(
 
         resv_list += reservations
 
-    if not is_admin:
+    if not grants.can(Permission.RESERVATIONS_READ_ALL):
         user_name = get_username_from_jwt(token)
         return list(filter(lambda x: x['createdBy'] == user_name, resv_list))
     else:
@@ -1029,11 +1021,11 @@ async def create_multi_block_reservation(
 )
 async def get_blocks(
     space: str = Path(..., description="Name of the target Space"),
-    expand: bool = Depends(admin_expand),
+    expand: bool = Depends(expand_gate),
     utilization: bool = Query(False, description="Append utilization information for each network"),
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin),
+    grants: Grants = Depends(get_grants),
     scope: AzureScope = Depends(get_azure_scope)
 ):
     """
@@ -1051,7 +1043,7 @@ async def get_blocks(
     block_list = target_space['blocks']
 
     if expand:
-        # Expand hands back whole network objects, so it uses the caller's view, which `admin_expand`
+        # Expand hands back whole network objects, so it uses the caller's view, which `expand_gate`
         # limits to administrators today.
         nets = await fetch_networks(token, tenant_id, scope=scope)
     elif utilization:
@@ -1071,24 +1063,18 @@ async def get_blocks(
         if utilization:
             add_block_utilization(block, nets, expand)
 
-        if not is_admin:
+        if not grants.can(Permission.RESERVATIONS_READ_ALL):
             user_name = get_username_from_jwt(token)
             block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, block['resv']))
 
-    if not is_admin:
-        if utilization:
-            return [BlockBasicUtil(**item) for item in target_space['blocks']]
-        else:
-            return [BlockBasic(**item) for item in target_space['blocks']]
-    else:
-        return target_space['blocks']
+    return target_space['blocks']
 
 @router.post(
     "/{space}/blocks",
     summary = "Create a new Block",
     response_model = Block,
     status_code = 201,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.BLOCKS_CREATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1161,11 +1147,11 @@ async def create_block(
 async def get_block(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    expand: bool = Depends(admin_expand),
+    expand: bool = Depends(expand_gate),
     utilization: bool = Query(False, description="Append utilization information for each network"),
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin),
+    grants: Grants = Depends(get_grants),
     scope: AzureScope = Depends(get_azure_scope)
 ):
     """
@@ -1186,7 +1172,7 @@ async def get_block(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     if expand:
-        # Expand hands back whole network objects, so it uses the caller's view, which `admin_expand`
+        # Expand hands back whole network objects, so it uses the caller's view, which `expand_gate`
         # limits to administrators today.
         nets = await fetch_networks(token, tenant_id, scope=scope)
     elif utilization:
@@ -1205,24 +1191,18 @@ async def get_block(
     if utilization:
         add_block_utilization(target_block, nets, expand)
 
-    if not is_admin:
+    if not grants.can(Permission.RESERVATIONS_READ_ALL):
         user_name = get_username_from_jwt(token)
         target_block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, target_block['resv']))
 
-    if not is_admin:
-        if utilization:
-            return BlockBasicUtil(**target_block)
-        else:
-            return BlockBasic(**target_block)
-    else:
-        return target_block
+    return target_block
 
 @router.patch(
     "/{space}/blocks/{block}",
     summary = "Update Block Details",
     response_model = Block,
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.BLOCKS_UPDATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1277,7 +1257,7 @@ async def update_block(
     "/{space}/blocks/{block}",
     summary = "Delete a Block",
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.BLOCKS_DELETE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1426,7 +1406,7 @@ async def available_block_nets(
         List[Network]
     ],
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.ASSOCIATIONS_READ))]
 )
 async def get_block_nets(
     space: str = Path(..., description="Name of the target Space"),
@@ -1471,7 +1451,7 @@ async def get_block_nets(
     summary = "Add Block Network",
     response_model = BlockBasic,
     status_code = 201,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.ASSOCIATIONS_CREATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1552,7 +1532,7 @@ async def create_block_net(
     summary = "Replace Block Networks",
     response_model = List[Network],
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.ASSOCIATIONS_UPDATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1661,7 +1641,7 @@ async def update_block_vnets(
     "/{space}/blocks/{block}/networks",
     summary = "Remove Block Networks",
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.ASSOCIATIONS_DELETE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1726,7 +1706,7 @@ async def delete_block_nets(
     summary = "List External Networks",
     response_model = List[ExtNet],
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_READ))]
 )
 async def get_external_networks(
     space: str = Path(..., description="Name of the target Space"),
@@ -1757,7 +1737,7 @@ async def get_external_networks(
     summary = "Create External Network",
     response_model = ExtNetExpand,
     status_code = 201,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_CREATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1865,7 +1845,7 @@ async def create_external_network(
     summary = "Get External Network",
     response_model = ExtNet,
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_READ))]
 )
 async def get_external_network(
     space: str = Path(..., description="Name of the target Space"),
@@ -1902,7 +1882,7 @@ async def get_external_network(
     summary = "Update External Network Details",
     response_model = ExtNet,
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_UPDATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -1964,7 +1944,7 @@ async def update_ext_network(
     "/{space}/blocks/{block}/externals/{external}",
     summary = "Remove External Network",
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_DELETE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2014,7 +1994,7 @@ async def delete_external_network(
     summary = "List External Network Subnets",
     response_model = List[ExtSubnet],
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_READ))]
 )
 async def get_external_subnets(
     space: str = Path(..., description="Name of the target Space"),
@@ -2051,7 +2031,7 @@ async def get_external_subnets(
     summary = "Create External Network Subnet",
     response_model = ExtSubnetExpand,
     status_code = 201,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_CREATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2150,7 +2130,7 @@ async def create_external_subnet(
     summary = "Get External Network Subnet",
     response_model = ExtSubnet,
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_READ))]
 )
 async def get_external_subnet(
     space: str = Path(..., description="Name of the target Space"),
@@ -2193,7 +2173,7 @@ async def get_external_subnet(
     summary = "Update External Subnet Details",
     response_model = ExtSubnet,
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_UPDATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2261,7 +2241,7 @@ async def update_ext_subnet(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}",
     summary = "Remove External Network Subnet",
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_DELETE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2317,7 +2297,7 @@ async def delete_external_subnet(
     summary = "List External Network Subnet Endpoints",
     response_model = List[ExtEndpoint],
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_READ))]
 )
 async def get_external_subnet_endpoints(
     space: str = Path(..., description="Name of the target Space"),
@@ -2360,7 +2340,7 @@ async def get_external_subnet_endpoints(
     summary = "Add External Network Subnet Endpoint",
     response_model = ExtEndpoint,
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_CREATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2452,7 +2432,7 @@ async def create_external_subnet_endpoint(
     summary = "Replace External Network Subnet Endpoints",
     response_model = List[ExtEndpoint],
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_UPDATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2565,7 +2545,7 @@ async def update_external_subnet_enpoints(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints",
     summary = "Remove External Network Subnet Endpoints",
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_DELETE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2635,7 +2615,7 @@ async def delete_external_subnet_endpoints(
     summary = "Get External Network Subnet Endpoint",
     response_model = ExtEndpoint,
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_READ))]
 )
 async def get_external_subnet_endpoint(
     space: str = Path(..., description="Name of the target Space"),
@@ -2684,7 +2664,7 @@ async def get_external_subnet_endpoint(
     summary = "Update External Endpoint Details",
     response_model = ExtEndpoint,
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_UPDATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2758,7 +2738,7 @@ async def update_ext_endpoint(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints/{endpoint}",
     summary = "Remove External Network Subnet Endpoint",
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXTERNALS_DELETE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -2822,7 +2802,7 @@ async def get_block_reservations(
     settled: bool = Query(False, description="Include settled reservations."),
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    grants: Grants = Depends(get_grants)
 ):
     """
     Get a list of CIDR Reservations for the target Block.
@@ -2850,7 +2830,7 @@ async def get_block_reservations(
         resv['space'] = target_space['name']
         resv['block'] = target_block['name']
 
-    if not is_admin:
+    if not grants.can(Permission.RESERVATIONS_READ_ALL):
         user_name = get_username_from_jwt(token)
         return list(filter(lambda x: x['createdBy'] == user_name, reservations))
     else:
@@ -3029,7 +3009,7 @@ async def delete_block_reservations(
     block: str = Path(..., description="Name of the target Block"),
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    grants: Grants = Depends(get_grants)
 ):
     """
     Remove one or more CIDR Reservations for the target Block.
@@ -3068,7 +3048,7 @@ async def delete_block_reservations(
     # if contains_settled:
     #     raise HTTPException(status_code=400, detail="List contains one or more settled reservations.")
 
-    if not is_admin:
+    if not grants.can(Permission.RESERVATIONS_DELETE_ALL):
         not_owned = list(filter(lambda x: x['id'] in req and x['createdBy'] != user_name, target_block['resv']))
 
         if not_owned:
@@ -3099,7 +3079,7 @@ async def get_block_reservation(
     reservation: str = Path(..., description="ID of the target Reservation"),
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    grants: Grants = Depends(get_grants)
 ):
     """
     Get the details of a specific CIDR Reservation.
@@ -3126,7 +3106,7 @@ async def get_block_reservation(
     target_reservation['space'] = target_space['name']
     target_reservation['block'] = target_block['name']
 
-    if not is_admin:
+    if not grants.can(Permission.RESERVATIONS_READ_ALL):
         user_name = get_username_from_jwt(token)
 
         if target_reservation['createdBy'] == user_name:
@@ -3151,7 +3131,7 @@ async def delete_block_reservation(
     reservation: str = Path(..., description="ID of the target Reservation"),
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    grants: Grants = Depends(get_grants)
 ):
     """
     Remove a specific CIDR Reservation.
@@ -3176,7 +3156,7 @@ async def delete_block_reservation(
     if not target_reservation:
         raise HTTPException(status_code=400, detail="Invalid reservation ID.")
 
-    if not is_admin:
+    if not grants.can(Permission.RESERVATIONS_DELETE_ALL):
         if target_reservation['createdBy'] != user_name:
             raise HTTPException(status_code=403, detail="Users can only delete their own reservations.")
 

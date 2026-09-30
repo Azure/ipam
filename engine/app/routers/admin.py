@@ -11,9 +11,9 @@ from app.dependencies import (
     api_auth_checks,
     get_tenant_id,
     get_token_auth_header,
-    require_admin,
 )
 from app.models import Admin, Subscription
+from app.permissions import Permission, requires
 from app.routers.common.helper import (
     AzureScope,
     arg_query,
@@ -50,7 +50,7 @@ async def new_admin_db(admin_list, exclusion_list, tenant_id):
     summary = "Get All Admins",
     response_model = List[Admin],
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.ADMINS_READ))]
 )
 async def get_admins(
     token: str = Depends(get_token_auth_header),
@@ -73,7 +73,7 @@ async def get_admins(
     "/admins",
     summary = "Create IPAM Admin",
     status_code=201,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.ADMINS_CREATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -115,7 +115,7 @@ async def create_admin(
     "/admins",
     summary = "Replace IPAM Admins",
     status_code=200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.ADMINS_UPDATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -160,7 +160,7 @@ async def update_admins(
     summary = "Get IPAM Admin",
     response_model = Admin,
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.ADMINS_READ))]
 )
 async def get_admin_by_id(
     objectId: UUID = Path(..., description="Azure AD ObjectID for the target user"),
@@ -189,7 +189,7 @@ async def get_admin_by_id(
     "/admins/{objectId}",
     summary = "Delete IPAM Admin",
     status_code=200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.ADMINS_DELETE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -227,7 +227,7 @@ async def delete_admin(
     summary = "Get Excluded Subscriptions",
     response_model = List[Subscription],
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXCLUSIONS_READ))]
 )
 async def get_exclusions(
     token: str = Depends(get_token_auth_header),
@@ -250,7 +250,7 @@ async def get_exclusions(
     "/exclusions",
     summary = "Add Excluded Subscription(s)",
     status_code=200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXCLUSIONS_CREATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -290,7 +290,7 @@ async def add_exclusions(
     "/exclusions",
     summary = "Replace Excluded Subscriptions",
     status_code=200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXCLUSIONS_UPDATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -330,7 +330,7 @@ async def update_exclusions(
     "/exclusions/{subscriptionId}",
     summary = "Remove Excluded Subscription",
     status_code=200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.EXCLUSIONS_DELETE))]
 )
 @cosmos_retry(
     max_retry = 5,

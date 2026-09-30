@@ -11,12 +11,11 @@ from pydantic import BaseModel
 from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
-    get_admin,
     get_tenant_id,
     get_token_auth_header,
-    require_admin,
 )
 from app.models import User, UserExpand, UserUpdate, ViewSettings
+from app.permissions import Permission, requires
 from app.routers.admin import new_admin_db
 from app.routers.common.helper import (
     cosmos_query,
@@ -99,12 +98,11 @@ async def scrub_patch(patch):
     summary = "Get All Users",
     response_model = List[User],
     status_code = 200,
-    dependencies = [Depends(require_admin)]
+    dependencies = [Depends(requires(Permission.USERS_READ))]
 )
 async def get_users(
     token: str = Depends(get_token_auth_header),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a list of IPAM Users.
