@@ -67,7 +67,7 @@ DESCRIPTIONS = {
     Permission.EXTERNALS_CREATE: "Create External Networks, and their subnets and endpoints.",
     Permission.EXTERNALS_UPDATE: "Change External Networks, and their subnets and endpoints.",
     Permission.EXTERNALS_DELETE: "Delete External Networks, and their subnets and endpoints.",
-    Permission.RESERVATIONS_READ_ALL: "See every user's Reservations, not only your own.",
+    Permission.RESERVATIONS_READ_ALL: "See every user's Reservations in full, not only your own.",
     Permission.RESERVATIONS_DELETE_ALL: "Cancel every user's Reservations, not only your own.",
     Permission.AZURE_READ_ALL: "See Azure resources through Azure IPAM's own access, beyond your own Azure permissions.",
     Permission.ADMINS_READ: "List Azure IPAM administrators.",
@@ -84,7 +84,12 @@ DESCRIPTIONS = {
 
 ROLES = {
     "Admin": frozenset(Permission),
-    "User": frozenset(),
+    # Associations and External Networks are already part of every Space and Block response, so their
+    # dedicated routes are open to everyone as well.
+    "User": frozenset({
+        Permission.ASSOCIATIONS_READ,
+        Permission.EXTERNALS_READ,
+    }),
 }
 
 class Grants:

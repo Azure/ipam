@@ -109,9 +109,14 @@ const Associations = () => {
 
     if (!blockedBy?.length) return null;
 
-    const reasons = blockedBy.map((x) => (
-      `${x.prefix} overlaps ${x.type === 'external' ? 'External Network' : 'Reservation'} '${x.name}' (${x.cidr})`
-    ));
+    const reasons = blockedBy.map((x) => {
+      if (x.type === 'external') return `${x.prefix} overlaps External Network '${x.name}' (${x.cidr})`;
+
+      // Reservations created by other users are reported without their ID.
+      return x.name
+        ? `${x.prefix} overlaps Reservation '${x.name}' (${x.cidr})`
+        : `${x.prefix} overlaps a Reservation (${x.cidr})`;
+    });
 
     return `Cannot be associated:\n${reasons.join('\n')}`;
   }, []);

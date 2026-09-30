@@ -201,7 +201,8 @@ class BlockedBy(BaseModel):
     """An External Network or Reservation occupying one of a network's prefixes."""
 
     type: Literal['external', 'reservation']
-    name: str
+    # A Reservation is named by its ID, which is null for Reservations created by other users.
+    name: Optional[str]
     cidr: str
     prefix: str
 
@@ -254,7 +255,8 @@ class VNetExpandUtil(BaseModel):
 class Reservation(BaseModel):
     """A CIDR reservation within a Block, tracking creation/settlement metadata and status."""
 
-    id: str
+    # Null for Reservations created by other users, unless the caller can see every user's Reservations.
+    id: Optional[str]
     cidr: str
     desc: Union[str, None] = None
     createdOn: float
@@ -266,7 +268,8 @@ class Reservation(BaseModel):
 class ReservationExpand(BaseModel):
     """A CIDR reservation enriched with its parent space, block, and a derived IPAM reservation ID tag."""
 
-    id: str
+    # Null for Reservations created by other users, unless the caller can see every user's Reservations.
+    id: Optional[str]
     space: Optional[str] = None
     block: Optional[str] = None
     cidr: str
@@ -281,11 +284,10 @@ class ReservationExpand(BaseModel):
     @model_validator(mode='before')
     @classmethod
     def format_tag(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            if 'id' in data:
-                data["tag"] = { "X-IPAM-RES-ID": data["id"]}
+        if isinstance(data, dict) and data.get('id'):
+            data["tag"] = { "X-IPAM-RES-ID": data["id"]}
 
-                return data
+        return data
 
 class Block(BaseModel):
     """A network Block within a Space, containing a CIDR, its Virtual Networks, externals, and reservations."""

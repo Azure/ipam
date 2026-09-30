@@ -89,6 +89,27 @@ router = APIRouter(
     responses=UNAUTHORIZED
 )
 
+def visible_reservations(reservations, grants, user_name):
+    """Reservations as the caller may see them.
+
+    A pending Reservation holds address space, so everyone sees it, but another user's ID and
+    description are withheld: tagging a network with the ID and a matching CIDR would fulfil it.
+    A settled Reservation no longer holds anything, so only its creator still sees it.
+    """
+
+    if grants.can(Permission.RESERVATIONS_READ_ALL):
+        return reservations
+
+    visible = []
+
+    for resv in reservations:
+        if resv['createdBy'] == user_name:
+            visible.append(resv)
+        elif not resv['settledOn']:
+            visible.append({**resv, 'id': None, 'desc': None})
+
+    return visible
+
 def add_block_utilization(block, nets, expand):
     """Populate size and used on a Block, its networks and their subnets."""
 
@@ -601,6 +622,7 @@ async def get_spaces(
     Get a list of all Spaces.
     """
 
+    user_name = get_username_from_jwt(token)
 
     if expand:
         # Expand hands back whole network objects, so it uses the caller's view, which `expand_gate`
@@ -633,9 +655,7 @@ async def get_spaces(
                 space['size'] += block['size']
                 space['used'] += block['used']
 
-            if not grants.can(Permission.RESERVATIONS_READ_ALL):
-                user_name = get_username_from_jwt(token)
-                block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, block['resv']))
+            block['resv'] = visible_reservations(block['resv'], grants, user_name)
 
     return space_query
 
@@ -711,6 +731,7 @@ async def get_space(
     Get the details of a specific Space.
     """
 
+    user_name = get_username_from_jwt(token)
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -747,9 +768,7 @@ async def get_space(
             target_space['size'] += block['size']
             target_space['used'] += block['used']
 
-        if not grants.can(Permission.RESERVATIONS_READ_ALL):
-            user_name = get_username_from_jwt(token)
-            block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, block['resv']))
+        block['resv'] = visible_reservations(block['resv'], grants, user_name)
 
     return target_space
 
@@ -852,6 +871,8 @@ async def get_multi_block_reservations(
 ):
     """
     Get a list of CIDR Reservations for all Blocks within the target Space.
+
+    Unless you can see every user's Reservations, those created by other users are included only while pending, and without their ID or description.
     """
 
 
@@ -876,11 +897,7 @@ async def get_multi_block_reservations(
 
         resv_list += reservations
 
-    if not grants.can(Permission.RESERVATIONS_READ_ALL):
-        user_name = get_username_from_jwt(token)
-        return list(filter(lambda x: x['createdBy'] == user_name, resv_list))
-    else:
-        return resv_list
+    return visible_reservations(resv_list, grants, get_username_from_jwt(token))
 
 @router.post(
     "/{space}/reservations",
@@ -1022,6 +1039,7 @@ async def get_blocks(
     Get a list of all Blocks within a specific Space.
     """
 
+    user_name = get_username_from_jwt(token)
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
 
@@ -1053,9 +1071,7 @@ async def get_blocks(
         if utilization:
             add_block_utilization(block, nets, expand)
 
-        if not grants.can(Permission.RESERVATIONS_READ_ALL):
-            user_name = get_username_from_jwt(token)
-            block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, block['resv']))
+        block['resv'] = visible_reservations(block['resv'], grants, user_name)
 
     return target_space['blocks']
 
@@ -1179,9 +1195,7 @@ async def get_block(
     if utilization:
         add_block_utilization(target_block, nets, expand)
 
-    if not grants.can(Permission.RESERVATIONS_READ_ALL):
-        user_name = get_username_from_jwt(token)
-        target_block['resv'] = list(filter(lambda x: x['createdBy'] == user_name, target_block['resv']))
+    target_block['resv'] = visible_reservations(target_block['resv'], grants, get_username_from_jwt(token))
 
     return target_block
 
@@ -1302,6 +1316,7 @@ async def available_block_nets(
     include_blocked: bool = Query(False, description="Include networks which cannot be associated to the target Block"),
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id),
+    grants: Grants = Depends(get_grants),
     scope: AzureScope = Depends(get_azure_scope)
 ):
     """
@@ -1314,7 +1329,7 @@ async def available_block_nets(
         - **true**: Networks are returned as full network objects
         - **false (default)**: Networks are returned as an array of Azure Resource ID's
     - **include_blocked**:
-        - **true**: Networks which cannot be associated are also returned, each with a **blocked_by** entry naming the External Network(s) and/or unfulfilled Reservation(s) which overlap its prefixes (*requires 'expand'*)
+        - **true**: Networks which cannot be associated are also returned, each with a **blocked_by** entry naming the External Network(s) and/or unfulfilled Reservation(s) which overlap its prefixes (*requires 'expand'*). A Reservation is named by its ID, which is null for Reservations created by other users unless you can see every user's Reservations.
         - **false (default)**: Networks which cannot be associated are omitted
     """
 
@@ -1344,9 +1359,13 @@ async def available_block_nets(
     net_list = await fetch_network_prefixes(token, scope=scope)
 
     # Occupants are kept individually as well as merged, so a blocked Network can be reported
-    # against the specific External Network or Reservation standing in its way.
+    # against the specific External Network or Reservation standing in its way. A Reservation is
+    # named by its ID, so it goes through the same visibility rules as the Reservation lists.
+    pending = [x for x in target_block['resv'] if not x['settledOn']]
+
     occupants = [
-        {'type': 'reservation', 'name': x['id'], 'cidr': x['cidr']} for x in target_block['resv'] if not x['settledOn']
+        {'type': 'reservation', 'name': x['id'], 'cidr': x['cidr']}
+        for x in visible_reservations(pending, grants, get_username_from_jwt(token))
     ] + [
         {'type': 'external', 'name': x['name'], 'cidr': x['cidr']} for x in target_block['externals']
     ]
@@ -1401,8 +1420,7 @@ async def get_block_nets(
     block: str = Path(..., description="Name of the target Block"),
     expand: bool = Query(False, description="Expand network references to full network objects"),
     token: str = Depends(get_token_auth_header),
-    tenant_id: str = Depends(get_tenant_id),
-    scope: AzureScope = Depends(get_azure_scope)
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a list of virtual networks which are currently associated to the target Block.
@@ -1424,7 +1442,9 @@ async def get_block_nets(
         raise HTTPException(status_code=400, detail="Invalid block name.")
 
     if expand:
-        net_list = await fetch_networks(token, tenant_id, scope=scope)
+        # Only networks associated with the Block are returned, and those are shared with every user,
+        # so they are resolved with the full view rather than the caller's own.
+        net_list = await fetch_networks(token, tenant_id, scope=AzureScope.TENANT)
 
         for block_net in target_block['vnets']:
             target_vnet = next((x for x in net_list if x['id'].lower() == block_net['id'].lower()), None)
@@ -2794,6 +2814,8 @@ async def get_block_reservations(
 ):
     """
     Get a list of CIDR Reservations for the target Block.
+
+    Unless you can see every user's Reservations, those created by other users are included only while pending, and without their ID or description.
     """
 
 
@@ -2818,11 +2840,7 @@ async def get_block_reservations(
         resv['space'] = target_space['name']
         resv['block'] = target_block['name']
 
-    if not grants.can(Permission.RESERVATIONS_READ_ALL):
-        user_name = get_username_from_jwt(token)
-        return list(filter(lambda x: x['createdBy'] == user_name, reservations))
-    else:
-        return reservations
+    return visible_reservations(reservations, grants, get_username_from_jwt(token))
 
 @router.post(
     "/{space}/blocks/{block}/reservations",

@@ -154,7 +154,8 @@ function ReservationId(props) {
   const { value } = props;
   const { copied, setCopied } = React.use(ReservationContext);
 
-  const contentCopied = (copied === value.id);
+  const contentCopied = (value.id !== null && copied === value.id);
+  const hidden = (value.id === null);
 
   const onClick = (e) => {
     e.stopPropagation();
@@ -174,6 +175,11 @@ function ReservationId(props) {
       disableFocusListener
       placement="right"
       title={
+        hidden ?
+        <div style={{ textAlign: "center" }}>
+          Only the creator of this Reservation
+          <br />and administrators can see its ID
+        </div> :
         value.settledOn === null ?
         <div style={{ textAlign: "center" }}>
           Click to Copy
@@ -196,7 +202,7 @@ function ReservationId(props) {
                 padding: 0
               }}
               onClick={onClick}
-              disabled={value.settledOn !== null}
+              disabled={hidden || value.settledOn !== null}
             >
               <ContentCopy fontSize="inherit" />
             </IconButton>
@@ -207,6 +213,13 @@ function ReservationId(props) {
     </Tooltip>
   );
 }
+
+// Reservations created by other users arrive without an ID, and can't be cancelled by the caller.
+// Only pending Reservations are hidden this way, and a Block can't hold two pending Reservations
+// for overlapping CIDRs, so the CIDR identifies those rows.
+const reservationKey = (resv) => resv.id ?? `pending:${resv.cidr}`;
+
+const isReservationSelectable = (node) => node.data?.id !== null;
 
 const Reservations = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -314,7 +327,9 @@ const Reservations = () => {
   // Derive filtered grid data synchronously to prevent a flash of
   // the no-rows overlay when reservations or filter state changes.
   const gridData = React.useMemo(() => {
-    return filterActive ? reservations.filter(x => x.settledOn === null) : reservations;
+    const visible = filterActive ? reservations.filter(x => x.settledOn === null) : reservations;
+
+    return visible.map(x => ({ ...x, rowKey: reservationKey(x) }));
   }, [reservations, filterActive]);
 
   React.useEffect(() => {
@@ -628,6 +643,8 @@ const Reservations = () => {
               onRowSelectionChanged={onRowSelectionChanged}
               multiSelect={true}
               checkboxSelect={true}
+              idProperty="rowKey"
+              isRowSelectable={isReservationSelectable}
               extraMenuItems={extraMenuItems}
               isLoading={sending || refreshing}
               noRowsOverlay={noRowsOverlay}

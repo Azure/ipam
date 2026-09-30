@@ -385,7 +385,7 @@ When you create a Reservation, Azure IPAM finds the next available CIDR range of
 
 ### Reservation Permissions
 
-Both Azure IPAM administrators and regular users can create and manage Reservations. However, non-admin users can only see and manage Reservations they created themselves. Administrators can view and manage all Reservations across all users.
+Both Azure IPAM administrators and regular users can create and manage Reservations. Every user can see all pending Reservations, so everyone knows which address space is already spoken for. However, the ID and description of a Reservation stay with the user who created it, because anyone holding a Reservation's ID could fulfil it by tagging a virtual network of their own. Settled Reservations no longer hold any address space, so non-admin users only see the ones they created. Non-admin users can only cancel Reservations they created. Administrators can view and manage all Reservations across all users.
 
 ### Managing Reservations via the UI
 
@@ -414,6 +414,8 @@ The table shows the following information for each Reservation:
 - **Settled Date** — When the Reservation was fulfilled or cancelled (hidden by default)
 - **Settled By** — Who or what settled the Reservation (hidden by default)
 - **Status** — A status icon indicating the current state of the Reservation
+
+For a Reservation created by another user, the description is left blank unless you're an administrator. See [Reservation Permissions](#reservation-permissions).
 
 #### Filtering Active vs. Settled Reservations
 
@@ -454,11 +456,11 @@ Each active Reservation has a copy icon in the actions column. Click it to copy 
 
 ![Copy Reservation ID](./images/resv_copy_id.png)
 
-> **Tip:** The copy icon is only available for unsettled Reservations. Once a Reservation is fulfilled or cancelled, the ID is no longer actionable.
+> **Tip:** The copy icon is only available for unsettled Reservations. Once a Reservation is fulfilled or cancelled, the ID is no longer actionable. The icon is also unavailable for Reservations created by other users, unless you're an administrator.
 
 #### Cancelling Reservations
 
-To cancel one or more Reservations, select them using the checkboxes in the table, then click the **Remove** button (red X icon) in the upper-right corner of the page.
+To cancel one or more Reservations, select them using the checkboxes in the table, then click the **Remove** button (red X icon) in the upper-right corner of the page. Unless you're an administrator, only the Reservations you created can be selected.
 
 ![Cancel Reservations](./images/resv_cancel_selected.png)
 

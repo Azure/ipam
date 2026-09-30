@@ -92,7 +92,7 @@ To add a permission, add it to `Permission` with a one-line description in `DESC
 Marking is best effort and never fatal. If route introspection breaks, most likely after a FastAPI upgrade because it relies on `fastapi.routing.iter_route_contexts`, the engine still serves a valid schema and simply loses the annotations. Watch for this line at startup:
 
 ```text
-OpenAPI generated successfully (42 admin-marked operations)
+OpenAPI generated successfully (35 admin-marked operations)
 ```
 
 A count of `0`, or a `WARNING` that the markings could not be applied, means the generator needs attention. Enforcement is unaffected either way, because the gates are ordinary dependencies.

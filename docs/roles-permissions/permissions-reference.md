@@ -6,12 +6,12 @@ Every action that Azure IPAM restricts is controlled by a named **permission**. 
 
 There are currently two fixed roles:
 
-| Role          | Permissions                   |
-|---------------|-------------------------------|
-| Administrator | Every permission on this page |
-| User          | None                          |
+| Role          | Permissions                          |
+|---------------|--------------------------------------|
+| Administrator | Every permission on this page        |
+| User          | `associations/read`, `externals/read` |
 
-Holding no permissions doesn't make the User role read-only. Everything described in [What Every User Can Do](#what-every-user-can-do) needs no permission at all, so the permissions below only cover administration and the wider views that go with it.
+The User role holds only two permissions, but that doesn't make it read-only. Everything described in [What Every User Can Do](#what-every-user-can-do) needs no permission at all, so the permissions below mostly cover administration and the wider views that go with it.
 
 Roles can't be changed or assigned yet. Assignable roles are planned for v5.0.0, when these permissions will become the building blocks of custom roles.
 
@@ -19,7 +19,7 @@ Roles can't be changed or assigned yet. Assignable roles are planned for v5.0.0,
 
 ## Naming
 
-Permissions are named `resource/action`, where the action is one of `read`, `create`, `update` or `delete`. Some permissions add `/all`, which extends the action beyond your own items. For example, `reservations/read/all` lets you see every user's Reservations, not only your own.
+Permissions are named `resource/action`, where the action is one of `read`, `create`, `update` or `delete`. Some permissions add `/all`, which extends the action beyond your own items. For example, `reservations/read/all` lets you see every user's Reservations in full, not only your own.
 
 ## What Every User Can Do
 
@@ -27,7 +27,7 @@ These actions need no permission, so they're available to every signed-in user, 
 
 - View Spaces and Blocks, including their utilization.
 - Find available address space and check for overlaps with the tools API (`nextAvailableVNet`, `nextAvailableSubnet` and `cidrCheck`). These always consider every network within Azure IPAM's scope, so the answers are complete.
-- Create Reservations, and view and cancel their own.
+- Create Reservations, view and cancel their own, and see every other user's pending Reservations without their ID or description.
 - View Azure resources in the Discover section and through `/azure`, limited to what their own Azure permissions allow.
 - View the virtual networks available to associate with a Block, limited to what their own Azure permissions allow.
 - View notifications, and view and change their own settings.
@@ -57,7 +57,7 @@ Paths are relative to the `/api` base path, as in the [API documentation](/api/R
 
 | Permission            | Allows                                          | Routes and Decisions                                     | Held By       |
 |-----------------------|-------------------------------------------------|----------------------------------------------------------|---------------|
-| `associations/read`   | List the networks associated with a Block.      | `GET /spaces/{space}/blocks/{block}/networks`            | Administrator |
+| `associations/read`   | List the networks associated with a Block.      | `GET /spaces/{space}/blocks/{block}/networks`            | Administrator, User |
 | `associations/create` | Associate a network with a Block.               | `POST /spaces/{space}/blocks/{block}/networks`           | Administrator |
 | `associations/update` | Replace the networks associated with a Block.   | `PUT /spaces/{space}/blocks/{block}/networks`            | Administrator |
 | `associations/delete` | Remove networks from a Block.                   | `DELETE /spaces/{space}/blocks/{block}/networks`         | Administrator |
@@ -70,18 +70,18 @@ Each of these permissions covers External Networks and their subnets and endpoin
 
 | Permission         | Allows                                                        | Routes and Decisions                                                                                                                                                                                                  | Held By       |
 |--------------------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
-| `externals/read`   | Read External Networks, and their subnets and endpoints.      | `GET …`, `GET …/{external}`, `GET …/{external}/subnets`, `GET …/{external}/subnets/{subnet}`, `GET …/{external}/subnets/{subnet}/endpoints` and `GET …/{external}/subnets/{subnet}/endpoints/{endpoint}` | Administrator |
+| `externals/read`   | Read External Networks, and their subnets and endpoints.      | `GET …`, `GET …/{external}`, `GET …/{external}/subnets`, `GET …/{external}/subnets/{subnet}`, `GET …/{external}/subnets/{subnet}/endpoints` and `GET …/{external}/subnets/{subnet}/endpoints/{endpoint}` | Administrator, User |
 | `externals/create` | Create External Networks, and their subnets and endpoints.    | `POST …`, `POST …/{external}/subnets` and `POST …/{external}/subnets/{subnet}/endpoints`                                                                                                                              | Administrator |
 | `externals/update` | Change External Networks, and their subnets and endpoints.    | `PATCH …/{external}`, `PATCH …/{external}/subnets/{subnet}`, `PUT …/{external}/subnets/{subnet}/endpoints` and `PATCH …/{external}/subnets/{subnet}/endpoints/{endpoint}`                                         | Administrator |
 | `externals/delete` | Delete External Networks, and their subnets and endpoints.    | `DELETE …/{external}`, `DELETE …/{external}/subnets/{subnet}`, `DELETE …/{external}/subnets/{subnet}/endpoints` and `DELETE …/{external}/subnets/{subnet}/endpoints/{endpoint}`                                   | Administrator |
 
 ### Reservations
 
-Creating Reservations, and viewing and cancelling your own, needs no permission. These permissions extend those actions to Reservations created by other users.
+Creating Reservations, viewing and cancelling your own, and seeing other users' pending Reservations without their ID or description, needs no permission. These permissions extend those actions to Reservations created by other users.
 
 | Permission                | Allows                                                 | Routes and Decisions                                                                                                                                                                                                                                                         | Held By       |
 |---------------------------|--------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
-| `reservations/read/all`   | See every user's Reservations, not only your own.      | **Decision:** without it, the Reservations included in Spaces and Blocks (`GET /spaces`, `GET /spaces/{space}`, `GET /spaces/{space}/blocks` and `GET /spaces/{space}/blocks/{block}`) and the Reservation lists (`GET /spaces/{space}/reservations` and `GET /spaces/{space}/blocks/{block}/reservations`) contain only your own, and `GET /spaces/{space}/blocks/{block}/reservations/{reservation}` returns `403` for a Reservation you didn't create. | Administrator |
+| `reservations/read/all`   | See every user's Reservations in full, not only your own. | **Decisions:** without it, the Reservations included in Spaces and Blocks (`GET /spaces`, `GET /spaces/{space}`, `GET /spaces/{space}/blocks` and `GET /spaces/{space}/blocks/{block}`) and the Reservation lists (`GET /spaces/{space}/reservations` and `GET /spaces/{space}/blocks/{block}/reservations`) include another user's Reservation only while it's pending, with its `id` and `desc` (and `tag`, where present) set to `null`. `GET /spaces/{space}/blocks/{block}/available` names another user's Reservation in `blocked_by` with a `null` name, and `GET /spaces/{space}/blocks/{block}/reservations/{reservation}` returns `403` for a Reservation you didn't create. | Administrator |
 | `reservations/delete/all` | Cancel every user's Reservations, not only your own.   | **Decision:** without it, `DELETE /spaces/{space}/blocks/{block}/reservations` and `DELETE /spaces/{space}/blocks/{block}/reservations/{reservation}` return `403` if any Reservation in the request was created by someone else.                                                  | Administrator |
 
 ### Azure

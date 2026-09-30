@@ -208,7 +208,7 @@ All Block management endpoints (create, update, delete) are restricted to Azure 
 | `DELETE` | `/spaces/{space}/blocks/{block}` | Delete a Block |
 | `GET` | `/spaces/{space}/blocks/{block}/available` | List virtual networks eligible for association |
 
-> **Note:** The `GET` endpoints accept optional `expand` (admin-only) and `utilization` query parameters. Setting `utilization=true` includes size and used address counts. Setting `expand=true` expands virtual network references to full network objects. Non-admin users receive a filtered view — only reservations they created are included.
+> **Note:** The `GET` endpoints accept optional `expand` (admin-only) and `utilization` query parameters. Setting `utilization=true` includes size and used address counts. Setting `expand=true` expands virtual network references to full network objects. Non-admin users see every pending reservation, but those created by other users have their `id` and `desc` set to `null`, and settled reservations are only included if the caller created them.
 
 ### Example API Calls
 
@@ -343,7 +343,7 @@ $available = Invoke-RestMethod `
 
 ## Virtual Network Associations
 
-Virtual Network Associations map Azure virtual networks (and virtual hubs) to Blocks within Azure IPAM. Associating a network tells Azure IPAM that its address space is allocated from the Block's CIDR range, which drives utilization tracking and overlap prevention. All association management endpoints are restricted to Azure IPAM administrators.
+Virtual Network Associations map Azure virtual networks (and virtual hubs) to Blocks within Azure IPAM. Associating a network tells Azure IPAM that its address space is allocated from the Block's CIDR range, which drives utilization tracking and overlap prevention. Any signed-in user can list a Block's associations, but adding, replacing and removing them is restricted to Azure IPAM administrators.
 
 For more information on what Virtual Network Associations are, how eligibility rules work, and how to manage them via the UI, please see the [Virtual Network Associations](/how-to/README.md#virtual-network-associations) section of the How-To documentation.
 
@@ -363,9 +363,9 @@ The API base path for Virtual Network Association operations is:
 | `PUT` | `/spaces/{space}/blocks/{block}/networks` | Replace all associations (full replacement) |
 | `DELETE` | `/spaces/{space}/blocks/{block}/networks` | Remove one or more associations |
 
-> **Note:** The `GET /available` endpoint is accessible to all authenticated users. All other association endpoints (`GET /networks`, `POST`, `PUT`, `DELETE`) are restricted to Azure IPAM administrators and will return `403 Forbidden` for non-admin users.
+> **Note:** The `GET /available` and `GET /networks` endpoints are accessible to all authenticated users. The other association endpoints (`POST`, `PUT`, `DELETE`) are restricted to Azure IPAM administrators and will return `403 Forbidden` for non-admin users.
 >
-> When an administrator calls `GET /available`, the Azure Resource Graph query runs with the application's service principal credentials, returning networks across the entire tenant. When a non-admin user calls the same endpoint, the query runs on behalf of the user (OBO), so only networks in Azure subscriptions the user has RBAC read access to are returned.
+> When an administrator calls `GET /available`, the Azure Resource Graph query runs with the application's service principal credentials, returning networks across the entire tenant. When a non-admin user calls the same endpoint, the query runs on behalf of the user (OBO), so only networks in Azure subscriptions the user has RBAC read access to are returned. `GET /networks` only ever returns networks already associated with the Block, which are shared with every user, so with `expand=true` it returns full details for all of them, whoever calls it.
 
 ### Query Parameters
 
@@ -377,7 +377,7 @@ The `GET /available` and `GET /networks` endpoints accept an optional `expand` q
 blocked_by : {@{type=external; name=DataCenterA; cidr=10.1.4.0/24; prefix=10.1.4.0/24}}
 ```
 
-Networks which can be associated are returned with an empty `blocked_by` array. The parameter requires `expand`, as the unexpanded response is an array of resource IDs with nowhere to carry a reason; using it on its own returns `400 Bad Request`.
+Networks which can be associated are returned with an empty `blocked_by` array. A Reservation is named by its ID, so for non-admin users `name` is `null` on Reservations created by someone else. The parameter requires `expand`, as the unexpanded response is an array of resource IDs with nowhere to carry a reason; using it on its own returns `400 Bad Request`.
 
 ### Example API Calls
 
@@ -542,7 +542,7 @@ The API supports creating reservations against a specific Block, or against a li
 | `DELETE` | `/spaces/{space}/blocks/{block}/reservations` | Delete (cancel) multiple reservations |
 | `DELETE` | `/spaces/{space}/blocks/{block}/reservations/{reservation}` | Delete (cancel) a single reservation |
 
-> **Note:** The `GET` endpoints accept a `settled` query parameter (default: `false`). Set it to `true` to include fulfilled and cancelled reservations in the results. Non-admin users will only see reservations they created.
+> **Note:** The `GET` endpoints accept a `settled` query parameter (default: `false`). Set it to `true` to include fulfilled and cancelled reservations in the results. Non-admin users see every pending reservation, but those created by other users have their `id`, `desc` and `tag` set to `null`, and settled reservations are only included if the caller created them. Getting another user's reservation by ID returns `403 Forbidden`.
 
 ### Example API Calls
 
@@ -751,7 +751,7 @@ Take a look at our **Azure Landing Zone integration** example found under the `d
 
 ## External Networks
 
-External Networks allow you to track IP address space that lives outside of Azure (such as on-premises datacenters, co-location facilities, or other cloud providers) directly within Azure IPAM. All External Network operations follow the existing Space/Block hierarchy and are restricted to IPAM administrators.
+External Networks allow you to track IP address space that lives outside of Azure (such as on-premises datacenters, co-location facilities, or other cloud providers) directly within Azure IPAM. All External Network operations follow the existing Space/Block hierarchy. Any signed-in user can read External Networks, but creating, changing and deleting them is restricted to IPAM administrators.
 
 For more information on what External Networks are, how they fit into the IPAM hierarchy, and how to manage them via the UI, please see the [External Networks](/how-to/README.md#external-networks) section of the How-To documentation.
 

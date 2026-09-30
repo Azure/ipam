@@ -12,7 +12,7 @@ These principles apply everywhere: in the UI, through the API, and in automation
 
 - **Security comes first.** Azure IPAM uses its access to give you accurate answers, never to show you Azure resources your own Azure permissions don't allow.
 - **Every answer is complete.** When Azure IPAM finds available address space or checks for overlaps, it considers every network within its scope, no matter who is asking. You may be told that a range is in use without being told what is using it.
-- **What's in Azure IPAM is shared.** Spaces, Blocks, External Networks, Reservations and associated networks are visible to every signed-in user, so associating a virtual network with a Block makes its details visible to all users. A few details stay with the person who created them, such as a Reservation's description.
+- **What's in Azure IPAM is shared.** Spaces, Blocks, External Networks, pending Reservations and associated networks are visible to every signed-in user, so associating a virtual network with a Block makes its details visible to all users. A few details stay with the person who created them, such as a Reservation's ID and description.
 - **Everything else stays with Azure.** Virtual networks that aren't associated with a Block are shown to each user only as their own Azure permissions allow. Administrators see everything within Azure IPAM's scope.
 - **Administrators shape the plan, and users work within it.** Administrators create Spaces, Blocks and External Networks, and manage associations. Users reserve address space and associate the networks they own.
 - **Nothing is silently left out.** If you aren't allowed to see the details of something, Azure IPAM still tells you that the address space is in use, rather than quietly leaving it out.
