@@ -1,11 +1,14 @@
 import * as React from "react";
 import { useSelector, useDispatch } from 'react-redux';
 
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 
 import { useSnackbar } from "notistack";
 
-import Draggable from 'react-draggable';
+import { useMsal } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
+
+import DraggablePaper from '../../../global/DraggablePaper';
 
 import {
   Box,
@@ -17,15 +20,12 @@ import {
   Typography,
   ToggleButton,
   ToggleButtonGroup,
-  Paper
 } from "@mui/material";
 
 import {
   WbSunnyOutlined,
   DarkModeOutlined,
 } from "@mui/icons-material";
-
-import LoadingButton from '@mui/lab/LoadingButton';
 
 import {
   getMeAsync,
@@ -35,21 +35,6 @@ import {
 } from "../../ipam/ipamSlice";
 
 import { updateMe } from "../../ipam/ipamAPI";
-
-function DraggablePaper(props) {
-  const nodeRef = React.useRef(null);
-
-  return (
-    <Draggable
-      nodeRef={nodeRef}
-      handle="#draggable-dialog-title"
-      cancel={'[class*="MuiDialogContent-root"]'}
-      bounds="parent"
-    >
-      <Paper {...props} ref={nodeRef}/>
-    </Draggable>
-  );
-}
 
 export default function UserSettings(props) {
   const { open, handleClose } = props;
@@ -66,6 +51,8 @@ export default function UserSettings(props) {
   const refreshInterval = useSelector(getRefreshInterval);
 
   const dispatch = useDispatch();
+  const { inProgress } = useMsal();
+  const pendingRefreshRef = React.useRef(false);
 
   const changed = React.useMemo(() => {
     const currentState = {
@@ -100,6 +87,13 @@ export default function UserSettings(props) {
     }
   }, [open, prevOpen, darkModeSetting, refreshInterval]);
 
+  React.useEffect(() => {
+    if (pendingRefreshRef.current && inProgress === InteractionStatus.None) {
+      pendingRefreshRef.current = false;
+      dispatch(getMeAsync());
+    }
+  }, [inProgress, dispatch]);
+
   function onSubmit() {
     var body = [
       { "op": "replace", "path": "/apiRefresh", "value": refreshValue },
@@ -117,7 +111,11 @@ export default function UserSettings(props) {
             apiRefresh: refreshValue
           }
         );
-        dispatch(getMeAsync());
+        if (inProgress === InteractionStatus.None) {
+          dispatch(getMeAsync());
+        } else {
+          pendingRefreshRef.current = true;
+        }
         handleClose();
       } catch (e) {
         console.log("ERROR");
@@ -145,7 +143,7 @@ export default function UserSettings(props) {
         </DialogTitle>
         <DialogContent>
           <Box
-            sx={{ 
+            sx={{
               pt: 1,
               pb: 2,
               pl: 2,
@@ -185,9 +183,9 @@ export default function UserSettings(props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
-          <LoadingButton onClick={onSubmit} loading={sending} disabled={!changed}>
+          <Button onClick={onSubmit} loading={sending} disabled={!changed}>
             Apply
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

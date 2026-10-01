@@ -4,7 +4,7 @@ import { styled } from '@mui/material/styles';
 
 import { useSnackbar } from 'notistack';
 
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 
 import {
   Box,
@@ -15,7 +15,7 @@ import {
   FormControlLabel,
   Switch,
   Typography,
-  Unstable_Grid2 as Grid,
+  Grid,
 } from "@mui/material";
 
 import {
@@ -122,13 +122,21 @@ export default function AdminSettings() {
   }
 
   return (
-    <ExclusionContext.Provider value={{}}>
+    <ExclusionContext value={{}}>
       <Wrapper>
         <MainBody>
           <FloatingHeader>
             <Box sx={{ width: "20%" }}></Box>
             <HeaderTitle>Admin Settings</HeaderTitle>
-            <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ width: "20%", ml: 2, mr: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "center",
+                width: "20%",
+                ml: 2,
+                mr: 2
+              }}>
               <Tooltip title="Save" >
                 <IconButton
                   color="primary"
@@ -149,9 +157,15 @@ export default function AdminSettings() {
             <GridBody>
               <Box sx={{ flexGrow: 1 }}>
                 <Grid container spacing={2}>
-                  <Grid xs={2}>
+                  <Grid size={{ xs: 2 }}>
                     <Item>
-                      <Typography variant="button" display="block" gutterBottom>
+                      <Typography
+                        variant="button"
+                        gutterBottom
+                        sx={{
+                          display: "block"
+                        }}
+                      >
                         Automatic Updates
                       </Typography>
                       <FormGroup sx={{ pb: 1 }}>
@@ -159,7 +173,7 @@ export default function AdminSettings() {
                       </FormGroup>
                     </Item>
                   </Grid>
-                  <Grid xs={10}>
+                  <Grid size={{ xs: 10 }}>
                     <Item>xs=4</Item>
                   </Grid>
                 </Grid>
@@ -168,6 +182,6 @@ export default function AdminSettings() {
           </DataSection>
         </MainBody>
       </Wrapper>
-    </ExclusionContext.Provider>
+    </ExclusionContext>
   );
 }

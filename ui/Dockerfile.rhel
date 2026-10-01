@@ -1,14 +1,25 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi8/nodejs-22
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/nodejs-22
 FROM $BASE_IMAGE
+
+# Set Production Build Flag
+ARG PROD_BUILD=true
 
 # Set Default Port
 ARG PORT=8080
+
+# IPAM Version (for OCI Image Label)
+ARG IPAM_VERSION=0.0.0
 
 # Set Environment Variable
 ENV PORT=${PORT}
 
 # Disable NPM Update Warnings
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+
+# OCI Image Labels
+LABEL org.opencontainers.image.title="Azure IPAM UI" \
+      org.opencontainers.image.version="${IPAM_VERSION}" \
+      org.opencontainers.image.source="https://github.com/Azure/ipam"
 
 # Set the Working Directory
 WORKDIR /ipam
@@ -17,10 +28,14 @@ WORKDIR /ipam
 USER root
 
 # Add Application Sources
-ADD . .
+COPY . .
 
 # Install Dependencies
-RUN npm ci
+RUN if [ "${PROD_BUILD}" = true ]; then \
+  npm ci; \
+else \
+  npm install; \
+fi
 
 # Build Application
 RUN npm run build
@@ -37,4 +52,4 @@ USER 1001
 EXPOSE $PORT
 
 # Execute Startup Script
-ENTRYPOINT ./init.sh ${PORT}
+ENTRYPOINT ["/bin/sh", "-c", "exec ./init.sh ${PORT}"]

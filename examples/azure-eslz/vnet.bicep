@@ -10,7 +10,7 @@ param vnetAddressPrefix string
 @description('VNet Name')
 param vnetName string
 
-resource vnet 'Microsoft.Network/virtualNetworks@2021-08-01' = {
+resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
   name: vnetName
   location: location
   properties: {
@@ -21,6 +21,6 @@ resource vnet 'Microsoft.Network/virtualNetworks@2021-08-01' = {
     }
   }
   tags: {
-    'ipam-res-id': ipamReservationId
+    'X-IPAM-RES-ID': ipamReservationId
   }
 }

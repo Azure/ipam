@@ -1,53 +1,20 @@
 import axios from 'axios';
-import { InteractionRequiredAuthError, BrowserAuthError } from "@azure/msal-browser";
 
-import { msalInstance } from '../index';
+import { getGraphToken } from "./tokenService";
 import { graphConfig } from "./authConfig";
-
-async function generateToken() {
-  const accounts = msalInstance.getAllAccounts();
-
-  if (accounts.length === 0) {
-    throw new Error("No user accounts found. Please login or re-authenticate first.");
-  }
-
-  const request = {
-    scopes: ["User.Read", "Directory.Read.All"],
-    forceRefresh: true,
-  };
-
-  const tokenRequest = {
-    ...request,
-    account: accounts[0]
-  };
-
-  try {
-    const response = await msalInstance.acquireTokenSilent(tokenRequest);
-    return response.accessToken;
-  } catch (e) {
-    if (e instanceof InteractionRequiredAuthError ||
-        (e instanceof BrowserAuthError && e.errorCode === "monitor_window_timeout")) {
-
-      await msalInstance.acquireTokenRedirect(tokenRequest);
-      return null;
-    } else {
-      throw e;
-    }
-  }
-}
 
 const graph = axios.create();
 
 graph.interceptors.request.use(
   async config => {
-    const token = await generateToken();
+    const token = await getGraphToken();
 
     config.headers['Authorization'] = `Bearer ${token}`;
 
     return config;
   },
   error => {
-    Promise.reject(error)
+    return Promise.reject(error);
 });
 
 export function callMsGraph() {
@@ -56,23 +23,9 @@ export function callMsGraph() {
   return graph
     .get(url)
     .then(response => response.data)
-    .catch(async error => {
+    .catch(error => {
       console.log("ERROR CALLING MSGRAPH");
       console.log(error);
-
-      // If we get a 401, the token might be invalid - try to get a fresh token
-      if (error.response?.status === 401) {
-        console.log("401 error - attempting to refresh Graph token");
-        try {
-          // Force a fresh token acquisition for Graph API
-          await generateToken();
-          // The generateToken function will trigger a redirect if needed
-        } catch (tokenError) {
-          console.log("Token refresh failed:", tokenError);
-          throw tokenError;
-        }
-      }
-
       throw error;
     });
 }

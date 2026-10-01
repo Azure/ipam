@@ -13,7 +13,7 @@ import {
 
 import RestoreIcon from '@mui/icons-material/Restore';
 
-import { cloneDeep, isEmpty } from "lodash";
+import { cloneDeep, isEmpty } from "lodash-es";
 
 import {
   selectSubscriptions,
@@ -337,7 +337,7 @@ const opt = {
             </div>
           </div>
         `;
-        
+
         return y;
       }
     }
@@ -425,23 +425,23 @@ function parseNets(data, subscriptions) {
     if(!visibleNets.includes(peer.remote_network)) {
       const vNetPattern = "/Microsoft.Network/virtualNetworks/";
       const vHubPattern = "/Microsoft.Network/virtualHubs/";
-  
+
       const resourceGroupPattern = "(?<=/resourceGroups/).+?(?=/)";
       const subscriptionPattern = "(?<=/subscriptions/).+?(?=/)";
-  
+
       var vNetName = '';
-  
+
       if(peer.remote_network.includes(vNetPattern)) {
         vNetName = peer.remote_network.substr(peer.remote_network.indexOf(vNetPattern) + vNetPattern.length, peer.remote_network.length);
       }
-  
+
       if(peer.remote_network.includes(vHubPattern)) {
         vNetName = peer.remote_network.substr(peer.remote_network.indexOf(vHubPattern) + vHubPattern.length, peer.remote_network.length);
       }
-  
+
       const resourceGroup = peer.remote_network.match(resourceGroupPattern)[0];
       const subscriptionId = peer.remote_network.match(subscriptionPattern)[0];
-  
+
       const subscriptionName = subscriptions.find(sub => sub.subscription_id === subscriptionId)?.name || 'Unknown';
 
       let node = {
@@ -539,7 +539,7 @@ function parseNets(data, subscriptions) {
   }).flat();
 
   const links = linkArr.reduce(
-    (acc, curr) => 
+    (acc, curr) =>
       acc.find((v) => (v.source === curr.target && v.target === curr.source)) ? acc : [...acc, curr],
     []
   );
@@ -639,8 +639,7 @@ const Reset = (props) => {
   );
 };
 
-const Search = React.forwardRef((props, ref) => {
-  const { options, setDataFocus } = props;
+const Search = ({ ref, options, setDataFocus }) => {
 
   const [value, setValue] = React.useState(null);
   const [inputValue, setInputValue] = React.useState('');
@@ -687,6 +686,8 @@ const Search = React.forwardRef((props, ref) => {
         return newOption;
       });
 
+      optionData.sort((a, b) => a.name.localeCompare(b.name));
+
       setSearchOptions(optionData);
     }
   }, [options]);
@@ -723,7 +724,7 @@ const Search = React.forwardRef((props, ref) => {
       }}
       renderOption={(props, option) => {
         return (
-          <li {...props} key={option.id}>
+          <li key={option.id} {...props}>
             {option.name}
           </li>
         );
@@ -740,7 +741,55 @@ const Search = React.forwardRef((props, ref) => {
       }}
     />
   );
-});
+};
+
+function filterByVnet(options, target, previousTarget, currentMembers) {
+  const members = [];
+
+  let filteredLinks = options.series[0].links.filter((item) => {
+    if(item.source === target) {
+      members.push(item.target);
+      return item;
+    } else if(item.target === target) {
+      members.push(item.source);
+      return item;
+    }
+
+    return false;
+  });
+
+  let uniqueMembers = [...new Set(members)];
+
+  var indexOfPrevious = uniqueMembers.indexOf(previousTarget);
+
+  if (indexOfPrevious !== -1) {
+    uniqueMembers.splice(indexOfPrevious, 1);
+  }
+
+  let filteredData = options.series[0].data.filter((item) => {
+    if (uniqueMembers.includes(item.name) || item.name === target) {
+      return item;
+    }
+
+    return false;
+  });
+
+  if(uniqueMembers.length > 0) {
+    uniqueMembers.forEach((member) => {
+      if(!currentMembers.includes(member)) {
+        const results = filterByVnet(options, member, target, [...new Set(currentMembers.concat(uniqueMembers))]);
+
+        filteredData = filteredData.concat(results.data);
+        filteredLinks = filteredLinks.concat(results.links);
+      }
+    });
+  }
+
+  return {
+    data: [...new Set(filteredData)],
+    links: [...new Set(filteredLinks)]
+  };
+}
 
 const Peering = () => {
   const [options, setOptions] = React.useState(opt);
@@ -772,60 +821,14 @@ const Peering = () => {
     }
   }, [subscriptions, networks, theme]);
 
-  function filterByVnet(options, target, previousTarget, currentMembers) {
-    const members = [];
-
-    let filteredLinks = options.series[0].links.filter((item) => {
-      if(item.source === target) {
-        members.push(item.target);
-        return item;
-      } else if(item.target === target) {
-        members.push(item.source);
-        return item;
-      }
-
-      return false;
-    });
-
-    let uniqueMembers = [...new Set(members)];
-
-    var indexOfPrevious = uniqueMembers.indexOf(previousTarget);
-
-    if (indexOfPrevious !== -1) {
-      uniqueMembers.splice(indexOfPrevious, 1);
-    }
-
-    let filteredData = options.series[0].data.filter((item) => {
-      if (uniqueMembers.includes(item.name) || item.name === target) {
-        return item;
-      }
-
-      return false;
-    });
-
-    if(uniqueMembers.length > 0) {
-      uniqueMembers.forEach((member) => {
-        if(!currentMembers.includes(member)) {
-          const results = filterByVnet(options, member, target, [...new Set(currentMembers.concat(uniqueMembers))]);
-
-          filteredData = filteredData.concat(results.data);
-          filteredLinks = filteredLinks.concat(results.links);
-        }
-      });
-    }
-
-    return {
-      data: [...new Set(filteredData)],
-      links: [...new Set(filteredLinks)]
-    };
-  }
-
-  const onEvents = {
+  const onEvents = React.useMemo(() => ({
     click: onClick
     // restore: onRestore
-  };
+  }), []);
 
-  function setDataFocus(target) {
+  // Manual memo retained; compiler bails due to mutation + mixed ref access below
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  const setDataFocus = React.useCallback((target) => {
     if(target) {
       let newOptions = cloneDeep(options);
 
@@ -862,7 +865,7 @@ const Peering = () => {
     } else {
       eChartsRef?.getEchartsInstance().setOption(options);
     }
-  }
+  }, [eChartsRef, options]);
 
   function onClick(param, echarts) {
     if (param.data.value > 0) {

@@ -8,9 +8,9 @@
 #Requires -Version 7.2
 
 # Intake and set global parameters
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPositionalParameters', '', Justification = 'npm is an external executable; its arguments are not PowerShell positional parameters.')]
 param(
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $true)]
+  [Parameter(Mandatory = $true)]
   [ValidateScript({
     if (Test-Path -LiteralPath $_ -PathType Container) {
       return $true
@@ -23,8 +23,7 @@ param(
   [string]
   $Path,
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false)]
+  [Parameter(Mandatory = $false)]
   [ValidateScript({
     if ($_.IndexOfAny([System.IO.Path]::GetInvalidFileNameChars()) -eq -1) {
       return $true
@@ -35,8 +34,7 @@ param(
   $FileName = 'ipam.zip',
 
   # Use this to use "npm install" instead of "npm ci" and direct pip to install "requirements.txt" instead of "requirements.lock.txt"
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false)]
+  [Parameter(Mandatory = $false)]
   [switch]
   $ManifestOnly
 )
@@ -45,7 +43,7 @@ param(
 $ROOT_DIR = (Get-Item $($MyInvocation.MyCommand.Path)).Directory.Parent.FullName
 
 # Define minimum NodeJS and NPM versions required to build the Azure IPAM UI solution
-$MIN_NODE_VERSION = [version]'22.12.0'
+$MIN_NODE_VERSION = [version]'22.22.0'
 $MIN_NPM_VERSION = [version]'10.9.2'
 
 # Load Python version required to build the Azure IPAM UI solution
@@ -53,6 +51,21 @@ $engineAppDir = Join-Path -Path $ROOT_DIR -ChildPath "engine" -AdditionalChildPa
 $engineVersionFile = Join-Path -Path $engineAppDir -ChildPath "version.json"
 $engineVersionJson = Get-Content -Path $engineVersionFile | ConvertFrom-Json
 $PYTHON_VERSION = [version]$engineVersionJson.python
+
+# Wheels must target the App Service runtime, not the build host. manylinux2014
+# (glibc 2.17) maximizes compatibility for sovereign clouds that lag commercial.
+# If pip ever reports "no matching distribution", widen to 'manylinux_2_28_x86_64'
+# (glibc 2.28, still under bullseye's 2.31); the gate ceiling follows automatically.
+$PIP_PLATFORM = 'manylinux2014_x86_64'
+
+$PYTHON_TAG = "$($PYTHON_VERSION.Major).$($PYTHON_VERSION.Minor)"
+$PYTHON_ABI = "cp$($PYTHON_VERSION.Major)$($PYTHON_VERSION.Minor)"
+
+$MAX_GLIBC_VERSION = switch -Regex ($PIP_PLATFORM) {
+  '^manylinux2014_' { [version]'2.17'; break }
+  '^manylinux_(\d+)_(\d+)_' { [version]"$($Matches[1]).$($Matches[2])"; break }
+  default { throw "Cannot derive a glibc ceiling from PIP_PLATFORM '$PIP_PLATFORM'." }
+}
 
 # Create a temporary folder path
 $tempFolder = Join-Path -Path TEMP:\ -ChildPath $(New-Guid)
@@ -64,8 +77,8 @@ $ErrorActionPreference = "Stop"
 $logPath = Join-Path -Path $ROOT_DIR -ChildPath "logs"
 New-Item -ItemType Directory -Path $logpath -Force | Out-Null
 
-$errorLog = Join-Path -Path $logPath -ChildPath "error_$(get-date -format `"yyyyMMddhhmmsstt`").log"
-$transcriptLog = Join-Path -Path $logPath -ChildPath "build_$(get-date -format `"yyyyMMddhhmmsstt`").log"
+$errorLog = Join-Path -Path $logPath -ChildPath "error_$(Get-Date -Format `"yyyyMMddhhmmsstt`").log"
+$transcriptLog = Join-Path -Path $logPath -ChildPath "build_$(Get-Date -Format `"yyyyMMddhhmmsstt`").log"
 
 Start-Transcript -Path $transcriptLog | Out-Null
 
@@ -88,7 +101,7 @@ try {
   } catch {
     Write-Host "ERROR: NodeJS not detected!" -ForegroundColor red
     Write-Host "ERROR: NodeJS is required to build the Azure IPAM code package!" -ForegroundColor red
-    exit
+    exit 1
   }
 
   # Extract NodeJs and NPM versions and exit if either is not detected
@@ -100,7 +113,7 @@ try {
   } else {
     Write-Host "ERROR: NodeJS not detected!" -ForegroundColor red
     Write-Host "ERROR: NodeJS is required to build the Azure IPAM code package!" -ForegroundColor red
-    exit
+    exit 1
   }
 
   # Check for required NodeJS version
@@ -119,7 +132,7 @@ try {
 
   # Exit if NodeJS or NPM versions do not meet the minimum version requirements
   if(($nodeVersion -lt $MIN_NODE_VERSION) -or ($npmVersion -lt $MIN_NPM_VERSION)) {
-    exit
+    exit 1
   }
 
   Write-Host "INFO: Verifying Python is present and has the correct version" -ForegroundColor Green
@@ -134,7 +147,7 @@ try {
     Write-Host "ERROR: Python " -ForegroundColor red -NoNewline
     Write-Host "v$PYTHON_VERSION" -ForegroundColor cyan -NoNewline
     Write-Host " and PIP are required to build the Azure IPAM code package!" -ForegroundColor red
-    exit
+    exit 1
   }
 
   # Extract Python version and exit if it doesn't match required version
@@ -146,14 +159,14 @@ try {
       Write-Host "ERROR: Python " -ForegroundColor red -NoNewline
       Write-Host "v$PYTHON_VERSION" -ForegroundColor cyan -NoNewline
       Write-Host " and PIP are required to build the Azure IPAM code package!" -ForegroundColor red
-      exit
+      exit 1
     }
   } else {
     Write-Host "ERROR: Python PIP not detected!" -ForegroundColor red
     Write-Host "ERROR: Python " -ForegroundColor red -NoNewline
     Write-Host "v$PYTHON_VERSION" -ForegroundColor cyan -NoNewline
     Write-Host " and PIP are required to build the Azure IPAM code package!" -ForegroundColor red
-    exit
+    exit 1
   }
 
   # Check for required Python version
@@ -163,7 +176,7 @@ try {
     Write-Host "! Python " -ForegroundColor red -NoNewline
     Write-Host "v$pythonVersion" -ForegroundColor cyan -NoNewline
     Write-Host " detected." -ForegroundColor red
-    exit
+    exit 1
   }
 
   Write-Host "INFO: Building application creating ZIP Deploy package" -ForegroundColor Green
@@ -239,13 +252,23 @@ try {
   # Create temporary directory for PIP packages
   $packageDir = New-Item -ItemType Directory -Path (Join-Path -Path $tempFolder -ChildPath "packages")
 
+  $pipTargetArgs = @(
+    '--only-binary=:all:'
+    '--platform', $PIP_PLATFORM
+    '--implementation', 'cp'
+    '--python-version', $PYTHON_TAG
+    '--abi', $PYTHON_ABI
+  )
+
+  Write-Host "INFO: PIP wheel target - $($pipTargetArgs -join ' ')" -ForegroundColor Green
+
   # Fetch Azure IPAM Engine modules
   try {
     # Capture all output for logging purposes
     $pipOutput = if ($ManifestOnly) {
-      pip install -r requirements.txt --target $packageDir.FullName --no-warn-script-location --no-user --progress-bar off 2>&1
+      pip install -r requirements.txt --target $packageDir.FullName @pipTargetArgs --no-warn-script-location --no-user --progress-bar off 2>&1
     } else {
-      pip install -r requirements.lock.txt --target $packageDir.FullName --no-warn-script-location --no-user --progress-bar off 2>&1
+      pip install -r requirements.lock.txt --target $packageDir.FullName @pipTargetArgs --no-warn-script-location --no-user --progress-bar off 2>&1
     }
 
     # Throw error if PIP Install fails
@@ -263,28 +286,147 @@ try {
   # Switch back to original dir
   Pop-Location
 
-  # Create the Azure IPAM ZIP Deploy archive if NPM Build and PIP install were successful
-  if((-not $npmBuildErr) -and (-not $pipInstallErr)) {
-    $FilePath = Join-Path -Path $Path -ChildPath $FileName
+  Write-Host "INFO: Verifying native modules match the target runtime..." -ForegroundColor Green
 
-    Write-Host "INFO: Collecting asset files..." -ForegroundColor Green
+  $abiViolations = @()
+  $glibcViolations = @()
+  $tagViolations = @()
+  $wheelTags = [ordered]@{}
+  $observedGlibc = [version]'0.0'
 
-    Copy-Item -Path ..\engine\app -Destination $tempFolder -Recurse
-    Copy-Item -Path ..\engine\host.json -Destination $tempFolder
-    Copy-Item -Path ..\engine\function_app.py -Destination $tempFolder
-    Copy-Item -Path ..\engine\requirements.txt -Destination $tempFolder
-    Copy-Item -Path ..\ui\dist -Destination $tempFolder -Recurse
-    Copy-Item -Path ..\init.sh -Destination $tempFolder
+  # .dist-info/WHEEL names the wheel PIP actually selected, so a locally compiled
+  # (linux_x86_64) or over-new manylinux distribution is caught before the ELF scan.
+  foreach ($wheelFile in (Get-ChildItem -Path $packageDir.FullName -Filter 'WHEEL' -File -Recurse -Depth 1)) {
+    $distName = $wheelFile.Directory.Name -replace '\.dist-info$', ''
 
-    Get-ChildItem -Path (Join-Path -Path $tempFolder -ChildPath "app") -Filter "__pycache__" -Recurse | Remove-Item -Recurse
+    $tags = @(Get-Content -LiteralPath $wheelFile.FullName |
+      Where-Object { $_ -match '^Tag:\s*(\S+)' } |
+      ForEach-Object { $Matches[1] })
 
-    Write-Host "INFO: Creating ZIP Deploy archive..." -ForegroundColor Green
+    $wheelTags[$distName] = $tags -join ' '
 
-    Compress-Archive -Path (Join-Path -Path $tempFolder -ChildPath *) -DestinationPath $FilePath -Force
-  } else {
-    Write-Host "ERROR: Cannot create ZIP Deploy archive!" -ForegroundColor red
-    exit
+    $platforms = @($tags | ForEach-Object { ($_ -split '-')[-1] -split '\.' })
+
+    $compatible = @($platforms | Where-Object {
+      switch -Regex ($_) {
+        '^any$' { $true; break }
+        '^manylinux1_' { [version]'2.5' -le $MAX_GLIBC_VERSION; break }
+        '^manylinux2010_' { [version]'2.12' -le $MAX_GLIBC_VERSION; break }
+        '^manylinux2014_' { [version]'2.17' -le $MAX_GLIBC_VERSION; break }
+        '^manylinux_(\d+)_(\d+)_' { [version]"$($Matches[1]).$($Matches[2])" -le $MAX_GLIBC_VERSION; break }
+        default { $false }
+      }
+    })
+
+    if ($compatible.Count -eq 0) {
+      $tagViolations += "$distName - $($wheelTags[$distName])"
+    }
   }
+
+  $nativeModules = Get-ChildItem -Path $packageDir.FullName -Recurse -File |
+    Where-Object { $_.Name -match '\.(so|pyd)(\.\d+)*$' }
+
+  foreach ($module in $nativeModules) {
+    if ($module.Name -like '*.pyd') {
+      $abiViolations += "$($module.Name) - Windows extension module"
+      continue
+    }
+
+    if ($module.Name -match 'cpython-(\d+)') {
+      if ($Matches[1] -ne "$($PYTHON_VERSION.Major)$($PYTHON_VERSION.Minor)") {
+        $abiViolations += "$($module.Name) - built for cpython-$($Matches[1])"
+      }
+    }
+
+    # GLIBC_x.y symbol versions are plain ASCII in the ELF dynamic string table
+    $symbols = [regex]::Matches(
+      [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($module.FullName)),
+      'GLIBC_(\d+\.\d+)'
+    )
+
+    if ($symbols.Count -gt 0) {
+      $required = @($symbols | ForEach-Object { [version]$_.Groups[1].Value } | Sort-Object)[-1]
+
+      if ($required -gt $observedGlibc) {
+        $observedGlibc = $required
+      }
+
+      if ($required -gt $MAX_GLIBC_VERSION) {
+        $glibcViolations += "$($module.Name) - requires glibc $required"
+      }
+    }
+  }
+
+  if (($abiViolations.Count -gt 0) -or ($glibcViolations.Count -gt 0) -or ($tagViolations.Count -gt 0)) {
+    Write-Host "ERROR: Native module verification failed!" -ForegroundColor Red
+
+    foreach ($violation in $abiViolations) {
+      Write-Host "ERROR: Expected $PYTHON_ABI - $violation" -ForegroundColor Red
+    }
+
+    foreach ($violation in $tagViolations) {
+      Write-Host "ERROR: Incompatible wheel tag - $violation" -ForegroundColor Red
+    }
+
+    foreach ($violation in $glibcViolations) {
+      Write-Host "ERROR: Exceeds glibc ceiling $MAX_GLIBC_VERSION - $violation" -ForegroundColor Red
+    }
+
+    throw "Native module verification failed with $($abiViolations.Count) ABI, $($tagViolations.Count) wheel tag and $($glibcViolations.Count) glibc violation(s)."
+  }
+
+  Write-Host "INFO: Verified $($wheelTags.Count) distribution(s) and $($nativeModules.Count) native module(s) against $PYTHON_ABI and glibc <= $MAX_GLIBC_VERSION" -ForegroundColor Green
+  Write-Host "INFO: Highest glibc symbol required by any bundled module - $observedGlibc" -ForegroundColor Green
+
+  # Create the Azure IPAM ZIP Deploy archive
+  # .NET resolves relative paths against the process directory, not PowerShell's location
+  $FilePath = Join-Path -Path (Convert-Path -LiteralPath $Path) -ChildPath $FileName
+
+  Write-Host "INFO: Collecting asset files..." -ForegroundColor Green
+
+  Copy-Item -Path ..\engine\app -Destination $tempFolder -Recurse
+  Copy-Item -Path ..\engine\host.json -Destination $tempFolder
+  Copy-Item -Path ..\engine\function_app.py -Destination $tempFolder
+  Copy-Item -Path ..\ui\dist -Destination $tempFolder -Recurse
+  Copy-Item -Path ..\init.sh -Destination $tempFolder
+
+  if ($ManifestOnly) {
+    Copy-Item -Path ..\engine\requirements.txt -Destination $tempFolder
+  } else {
+    Copy-Item -Path ..\engine\requirements.lock.txt -Destination (Join-Path -Path $tempFolder -ChildPath "requirements.txt")
+  }
+
+  # Air-gapped clouds cannot share build logs, so the archive must identify itself
+  $buildManifest = [ordered]@{
+    built         = (Get-Date).ToUniversalTime().ToString('o')
+    app           = $engineVersionJson.app
+    python        = $PYTHON_TAG
+    pipPlatform   = $PIP_PLATFORM
+    glibcCeiling  = $MAX_GLIBC_VERSION.ToString()
+    glibcObserved = $observedGlibc.ToString()
+    nativeModules = $nativeModules.Count
+    manifestOnly  = [bool]$ManifestOnly
+    packages      = $wheelTags
+  }
+
+  $buildManifest |
+    ConvertTo-Json -Depth 4 |
+    Set-Content -Path (Join-Path -Path $tempFolder -ChildPath "build.json") -Encoding utf8
+
+  Get-ChildItem -Path (Join-Path -Path $tempFolder -ChildPath "app") -Filter "__pycache__" -Recurse | Remove-Item -Recurse
+
+  Write-Host "INFO: Creating ZIP Deploy archive..." -ForegroundColor Green
+
+  if (Test-Path -LiteralPath $FilePath) {
+    Remove-Item -LiteralPath $FilePath -Force
+  }
+
+  [System.IO.Compression.ZipFile]::CreateFromDirectory(
+    (Convert-Path -LiteralPath $tempFolder),
+    $FilePath,
+    [System.IO.Compression.CompressionLevel]::Optimal,
+    $false
+  )
 
   Write-Host "INFO: Cleaning up temporary files..." -ForegroundColor Green
 
@@ -301,7 +443,7 @@ try {
 catch {
   $_ | Out-File -FilePath $errorLog -Append
   Write-Host "ERROR: Unable to build Azure IPAM Zip assets due to an exception, see log for detailed information!" -ForegroundColor red
-  Write-Host "Build Log: $buildLog" -ForegroundColor Red
+  Write-Host "Build Log: $transcriptLog" -ForegroundColor Red
 
   if ($env:CI) {
     Write-Host $_.ToString()

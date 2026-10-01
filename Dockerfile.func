@@ -18,8 +18,8 @@ ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 # Set the Working Directory
 WORKDIR /tmp
 
-# Copy UI Code
-COPY ./ui/. ./
+# Copy UI Manifests
+COPY ./ui/package*.json ./
 
 # Install UI Dependencies
 RUN if [ "${PROD_BUILD}" = true ]; then \
@@ -27,7 +27,9 @@ RUN if [ "${PROD_BUILD}" = true ]; then \
 else \
   npm install; \
 fi
-RUN chmod 777 -R node_modules
+
+# Copy UI Source Code
+COPY ./ui/. ./
 
 # Build IPAM UI
 RUN npm run build
@@ -40,12 +42,23 @@ ARG PROD_BUILD
 # Set Debian Frontend to Non-Interactive
 ARG DEBIAN_FRONTEND=noninteractive
 
+# Disable PIP Root Warnings
+ARG PIP_ROOT_USER_ACTION=ignore
+
+# Disable PIP Upgrade Warnings
+ARG PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# IPAM Version (for OCI Image Label)
+ARG IPAM_VERSION=0.0.0
+
 # Set Azure Function Root Directory & Enable Console Logging
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     AzureFunctionsJobHost__Logging__Console__IsEnabled=true
 
-# Disable PIP Root Warnings
-ENV PIP_ROOT_USER_ACTION=ignore
+# OCI Image Labels
+LABEL org.opencontainers.image.title="Azure IPAM Function" \
+      org.opencontainers.image.version="${IPAM_VERSION}" \
+      org.opencontainers.image.source="https://github.com/Azure/ipam"
 
 # Set Working Directory
 WORKDIR /tmp
@@ -53,9 +66,6 @@ WORKDIR /tmp
 # Copy Requirements File
 COPY ./engine/requirements.txt .
 COPY ./engine/requirements.lock.txt .
-
-# Upgrade PIP
-RUN pip install --upgrade pip --progress-bar off
 
 # Install Dependencies
 RUN if [ "${PROD_BUILD}" = true ]; then \

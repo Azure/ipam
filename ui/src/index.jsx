@@ -1,9 +1,9 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
+import { Box, Typography } from '@mui/material';
 import { store } from './app/store';
 import App from './App';
-import reportWebVitals from './reportWebVitals';
 import './index.css';
 
 import { PublicClientApplication } from "@azure/msal-browser";
@@ -13,19 +13,72 @@ import { msalConfig } from "./msal/authConfig";
 const container = document.getElementById('root');
 const root = createRoot(container);
 
+/**
+ * Detect if the app is loaded inside a hidden iframe (e.g. MSAL silent token acquisition).
+ * When acquireTokenSilent falls back to an iframe flow, AAD redirects the iframe back to
+ * the app's origin. Without this guard the full React app boots inside the iframe and every
+ * component that calls acquireTokenSilent triggers a cascading "block_iframe_reload" error.
+ * Skipping the render lets MSAL read the iframe hash response without interference.
+ */
+const isInHiddenIframe = window !== window.parent;
+
+/**
+ * MSAL should be instantiated outside of the component tree to prevent it from being re-instantiated on re-renders.
+ * For more, visit: https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-react/docs/getting-started.md
+ */
 export const msalInstance = new PublicClientApplication(msalConfig);
 
-root.render(
-  <React.StrictMode>
-    <MsalProvider instance={msalInstance}>
-      <Provider store={store}>
-        <App />
-      </Provider>
-    </MsalProvider>
-  </React.StrictMode>
-);
+/**
+ * Initialize MSAL before rendering the app.
+ * This is required for msal-browser v3+ to properly set up the library.
+ */
+msalInstance.initialize().then(() => {
+  // Do not render the full application inside MSAL's hidden iframe.
+  if (isInHiddenIframe) {
+    return;
+  }
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
+  // Set the active account so acquireTokenSilent can resolve it
+  // automatically without every caller passing account explicitly.
+  if (!msalInstance.getActiveAccount()) {
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) {
+      msalInstance.setActiveAccount(accounts[0]);
+    }
+  }
+
+  root.render(
+    <React.StrictMode>
+      <MsalProvider instance={msalInstance}>
+        <Provider store={store}>
+          <App />
+        </Provider>
+      </MsalProvider>
+    </React.StrictMode>
+  );
+}).catch((error) => {
+  // MSAL failed to initialize (misconfiguration, blocked storage access,
+  // third-party cookie restrictions, etc.). Log the error so it is
+  // diagnosable instead of surfacing only as an unhandled promise rejection.
+  console.error("MSAL initialization failed:", error);
+
+  // Do not render fallback UI inside MSAL's hidden iframe.
+  if (isInHiddenIframe) {
+    return;
+  }
+
+  // Render a minimal fallback so the user is not left with a blank page.
+  root.render(
+    <React.StrictMode>
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 64px)', textAlign: 'center', px: 2 }}>
+        <Typography variant="h3" gutterBottom component="div">
+          Unable to start Azure IPAM
+        </Typography>
+        <Typography variant="body1" component="div">
+          The authentication service could not be initialized. Please refresh the
+          page or try again later. If the problem persists, contact your administrator.
+        </Typography>
+      </Box>
+    </React.StrictMode>
+  );
+});

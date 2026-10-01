@@ -1,16 +1,14 @@
-# Output Virtual Network CIDR
-output "new_vnet_cidr" {
-  value = data.external.ipam-reservation.result.cidr
+output "reservation_id" {
+  description = "The IPAM reservation ID."
+  value       = azureipam_reservation.vnet.id
 }
 
-# Output TAG to apply to new Virtual Network
-output "new_vnet_tag" {
-  value = {
-    X-IPAM-RES-ID = data.external.ipam-reservation.result.id
-  }
+output "reserved_cidr" {
+  description = "The reserved CIDR block assigned to the virtual network."
+  value       = azureipam_reservation.vnet.cidr
 }
 
-# Output IPAM token
-# output "ipam_token" {
-#   value = data.external.ipam-token.result.token
-# }
+output "vnet_id" {
+  description = "The Azure resource ID of the deployed virtual network."
+  value       = azurerm_virtual_network.network.id
+}

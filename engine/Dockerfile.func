@@ -2,18 +2,36 @@
 # FROM mcr.microsoft.com/azure-functions/python:3.0-python3.9-appservice
 FROM mcr.microsoft.com/azure-functions/python:4-python3.11-appservice
 
+# Set Production Build Flag
+ARG PROD_BUILD=true
+
+# IPAM Version (for OCI Image Label)
+ARG IPAM_VERSION=0.0.0
+
 # Set Azure Function Root Directory & Enable Console Logging
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     AzureFunctionsJobHost__Logging__Console__IsEnabled=true
 
+# OCI Image Labels
+LABEL org.opencontainers.image.title="Azure IPAM Engine Function" \
+      org.opencontainers.image.version="${IPAM_VERSION}" \
+      org.opencontainers.image.source="https://github.com/Azure/ipam"
+
+WORKDIR /home/site/wwwroot
+
 # Copy Requirements File
-ADD ./requirements.lock.txt .
+COPY ./requirements.txt .
+COPY ./requirements.lock.txt .
 
 # Upgrade PIP
-RUN pip install --upgrade pip --progress-bar off
+RUN pip install --no-cache-dir --upgrade pip --progress-bar off
 
 # Install Dependencies
-RUN pip install --no-cache-dir -r ./requirements.lock.txt --progress-bar off
+RUN if [ "${PROD_BUILD}" = true ]; then \
+  pip install --no-cache-dir -r ./requirements.lock.txt --progress-bar off; \
+else \
+  pip install --no-cache-dir -r ./requirements.txt --progress-bar off; \
+fi
 
 # Copy Application Code to Function App Root Directory
 COPY . /home/site/wwwroot

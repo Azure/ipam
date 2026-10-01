@@ -1,14 +1,25 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi8/python-311
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/python-311
 FROM $BASE_IMAGE
+
+# Set Production Build Flag
+ARG PROD_BUILD=true
 
 # Set Default Port
 ARG PORT=8080
+
+# IPAM Version (for OCI Image Label)
+ARG IPAM_VERSION=0.0.0
 
 # Set Environment Variable
 ENV PORT=${PORT}
 
 # Disable PIP Root Warnings
 ENV PIP_ROOT_USER_ACTION=ignore
+
+# OCI Image Labels
+LABEL org.opencontainers.image.title="Azure IPAM Engine" \
+      org.opencontainers.image.version="${IPAM_VERSION}" \
+      org.opencontainers.image.source="https://github.com/Azure/ipam"
 
 # Set the Working Directory
 WORKDIR /ipam
@@ -17,17 +28,22 @@ WORKDIR /ipam
 USER root
 
 # Copy Requirements File
-ADD ./requirements.lock.txt /ipam
+COPY ./requirements.txt /ipam
+COPY ./requirements.lock.txt /ipam
 
 # Upgrade PIP
-RUN pip install --upgrade pip --progress-bar off
+RUN pip install --no-cache-dir --upgrade pip --progress-bar off
 
 # Install Dependencies
-RUN pip install --no-cache-dir -r ./requirements.lock.txt --progress-bar off
+RUN if [ "${PROD_BUILD}" = true ]; then \
+  pip install --no-cache-dir -r ./requirements.lock.txt --progress-bar off; \
+else \
+  pip install --no-cache-dir -r ./requirements.txt --progress-bar off; \
+fi
 
 # Copy Application Scripts & Sources
-ADD ./app ./app
-ADD ./init.sh .
+COPY ./app ./app
+COPY ./init.sh .
 
 # Set Script Execute Permissions
 RUN chmod +x init.sh
@@ -40,4 +56,4 @@ USER 1001
 EXPOSE $PORT
 
 # Execute Startup Script
-ENTRYPOINT ./init.sh ${PORT}
+ENTRYPOINT ["/bin/sh", "-c", "exec ./init.sh ${PORT}"]

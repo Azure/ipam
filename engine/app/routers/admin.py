@@ -1,47 +1,40 @@
-from fastapi.responses import PlainTextResponse
-from fastapi.encoders import jsonable_encoder
-
-from fastapi import (
-    APIRouter,
-    HTTPException,
-    Response,
-    status,
-    Depends,
-    Header,
-    Path
-)
-
-from typing import List
-
 import copy
-import uuid
+from typing import List
+from uuid import UUID, uuid4
+
+from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import PlainTextResponse
 
 from app.dependencies import (
+    UNAUTHORIZED,
     api_auth_checks,
-    get_admin,
-    get_tenant_id
+    get_tenant_id,
+    get_token_auth_header,
 )
-
-from app.models import *
-from . import argquery
-
+from app.models import Admin, Subscription
+from app.permissions import Permission, requires
 from app.routers.common.helper import (
+    AzureScope,
+    arg_query,
     cosmos_query,
-    cosmos_upsert,
     cosmos_replace,
     cosmos_retry,
-    arg_query
+    cosmos_upsert,
 )
+
+from . import argquery
 
 router = APIRouter(
     prefix="/admin",
     tags=["admin"],
-    dependencies=[Depends(api_auth_checks)]
+    dependencies=[Depends(api_auth_checks)],
+    responses=UNAUTHORIZED
 )
 
 async def new_admin_db(admin_list, exclusion_list, tenant_id):
     admin_data = {
-        "id": uuid.uuid4(),
+        "id": uuid4(),
         "type": "admin",
         "tenant_id": tenant_id,
         "admins": admin_list,
@@ -56,19 +49,16 @@ async def new_admin_db(admin_list, exclusion_list, tenant_id):
     "/admins",
     summary = "Get All Admins",
     response_model = List[Admin],
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(requires(Permission.ADMINS_READ))]
 )
 async def get_admins(
-    authorization: str = Header(None, description="Azure Bearer token"),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    token: str = Depends(get_token_auth_header),
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a list of all IPAM admins.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
@@ -82,7 +72,8 @@ async def get_admins(
 @router.post(
     "/admins",
     summary = "Create IPAM Admin",
-    status_code=201
+    status_code=201,
+    dependencies = [Depends(requires(Permission.ADMINS_CREATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -90,9 +81,8 @@ async def get_admins(
 )
 async def create_admin(
     admin: Admin,
-    authorization: str = Header(None, description="Azure Bearer token"),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    token: str = Depends(get_token_auth_header),
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Create an new IPAM Administrator with the following details:
@@ -103,9 +93,6 @@ async def create_admin(
     - **id**: Azure AD ObjectID for the Administrator user Service Principal
     """
 
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
-
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
     if not admin_query:
@@ -113,7 +100,7 @@ async def create_admin(
     else:
         admin_data = copy.deepcopy(admin_query[0])
 
-        target_admin = next((x for x in admin_data['admins'] if uuid.UUID(x['id']) == admin.id), None)
+        target_admin = next((x for x in admin_data['admins'] if UUID(x['id']) == admin.id), None)
 
         if target_admin:
             raise HTTPException(status_code=400, detail="User is already an admin.")
@@ -127,7 +114,8 @@ async def create_admin(
 @router.put(
     "/admins",
     summary = "Replace IPAM Admins",
-    status_code=200
+    status_code=200,
+    dependencies = [Depends(requires(Permission.ADMINS_UPDATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -135,9 +123,8 @@ async def create_admin(
 )
 async def update_admins(
     admin_list: List[Admin],
-    authorization: str = Header(None, description="Azure Bearer token"),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    token: str = Depends(get_token_auth_header),
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Replace the list of IPAM Administrators with the following details:
@@ -148,9 +135,6 @@ async def update_admins(
         - **email**: Email address for the Administrator (not required for 'Principal' type)
         - **id**: Azure AD ObjectID for the Administrator user Service Principal
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     id_list = [x.id for x in admin_list]
     unique_admins = len(set(id_list)) == len(admin_list)
@@ -166,7 +150,7 @@ async def update_admins(
         admin_data = copy.deepcopy(admin_query[0])
 
         admin_data['admins'] = jsonable_encoder(admin_list)
-        
+
         await cosmos_replace(admin_query[0], admin_data)
 
     return PlainTextResponse(status_code=status.HTTP_200_OK)
@@ -175,26 +159,23 @@ async def update_admins(
     "/admins/{objectId}",
     summary = "Get IPAM Admin",
     response_model = Admin,
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(requires(Permission.ADMINS_READ))]
 )
-async def get_admins(
+async def get_admin_by_id(
     objectId: UUID = Path(..., description="Azure AD ObjectID for the target user"),
-    authorization: str = Header(None, description="Azure Bearer token"),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    token: str = Depends(get_token_auth_header),
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a specific IPAM admin.
     """
 
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
-
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
     try:
         admins = copy.deepcopy(admin_query[0])
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="No admins found in database.")
 
     target_admin = next((x for x in admins['admins'] if x['id'] == str(objectId)), None)
@@ -207,7 +188,8 @@ async def get_admins(
 @router.delete(
     "/admins/{objectId}",
     summary = "Delete IPAM Admin",
-    status_code=200
+    status_code=200,
+    dependencies = [Depends(requires(Permission.ADMINS_DELETE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -215,16 +197,12 @@ async def get_admins(
 )
 async def delete_admin(
     objectId: UUID = Path(..., description="Azure AD ObjectID for the target user"),
-    authorization: str = Header(None, description="Azure Bearer token"),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    token: str = Depends(get_token_auth_header),
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Remove a specific IPAM Administrator
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
@@ -248,19 +226,16 @@ async def delete_admin(
     "/exclusions",
     summary = "Get Excluded Subscriptions",
     response_model = List[Subscription],
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(requires(Permission.EXCLUSIONS_READ))]
 )
 async def get_exclusions(
-    authorization: str = Header(None, description="Azure Bearer token"),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    token: str = Depends(get_token_auth_header),
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a list of excluded subscriptions.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
@@ -274,7 +249,8 @@ async def get_exclusions(
 @router.post(
     "/exclusions",
     summary = "Add Excluded Subscription(s)",
-    status_code=200
+    status_code=200,
+    dependencies = [Depends(requires(Permission.EXCLUSIONS_CREATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -282,9 +258,8 @@ async def get_exclusions(
 )
 async def add_exclusions(
     exclusions: List[Subscription],
-    authorization: str = Header(None, description="Azure Bearer token"),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    token: str = Depends(get_token_auth_header),
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Add a list of excluded Subscriptions:
@@ -292,10 +267,7 @@ async def add_exclusions(
     - **[&lt;UUID&gt;]**: Array of Subscription ID's
     """
 
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
-
-    subscription_list = await arg_query(None, True, argquery.SUBSCRIPTION)
+    subscription_list = await arg_query(None, argquery.SUBSCRIPTION, scope=AzureScope.SYSTEM)
     invalid_subscriptions = [str(x) for x in exclusions if str(x) not in [y['subscription_id'] for y in subscription_list]]
 
     if invalid_subscriptions:
@@ -317,7 +289,8 @@ async def add_exclusions(
 @router.put(
     "/exclusions",
     summary = "Replace Excluded Subscriptions",
-    status_code=200
+    status_code=200,
+    dependencies = [Depends(requires(Permission.EXCLUSIONS_UPDATE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -325,9 +298,8 @@ async def add_exclusions(
 )
 async def update_exclusions(
     exclusions: List[Subscription],
-    authorization: str = Header(None, description="Azure Bearer token"),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    token: str = Depends(get_token_auth_header),
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Replace the list of excluded Subscriptions:
@@ -335,10 +307,7 @@ async def update_exclusions(
     - **[&lt;UUID&gt;]**: Array of Subscription ID's
     """
 
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
-
-    subscription_list = await arg_query(None, True, argquery.SUBSCRIPTION)
+    subscription_list = await arg_query(None, argquery.SUBSCRIPTION, scope=AzureScope.SYSTEM)
     invalid_subscriptions = [str(x) for x in exclusions if str(x) not in [y['subscription_id'] for y in subscription_list]]
 
     if invalid_subscriptions:
@@ -360,7 +329,8 @@ async def update_exclusions(
 @router.delete(
     "/exclusions/{subscriptionId}",
     summary = "Remove Excluded Subscription",
-    status_code=200
+    status_code=200,
+    dependencies = [Depends(requires(Permission.EXCLUSIONS_DELETE))]
 )
 @cosmos_retry(
     max_retry = 5,
@@ -368,16 +338,12 @@ async def update_exclusions(
 )
 async def remove_exclusion(
     subscriptionId: Subscription = Path(..., description="Azure Subscription ID"),
-    authorization: str = Header(None, description="Azure Bearer token"),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    token: str = Depends(get_token_auth_header),
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Remove an excluded Subscription ID.
     """
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 

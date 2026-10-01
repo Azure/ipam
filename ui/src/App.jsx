@@ -13,13 +13,13 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
 import { SnackbarProvider } from 'notistack';
-import { SnackbarUtilsConfigurator } from './utils/snackbar';
 
 import Slide from '@mui/material/Slide';
 
 import Login from "./features/login/login";
 
 import NavDrawer from './features/drawer/drawer';
+import AuthHandler from './msal/authHandler';
 
 import {
   getDarkMode
@@ -43,6 +43,7 @@ function App() {
 
   return (
     <div className="App">
+      <AuthHandler />
       <AuthenticatedTemplate>
         <SnackbarProvider
           anchorOrigin={{
@@ -51,7 +52,6 @@ function App() {
           }}
           TransitionComponent={Slide}
         >
-          <SnackbarUtilsConfigurator />
           <Router>
             <ThemeProvider theme={ipamTheme}>
               <CssBaseline />
