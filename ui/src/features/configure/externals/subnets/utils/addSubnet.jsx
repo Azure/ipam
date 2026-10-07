@@ -207,7 +207,12 @@ export default function AddExtSubnet(props) {
         Add External Subnet
       </DialogTitle>
       <DialogContent>
-        <Box display="flex" flexDirection="column" alignItems="center">
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center"
+          }}>
           <Tooltip
             arrow
             disableFocusListener
@@ -232,8 +237,10 @@ export default function AddExtSubnet(props) {
               variant="standard"
               value={subName.value}
               onChange={(event) => onNameChange(event)}
-              inputProps={{ spellCheck: false }}
               sx={{ width: "80%" }}
+              slotProps={{
+                htmlInput: { spellCheck: false }
+              }}
             />
           </Tooltip>
           <Tooltip
@@ -259,16 +266,22 @@ export default function AddExtSubnet(props) {
               variant="standard"
               value={subDesc.value}
               onChange={(event) => onDescChange(event)}
-              inputProps={{ spellCheck: false }}
               sx={{ width: "80%" }}
+              slotProps={{
+                htmlInput: { spellCheck: false }
+              }}
             />
           </Tooltip>
           <Box sx={{ width: "80%", mt: 2, mb: 0.5, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Typography
               variant="caption"
-              color="text.secondary"
-              sx={{ display: 'block', mb: 0.75, width: '100%', textAlign: 'center' }}
-            >
+              sx={{
+                color: "text.secondary",
+                display: 'block',
+                mb: 0.75,
+                width: '100%',
+                textAlign: 'center'
+              }}>
               Allocation Mode
             </Typography>
             <ToggleButtonGroup
@@ -297,10 +310,6 @@ export default function AddExtSubnet(props) {
                   value={selectedMask}
                   onChange={(_, newValue) => setSelectedMask(newValue)}
                   sx={{ width: '7ch' }}
-                  ListboxProps={{
-                    style: { maxHeight: "15rem" },
-                    position: "bottom-start"
-                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -309,6 +318,12 @@ export default function AddExtSubnet(props) {
                       variant="standard"
                     />
                   )}
+                  slotProps={{
+                    listbox: {
+                      style: { maxHeight: "15rem" },
+                      position: "bottom-start"
+                    }
+                  }}
                 />
               </Box>
             ) : (
@@ -335,8 +350,10 @@ export default function AddExtSubnet(props) {
                     variant="standard"
                     value={subCidr.value}
                     onChange={(event) => onCidrChange(event)}
-                    inputProps={{ spellCheck: false }}
                     sx={{ width: "20ch" }}
+                    slotProps={{
+                      htmlInput: { spellCheck: false }
+                    }}
                   />
                 </Tooltip>
               </Box>

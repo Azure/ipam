@@ -6,10 +6,10 @@
 
 # Set minimum version requirements
 #Requires -Version 7.2
-#Requires -Modules @{ ModuleName="Az.Accounts"; ModuleVersion="2.13.0"}
-#Requires -Modules @{ ModuleName="Az.Functions"; ModuleVersion="4.0.6"}
-#Requires -Modules @{ ModuleName="Az.Resources"; ModuleVersion="6.10.0"}
-#Requires -Modules @{ ModuleName="Az.Websites"; ModuleVersion="3.1.1"}
+#Requires -Modules @{ ModuleName="Az.Accounts"; ModuleVersion="2.16.0"}
+#Requires -Modules @{ ModuleName="Az.Functions"; ModuleVersion="4.0.7"}
+#Requires -Modules @{ ModuleName="Az.Resources"; ModuleVersion="6.16.0"}
+#Requires -Modules @{ ModuleName="Az.Websites"; ModuleVersion="3.2.0"}
 #Requires -Modules @{ ModuleName="Microsoft.Graph.Authentication"; ModuleVersion="2.0.0"}
 #Requires -Modules @{ ModuleName="Microsoft.Graph.Identity.SignIns"; ModuleVersion="2.0.0"}
 
@@ -169,6 +169,18 @@ param(
   [switch]
   $Native,
 
+  # Testing aid: forces the ZIP mount shape on clouds that would otherwise build on the server
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    DontShow = $true,
+    ParameterSetName = 'App')]
+  [Parameter(ValueFromPipelineByPropertyName = $true,
+    Mandatory = $false,
+    DontShow = $true,
+    ParameterSetName = 'Function')]
+  [switch]
+  $RunFromPackage,
+
   [Parameter(ValueFromPipelineByPropertyName = $true,
     Mandatory = $false,
     ParameterSetName = 'AppContainer')]
@@ -198,11 +210,11 @@ param(
     Mandatory = $false,
     ParameterSetName = 'FunctionContainer')]
   [ValidateScript({
-    if (-Not ($_ | Test-Path) ) {
-      throw [System.ArgumentException]::New("Target file or does not exist.")
+    if (-not ($_ | Test-Path) ) {
+      throw [System.ArgumentException]::New("The specified 'ParameterFile' path does not exist.")
     }
-    if (-Not ($_ | Test-Path -PathType Leaf) ) {
-      throw [System.ArgumentException]::New("The 'ParameterFile' argument must be a file, folder paths are not allowed.")
+    if (-not ($_ | Test-Path -PathType Leaf) ) {
+      throw [System.ArgumentException]::New("The 'ParameterFile' argument must be a path to a file, not a folder.")
     }
     if ($_ -notmatch "(\.json)") {
       throw [System.ArgumentException]::New("The file specified in the 'ParameterFile' argument must be of type json.")
@@ -219,11 +231,11 @@ param(
     Mandatory = $false,
     ParameterSetName = 'Function')]
   [ValidateScript({
-    if (-Not ($_ | Test-Path) ) {
-      throw [System.ArgumentException]::New("Target file or does not exist.")
+    if (-not ($_ | Test-Path) ) {
+      throw [System.ArgumentException]::New("The specified 'ZipFilePath' path does not exist.")
     }
-    if (-Not ($_ | Test-Path -PathType Leaf) ) {
-      throw [System.ArgumentException]::New("The 'ZipFilePath' argument must be a file, folder paths are not allowed.")
+    if (-not ($_ | Test-Path -PathType Leaf) ) {
+      throw [System.ArgumentException]::New("The 'ZipFilePath' argument must be a path to a file, not a folder.")
     }
     if ($_ -notmatch "(\.zip)") {
       throw [System.ArgumentException]::New("The file specified in the 'ZipFilePath' argument must be of type zip.")
@@ -234,7 +246,7 @@ param(
   $ZipFilePath
 )
 
-DynamicParam {
+dynamicparam {
   $validators = @{
     functionName          = '^(?=^.{2,59}$)([^-][\w-]*[^-])$'
     appServiceName        = '^(?=^.{2,59}$)([^-][\w-]*[^-])$'
@@ -353,7 +365,7 @@ process {
   $MIN_AZ_CLI_VER = [System.Version]'2.35.0'
 
   # Check for Debug Flag
-  $DEBUG_MODE = [bool]$PSCmdlet.MyInvocation.BoundParameters[“Debug”].IsPresent
+  $DEBUG_MODE = [bool]$PSCmdlet.MyInvocation.BoundParameters["Debug"].IsPresent
 
   # Set preference variables
   $ErrorActionPreference = "Stop"
@@ -369,11 +381,11 @@ process {
 
   # Set Log File Location
   $logPath = Join-Path -Path $ROOT_DIR -ChildPath "logs"
-  New-Item -ItemType Directory -Path $logpath -Force | Out-Null
+  New-Item -ItemType Directory -Path $logPath -Force | Out-Null
 
-  $debugLog = Join-Path -Path $logPath -ChildPath "debug_$(get-date -format `"yyyyMMddhhmmsstt`").log"
-  $errorLog = Join-Path -Path $logPath -ChildPath "error_$(get-date -format `"yyyyMMddhhmmsstt`").log"
-  $transcriptLog = Join-Path -Path $logPath -ChildPath "deploy_$(get-date -format `"yyyyMMddhhmmsstt`").log"
+  $debugLog = Join-Path -Path $logPath -ChildPath "debug_$(Get-Date -Format `"yyyyMMddhhmmsstt`").log"
+  $errorLog = Join-Path -Path $logPath -ChildPath "error_$(Get-Date -Format `"yyyyMMddhhmmsstt`").log"
+  $transcriptLog = Join-Path -Path $logPath -ChildPath "deploy_$(Get-Date -Format `"yyyyMMddhhmmsstt`").log"
 
   $debugSetting = $DEBUG_MODE ? 'Continue' : 'SilentlyContinue'
 
@@ -387,8 +399,8 @@ process {
 
   Start-Transcript -Path $transcriptLog | Out-Null
 
-  Function Test-Location {
-    Param(
+  function Test-Location {
+    param(
       [Parameter(Mandatory = $true)]
       [string]$Location
     )
@@ -398,8 +410,9 @@ process {
     return $validLocations.Contains($Location)
   }
 
-  Function Get-AccessToken {
-    Param(
+  function Get-AccessToken {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '', Justification = 'Normalizes an ephemeral Azure access token across Az module versions (older Az returns a String, newer returns a SecureString). This is not a stored credential.')]
+    param(
       [Parameter(Mandatory = $false)]
       [string]$Resource,
       [Parameter(Mandatory = $false)]
@@ -424,8 +437,8 @@ process {
     }
   }
 
-  Function Get-BuildLogs {
-    Param(
+  function Get-BuildLog {
+    param(
       [Parameter(Mandatory = $true)]
       [string]$SubscriptionId,
       [Parameter(Mandatory = $true)]
@@ -463,8 +476,47 @@ process {
     return $logs
   }
 
-  Function Deploy-IPAMApplications {
-    Param(
+  function Invoke-WithGraphRetry {
+    param(
+      [Parameter(Mandatory = $true)]
+      [scriptblock]$ScriptBlock,
+      [Parameter(Mandatory = $false)]
+      [int]$MaxAttempts = 8,
+      [Parameter(Mandatory = $false)]
+      [int]$BaseDelaySeconds = 2,
+      [Parameter(Mandatory = $false)]
+      [int]$MaxDelaySeconds = 30
+    )
+
+    # Azure AD/Microsoft Graph is eventually consistent: a freshly created object may not yet be
+    # visible to the endpoint handling a follow-up request. The Az SDK retries transport faults but
+    # not these post-create reference errors, so we retry any thrown error here, backing off
+    # exponentially with jitter (capped at MaxDelaySeconds) to absorb propagation delay without
+    # stampeding the endpoint. Retries are silent; an exhausted retry re-throws the last error.
+    $attempt = 0
+
+    do {
+      $attempt++
+
+      try {
+        return & $ScriptBlock
+      }
+      catch {
+        if ($attempt -ge $MaxAttempts) {
+          throw $_
+        }
+
+        $backoff = [Math]::Min($BaseDelaySeconds * [Math]::Pow(2, $attempt - 1), $MaxDelaySeconds)
+        $jitter = Get-Random -Minimum 0.5 -Maximum 1.0
+
+        Start-Sleep -Seconds ([int][Math]::Ceiling($backoff * $jitter))
+      }
+    } while ($attempt -lt $MaxAttempts)
+  }
+
+  function Deploy-IPAMApplication {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'EngineAppName', Justification = 'Consumed inside an Invoke-WithGraphRetry -ScriptBlock (New-AzADApplication -DisplayName), which PSScriptAnalyzer does not trace into.')]
+    param(
       [Parameter(Mandatory = $false)]
       [string]$EngineAppName = 'ipam-engine-app',
       [Parameter(Mandatory = $false)]
@@ -597,15 +649,19 @@ process {
     Write-Host "INFO: Creating Azure IPAM Engine Application" -ForegroundColor Green
 
     # Create IPAM Engine Application
-    $engineApp = New-AzADApplication `
-      -DisplayName $EngineAppName `
-      -Api $engineApiSettings `
-      -RequiredResourceAccess $engineResourceAccessList
+    $engineApp = Invoke-WithGraphRetry -ScriptBlock {
+      New-AzADApplication `
+        -DisplayName $EngineAppName `
+        -Api $engineApiSettings `
+        -RequiredResourceAccess $engineResourceAccessList
+    }
 
     Write-Host "INFO: Updating Azure IPAM Engine API Endpoint" -ForegroundColor Green
 
     # Update IPAM Engine API Endpoint
-    Update-AzADApplication -ApplicationId $engineApp.AppId -IdentifierUri "api://$($engineApp.AppId)"
+    Invoke-WithGraphRetry -ScriptBlock {
+      Update-AzADApplication -ObjectId $engineApp.Id -IdentifierUri "api://$($engineApp.AppId)"
+    }
 
     $uiEngineApiAccess = @{
       ResourceAppId  = $engineApp.AppId
@@ -623,18 +679,30 @@ process {
     if (-not $DisableUI) {
       Write-Host "INFO: Updating Azure IPAM UI Application Resource Access" -ForegroundColor Green
 
-      Update-AzADApplication -ApplicationId $uiApp.AppId -RequiredResourceAccess $uiResourceAccess
+      Invoke-WithGraphRetry -ScriptBlock {
+        Update-AzADApplication -ObjectId $uiApp.Id -RequiredResourceAccess $uiResourceAccess
+      }
 
-      $uiObject = Get-AzADApplication -ApplicationId $uiApp.AppId
+      $uiObject = Invoke-WithGraphRetry -ScriptBlock {
+        Get-AzADApplication -ObjectId $uiApp.Id
+      }
     }
 
-    $engineObject = Get-AzADApplication -ApplicationId $engineApp.AppId
+    $engineObject = Invoke-WithGraphRetry -ScriptBlock {
+      Get-AzADApplication -ObjectId $engineApp.Id
+    }
 
     # Create IPAM UI Service Principal (If DisableUI not specified)
     if (-not $DisableUI) {
       Write-Host "INFO: Creating Azure IPAM UI Service Principal" -ForegroundColor Green
 
-      New-AzADServicePrincipal -ApplicationObject $uiObject | Out-Null
+      Invoke-WithGraphRetry -ScriptBlock {
+        $uiSpnExists = [bool](Get-AzADServicePrincipal -ApplicationId $uiApp.AppId -ErrorAction SilentlyContinue)
+
+        if (-not $uiSpnExists) {
+          New-AzADServicePrincipal -ApplicationObject $uiObject | Out-Null
+        }
+      }
     }
 
     $scope = "/providers/Microsoft.Management/managementGroups/$MgmtGroupId"
@@ -642,10 +710,16 @@ process {
     Write-Host "INFO: Creating Azure IPAM Engine Service Principal" -ForegroundColor Green
 
     # Create IPAM Engine Service Principal
-    New-AzADServicePrincipal -ApplicationObject $engineObject `
-      -Role "Reader" `
-      -Scope $scope `
-    | Out-Null
+    Invoke-WithGraphRetry -ScriptBlock {
+      $engineSpnExists = [bool](Get-AzADServicePrincipal -ApplicationId $engineApp.AppId -ErrorAction SilentlyContinue)
+
+      if (-not $engineSpnExists) {
+        New-AzADServicePrincipal -ApplicationObject $engineObject `
+          -Role "Reader" `
+          -Scope $scope `
+        | Out-Null
+      }
+    }
 
     if (-not $DisableUI) {
       Write-Host "INFO: Azure IPAM Engine & UI Applications/Service Principals created successfully" -ForegroundColor Green
@@ -666,8 +740,10 @@ process {
     return $appDetails
   }
 
-  Function Grant-AdminConsent {
-    Param(
+  function Grant-AdminConsent {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'UIAppId', Justification = 'Consumed inside an Invoke-WithGraphRetry -ScriptBlock (Get-AzADServicePrincipal -ApplicationId), which PSScriptAnalyzer does not trace into.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'EngineAppId', Justification = 'Consumed inside an Invoke-WithGraphRetry -ScriptBlock (Get-AzADServicePrincipal -ApplicationId), which PSScriptAnalyzer does not trace into.')]
+    param(
       [Parameter(Mandatory = $false)]
       [string]$UIAppId = [GUID]::Empty,
       [Parameter(Mandatory = $true)]
@@ -725,13 +801,23 @@ process {
 
     # Fetch Azure IPAM UI Service Principal (If DisableUI not specified)
     if (-not $DisableUI) {
-      $uiSpn = Get-AzADServicePrincipal `
-        -ApplicationId $UIAppId
+      $uiSpn = Invoke-WithGraphRetry -ScriptBlock {
+        # Get-AzADServicePrincipal returns $null (without throwing) when the service principal
+        # has not yet replicated, so throw to trigger a retry instead of returning an empty result.
+        $spn = Get-AzADServicePrincipal -ApplicationId $UIAppId
+        if (-not $spn) { throw "IPAM UI Service Principal not yet available for App ID '$UIAppId'" }
+        return $spn
+      }
     }
 
     # Fetch Azure IPAM Engine Service Principal
-    $engineSpn = Get-AzADServicePrincipal `
-      -ApplicationId $EngineAppId
+    $engineSpn = Invoke-WithGraphRetry -ScriptBlock {
+      # Get-AzADServicePrincipal returns $null (without throwing) when the service principal
+      # has not yet replicated, so throw to trigger a retry instead of returning an empty result.
+      $spn = Get-AzADServicePrincipal -ApplicationId $EngineAppId
+      if (-not $spn) { throw "IPAM Engine Service Principal not yet available for App ID '$EngineAppId'" }
+      return $spn
+    }
 
     # Grant admin consent for Microsoft Graph API permissions assigned to IPAM UI application (If DisableUI not specified)
     if (-not $DisableUI) {
@@ -741,12 +827,14 @@ process {
         $msGraphId = Get-AzADServicePrincipal `
           -ApplicationId $scope.scopeId
 
-        New-MgOauth2PermissionGrant `
-          -ResourceId $msGraphId.Id `
-          -Scope $scope.scopes `
-          -ClientId $uiSpn.Id `
-          -ConsentType AllPrincipals `
-        | Out-Null
+        Invoke-WithGraphRetry -ScriptBlock {
+          New-MgOauth2PermissionGrant `
+            -ResourceId $msGraphId.Id `
+            -Scope $scope.scopes `
+            -ClientId $uiSpn.Id `
+            -ConsentType AllPrincipals `
+          | Out-Null
+        }
       }
 
       Write-Host "INFO: Admin consent for Microsoft Graph API permissions granted successfully" -ForegroundColor Green
@@ -756,12 +844,16 @@ process {
     if (-not $DisableUI) {
       Write-Host "INFO: Granting admin consent to the IPAM UI application for exposed API from the IPAM Engine application" -ForegroundColor Green
 
-      New-MgOauth2PermissionGrant `
-        -ResourceId $engineSpn.Id `
-        -Scope "access_as_user" `
-        -ClientId $uiSpn.Id `
-        -ConsentType AllPrincipals `
-      | Out-Null
+      # Retry to absorb replication lag: the engine service principal was just created and may not yet
+      # be visible to the Microsoft Graph endpoint processing the grant ("resourceId not found").
+      Invoke-WithGraphRetry -ScriptBlock {
+        New-MgOauth2PermissionGrant `
+          -ResourceId $engineSpn.Id `
+          -Scope "access_as_user" `
+          -ClientId $uiSpn.Id `
+          -ConsentType AllPrincipals `
+        | Out-Null
+      }
 
       Write-Host "INFO: Admin consent for IPAM Engine exposed API granted successfully" -ForegroundColor Green
     }
@@ -773,19 +865,23 @@ process {
       $msGraphId = Get-AzADServicePrincipal `
         -ApplicationId $scope.scopeId
 
-      New-MgOauth2PermissionGrant `
-        -ResourceId $msGraphId.Id `
-        -Scope $scope.scopes `
-        -ClientId $engineSpn.Id `
-        -ConsentType AllPrincipals `
-      | Out-Null
+      # Retry to absorb replication lag: the engine service principal was just created and may not yet
+      # be visible to the Microsoft Graph endpoint processing the grant ("resourceId not found").
+      Invoke-WithGraphRetry -ScriptBlock {
+        New-MgOauth2PermissionGrant `
+          -ResourceId $msGraphId.Id `
+          -Scope $scope.scopes `
+          -ClientId $engineSpn.Id `
+          -ConsentType AllPrincipals `
+        | Out-Null
+      }
     }
 
     Write-Host "INFO: Admin consent for Azure Service Management API permissions granted successfully" -ForegroundColor Green
   }
 
-  Function Save-Parameters {
-    Param(
+  function Save-ParameterFile {
+    param(
       [Parameter(Mandatory = $false)]
       [string]$UIAppId = [GUID]::Empty,
       [Parameter(Mandatory = $true)]
@@ -816,16 +912,16 @@ process {
     Write-Host "INFO: Bicep parameter file populated successfully" -ForegroundColor Green
   }
 
-  Function Import-Parameters {
-    Param(
+  function Import-ParameterFile {
+    param(
       [Parameter(Mandatory = $true)]
-      [System.IO.FileInfo]$ParameterFile
+      [System.IO.FileInfo]$Path
     )
 
     Write-Host "INFO: Importing values from Bicep parameters file" -ForegroundColor Green
 
     # Retrieve JSON object from sample parameter file
-    $parametersObject = Get-Content $ParameterFile | ConvertFrom-Json
+    $parametersObject = Get-Content $Path | ConvertFrom-Json
 
     # Read Values from Parameters
     $UIAppId = $parametersObject.parameters.uiAppId.value ?? [GUID]::Empty
@@ -857,8 +953,8 @@ process {
     return $appDetails
   }
 
-  Function Deploy-Bicep {
-    Param(
+  function Deploy-Bicep {
+    param(
       [Parameter(Mandatory = $false)]
       [string]$UIAppId = [GUID]::Empty,
       [Parameter(Mandatory = $true)]
@@ -871,6 +967,8 @@ process {
       [bool]$Function,
       [Parameter(Mandatory = $false)]
       [bool]$Native,
+      [Parameter(Mandatory = $false)]
+      [bool]$RunFromPackage,
       [Parameter(Mandatory = $false)]
       [bool]$PrivateAcr,
       [Parameter(Mandatory = $false)]
@@ -901,6 +999,10 @@ process {
 
     if (-not $Native) {
       $deploymentParameters.Add('deployAsContainer', !$Native)
+    }
+
+    if ($RunFromPackage) {
+      $deploymentParameters.Add('forceRunFromPackage', $RunFromPackage)
     }
 
     if ($PrivateAcr) {
@@ -934,8 +1036,8 @@ process {
     return $deployment
   }
 
-  Function Get-ZipFile {
-    Param(
+  function Get-ZipFile {
+    param(
       [Parameter(Mandatory = $true)]
       [string]$GitHubUserName,
       [Parameter(Mandatory = $true)]
@@ -972,8 +1074,8 @@ process {
     }
   }
 
-  Function Publish-ZipFile {
-    Param(
+  function Publish-ZipFile {
+    param(
       [Parameter(Mandatory = $true)]
       [string]$AppName,
       [Parameter(Mandatory = $true)]
@@ -1162,7 +1264,7 @@ process {
     }
 
     if (-not $ParameterFile) {
-      $appDetails = Deploy-IPAMApplications `
+      $appDetails = Deploy-IPAMApplication `
         -UIAppName $UIAppName `
         -EngineAppName $EngineAppName `
         -MgmtGroupId $MgmtGroupId `
@@ -1181,12 +1283,12 @@ process {
     }
 
     if ($PSCmdlet.ParameterSetName -in ('AppsOnly')) {
-      Save-Parameters @appDetails -DisableUI $DisableUI
+      Save-ParameterFile @appDetails -DisableUI $DisableUI
     }
 
     if ($ParameterFile) {
-      $appDetails = Import-Parameters `
-        -ParameterFile $ParameterFile
+      $appDetails = Import-ParameterFile `
+        -Path $ParameterFile
     }
 
     if ($PSCmdlet.ParameterSetName -in ('App', 'AppContainer', 'Function', 'FunctionContainer')) {
@@ -1196,6 +1298,7 @@ process {
         -PrivateAcr $PrivateAcr `
         -Function $Function `
         -Native $Native `
+        -RunFromPackage $RunFromPackage `
         -Tags $Tags `
         -ResourceNames $ResourceNames
     }
@@ -1213,7 +1316,7 @@ process {
     }
 
     if ($PSCmdlet.ParameterSetName -in ('App', 'Function')) {
-      if (-Not $ZipFilePath) {
+      if (-not $ZipFilePath) {
         try {
           # Create a temporary folder path
           $TempFolder = Join-Path -Path TEMP:\ -ChildPath $(New-Guid)
@@ -1269,8 +1372,8 @@ process {
           Extension = 'rhel'
           Port      = 8080
           Images    = @{
-            Build = 'registry.access.redhat.com/ubi8/nodejs-22'
-            Serve = 'registry.access.redhat.com/ubi8/python-311'
+            Build = 'registry.access.redhat.com/ubi9/nodejs-22'
+            Serve = 'registry.access.redhat.com/ubi9/python-311'
           }
         }
       }
@@ -1294,7 +1397,7 @@ process {
 
           $buildId = [regex]::Matches($funcBuildOutput, "(?<=Queued a build with ID: )[\w]*").Value.Trim()
 
-          $buildLogs = Get-BuildLogs `
+          $buildLogs = Get-BuildLog `
             -SubscriptionId $deployment.Outputs["subscriptionId"].Value `
             -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value `
             -RegistryName $deployment.Outputs["acrName"].Value `
@@ -1333,7 +1436,7 @@ process {
 
           $buildId = [regex]::Matches($appBuildOutput, "(?<=Queued a build with ID: )[\w]*").Value.Trim()
 
-          $buildLogs = Get-BuildLogs `
+          $buildLogs = Get-BuildLog `
             -SubscriptionId $deployment.Outputs["subscriptionId"].Value `
             -ResourceGroupName $deployment.Outputs["resourceGroupName"].Value `
             -RegistryName $deployment.Outputs["acrName"].Value `

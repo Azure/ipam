@@ -103,7 +103,7 @@ export default function Basics() {
   // }, [blocks, selectedBlock]);
 
   return (
-    <BasicContext.Provider value={{ configureRef, spaces, blocks, refreshing, refresh }}>
+    <BasicContext value={{ configureRef, spaces, blocks, refreshing, refresh }}>
       <Wrapper ref={configureRef}>
         <MainBody>
           <TopSection>
@@ -122,6 +122,6 @@ export default function Basics() {
           </BottomSection>
         </MainBody>
       </Wrapper>
-    </BasicContext.Provider>
+    </BasicContext>
   );
 }

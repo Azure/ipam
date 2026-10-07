@@ -1,8 +1,7 @@
-fastapi[all]>=0.103.0
-pydantic[email]>=2.3.0
+fastapi[all]
+pydantic[email]
 pyjwt
 cryptography
-requests
 netaddr
 shortuuid
 aiohttp
@@ -21,4 +20,5 @@ azure-mgmt-resource-subscriptions
 azure-mgmt-resourcegraph
 azure-mgmt-managementgroups
 azure-mgmt-datafactory
+azure-mgmt-web
 apscheduler

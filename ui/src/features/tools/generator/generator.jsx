@@ -5,7 +5,7 @@ import { useNavigate } from "react-router";
 
 import { useSnackbar } from "notistack";
 
-import { isEqual, sortBy, pick } from "lodash";
+import { isEqual, sortBy, pick } from "lodash-es";
 
 import {
   Box,
@@ -332,7 +332,6 @@ const Generator = () => {
       <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
         <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
           <Autocomplete
-            PopperComponent={MyPopper}
             forcePopupIcon={false}
             id="grouped-demo"
             size="small"
@@ -357,14 +356,18 @@ const Generator = () => {
                 {...params}
                 label={ showSubnets ? "Subscription" : "Space" }
                 placeholder={ `Please Select ${showSubnets ? "Subscription" : "Space"}...` }
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <React.Fragment>
-                      {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </React.Fragment>
-                  ),
+                slotProps={{
+                  ...params.slotProps,
+
+                  input: {
+                    ...params.slotProps.input,
+                    endAdornment: (
+                      <React.Fragment>
+                        {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.slotProps.input.endAdornment}
+                      </React.Fragment>
+                    ),
+                  }
                 }}
               />
             )}
@@ -374,6 +377,9 @@ const Generator = () => {
                   { showSubnets ? `${option.name} (${option.subscription_id})` : option.name }
                 </li>
               );
+            }}
+            slots={{
+              popper: MyPopper
             }}
           />
           <Autocomplete
@@ -401,8 +407,12 @@ const Generator = () => {
                 {...params}
                 label={ showSubnets ? "Network" : "Block" }
                 placeholder={ `Please Select ${showSubnets ? "Network" : "Block"}...` }
-                InputProps={{
-                  ...params.InputProps
+                slotProps={{
+                  ...params.slotProps,
+
+                  input: {
+                    ...params.slotProps.input
+                  }
                 }}
               />
             )}
@@ -413,7 +423,7 @@ const Generator = () => {
                 </li>
               );
             }}
-            componentsProps={{
+            slotProps={{
               paper: {
                 sx: {
                   width: 'fit-content'
@@ -559,12 +569,6 @@ const Generator = () => {
                   value={selectedMask}
                   onChange={(event, newValue) => setSelectedMask(newValue)}
                   sx={{ width: '5ch' }}
-                  ListboxProps={{
-                    style: {
-                      maxHeight: "15rem"
-                    },
-                    position: "bottom-start"
-                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -572,6 +576,14 @@ const Generator = () => {
                       placeholder="Mask"
                     />
                   )}
+                  slotProps={{
+                    listbox: {
+                      style: {
+                        maxHeight: "15rem"
+                      },
+                      position: "bottom-start"
+                    }
+                  }}
                 />
                 <Box
                   sx={{
@@ -646,8 +658,10 @@ const Generator = () => {
                     vertical: 'top',
                     horizontal: 'left',
                   }}
-                  MenuListProps={{
-                    'aria-labelledby': 'basic-button',
+                  slotProps={{
+                    list: {
+                      'aria-labelledby': 'basic-button',
+                    }
                   }}
                 >
                   <MenuItem onClick={handleCopy}>
@@ -673,20 +687,22 @@ const Generator = () => {
                   label="Next Available"
                   value={ nextAvailable || "" }
                   variant="outlined"
-                  InputProps={{
-                    endAdornment:
-                      <IconButton
-                        disabled={ !nextAvailable }
-                        disableRipple
-                        onClick={handleClick}
-                      >
-                        <MenuOpenOutlined />
-                      </IconButton>
-                  }}
                   sx={{
                     width: '13ch',
                     '& .MuiOutlinedInput-root': {
                       paddingRight: 'unset',
+                    }
+                  }}
+                  slotProps={{
+                    input: {
+                      endAdornment:
+                        <IconButton
+                          disabled={ !nextAvailable }
+                          disableRipple
+                          onClick={handleClick}
+                        >
+                          <MenuOpenOutlined />
+                        </IconButton>
                     }
                   }}
                 />

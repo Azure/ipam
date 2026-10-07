@@ -19,6 +19,39 @@ api.interceptors.request.use(
     return Promise.reject(error);
 });
 
+// The Engine returns { error } for handled failures, but unhandled exceptions, request
+// validation (422) and upstream proxy errors use other shapes; without this the message
+// resolves to undefined and the UI renders an empty error snackbar.
+function getErrorMessage(error) {
+  const data = error.response?.data;
+
+  if (typeof data === 'string') {
+    const text = data.trim();
+
+    if (text && !text.startsWith('<')) {
+      return text;
+    }
+  } else if (data && typeof data === 'object') {
+    if (data.error) {
+      return String(data.error);
+    }
+
+    if (typeof data.detail === 'string' && data.detail) {
+      return data.detail;
+    }
+
+    if (Array.isArray(data.detail)) {
+      const detail = data.detail.map(item => item?.msg).filter(Boolean).join('; ');
+
+      if (detail) {
+        return detail;
+      }
+    }
+  }
+
+  return error.message || 'An unexpected error occurred.';
+}
+
 api.interceptors.response.use(
   response => response.data,
   error => {
@@ -26,7 +59,7 @@ api.interceptors.response.use(
     console.log(error);
 
     if (error.response) {
-      return Promise.reject(new Error(error.response.data.error));
+      return Promise.reject(new Error(getErrorMessage(error)));
     }
 
     return Promise.reject(error);
@@ -94,6 +127,7 @@ export function fetchBlockAvailable(space, block) {
   var urlParams = url.searchParams;
 
   urlParams.append('expand', true);
+  urlParams.append('include_blocked', true);
 
   return api.get(url);
 }
@@ -278,4 +312,23 @@ export function fetchNextAvailableSubnet(body) {
   const url = new URL(`${ENGINE_URL}/api/tools/nextAvailableSubnet`);
 
   return api.post(url, body);
+}
+
+export function fetchNotifications() {
+  var url = new URL(`${ENGINE_URL}/api/notifications`);
+
+  return api.get(url);
+}
+
+export function resolveNotification(id) {
+  var url = new URL(`${ENGINE_URL}/api/notifications/${id}/resolve`);
+
+  return api.post(url);
+}
+
+// /api/status is public: use bare axios (no auth token) and unwrap data manually.
+export function fetchStatus() {
+  var url = new URL(`${ENGINE_URL}/api/status`);
+
+  return axios.get(url).then(response => response.data);
 }

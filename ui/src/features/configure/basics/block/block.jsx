@@ -4,7 +4,7 @@ import { styled } from "@mui/material/styles";
 
 import { useNavigate } from "react-router";
 
-import { isEmpty} from "lodash";
+import { isEmpty} from "lodash-es";
 
 import { ConfigureGrid } from "../../../../global/grids";
 
@@ -21,10 +21,10 @@ import {
 
 import {
   Edit as EditIcon,
-  DeleteOutline as DeleteOutlineIcon,
+  DeleteOutlined as DeleteOutlineIcon,
   MoreVert as MoreVertIcon,
   GridView as GridViewIcon,
-  PieChartOutline as PieChartOutlineIcon,
+  PieChartOutlined as PieChartOutlineIcon,
   SettingsEthernet as SettingsEthernetIcon,
   MapOutlined as MapOutlinedIcon
 } from "@mui/icons-material";
@@ -64,7 +64,7 @@ const columns = [
 
 export default function BlockDataGrid(props) {
   const { selectedSpace, selectedBlock, setSelectedBlock } = props;
-  const { blocks, refreshing, refresh } = React.useContext(BasicContext);
+  const { blocks, refreshing, refresh } = React.use(BasicContext);
 
   const [previousSpace, setPreviousSpace] = React.useState(null);
 
@@ -143,14 +143,24 @@ export default function BlockDataGrid(props) {
   };
 
   // Custom no rows overlay component
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <React.Fragment>
         { selectedSpace
-          ? <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+          ? <Typography
+              variant="overline"
+              sx={{
+                display: "block",
+                mt: 1
+              }}>
               No Blocks Found in Selected Space
             </Typography>
-          : <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+          : <Typography
+              variant="overline"
+              sx={{
+                display: "block",
+                mt: 1
+              }}>
               Please Select a Space
             </Typography>
         }
@@ -225,32 +235,34 @@ export default function BlockDataGrid(props) {
                 vertical: "top",
                 horizontal: "right",
               }}
-              PaperProps={{
-                elevation: 0,
-                style: {
-                  width: 200,
-                },
-                sx: {
-                  overflow: "visible",
-                  filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
-                  mt: 1.5,
-                  "& .MuiAvatar-root": {
-                    width: 32,
-                    height: 32,
-                    ml: -0.5,
-                    mr: 1,
+              slotProps={{
+                paper: {
+                  elevation: 0,
+                  style: {
+                    width: 200,
                   },
-                  "&:before": {
-                    content: '""',
-                    display: "block",
-                    position: "absolute",
-                    top: 0,
-                    right: 14,
-                    width: 10,
-                    height: 10,
-                    bgcolor: "background.paper",
-                    transform: "translateY(-50%) rotate(45deg)",
-                    zIndex: 0,
+                  sx: {
+                    overflow: "visible",
+                    filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
+                    mt: 1.5,
+                    "& .MuiAvatar-root": {
+                      width: 32,
+                      height: 32,
+                      ml: -0.5,
+                      mr: 1,
+                    },
+                    "&:before": {
+                      content: '""',
+                      display: "block",
+                      position: "absolute",
+                      top: 0,
+                      right: 14,
+                      width: 10,
+                      height: 10,
+                      bgcolor: "background.paper",
+                      transform: "translateY(-50%) rotate(45deg)",
+                      zIndex: 0,
+                    },
                   },
                 },
               }}
@@ -321,7 +333,7 @@ export default function BlockDataGrid(props) {
           onRowClick={handleRowClick}
           selectedRow={selectedBlock}
           idProperty="name"
-          noRowsOverlay={NoRowsOverlay}
+          noRowsOverlay={noRowsOverlay}
         />
       </GridBody>
     </React.Fragment>

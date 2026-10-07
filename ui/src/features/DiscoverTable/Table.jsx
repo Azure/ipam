@@ -43,10 +43,19 @@ const closedStyle = {
 // ============================================================================
 
 /**
+ * Maps an IPAM filter operator to its AG Grid text filter type.
+ * Anything unrecognised falls back to a substring match.
+ */
+const TEXT_FILTER_TYPES = {
+  equals: 'equals',
+  contains: 'contains'
+};
+
+/**
  * Converts a single filter entry to its AG Grid filter model fragment.
  */
 function toAgGridFilter(entry) {
-  const { name, type, value } = entry;
+  const { name, operator, type, value } = entry;
 
   if (type === 'number') {
     return {
@@ -61,7 +70,7 @@ function toAgGridFilter(entry) {
   return {
     [name]: {
       filterType: 'text',
-      type: 'contains',
+      type: TEXT_FILTER_TYPES[operator] ?? 'contains',
       filter: value
     }
   };
@@ -80,12 +89,17 @@ function mapFilterStateToAgGridModel(filterState) {
   // Array of filters (multi-field drill-down)
   if (Array.isArray(filterState)) {
     if (filterState.length === 0) return null;
-    return filterState.reduce((model, entry) => {
+
+    const model = filterState.reduce((acc, entry) => {
       if (entry?.name && entry?.value) {
-        Object.assign(model, toAgGridFilter(entry));
+        Object.assign(acc, toAgGridFilter(entry));
       }
-      return model;
+      return acc;
     }, {});
+
+    // An empty model would clear every filter, which reads as a successful
+    // drill-down into the full table. Treat it as no filter at all instead.
+    return Object.keys(model).length > 0 ? model : null;
   }
 
   // Single filter object (search bar / simple drill-down)
@@ -124,7 +138,7 @@ export default function DiscoverTable(props) {
   const stateData = useSelector(config.apiFunc);
 
   const gridApiRef = React.useRef(null);
-  const filterApplied = React.useRef(false);
+  const filterAppliedRef = React.useRef(false);
 
   const location = useLocation();
   const theme = useTheme();
@@ -134,14 +148,14 @@ export default function DiscoverTable(props) {
     gridApiRef.current = params.api;
 
     // Apply filter from URL state if present and not already applied
-    if (location.state && !filterApplied.current) {
+    if (location.state && !filterAppliedRef.current) {
       const filterModel = mapFilterStateToAgGridModel(location.state);
       if (filterModel) {
         // Small delay to ensure grid is fully initialized
         setTimeout(() => {
           showFilteredColumns(params.api, filterModel);
           params.api.setFilterModel(filterModel);
-          filterApplied.current = true;
+          filterAppliedRef.current = true;
         }, 100);
       }
     }
@@ -149,7 +163,7 @@ export default function DiscoverTable(props) {
 
   // Reset filter applied flag when location changes
   React.useEffect(() => {
-    filterApplied.current = false;
+    filterAppliedRef.current = false;
 
     // Apply new filter if grid is ready
     if (gridApiRef.current && location.state) {
@@ -157,7 +171,7 @@ export default function DiscoverTable(props) {
       if (filterModel) {
         showFilteredColumns(gridApiRef.current, filterModel);
         gridApiRef.current.setFilterModel(filterModel);
-        filterApplied.current = true;
+        filterAppliedRef.current = true;
       }
     }
   }, [location.state]);
@@ -209,7 +223,7 @@ export default function DiscoverTable(props) {
             right: -300,
             height: "calc(100vh - 64px)",
             backgroundColor: "transparent",
-            ...menuExpand ? openStyle : closedStyle
+            ...(menuExpand ? openStyle : closedStyle)
           }}
         >
           <Box
@@ -228,11 +242,16 @@ export default function DiscoverTable(props) {
   }
 
   // No rows overlay component
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <React.Fragment>
         <Shrug />
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            display: "block",
+            mt: 1
+          }}>
           Nothing yet...
         </Typography>
       </React.Fragment>
@@ -240,7 +259,7 @@ export default function DiscoverTable(props) {
   }, []);
 
   return (
-    <TableContext.Provider value={{ stateData, rowData, menuExpand }}>
+    <TableContext value={{ stateData, rowData, menuExpand }}>
       {renderDetails()}
       <Box sx={{ flexGrow: 1, height: "100%" }}>
         <DataGrid
@@ -249,11 +268,11 @@ export default function DiscoverTable(props) {
           columnDefs={columns}
           idProperty={config.idProp}
           isLoading={loading}
-          noRowsOverlay={NoRowsOverlay}
+          noRowsOverlay={noRowsOverlay}
           actionsCellRenderer={actionsCellRenderer}
           onGridReady={handleGridReady}
         />
       </Box>
-    </TableContext.Provider>
+    </TableContext>
   );
 }

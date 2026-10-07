@@ -23,7 +23,7 @@ export { ConfigureGrid } from './ConfigureGrid';
 export {
   arrayValueGetter,
   arrayFilterValueGetter,
-  arrayTextFilterComparator,
+  arrayTextMatcher,
   createArrayColumnDef,
   caseInsensitiveFilterParams,
   numberFilterParams,

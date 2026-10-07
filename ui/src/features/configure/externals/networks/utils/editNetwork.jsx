@@ -165,10 +165,12 @@ export default function EditExtNetwork(props) {
 
       if(space && block && networks) {
         blockNetworks = networks?.reduce((acc, curr) => {
-          if(curr['parent_space'] && curr['parent_block']) {
-            if(curr['parent_space'] === space && curr['parent_block'].includes(block.name)) {
-              acc = acc.concat(curr['prefixes']);
-            }
+          const inBlock = curr['parent_containers']?.some((container) => (
+            container.space === space && container.block === block.name
+          ));
+
+          if(inBlock) {
+            acc = acc.concat(curr['prefixes']);
           }
 
           return acc;
@@ -240,7 +242,12 @@ export default function EditExtNetwork(props) {
           Edit External Network
         </DialogTitle>
         <DialogContent>
-          <Box display="flex" flexDirection="column" alignItems="center">
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center"
+            }}>
             <Tooltip
               arrow
               disableFocusListener
@@ -265,8 +272,10 @@ export default function EditExtNetwork(props) {
                 variant="standard"
                 value={extName.value}
                 onChange={(event) => onNameChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -292,8 +301,10 @@ export default function EditExtNetwork(props) {
                 variant="standard"
                 value={extDesc.value}
                 onChange={(event) => onDescChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -317,8 +328,10 @@ export default function EditExtNetwork(props) {
                 variant="standard"
                 value={extCidr.value}
                 onChange={(event) => onCidrChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
           </Box>

@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { useLocation } from "react-router";
 import { useTheme } from "@mui/material/styles";
 
-import { isEmpty, isEqual, sortBy, pick } from "lodash";
+import { isEmpty, isEqual, sortBy, pick } from "lodash-es";
 
 import { useSnackbar } from "notistack";
 
@@ -22,6 +22,8 @@ import {
 import {
   Refresh,
   SaveAlt,
+  VisibilityOffOutlined,
+  VisibilityOutlined,
 } from "@mui/icons-material";
 
 import {
@@ -38,6 +40,27 @@ import {
 
 const vNetPattern = "/Microsoft.Network/virtualNetworks/";
 const vHubPattern = "/Microsoft.Network/virtualHubs/";
+
+function LegendItem({ color, label }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+      <Box
+        sx={{
+          width: 12,
+          height: 12,
+          flexShrink: 0,
+          borderRadius: '2px',
+          backgroundColor: color,
+          border: '1px solid',
+          borderColor: 'divider'
+        }}
+      />
+      <Typography variant='body1' sx={{ fontStyle: 'italic', userSelect: 'none' }}>
+        {label}
+      </Typography>
+    </Box>
+  );
+}
 
 const Associations = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -56,6 +79,7 @@ const Associations = () => {
   const [selectedRows, setSelectedRows] = React.useState([]);
   const [sending, setSending] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [filterBlocked, setFilterBlocked] = React.useState(true);
 
   const [unchanged, setUnchanged] = React.useState(true);
 
@@ -67,17 +91,48 @@ const Associations = () => {
   const dispatch = useDispatch();
   const theme = useTheme();
 
+  // Shared by the grid row styling and the toolbar legend so the two cannot drift apart.
+  // Selected mirrors AG Grid's own accentMix(0.12) over the grid background, not the toolbar's.
+  const rowColors = React.useMemo(() => ({
+    selected: `color-mix(in srgb, #2196f3 12%, ${theme.palette.mode === 'dark' ? 'hsl(217, 0%, 17%)' : '#ffffff'})`,
+    error: theme.palette.mode === 'dark' ? 'rgb(120, 40, 40)' : 'rgb(255, 210, 210)',
+    blocked: theme.palette.mode === 'dark' ? 'rgb(120, 90, 30)' : 'rgb(255, 235, 200)'
+  }), [theme]);
+
+  // Attached to every column, so the reason is reachable wherever the pointer happens to land.
+  const refusalTooltip = React.useCallback((params) => {
+    if (params.data?.active === false) {
+      return "Cannot be associated: this Network no longer exists in Azure, or no longer has address space within this Block";
+    }
+
+    const blockedBy = params.data?.blocked_by;
+
+    if (!blockedBy?.length) return null;
+
+    const reasons = blockedBy.map((x) => {
+      if (x.type === 'external') return `${x.prefix} overlaps External Network '${x.name}' (${x.cidr})`;
+
+      // Reservations created by other users are reported without their ID.
+      return x.name
+        ? `${x.prefix} overlaps Reservation '${x.name}' (${x.cidr})`
+        : `${x.prefix} overlaps a Reservation (${x.cidr})`;
+    });
+
+    return `Cannot be associated:\n${reasons.join('\n')}`;
+  }, []);
+
   // Column definitions for AG Grid
   const columns = React.useMemo(() => [
-    { field: "name", headerName: "Name", flex: 1 },
-    { field: "type", headerName: "Type", flex: 0.45 },
-    { field: "resource_group", headerName: "Resource Group", flex: 1 },
-    { field: "subscription_name", headerName: "Subscription Name", flex: 1 },
-    { field: "subscription_id", headerName: "Subscription ID", flex: 1, hide: true },
+    { field: "name", headerName: "Name", flex: 1, tooltipValueGetter: refusalTooltip },
+    { field: "type", headerName: "Type", flex: 0.45, tooltipValueGetter: refusalTooltip },
+    { field: "resource_group", headerName: "Resource Group", flex: 1, tooltipValueGetter: refusalTooltip },
+    { field: "subscription_name", headerName: "Subscription Name", flex: 1, tooltipValueGetter: refusalTooltip },
+    { field: "subscription_id", headerName: "Subscription ID", flex: 1, hide: true, tooltipValueGetter: refusalTooltip },
     {
       field: "prefixes",
       headerName: "Prefixes",
       flex: 0.75,
+      tooltipValueGetter: refusalTooltip,
       valueGetter: (params) => {
         const value = params.data?.prefixes;
         return Array.isArray(value) ? value.join(', ') : '';
@@ -87,13 +142,26 @@ const Associations = () => {
         return Array.isArray(value) ? value.join(' ') : '';
       }
     },
-  ], []);
+  ], [refusalTooltip]);
 
-  // Row class rules for AG Grid (stale vs normal rows)
+  // Row class rules for AG Grid (stale vs blocked vs normal rows)
   const rowClassRules = React.useMemo(() => ({
     'ipam-block-vnet-stale': (params) => !params.data?.active,
+    'ipam-block-vnet-blocked': (params) => params.data?.blocked_by?.length > 0,
     'ipam-block-vnet-normal': (params) => params.data?.active,
   }), []);
+
+  const associatedIds = React.useMemo(() => {
+    const blockVnets = Array.isArray(selectedBlock?.vnets) ? selectedBlock.vnets : [];
+
+    return new Set(blockVnets.map((vnet) => vnet.id.toLowerCase()));
+  }, [selectedBlock]);
+
+  // A Network can become blocked after it was associated, if its prefixes change in Azure. AG Grid
+  // deselects rows it treats as unselectable, which would drop the association on the next save.
+  const isRowSelectable = React.useCallback((node) => (
+    !node.data?.blocked_by?.length || associatedIds.has(node.data.id.toLowerCase())
+  ), [associatedIds]);
 
   React.useEffect(() => {
     if (spaces) {
@@ -288,6 +356,50 @@ const Associations = () => {
     }
   }, [selectedBlock, subscriptions, prevBlock, refreshData]);
 
+  // Derive filtered grid data synchronously to prevent a flash of
+  // the no-rows overlay when networks or filter state changes.
+  const gridData = React.useMemo(() => {
+    if (!vNets || !filterBlocked) return vNets;
+
+    // An associated Network is never hidden, as it is a state the user has to act on and a hidden
+    // row would still be submitted on save.
+    return vNets.filter((vnet) => !vnet.blocked_by?.length || associatedIds.has(vnet.id.toLowerCase()));
+  }, [vNets, filterBlocked, associatedIds]);
+
+  const blockedCount = React.useMemo(() => (
+    (vNets || []).filter((vnet) => vnet.blocked_by?.length).length
+  ), [vNets]);
+
+  const errorCount = React.useMemo(() => (
+    (vNets || []).filter((vnet) => vnet.active === false).length
+  ), [vNets]);
+
+  // gridData is vNets when nothing is filtered, so this is zero without consulting filterBlocked.
+  // It can be lower than blockedCount, as a blocked Network which is associated is never hidden.
+  const hiddenCount = (vNets?.length ?? 0) - (gridData?.length ?? 0);
+
+  const blockedLabel = hiddenCount === 0
+    ? `Blocked: ${blockedCount}`
+    : hiddenCount === blockedCount
+      ? `Blocked: ${blockedCount} (Hidden)`
+      : `Blocked: ${blockedCount} (${hiddenCount} Hidden)`;
+
+  const extraMenuItems = React.useMemo(() => [
+    {
+      icon: filterBlocked ? VisibilityOffOutlined : VisibilityOutlined,
+      label: filterBlocked ? 'Showing Available' : 'Showing All',
+      onClick: () => setFilterBlocked(prev => !prev)
+    }
+  ], [filterBlocked]);
+
+  // A blocked or unresolved Network anywhere in the selection fails the whole save, so it is called
+  // out here rather than left to a refusal from the engine.
+  const refusedSelection = React.useMemo(() => (
+    selectedRows.filter((row) => row.blocked_by?.length || row.active === false)
+  ), [selectedRows]);
+
+  const countsPending = sending || !subscriptions || !spaces || !blocks || !vNets || refreshing;
+
   // Handle selection changes from the grid
   const handleSelectionChanged = React.useCallback((rows) => {
     if (isAdmin) {
@@ -296,212 +408,230 @@ const Associations = () => {
   }, [isAdmin]);
 
   // No rows overlay component
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            display: "block",
+            mt: 1
+          }}>
           { selectedBlock
-            ? "No Virtual Networks Found for Selected Block CIDR"
+            ? filterBlocked
+              ? "No Available Virtual Networks Found for Selected Block CIDR"
+              : "No Virtual Networks Found for Selected Block CIDR"
             : "Please Select a Space & Block"
           }
         </Typography>
       </Box>
     );
-  }, [selectedBlock]);
+  }, [selectedBlock, filterBlocked]);
 
   return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
-        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
-          <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
-            <Autocomplete
-              disabled={refreshing}
-              forcePopupIcon={false}
-              id="grouped-demo"
-              size="small"
-              options={sortBy(spaces, 'name')}
-              getOptionLabel={(option) => option.name}
-              inputValue={spaceInput}
-              onInputChange={(event, newInputValue) => setSpaceInput(newInputValue)}
-              value={selectedSpace}
-              onChange={(event, newValue) => setSelectedSpace(newValue)}
-              isOptionEqualToValue={
-                (option, value) => {
-                  const newOption = pick(option, ['name']);
-                  const newValue = pick(value, ['name']);
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
+      <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
+          <Autocomplete
+            disabled={refreshing}
+            forcePopupIcon={false}
+            id="grouped-demo"
+            size="small"
+            options={sortBy(spaces, 'name')}
+            getOptionLabel={(option) => option.name}
+            inputValue={spaceInput}
+            onInputChange={(event, newInputValue) => setSpaceInput(newInputValue)}
+            value={selectedSpace}
+            onChange={(event, newValue) => setSelectedSpace(newValue)}
+            isOptionEqualToValue={
+              (option, value) => {
+                const newOption = pick(option, ['name']);
+                const newValue = pick(value, ['name']);
 
-                  return isEqual(newOption, newValue);
-                }
+                return isEqual(newOption, newValue);
               }
-              noOptionsText={ !spaces ? "Loading..." : "No Spaces" }
-              sx={{ width: 300 }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Space"
-                  placeholder="Please Select Space..."
-                  InputProps={{
-                    ...params.InputProps,
+            }
+            noOptionsText={ !spaces ? "Loading..." : "No Spaces" }
+            sx={{ width: 300 }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Space"
+                placeholder="Please Select Space..."
+                slotProps={{
+                  ...params.slotProps,
+
+                  input: {
+                    ...params.slotProps.input,
                     endAdornment: (
                       <React.Fragment>
                         {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
+                        {params.slotProps.input.endAdornment}
                       </React.Fragment>
                     ),
-                  }}
-                />
-              )}
-              renderOption={(props, option) => {
-                return (
-                  <li key={option.name} {...props}>
-                    {option.name}
-                  </li>
-                );
-              }}
-              componentsProps={{
-                paper: {
-                  sx: {
-                    width: 'fit-content'
                   }
-                }
-              }}
-            />
-            <Autocomplete
-              disabled={selectedSpace === null || refreshing}
-              forcePopupIcon={false}
-              id="grouped-demo"
-              size="small"
-              options={(blocks && selectedSpace) ? sortBy(blocks.filter((x) => x.parent_space === selectedSpace.name), 'name') : []}
-              getOptionLabel={(option) => option.name}
-              inputValue={blockInput}
-              onInputChange={(event, newInputValue) => setBlockInput(newInputValue)}
-              value={(selectedBlock?.parent_space === selectedSpace?.name) ? selectedBlock : null}
-              onChange={(event, newValue) => setSelectedBlock(newValue)}
-              isOptionEqualToValue={
-                (option, value) => {
-                  const newOption = pick(option, ['id', 'name']);
-                  const newValue = pick(value, ['id', 'name']);
-
-                  return isEqual(newOption, newValue);
+                }}
+              />
+            )}
+            renderOption={(props, option) => {
+              return (
+                <li key={option.name} {...props}>
+                  {option.name}
+                </li>
+              );
+            }}
+            slotProps={{
+              paper: {
+                sx: {
+                  width: 'fit-content'
                 }
               }
-              sx={{ width: 300 }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Block"
-                  placeholder="Please Select Block..."
-                  InputProps={{
-                    ...params.InputProps
-                  }}
-                />
-              )}
-              renderOption={(props, option) => {
-                return (
-                  <li key={option.id} {...props}>
-                    {option.name}
-                  </li>
-                );
-              }}
-              componentsProps={{
-                paper: {
-                  sx: {
-                    width: 'fit-content'
+            }}
+          />
+          <Autocomplete
+            disabled={selectedSpace === null || refreshing}
+            forcePopupIcon={false}
+            id="grouped-demo"
+            size="small"
+            options={(blocks && selectedSpace) ? sortBy(blocks.filter((x) => x.parent_space === selectedSpace.name), 'name') : []}
+            getOptionLabel={(option) => option.name}
+            inputValue={blockInput}
+            onInputChange={(event, newInputValue) => setBlockInput(newInputValue)}
+            value={(selectedBlock?.parent_space === selectedSpace?.name) ? selectedBlock : null}
+            onChange={(event, newValue) => setSelectedBlock(newValue)}
+            isOptionEqualToValue={
+              (option, value) => {
+                const newOption = pick(option, ['id', 'name']);
+                const newValue = pick(value, ['id', 'name']);
+
+                return isEqual(newOption, newValue);
+              }
+            }
+            sx={{ width: 300 }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Block"
+                placeholder="Please Select Block..."
+                slotProps={{
+                  ...params.slotProps,
+
+                  input: {
+                    ...params.slotProps.input
                   }
+                }}
+              />
+            )}
+            renderOption={(props, option) => {
+              return (
+                <li key={option.id} {...props}>
+                  {option.name}
+                </li>
+              );
+            }}
+            slotProps={{
+              paper: {
+                sx: {
+                  width: 'fit-content'
                 }
-              }}
-            />
-            <TextField
-              disabled
-              id="block-cidr-read-only"
-              label="Network"
-              size="small"
-              value={ selectedBlock ? selectedBlock.cidr : "" }
-              sx={{
-                width: '11ch'
-              }}
-            />
-          </Box>
-          <Box sx={{ display: 'flex', flexDirection: 'row', ml: 4 }}>
-            <Box sx={{ mr: 1 }}>
-              <Typography variant='body1' display='block' sx={{ fontStyle: 'italic', userSelect: 'none' }}>
-                Selected:
-              </Typography>
-            </Box>
-            <Box>
-              <Typography variant='body1' display='block' sx={{ fontStyle: 'italic', userSelect: 'none' }}>
-                {
-                  (sending || !subscriptions || !spaces || !blocks || !vNets || refreshing ) ?
-                  <span style={{ fontStyle: 'italic', userSelect: 'none' }}>(...)</span> :
-                  <span style={{ fontStyle: 'italic', userSelect: 'none' }}>({selectedRows.length}/{vNets ? vNets.length : '?'})</span>
-                }
-              </Typography>
-            </Box>
-          </Box>
-          <Box sx={{ display: 'flex', ml: 'auto' }}>
-            <Tooltip
-              title="Save"
-              placement="top"
-              style={{
-                visibility: (unchanged || refreshing) ? 'hidden' : 'visible'
-              }}
-            >
-              <span>
-                <IconButton
-                  color="success"
-                  aria-label="save associations"
-                  component="span"
-                  disabled={sending}
-                  onClick={onSubmit}
-                >
-                  <SaveAlt />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Box>
-          <Box sx={{ display: 'flex' }}>
-            <Tooltip title="Refresh" placement="top" >
-              <span>
-                <IconButton
-                  color="primary"
-                  size="small"
-                  onClick={() => refreshData()}
-                  disabled={sending || refreshing || !selectedSpace || !selectedBlock }
-                >
-                  <Refresh />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Box>
-        </Box>
-        <Box sx={{ flexGrow: 1, pb: 3, pr: 3, pl: 3, overflowY: 'auto', overflowX: 'hidden' }}>
-          <Box
+              }
+            }}
+          />
+          <TextField
+            disabled
+            id="block-cidr-read-only"
+            label="Network"
+            size="small"
+            value={ selectedBlock ? selectedBlock.cidr : "" }
             sx={{
-              pt: 4,
-              height: "100%",
-              // Stale row styling (vNets no longer present)
-              // Override selection background to prevent AG Grid's blue tint
-              '& .ag-row.ipam-block-vnet-stale': {
-                '--ag-selected-row-background-color': theme.palette.mode === 'dark' ? 'rgb(120, 40, 40)' : 'rgb(255, 210, 210)',
-                backgroundColor: theme.palette.mode === 'dark' ? 'rgb(120, 40, 40) !important' : 'rgb(255, 210, 210) !important',
-              },
+              width: '11ch'
+            }}
+          />
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'row', ml: 4, alignItems: 'center', gap: 2 }}>
+          <LegendItem
+            color={rowColors.selected}
+            label={countsPending ? 'Selected: ...' : `Selected: ${selectedRows.length}/${vNets ? vNets.length : '?'}`}
+          />
+          { !countsPending && errorCount > 0 && <LegendItem color={rowColors.error} label={`Error: ${errorCount}`} /> }
+          { !countsPending && blockedCount > 0 && <LegendItem color={rowColors.blocked} label={blockedLabel} /> }
+        </Box>
+        <Box sx={{ display: 'flex', ml: 'auto' }}>
+          <Tooltip
+            title={
+              refusedSelection.length > 0
+              ? `Deselect ${refusedSelection.map((row) => row.name).join(', ')}, which cannot be associated to this Block`
+              : "Save"
+            }
+            placement="top"
+            style={{
+              visibility: (unchanged || refreshing) ? 'hidden' : 'visible'
             }}
           >
-            <DataGrid
-              viewSettingKey="networks"
-              idProperty="id"
-              rowData={vNets}
-              columnDefs={columns}
-              multiSelect={true}
-              checkboxSelect={isAdmin}
-              isLoading={sending || refreshing}
-              initialSelectedRows={initialSelection}
-              onRowSelectionChanged={handleSelectionChanged}
-              rowClassRules={rowClassRules}
-              noRowsOverlay={NoRowsOverlay}
-            />
-          </Box>
+            <span>
+              <IconButton
+                color="success"
+                aria-label="save associations"
+                component="span"
+                disabled={sending || refusedSelection.length > 0}
+                onClick={onSubmit}
+              >
+                <SaveAlt />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
+        <Box sx={{ display: 'flex' }}>
+          <Tooltip title="Refresh" placement="top" >
+            <span>
+              <IconButton
+                color="primary"
+                size="small"
+                onClick={() => refreshData()}
+                disabled={sending || refreshing || !selectedSpace || !selectedBlock }
+              >
+                <Refresh />
+              </IconButton>
+            </span>
+          </Tooltip>
         </Box>
       </Box>
+      <Box sx={{ flexGrow: 1, pb: 3, pr: 3, pl: 3, overflowY: 'auto', overflowX: 'hidden' }}>
+        <Box
+          sx={{
+            pt: 4,
+            height: "100%",
+            // Stale row styling (vNets no longer present)
+            // Override selection background to prevent AG Grid's blue tint
+            '& .ag-row.ipam-block-vnet-stale': {
+              '--ag-selected-row-background-color': rowColors.error,
+              backgroundColor: `${rowColors.error} !important`,
+            },
+            // Blocked row styling (vNets overlapping an External Network or Reservation)
+            '& .ag-row.ipam-block-vnet-blocked': {
+              '--ag-selected-row-background-color': rowColors.blocked,
+              backgroundColor: `${rowColors.blocked} !important`,
+            },
+          }}
+        >
+          <DataGrid
+            viewSettingKey="networks"
+            idProperty="id"
+            rowData={gridData}
+            columnDefs={columns}
+            extraMenuItems={extraMenuItems}
+            multiSelect={true}
+            checkboxSelect={isAdmin}
+            isLoading={sending || refreshing}
+            initialSelectedRows={initialSelection}
+            onRowSelectionChanged={handleSelectionChanged}
+            rowClassRules={rowClassRules}
+            isRowSelectable={isRowSelectable}
+            noRowsOverlay={noRowsOverlay}
+          />
+        </Box>
+      </Box>
+    </Box>
   );
 }
 

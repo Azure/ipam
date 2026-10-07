@@ -18,7 +18,7 @@ import {
 
 import {
   Edit as EditIcon,
-  DeleteOutline as DeleteOutlineIcon,
+  DeleteOutlined as DeleteOutlineIcon,
   MoreVert as MoreVertIcon
 } from "@mui/icons-material";
 
@@ -58,7 +58,7 @@ const columns = [
 
 export default function SpaceDataGrid(props) {
   const { selectedSpace, setSelectedSpace, setSelectedBlock } = props;
-  const { spaces, refresh } = React.useContext(BasicContext);
+  const { spaces, refresh } = React.use(BasicContext);
 
   const [addSpaceOpen, setAddSpaceOpen] = React.useState(false);
   const [editSpaceOpen, setEditSpaceOpen] = React.useState(false);
@@ -120,10 +120,15 @@ export default function SpaceDataGrid(props) {
   };
 
   // Custom no rows overlay component
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <React.Fragment>
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            display: "block",
+            mt: 1
+          }}>
           No Spaces Found, Create a Space to Begin
         </Typography>
       </React.Fragment>
@@ -189,32 +194,34 @@ export default function SpaceDataGrid(props) {
                 vertical: "top",
                 horizontal: "right",
               }}
-              PaperProps={{
-                elevation: 0,
-                style: {
-                  width: 200,
-                },
-                sx: {
-                  overflow: "visible",
-                  filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
-                  mt: 1.5,
-                  "& .MuiAvatar-root": {
-                    width: 32,
-                    height: 32,
-                    ml: -0.5,
-                    mr: 1,
+              slotProps={{
+                paper: {
+                  elevation: 0,
+                  style: {
+                    width: 200,
                   },
-                  "&:before": {
-                    content: '""',
-                    display: "block",
-                    position: "absolute",
-                    top: 0,
-                    right: 14,
-                    width: 10,
-                    height: 10,
-                    bgcolor: "background.paper",
-                    transform: "translateY(-50%) rotate(45deg)",
-                    zIndex: 0,
+                  sx: {
+                    overflow: "visible",
+                    filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
+                    mt: 1.5,
+                    "& .MuiAvatar-root": {
+                      width: 32,
+                      height: 32,
+                      ml: -0.5,
+                      mr: 1,
+                    },
+                    "&:before": {
+                      content: '""',
+                      display: "block",
+                      position: "absolute",
+                      top: 0,
+                      right: 14,
+                      width: 10,
+                      height: 10,
+                      bgcolor: "background.paper",
+                      transform: "translateY(-50%) rotate(45deg)",
+                      zIndex: 0,
+                    },
                   },
                 },
               }}
@@ -261,7 +268,7 @@ export default function SpaceDataGrid(props) {
           onRowClick={handleRowClick}
           selectedRow={selectedSpace}
           idProperty="name"
-          noRowsOverlay={NoRowsOverlay}
+          noRowsOverlay={noRowsOverlay}
           isLoading={!spaces}
         />
       </GridBody>

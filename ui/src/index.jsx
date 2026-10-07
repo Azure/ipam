@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
+import { Box, Typography } from '@mui/material';
 import { store } from './app/store';
 import App from './App';
 import './index.css';
@@ -53,6 +54,31 @@ msalInstance.initialize().then(() => {
           <App />
         </Provider>
       </MsalProvider>
+    </React.StrictMode>
+  );
+}).catch((error) => {
+  // MSAL failed to initialize (misconfiguration, blocked storage access,
+  // third-party cookie restrictions, etc.). Log the error so it is
+  // diagnosable instead of surfacing only as an unhandled promise rejection.
+  console.error("MSAL initialization failed:", error);
+
+  // Do not render fallback UI inside MSAL's hidden iframe.
+  if (isInHiddenIframe) {
+    return;
+  }
+
+  // Render a minimal fallback so the user is not left with a blank page.
+  root.render(
+    <React.StrictMode>
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 64px)', textAlign: 'center', px: 2 }}>
+        <Typography variant="h3" gutterBottom component="div">
+          Unable to start Azure IPAM
+        </Typography>
+        <Typography variant="body1" component="div">
+          The authentication service could not be initialized. Please refresh the
+          page or try again later. If the problem persists, contact your administrator.
+        </Typography>
+      </Box>
     </React.StrictMode>
   );
 });

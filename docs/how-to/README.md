@@ -4,10 +4,12 @@
 
 ![Azure IPAM Homepage](./images/ipam_home_page.png)
 
-Azure IPAM leverages the [Microsoft Authentication Library (MSAL)](https://docs.microsoft.com/azure/active-directory/develop/msal-overview) to authenticate users with your existing Microsoft Entra ID credentials. Authorization is determined by whether the signed-in user is an **IPAM Administrator**:
+Azure IPAM leverages the [Microsoft Authentication Library (MSAL)](https://docs.microsoft.com/azure/active-directory/develop/msal-overview) to authenticate users with your existing Microsoft Entra ID credentials. What you can do once signed in depends on whether you are an **IPAM Administrator**:
 
-- **Administrators** view Azure resources through the Engine Service Principal, which by default has [Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#reader) at the [Tenant Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) (unless overridden during deployment). Administrators can also create and update [Spaces](#spaces) and [Blocks](#blocks), manage [subscription exclusions](#subscription-exclusioninclusion), and control who else is an admin.
-- **Non-administrators** see only the resources they already have access to in the Azure Portal, based on their own Azure RBAC permissions. Administrative functions such as the **Configure** and **Admin** menu sections are not available to them.
+- **Administrators** set up and maintain the address plan. They create and update [Spaces](#spaces), [Blocks](#blocks) and [External Networks](#external-networks), manage [Virtual Network Associations](#virtual-network-associations) and [subscription exclusions](#subscription-exclusioninclusion), and control who else is an admin. They view Azure resources through the Engine Service Principal, which by default has [Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#reader) at the [Tenant Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) (unless overridden during deployment).
+- **Non-administrators** work within the address plan. They can view every Space and Block, find available address space, and create and cancel their own [Reservations](#reservations). Azure resources that aren't associated with a Block are shown to them only as their own Azure RBAC permissions allow. Every section of the menu except **Admin** is available to them, and the **Configure** pages are read-only apart from **Reservations**.
+
+For the full picture of what each role can see and do, see [Roles & Permissions](/roles-permissions/README.md).
 
 > **Note:** Upon initial deployment, no administrators are defined. When the admin list is empty, **all** users are treated as administrators. This grants full access so you can complete initial setup, but you should designate at least one administrator promptly to restrict administrative functions.
 
@@ -172,9 +174,21 @@ The **Endpoints** tab shows individual network endpoints (NICs and private endpo
 
 ![IPAM Endpoints](./images/discover_endpoints.png)
 
-> **Note:** Endpoints whose parent or target resource no longer exists are considered *orphaned* and are flagged with an informational indicator next to their name. For example, a private endpoint is orphaned when the resource it was created to connect to has been deleted, and a network interface is orphaned when it is no longer associated with a virtual machine or other compute resource.
+> **Note:** Endpoints that have been left behind are considered *orphaned* and are flagged with an informational indicator next to their name. A network interface is orphaned when it's no longer associated with a virtual machine or other compute resource. Private endpoints are described below.
 
 ![IPAM Endpoints Details](./images/discover_endpoints_details.png)
+
+#### Private Endpoints
+
+A private endpoint row describes the service it connects to. Its **Name**, **Resource Group**, and **Subscription** are the service's, while its **vNet**, **Subnet**, and **Private IP** are the private endpoint's own. The details panel adds the **Private Endpoint Name** and the **Connection Status**, along with the **Connection Alias** for private endpoints connected by alias.
+
+A private endpoint is **orphaned** when its connection to the service it was created for has been removed, because the service was deleted or soft-deleted, or because its owner removed the connection, while the private endpoint itself still exists. Azure reports this by setting the connection status to **Disconnected**. Recovering a soft-deleted service doesn't restore the connection, so the private endpoint needs to be recreated. A connection that is **Pending** or **Rejected** isn't orphaned, since the private endpoint was never connected, and its status is shown instead.
+
+A few things to keep in mind:
+
+- **Connections made by alias** are shown as the Private Link Service they connect to when you can read that service in Azure. Otherwise, including for services in other tenants, the row shows the private endpoint's own name, and the alias appears as the **Connection Alias**.
+- **Only the first connection is shown** if a private endpoint has more than one.
+- **Details come from Azure Resource Graph.** A change in connection status usually appears within a few minutes. After a connected service is moved to another resource group or subscription, however, its previous location can continue to appear for an hour or more.
 
 ## Virtual Network Associations
 
@@ -209,14 +223,16 @@ Azure IPAM's background reconciliation process runs every minute and checks each
 Not every virtual network in your Azure environment is eligible for association with a given Block. When you open the associations page for a Block, Azure IPAM queries for all virtual networks and virtual hubs across your subscriptions that meet the following requirements:
 
 1. **CIDR containment** — The virtual network must have at least one address prefix that falls within the Block's CIDR range
-2. **No CIDR overlap with Reservations** — The virtual network's address prefixes must not overlap with any unsettled (active) CIDR Reservations in the Block
-3. **No CIDR overlap with External Networks** — The virtual network's address prefixes must not overlap with any External Network CIDRs in the Block
+2. **No CIDR overlap with Reservations** — None of the virtual network's prefixes within the Block may overlap an unsettled (active) CIDR Reservation
+3. **No CIDR overlap with External Networks** — None of the virtual network's prefixes within the Block may overlap an External Network CIDR
+
+Rules 2 and 3 apply to the **whole virtual network**, not to individual prefixes. A virtual network with several prefixes inside the Block is ineligible if *any one* of them overlaps a Reservation or an External Network, and the remaining prefixes cannot be associated on their own. A Block cannot contain overlapping CIDR ranges, and an association covers an entire network rather than a chosen part of it.
 
 Virtual networks that are already associated with the Block are included in the available list (they appear as pre-selected in the table). Overlap with existing associations is validated when you save your changes.
 
 Spaces are independent logical boundaries — a virtual network associated with a Block in one Space can still appear as available for Blocks in other Spaces. Within the same Space, a virtual network with multiple address prefixes can be associated with different Blocks, since Blocks in a Space cannot have overlapping CIDRs and each prefix is evaluated independently.
 
-> **Tip:** If a virtual network or virtual hub you expect to see is missing from the available list, check whether its address space falls within the Block's CIDR range and whether it overlaps with an existing Reservation or External Network in the target Block.
+> **Tip:** If a virtual network or virtual hub you expect to see is missing from the available list, first confirm that its address space falls within the Block's CIDR range. If it does, toggle the grid to **Showing All** to display the ineligible networks together with the reason each one is ineligible.
 
 ### Managing Associations via the UI
 
@@ -230,7 +246,7 @@ Virtual Network Associations are managed from the **Configure** section of the A
 
 #### The Associations Page
 
-The Associations page displays a toolbar at the top with selectors for **Space** and **Block**, a read-only **Network** field showing the Block's CIDR, and a selection counter showing how many virtual networks are currently selected out of the total available.
+The Associations page displays a toolbar at the top with selectors for **Space** and **Block**, a read-only **Network** field showing the Block's CIDR, and a selection counter showing how many virtual networks are currently selected out of the total available. If the Block contains networks that cannot be associated, an **Error** count and a **Blocked** count appear alongside the selection counter.
 
 Below the toolbar is a data grid showing all eligible virtual networks for the selected Block. The grid displays the following columns:
 
@@ -251,34 +267,58 @@ To associate virtual networks with a Block, place a checkmark next to each virtu
 
 Click **Save** to apply your changes. On success, you'll see a confirmation notification and the Block's virtual network list has been updated. Note that saving performs a **full replacement** — the Block's entire list of associated networks is replaced with whatever is currently selected in the grid.
 
+If your selection includes a network that cannot be associated, the **Save** button is disabled and its tooltip names the network to un-check. Because saving replaces the Block's entire network list, a single ineligible entry would otherwise cause the whole save to be rejected, including any unrelated change made at the same time.
+
 ![IPAM Associate vNETs Update](./images/virtual_network_association_update.png)
 
 #### Disassociating Virtual Networks
 
 To disassociate a virtual network from a Block, simply un-check it in the grid and click **Save**. Disassociating a virtual network releases its address prefixes from the Block's utilization calculations, making that space available for new allocations.
 
+#### Blocked Networks
+
+A virtual network can be ineligible for a Block even though its address space falls inside the Block's CIDR range. This happens when one of its prefixes overlaps an **External Network** or an unsettled **CIDR Reservation**, and it disqualifies the entire network rather than the offending prefix alone.
+
+By default, the grid hides these networks, so the list shows only what can actually be associated. To view them, open the action menu and click **Showing Available** to toggle to **Showing All**. Click it again to switch back to the available-only view.
+
+![Toggle Blocked Network Filter](./images/virtual_network_association_toggle_filter.png)
+
+Blocked networks are displayed with an **amber background**. Hovering over any cell in the row explains what is in the way, listing one entry per overlapping range:
+
+```text
+Cannot be associated:
+10.1.4.0/24 overlaps External Network 'DataCenterA' (10.1.4.0/24)
+10.1.9.0/24 overlaps Reservation 'jXCgmX8Wje7iDSmfRor7KD' (10.1.9.0/24)
+```
+
+![IPAM Associate vNETs Blocked](./images/virtual_network_association_blocked.png)
+
+Blocked networks are shown without a checkbox, since the association would be rejected when saved. The exception is a network that became blocked *after* it was associated, for example because a prefix was added to it in Azure that collides with an External Network. That network stays checked and selectable so that you can un-check it to resolve the conflict.
+
 #### Stale Associations
 
 A virtual network association can become stale for two reasons:
 
-- **Deleted network** — The virtual network or virtual hub has been removed from Azure entirely. In this case, the prefixes column displays `ErrNotFound` because IPAM can no longer retrieve information about the resource.
-- **Address space mismatch** — The virtual network still exists in Azure, but its address space has been changed so that it no longer overlaps with the Block's CIDR range. In this case, the prefixes column shows the network's **current address space**, making it easier to understand what changed.
+- **Deleted network** — The virtual network or virtual hub has been removed from Azure entirely.
+- **Address space mismatch** — The virtual network still exists in Azure, but its address space has been changed so that it no longer falls within the Block's CIDR range.
 
-Azure IPAM's background reconciliation process detects both conditions and marks the affected associations as inactive. Stale associations are displayed at the top of the grid with a **red background** to draw attention.
+In both cases the prefixes column displays `ErrNotFound`, since Azure IPAM has no address space to report for the network within this Block.
+
+Azure IPAM's background reconciliation process detects both conditions and marks the affected associations as inactive. Stale associations are displayed at the top of the grid with a **red background** to draw attention, and hovering over any cell in the row explains that the network either no longer exists or no longer has address space within the Block.
 
 ![IPAM Associate vNETs Stale](./images/virtual_network_association_stale.png)
 
-To clean up stale associations, un-check the stale entries and click **Save** to remove them from the Block.
+To clean up stale associations, un-check the stale entries and click **Save** to remove them from the Block. While a stale entry remains checked the **Save** button is disabled, since Azure IPAM cannot save a network list that refers to a resource it is unable to resolve.
 
 #### Admin vs. Non-Admin View
 
-Non-admin users can navigate to the Associations page and view the current associations for any Block. However, the grid is displayed in **read-only mode** — checkboxes are not shown and the Save button is never visible. This allows everyone to see which virtual networks are associated with a Block without being able to modify the associations.
+Non-admin users can navigate to the Associations page and view the current associations for any Block. However, the grid is displayed in **read-only mode** — checkboxes are not shown and the Save button is never visible. This allows everyone to see which virtual networks are associated with a Block without being able to modify the associations. To associate a virtual network they own, non-admin users can use a Reservation instead, as described in [Associating an Existing Virtual Network](#associating-an-existing-virtual-network).
 
 > **Important:** Administrators see networks across the entire tenant. Non-admin users only see networks in subscriptions they have Azure RBAC read access to, so their available network list may be smaller.
 
 ### Automatic Association via Reservations
 
-Virtual networks created through the CIDR Reservation workflow are **automatically associated** with their Block — no manual step is needed. Azure IPAM's background reconciliation detects the tagged network, verifies its address space, and creates the association for you. See the [Reservations](#reservations) section for details on how this works.
+Virtual networks created through the CIDR Reservation workflow are **automatically associated** with their Block — no manual step is needed. Azure IPAM's background reconciliation detects the tagged network, verifies its address space, and creates the association for you. See the [Reservations](#reservations) section for details on how this works. The same workflow also works for a virtual network that already exists, as described in [Associating an Existing Virtual Network](#associating-an-existing-virtual-network).
 
 ### How Associations Affect Utilization
 
@@ -341,13 +381,13 @@ When you create a Reservation, Azure IPAM finds the next available CIDR range of
 3. **Cancelled by User** — An administrator or the user who created the Reservation manually cancelled it.
 4. **Cancelled by Timeout** — The Reservation expired based on the configured timeout policy.
 5. **Warning: CIDR Mismatch** — A virtual network with the Reservation's tag was found, but its address space does not match the reserved CIDR.
-6. **Error: CIDR Overlap** — A virtual network with an overlapping CIDR has already been associated with the Block through another path.
+6. **Error: CIDR Overlap** — One of the virtual network's address ranges in this Block overlaps an existing network, External Network, or Reservation.
 
 > **Tip:** When a Reservation is created, the response includes a `tag` object containing `X-IPAM-RES-ID`. Apply this tag to your new virtual network and Azure IPAM will automatically detect it, associate the vNET with the Block, and mark the reservation as fulfilled.
 
 ### Reservation Permissions
 
-Both Azure IPAM administrators and regular users can create and manage Reservations. However, non-admin users can only see and manage Reservations they created themselves. Administrators can view and manage all Reservations across all users.
+Both Azure IPAM administrators and regular users can create and manage Reservations. Every user can see all pending Reservations, so everyone knows which address space is already spoken for. However, the ID and description of a Reservation stay with the user who created it, because anyone holding a Reservation's ID could fulfil it by tagging a virtual network of their own. Settled Reservations no longer hold any address space, so non-admin users only see the ones they created. Non-admin users can only cancel Reservations they created. Administrators can view and manage all Reservations across all users.
 
 ### Managing Reservations via the UI
 
@@ -377,6 +417,8 @@ The table shows the following information for each Reservation:
 - **Settled By** — Who or what settled the Reservation (hidden by default)
 - **Status** — A status icon indicating the current state of the Reservation
 
+For a Reservation created by another user, the description is left blank unless you're an administrator. See [Reservation Permissions](#reservation-permissions).
+
 #### Filtering Active vs. Settled Reservations
 
 By default, the table shows only **active** (unsettled) Reservations. To view all Reservations, including those that have been fulfilled or cancelled, open the action menu and click **Showing Active** to toggle to **Showing All**. Click it again to switch back to active-only view.
@@ -402,7 +444,7 @@ Azure IPAM automatically finds the next available CIDR of the requested size. Ch
 
 **Manual:**
 
-Enter a specific CIDR range in standard notation (e.g., `10.1.5.0/24`). The CIDR must be within the Block's range and cannot overlap any existing virtual networks, Reservations, or External Networks.
+Enter a specific CIDR range in standard notation (e.g., `10.1.5.0/24`). The CIDR must be within the Block's range and cannot overlap virtual networks already associated with the Block, unsettled Reservations, or External Networks.
 
 ![Create Reservation Manual](./images/resv_create_by_cidr.png)
 
@@ -416,11 +458,11 @@ Each active Reservation has a copy icon in the actions column. Click it to copy 
 
 ![Copy Reservation ID](./images/resv_copy_id.png)
 
-> **Tip:** The copy icon is only available for unsettled Reservations. Once a Reservation is fulfilled or cancelled, the ID is no longer actionable.
+> **Tip:** The copy icon is only available for unsettled Reservations. Once a Reservation is fulfilled or cancelled, the ID is no longer actionable. The icon is also unavailable for Reservations created by other users, unless you're an administrator.
 
 #### Cancelling Reservations
 
-To cancel one or more Reservations, select them using the checkboxes in the table, then click the **Remove** button (red X icon) in the upper-right corner of the page.
+To cancel one or more Reservations, select them using the checkboxes in the table, then click the **Remove** button (red X icon) in the upper-right corner of the page. Unless you're an administrator, only the Reservations you created can be selected.
 
 ![Cancel Reservations](./images/resv_cancel_selected.png)
 
@@ -470,6 +512,22 @@ Because each Reservation ID is processed separately, a virtual network with two 
 
 > **Note:** Each Reservation ID in the list is evaluated independently. The IDs do not need to belong to the same Block — a virtual network with two address spaces can have one address space associated to one Block and the other to an entirely different Block (or even a different Space), each with its own Reservation ID in the list. A mismatch between a reserved CIDR and the virtual network's address space will result in a `Warning: CIDR Mismatch` status for that individual Reservation, regardless of the other Reservation IDs in the list.
 
+### Associating an Existing Virtual Network
+
+Reservations can also bring a virtual network that already exists into Azure IPAM. This is how users who aren't administrators associate a network they own with a Block:
+
+1. Create a Reservation for exactly the virtual network's address space, using the **Manual** allocation mode (or the `cidr` field in the API).
+2. Add the `X-IPAM-RES-ID` tag to the virtual network, with the Reservation ID as its value.
+
+Azure IPAM's background reconciliation then fulfils the Reservation and associates the virtual network with the Block, just as it would for a newly created network.
+
+A few things to keep in mind:
+
+- The Reservation must match the virtual network's address space exactly. A Reservation for a larger or smaller range results in a `Warning: CIDR Mismatch` status.
+- A virtual network with more than one address space within a Block needs a Reservation for each one, as described in [Multiple Reservations on a Single Virtual Network](#multiple-reservations-on-a-single-virtual-network).
+- The Reservation can only be created if its range doesn't overlap a virtual network already associated with the Block, an unsettled Reservation, or an External Network.
+- The Reservation is fulfilled only if none of the virtual network's address ranges within the Block overlap one of those either. Otherwise it results in an `Error: CIDR Overlap` status.
+
 ### Managing Reservations via the API
 
 All Reservation operations are also available through the Azure IPAM REST API. For the full list of available endpoints and example calls, please see the [Reservations](/api/README.md#reservations) section of the API documentation.
@@ -512,6 +570,8 @@ Space
 ```
 
 When Azure IPAM calculates available address space within a Block (for example, when creating a new CIDR reservation or evaluating utilization), it accounts for External Networks alongside Azure virtual networks and existing Reservations. This ensures that externally allocated space is never accidentally double-assigned.
+
+> **Important:** Creating an External Network also withdraws the address space it covers from Azure association. Any Azure virtual network with a prefix overlapping the External Network's CIDR becomes ineligible for that Block, in full, even where its other prefixes are free. Reserve External Networks for address space that is genuinely managed outside of Azure.
 
 ### Managing External Networks via the UI
 

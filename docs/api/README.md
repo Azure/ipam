@@ -2,7 +2,7 @@
 
 You can interface with the full set of capabilities of Azure IPAM via a REST API. We use Swagger to define API documentation in OpenAPI v3 Specification format.
 
-API docs can be found at the `/api/docs` path of your Azure IPAM website. Here you will find information on methods, parameters, and request body details for all available APIs.
+API docs can be found at the `/api/docs` path of your Azure IPAM website. Here you will find information on methods, parameters, and request body details for all available APIs. You can also call the endpoints directly from that page, see [Using the Swagger UI](#using-the-swagger-ui).
 
 ![IPAM OpenAPI specification](./images/openapispec.png)
 
@@ -29,6 +29,35 @@ $accessToken = (Get-AzAccessToken -ResourceUrl api://e3ff2k34-2271-58b5-9g2g-500
 ```
 
 > **Note:** As of [Azure PowerShell v14](https://learn.microsoft.com/powershell/azure/release-notes-azureps#1400---may-2025), `Get-AzAccessToken` returns the `.Token` property as a `SecureString`, which is the expected type for `Invoke-RestMethod -Token`. If you are using an earlier version, wrap the result with `ConvertTo-SecureString ... -AsPlainText -Force`.
+
+## Using the Swagger UI
+
+The API documentation at `/api/docs` is interactive. You can call any endpoint directly from your browser via the **Try it out** button, without needing a separate REST client. Every endpoint requires authentication, so you'll need to supply a token first.
+
+1. Obtain a token using either of the methods described in [Obtaining an Azure AD Token](#obtaining-an-azure-ad-token).
+
+2. Click the **Authorize** button near the top right of the page.
+
+   <!-- TODO: screenshot of the /api/docs page highlighting the Authorize button -->
+   ![IPAM Swagger Authorize button](./images/swagger_authorize_button.png)
+
+3. Paste your token into the **Value** field and click **Authorize**. Enter the raw token value only, the `Bearer` prefix is added for you.
+
+   <!-- TODO: screenshot of the Authorize dialog with a token entered -->
+   ![IPAM Swagger Authorize dialog](./images/swagger_authorize_dialog.png)
+
+4. Click **Close** to dismiss the dialog. The padlock icons next to each endpoint now appear locked, confirming your token will be attached to outgoing requests.
+
+   <!-- TODO: screenshot showing locked padlock icons on the endpoint list -->
+   ![IPAM Swagger authorized endpoints](./images/swagger_authorized_endpoints.png)
+
+5. Expand any endpoint, click **Try it out**, complete the required parameters, then click **Execute**.
+
+The **Curl** box shown with each response contains the full equivalent command, including the `Authorization` header, which is handy for reproducing a call outside the browser.
+
+Your token is held only in the current browser session. Reloading the page clears it, and you can remove it at any time via **Authorize** > **Logout**.
+
+> **Note:** Access tokens are short lived. If requests that previously succeeded start returning `401`, your token has most likely expired, repeat the steps above with a freshly issued one.
 
 ## Spaces
 
@@ -179,7 +208,7 @@ All Block management endpoints (create, update, delete) are restricted to Azure 
 | `DELETE` | `/spaces/{space}/blocks/{block}` | Delete a Block |
 | `GET` | `/spaces/{space}/blocks/{block}/available` | List virtual networks eligible for association |
 
-> **Note:** The `GET` endpoints accept optional `expand` (admin-only) and `utilization` query parameters. Setting `utilization=true` includes size and used address counts. Setting `expand=true` expands virtual network references to full network objects. Non-admin users receive a filtered view — only reservations they created are included.
+> **Note:** The `GET` endpoints accept optional `expand` (admin-only) and `utilization` query parameters. Setting `utilization=true` includes size and used address counts. Setting `expand=true` expands virtual network references to full network objects. Non-admin users see every pending reservation, but those created by other users have their `id` and `desc` set to `null`, and settled reservations are only included if the caller created them.
 
 ### Example API Calls
 
@@ -314,7 +343,7 @@ $available = Invoke-RestMethod `
 
 ## Virtual Network Associations
 
-Virtual Network Associations map Azure virtual networks (and virtual hubs) to Blocks within Azure IPAM. Associating a network tells Azure IPAM that its address space is allocated from the Block's CIDR range, which drives utilization tracking and overlap prevention. All association management endpoints are restricted to Azure IPAM administrators.
+Virtual Network Associations map Azure virtual networks (and virtual hubs) to Blocks within Azure IPAM. Associating a network tells Azure IPAM that its address space is allocated from the Block's CIDR range, which drives utilization tracking and overlap prevention. Any signed-in user can list a Block's associations, but adding, replacing and removing them is restricted to Azure IPAM administrators.
 
 For more information on what Virtual Network Associations are, how eligibility rules work, and how to manage them via the UI, please see the [Virtual Network Associations](/how-to/README.md#virtual-network-associations) section of the How-To documentation.
 
@@ -334,13 +363,21 @@ The API base path for Virtual Network Association operations is:
 | `PUT` | `/spaces/{space}/blocks/{block}/networks` | Replace all associations (full replacement) |
 | `DELETE` | `/spaces/{space}/blocks/{block}/networks` | Remove one or more associations |
 
-> **Note:** The `GET /available` endpoint is accessible to all authenticated users. All other association endpoints (`GET /networks`, `POST`, `PUT`, `DELETE`) are restricted to Azure IPAM administrators and will return `403 Forbidden` for non-admin users.
+> **Note:** The `GET /available` and `GET /networks` endpoints are accessible to all authenticated users. The other association endpoints (`POST`, `PUT`, `DELETE`) are restricted to Azure IPAM administrators and will return `403 Forbidden` for non-admin users.
 >
-> When an administrator calls `GET /available`, the Azure Resource Graph query runs with the application's service principal credentials, returning networks across the entire tenant. When a non-admin user calls the same endpoint, the query runs on behalf of the user (OBO), so only networks in Azure subscriptions the user has RBAC read access to are returned.
+> When an administrator calls `GET /available`, the Azure Resource Graph query runs with the application's service principal credentials, returning networks across the entire tenant. When a non-admin user calls the same endpoint, the query runs on behalf of the user (OBO), so only networks in Azure subscriptions the user has RBAC read access to are returned. `GET /networks` only ever returns networks already associated with the Block, which are shared with every user, so with `expand=true` it returns full details for all of them, whoever calls it.
 
 ### Query Parameters
 
 The `GET /available` and `GET /networks` endpoints accept an optional `expand` query parameter (default: `false`). When set to `true`, the response includes full network details (name, resource group, subscription, prefixes) rather than just resource IDs.
+
+`GET /available` accepts an additional optional `include_blocked` query parameter (default: `false`). When set to `true`, the response also contains the networks which *cannot* be associated to the Block, each carrying a `blocked_by` array naming the External Network or unfulfilled Reservation which overlaps each of its prefixes:
+
+```text
+blocked_by : {@{type=external; name=DataCenterA; cidr=10.1.4.0/24; prefix=10.1.4.0/24}}
+```
+
+Networks which can be associated are returned with an empty `blocked_by` array. A Reservation is named by its ID, so for non-admin users `name` is `null` on Reservations created by someone else. The parameter requires `expand`, as the unexpanded response is an array of resource IDs with nowhere to carry a reason; using it on its own returns `400 Bad Request`.
 
 ### Example API Calls
 
@@ -505,7 +542,7 @@ The API supports creating reservations against a specific Block, or against a li
 | `DELETE` | `/spaces/{space}/blocks/{block}/reservations` | Delete (cancel) multiple reservations |
 | `DELETE` | `/spaces/{space}/blocks/{block}/reservations/{reservation}` | Delete (cancel) a single reservation |
 
-> **Note:** The `GET` endpoints accept a `settled` query parameter (default: `false`). Set it to `true` to include fulfilled and cancelled reservations in the results. Non-admin users will only see reservations they created.
+> **Note:** The `GET` endpoints accept a `settled` query parameter (default: `false`). Set it to `true` to include fulfilled and cancelled reservations in the results. Non-admin users see every pending reservation, but those created by other users have their `id`, `desc` and `tag` set to `null`, and settled reservations are only included if the caller created them. Getting another user's reservation by ID returns `403 Forbidden`.
 
 ### Example API Calls
 
@@ -714,7 +751,7 @@ Take a look at our **Azure Landing Zone integration** example found under the `d
 
 ## External Networks
 
-External Networks allow you to track IP address space that lives outside of Azure (such as on-premises datacenters, co-location facilities, or other cloud providers) directly within Azure IPAM. All External Network operations follow the existing Space/Block hierarchy and are restricted to IPAM administrators.
+External Networks allow you to track IP address space that lives outside of Azure (such as on-premises datacenters, co-location facilities, or other cloud providers) directly within Azure IPAM. All External Network operations follow the existing Space/Block hierarchy. Any signed-in user can read External Networks, but creating, changing and deleting them is restricted to IPAM administrators.
 
 For more information on what External Networks are, how they fit into the IPAM hierarchy, and how to manage them via the UI, please see the [External Networks](/how-to/README.md#external-networks) section of the How-To documentation.
 
@@ -971,4 +1008,151 @@ Invoke-RestMethod `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
+```
+
+## Tools
+
+The Tools endpoints answer planning questions: where the next virtual network of a given size fits, where the next subnet fits within a virtual network, and whether a CIDR range overlaps a network that already exists. They are available to every signed-in user, and none of them change anything in Azure IPAM.
+
+The API base path for the Tools endpoints is:
+
+```text
+/api/tools
+```
+
+### Tool Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/tools/nextAvailableVNet` | Find the next available CIDR for a virtual network within a list of Blocks |
+| `POST` | `/tools/nextAvailableSubnet` | Find the next available CIDR for a subnet within a virtual network |
+| `POST` | `/tools/cidrCheck` | List the Azure virtual networks and virtual hubs that overlap a CIDR range |
+
+> **Note:** `nextAvailableVNet` finds address space but doesn't hold it, so the same CIDR can be returned to more than one caller until something occupies it. To hold address space within a Block, create a [Reservation](#reservations) instead, which accepts the same search options.
+
+### What Each Caller Receives
+
+The answers don't depend on who is asking. `nextAvailableVNet` takes into account every virtual network associated with each Block, along with unsettled Reservations and External Networks, including those you can't see yourself. `nextAvailableSubnet` takes into account every subnet in the virtual network, and `cidrCheck` checks every Azure virtual network and virtual hub within Azure IPAM's scope.
+
+What differs is how much a caller who isn't an administrator is told about networks that aren't associated with a Block:
+
+- `cidrCheck` returns such a network with its `name`, `id`, `resource_group`, `subscription_id` and `tenant_id` set to `null`. The overlapping `prefixes` are still returned, so you know the range is in use.
+- `nextAvailableSubnet` accepts such a virtual network only if you can read it in Azure. Otherwise it returns `400 Bad Request` with `Virtual Network not found.`, exactly as it does for a virtual network that doesn't exist. A service principal that isn't an administrator can only target virtual networks associated with a Block, as explained in [Roles & Permissions](/roles-permissions/README.md#service-principals-and-automation).
+
+> **Note:** `cidrCheck` reports existing Azure networks only. It doesn't check Reservations or External Networks, so use `nextAvailableVNet` or a Reservation to find space that is free within a Block.
+
+### Example API Calls
+
+```powershell
+$engineClientId = '<Engine App Registration Client ID>'
+$appName = 'ipamdev'
+
+$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
+
+$headers = @{
+    'Accept'       = 'application/json'
+    'Content-Type' = 'application/json'
+}
+```
+
+#### Find the Next Available Virtual Network
+
+Provide a Space, a list of Blocks and a mask size. The Blocks are evaluated in the order provided, and the first one with room for a network of that size is used.
+
+```powershell
+$body = @{
+    space  = 'TestSpace'
+    blocks = @('TestBlock', 'OverflowBlock')
+    size   = 24
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Post' `
+    -Uri "https://$appName.azurewebsites.net/api/tools/nextAvailableVNet" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+The response names the Block the CIDR was found in:
+
+```text
+$response
+
+space : TestSpace
+block : TestBlock
+cidr  : 10.1.11.0/24
+```
+
+The optional `reverse_search` and `smallest_cidr` settings work the same way as they do when [creating a Reservation by size](#create-a-reservation-by-size). If none of the Blocks has room for a network of the requested size, the call returns `409 Conflict`.
+
+#### Find the Next Available Subnet
+
+Provide the resource ID of the target virtual network and a mask size.
+
+```powershell
+$body = @{
+    vnet_id = '/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/rg-networking/providers/Microsoft.Network/virtualNetworks/my-vnet-01'
+    size    = 27
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Post' `
+    -Uri "https://$appName.azurewebsites.net/api/tools/nextAvailableSubnet" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+```text
+$response
+
+vnet_name       : my-vnet-01
+resource_group  : rg-networking
+subscription_id : xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+cidr            : 10.1.0.64/27
+```
+
+The same `reverse_search` and `smallest_cidr` settings are accepted here. If the virtual network has no room for a subnet of the requested size, the call returns `409 Conflict`.
+
+#### Check a CIDR for Overlaps
+
+Provide a CIDR range to find the Azure virtual networks and virtual hubs that overlap it. The CIDR must be a network address, so `10.1.0.0/16` is accepted but `10.1.0.1/16` returns `400 Bad Request`.
+
+```powershell
+$body = @{
+    cidr = '10.1.0.0/16'
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Method 'Post' `
+    -Uri "https://$appName.azurewebsites.net/api/tools/cidrCheck" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body $body
+```
+
+Each overlapping network lists the prefixes that overlap the CIDR and the Space and Block it is associated with, if any. In this response, seen by a user who isn't an administrator, the second network isn't associated with a Block, so only its overlapping range is shown:
+
+```text
+$response
+
+name            : my-vnet-01
+id              : /subscriptions/.../providers/Microsoft.Network/virtualNetworks/my-vnet-01
+resource_group  : rg-networking
+subscription_id : xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+tenant_id       : xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+prefixes        : {10.1.0.0/24}
+containers      : {@{space=TestSpace; block=TestBlock}}
+
+name            :
+id              :
+resource_group  :
+subscription_id :
+tenant_id       :
+prefixes        : {10.1.8.0/24}
+containers      : {}
 ```

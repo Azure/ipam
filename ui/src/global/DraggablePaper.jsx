@@ -6,7 +6,7 @@ const CANCEL_SELECTOR = '[class*="MuiDialogContent-root"]';
 
 export default function DraggablePaper(props) {
   const paperRef = React.useRef(null);
-  const dragState = React.useRef(null);
+  const dragStateRef = React.useRef(null);
 
   const handlePointerDown = React.useCallback((e) => {
     const handle = paperRef.current?.querySelector(HANDLE_SELECTOR);
@@ -20,7 +20,7 @@ export default function DraggablePaper(props) {
     const rect = paperRef.current.getBoundingClientRect();
     const parentRect = paperRef.current.parentElement?.getBoundingClientRect();
 
-    dragState.current = {
+    dragStateRef.current = {
       startX: e.clientX,
       startY: e.clientY,
       offsetX: rect.left - (parentRect?.left ?? 0),
@@ -35,10 +35,10 @@ export default function DraggablePaper(props) {
   }, []);
 
   const handlePointerMove = React.useCallback((e) => {
-    if (!dragState.current || !paperRef.current) return;
+    if (!dragStateRef.current || !paperRef.current) return;
 
     const { startX, startY, offsetX, offsetY, parentWidth, parentHeight, elWidth, elHeight } =
-      dragState.current;
+      dragStateRef.current;
 
     let newX = offsetX + (e.clientX - startX);
     let newY = offsetY + (e.clientY - startY);
@@ -55,7 +55,7 @@ export default function DraggablePaper(props) {
   }, []);
 
   const handlePointerUp = React.useCallback(() => {
-    dragState.current = null;
+    dragStateRef.current = null;
   }, []);
 
   return (

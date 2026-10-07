@@ -3,7 +3,7 @@ import { styled } from '@mui/material/styles';
 
 import { useSnackbar } from 'notistack';
 
-import { isEqual, throttle } from 'lodash';
+import { isEqual, throttle } from 'lodash-es';
 
 import { DataGrid } from "../../../global/grids";
 
@@ -93,7 +93,7 @@ const GridBody = styled("div")({
 
 function RenderDelete(props) {
   const { data } = props;
-  const { admins, setAdmins, selectedId } = React.useContext(AdminContext);
+  const { admins, setAdmins, selectedId } = React.use(AdminContext);
 
   const flexCenter = {
     display: "flex",
@@ -151,6 +151,14 @@ function RenderType(props) {
   );
 }
 
+function TypeHeaderComponent() {
+  return (
+    <span style={{ display: "flex", height: "100%", width: "100%", alignItems: "center", justifyContent: "center" }}>
+      <PersonSearch />
+    </span>
+  );
+}
+
 const popperStyle = {
   popper: {
     width: "fit-content"
@@ -179,12 +187,6 @@ export default function Administration() {
 
   const adminLoadedRef = React.useRef(false);
 
-  const TypeHeaderComponent = React.useCallback(() => (
-    <span style={{ display: "flex", height: "100%", width: "100%", alignItems: "center", justifyContent: "center" }}>
-      <PersonSearch />
-    </span>
-  ), []);
-
   const columns = React.useMemo(() => [
     {
       field: "type",
@@ -205,7 +207,7 @@ export default function Administration() {
     { field: "name", headerName: "Name", flex: 0.5, filter: true },
     { field: "email", headerName: "Email", flex: 1, filter: true, valueFormatter: (params) => params.value || "N/A" },
     { field: "id", headerName: "Object ID", flex: 0.75, filter: true }
-  ], [TypeHeaderComponent]);
+  ], []);
 
   const actionsCellRenderer = React.useCallback((params) => {
     return <RenderDelete data={params.data} />;
@@ -326,11 +328,16 @@ export default function Administration() {
     setSelectedId(prevId => prevId === data.id ? null : data.id);
   }, []);
 
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <React.Fragment>
         <Shrug />
-        <Typography variant="overline" display="block"  sx={{ mt: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            display: "block",
+            mt: 1
+          }}>
           Nothing yet...
         </Typography>
       </React.Fragment>
@@ -338,7 +345,7 @@ export default function Administration() {
   }, []);
 
   return (
-    <AdminContext.Provider value={{ admins, setAdmins, selectedId }}>
+    <AdminContext value={{ admins, setAdmins, selectedId }}>
       <Wrapper>
         <MainBody>
           <FloatingHeader>
@@ -346,14 +353,16 @@ export default function Administration() {
               <Tooltip
                 title={ appSearch ? "Service Principals" : "Users" }
                 arrow
-                PopperProps={{
-                  sx: {
-                      "& .MuiTooltip-tooltip": {
-                        left: appSearch ? "32px" : "8px"
-                      },
-                      "& .MuiTooltip-arrow": {
-                        left: appSearch ? "-32px !important" : "-8px !important"
-                      }
+                slotProps={{
+                  popper: {
+                    sx: {
+                        "& .MuiTooltip-tooltip": {
+                          left: appSearch ? "32px" : "8px"
+                        },
+                        "& .MuiTooltip-arrow": {
+                          left: appSearch ? "-32px !important" : "-8px !important"
+                        }
+                    }
                   }
                 }}
               >
@@ -377,7 +386,6 @@ export default function Administration() {
                 />
               </Tooltip>
               <Autocomplete
-                PopperComponent={MyPopper}
                 key="12345"
                 id="asynchronous-demo"
                 size="small"
@@ -410,25 +418,39 @@ export default function Administration() {
                   <TextField
                     {...params}
                     label={ appSearch ? "Principal Search" : "User Search" }
-                    // variant="standard"
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <React.Fragment>
-                          {usersLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </React.Fragment>
-                      ),
-                      style: {
-                        borderRadius: "0px 4px 4px 0px"
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input,
+                        endAdornment: (
+                          <React.Fragment>
+                            {usersLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                            {params.slotProps.input.endAdornment}
+                          </React.Fragment>
+                        ),
+                        style: {
+                          borderRadius: "0px 4px 4px 0px"
+                        }
                       }
                     }}
                   />
                 )}
+                slots={{
+                  popper: MyPopper
+                }}
               />
             </Box>
             <HeaderTitle>Admin Users</HeaderTitle>
-            <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ width: "35%", ml: 2, mr: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "center",
+                width: "35%",
+                ml: 2,
+                mr: 2
+              }}>
               <Tooltip title="Save" >
                 <IconButton
                   color="primary"
@@ -452,7 +474,7 @@ export default function Administration() {
                 rowData={admins}
                 columnDefs={columns}
                 isLoading={loading || sending}
-                noRowsOverlay={NoRowsOverlay}
+                noRowsOverlay={noRowsOverlay}
                 onRowClicked={handleRowClicked}
                 actionsCellRenderer={actionsCellRenderer}
               />
@@ -460,6 +482,6 @@ export default function Administration() {
           </DataSection>
         </MainBody>
       </Wrapper>
-    </AdminContext.Provider>
+    </AdminContext>
   );
 }

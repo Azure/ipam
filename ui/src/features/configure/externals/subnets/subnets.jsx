@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useSelector } from "react-redux";
 
-import { cloneDeep } from "lodash";
+import { cloneDeep } from "lodash-es";
 
 import { DataGrid } from "../../../../global/grids";
 
@@ -13,7 +13,7 @@ import {
 import {
   AddOutlined,
   EditOutlined,
-  DeleteOutline,
+  DeleteOutlined,
   EditNoteOutlined
 } from "@mui/icons-material";
 
@@ -38,7 +38,7 @@ const Subnets = (props) => {
     setSubnets,
     setSelectedSubnet
   } = props;
-  const { refreshing } = React.useContext(ExternalContext);
+  const { refreshing } = React.use(ExternalContext);
 
   const [addExtSubOpen, setAddExtSubOpen] = React.useState(false);
   const [editExtSubOpen, setEditExtSubOpen] = React.useState(false);
@@ -69,7 +69,7 @@ const Subnets = (props) => {
       disabled: !selectedSubnet || !isAdmin,
     },
     {
-      icon: DeleteOutline,
+      icon: DeleteOutlined,
       label: "Remove Subnet",
       onClick: () => setDelExtSubOpen(true),
       disabled: !selectedSubnet || !isAdmin,
@@ -115,10 +115,15 @@ const Subnets = (props) => {
   }, [subnets, setSelectedSubnet]);
 
   // No rows overlay component
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            display: "block",
+            mt: 1
+          }}>
           {selectedExternal
             ? "No Subnets Found for Selected External Network"
             : "Please Select an External Network"
@@ -182,7 +187,7 @@ const Subnets = (props) => {
             isLoading={selectedExternal && refreshing}
             onRowSelectionChanged={handleRowSelectionChanged}
             extraMenuItems={extraMenuItems}
-            noRowsOverlay={NoRowsOverlay}
+            noRowsOverlay={noRowsOverlay}
             noBorder={true}
           />
         </Box>

@@ -20,17 +20,121 @@ BeforeAll {
 
   [string]$baseUrl = "$env:IPAM_URL/api"
 
-  $token = (Get-AzAccessToken -ResourceUrl api://$env:IPAM_ENGINE_APP_ID).Token
-  [System.Security.SecureString]$accessToken = if ($token -is [System.Security.SecureString]) { $token } else { ConvertTo-SecureString $token -AsPlainText }
+  # The suite deliberately waits on ARG propagation, so a run can outlive a single access token.
+  # Tokens are cached and re-acquired on expiry rather than fetched once up front.
+  $script:apiToken = $null
+  $script:apiTokenExpiresOn = [DateTimeOffset]::MinValue
+
+  function Get-ApiToken {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '', Justification = 'Normalizes an ephemeral Azure access token across Az module versions (older Az returns a String, newer returns a SecureString). This is not a stored credential.')]
+    [CmdletBinding()]
+    param()
+
+    if ($null -eq $script:apiToken -or [DateTimeOffset]::UtcNow -ge $script:apiTokenExpiresOn.AddMinutes(-5)) {
+      $result = Get-AzAccessToken -ResourceUrl api://$env:IPAM_ENGINE_APP_ID
+      $token = $result.Token
+
+      $script:apiToken = if ($token -is [System.Security.SecureString]) { $token } else { ConvertTo-SecureString $token -AsPlainText }
+
+      # ExpiresOn moved between Az.Accounts versions, so fall back to a conservative window.
+      $expiresOn = $result.PSObject.Properties['ExpiresOn']
+
+      $script:apiTokenExpiresOn = if ($expiresOn -and $expiresOn.Value) {
+        [DateTimeOffset]$expiresOn.Value
+      } else {
+        [DateTimeOffset]::UtcNow.AddMinutes(30)
+      }
+    }
+
+    return $script:apiToken
+  }
+
+  # Acquire once here so a broken sign-in fails the suite up front rather than mid-run.
+  $null = Get-ApiToken
 
   [hashtable]$headers = @{
     "Content-Type" = "application/json"
   }
 
-  # GET API Request
-  Function Get-ApiResource {
+  # Transient failures worth a retry: Resource Graph throttling surfaced by the engine, plus upstream
+  # faults. Client errors (400/403/404/409/422) are deliberately excluded because this suite asserts
+  # them, and retrying would both mask regressions and slow every negative test.
+  [int[]]$transientStatusCodes = @(429, 500, 502, 503, 504)
+  [int]$maxApiAttempts = 3
+  [int]$maxRetryDelaySeconds = 10
+
+  # Shared request pipeline for the API helpers below.
+  function Invoke-ApiRequest {
     [CmdletBinding()]
-    Param (
+    param(
+      [Parameter(Mandatory=$True)]
+      [string]$method,
+
+      [Parameter(Mandatory=$True)]
+      [string]$resource,
+
+      [Parameter(Mandatory=$False)]
+      $body
+    )
+
+    $attempt = 0
+
+    while ($true) {
+      $attempt++
+
+      $request = @{
+        Method = $method
+        Authentication = 'Bearer'
+        Token = Get-ApiToken
+        Uri = "${baseUrl}${resource}"
+        Headers = $headers
+        Body = $body
+        StatusCodeVariable = 'status'
+      }
+
+      try {
+        $response = Invoke-RestMethod @request
+
+        Write-Output $response, $status
+
+        return
+      }
+      catch {
+        # Only a definitive HTTP response proves the request had no effect. A transport failure could
+        # mean a POST already applied server-side, so those are surfaced rather than replayed.
+        $failedResponse = $_.Exception.PSObject.Properties['Response']
+        $statusCode = if ($failedResponse -and $failedResponse.Value) { [int]$failedResponse.Value.StatusCode } else { 0 }
+
+        if ($attempt -ge $maxApiAttempts -or $statusCode -notin $transientStatusCodes) {
+          throw
+        }
+
+        $delay = [Math]::Pow(2, $attempt - 1)
+
+        # The engine sends Retry-After on a 429, so wait exactly as long as it asked.
+        $retryAfterHeader = $failedResponse.Value.Headers | Where-Object { $_.Key -eq 'Retry-After' } | Select-Object -First 1
+
+        if ($retryAfterHeader) {
+          $retryAfter = ($retryAfterHeader.Value | Select-Object -First 1) -as [int]
+
+          if ($retryAfter -gt 0) {
+            $delay = $retryAfter
+          }
+        }
+
+        $delay = [Math]::Min($delay, $maxRetryDelaySeconds)
+
+        Write-Warning "Transient HTTP $statusCode from $method $resource; retrying in ${delay}s (attempt $attempt of $maxApiAttempts)."
+
+        Start-Sleep -Seconds $delay
+      }
+    }
+  }
+
+  # GET API Request
+  function Get-ApiResource {
+    [CmdletBinding()]
+    param(
       [Parameter(Mandatory=$True, Position=0)]
       [string]$resource,
 
@@ -38,22 +142,13 @@ BeforeAll {
 	    [hashtable]$query
     )
 
-    $response = Invoke-RestMethod `
-      -Method Get `
-      -Authentication Bearer `
-      -Token $accessToken `
-      -Uri "${baseUrl}${resource}" `
-      -Headers $headers `
-      -Body $query `
-      -StatusCodeVariable status
-
-    Write-Output $response, $status
+    Invoke-ApiRequest -method Get -resource $resource -body $query
   }
 
   # POST API Request
-  Function New-ApiResource {
+  function New-ApiResource {
     [CmdletBinding()]
-    Param(
+    param(
       [Parameter(Mandatory=$True, Position=0)]
       [string]$resource,
 
@@ -62,22 +157,14 @@ BeforeAll {
     )
 
     $jsonBody = $body | ConvertTo-Json
-    $response = Invoke-RestMethod `
-      -Method Post `
-      -Authentication Bearer `
-      -Token $accessToken `
-      -Uri "${baseUrl}${resource}" `
-      -Headers $headers `
-      -Body $jsonBody `
-      -StatusCodeVariable status
 
-    Write-Output $response, $status
+    Invoke-ApiRequest -method Post -resource $resource -body $jsonBody
   }
 
   # PUT API Request
-  Function Set-ApiResource {
+  function Set-ApiResource {
     [CmdletBinding()]
-    Param(
+    param(
       [Parameter(Mandatory=$True, Position=0)]
       [string]$resource,
 
@@ -86,22 +173,14 @@ BeforeAll {
     )
 
     $jsonBody = $body | ConvertTo-Json -AsArray
-    $response = Invoke-RestMethod `
-      -Method Put `
-      -Authentication Bearer `
-      -Token $accessToken `
-      -Uri "${baseUrl}${resource}" `
-      -Headers $headers `
-      -Body $jsonBody `
-      -StatusCodeVariable status
 
-    Write-Output $response, $status
+    Invoke-ApiRequest -method Put -resource $resource -body $jsonBody
   }
 
   # PATCH API Request
-  Function Update-ApiResource {
+  function Update-ApiResource {
     [CmdletBinding()]
-    Param(
+    param(
       [Parameter(Mandatory=$True, Position=0)]
       [string]$resource,
 
@@ -110,22 +189,14 @@ BeforeAll {
     )
 
     $jsonBody = $body | ConvertTo-Json -AsArray
-    $response = Invoke-RestMethod `
-      -Method Patch `
-      -Authentication Bearer `
-      -Token $accessToken `
-      -Uri "${baseUrl}${resource}" `
-      -Headers $headers `
-      -Body $jsonBody `
-      -StatusCodeVariable status
 
-    Write-Output $response, $status
+    Invoke-ApiRequest -method Patch -resource $resource -body $jsonBody
   }
 
   # DELETE API Request
-  Function Remove-ApiResource {
+  function Remove-ApiResource {
     [CmdletBinding()]
-    Param(
+    param(
       [Parameter(Mandatory=$True, Position=0)]
       [string]$resource,
 
@@ -134,22 +205,14 @@ BeforeAll {
     )
 
     $jsonBody = $body | ConvertTo-Json -AsArray
-    $response = Invoke-RestMethod `
-      -Method Delete `
-      -Authentication Bearer `
-      -Token $accessToken `
-      -Uri "${baseUrl}${resource}" `
-      -Headers $headers `
-      -Body $jsonBody `
-      -StatusCodeVariable status
 
-    Write-Output $response, $status
+    Invoke-ApiRequest -method Delete -resource $resource -body $jsonBody
   }
 
   # Parse JWT Access Token
-  Function Get-JWTPayload {
+  function Get-JWTPayload {
     [CmdletBinding()]
-    Param(
+    param(
       [Parameter(Mandatory=$true)]
       [string]$token
     )
@@ -1497,6 +1560,331 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
 
       ($externals | Select-Object -ExpandProperty name) | Should -Not -Contain $script:forceDeleteEndpointExternal.name
     }
+
+    # GET /api/spaces/{space}/blocks/{block}/available
+    It 'Exclude an Available Network Whose In-Block Prefix Overlaps an External Network' -Tag @('AzureLive') {
+      # TestVNet04 holds two prefixes inside TestBlockA and was never associated, so an
+      # External Network can still be created over one of them.
+      $partialExternal = @{
+        name = 'ExternalNetPartial'
+        desc = 'Overlaps one prefix of a two prefix network'
+        cidr = '10.1.4.0/24'
+      }
+
+      New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals' $partialExternal
+
+      $available, $availableStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/available?expand=true'
+
+      $availableStatus | Should -Be 200
+
+      # Association is refused for the whole network, so offering it on the strength of its
+      # remaining prefix would hand back a network that cannot be associated.
+      ($available | Select-Object -ExpandProperty id) | Should -Not -Contain $script:newNetD.Id
+
+      # A network clear of the External Network is still offered, so the assertion above
+      # cannot pass by the endpoint returning nothing at all.
+      ($available | Select-Object -ExpandProperty id) | Should -Contain $script:newNetE.Id
+
+      Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetPartial'
+
+      $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
+
+      $externalsStatus | Should -Be 200
+
+      ($externals | Select-Object -ExpandProperty name) | Should -Not -Contain 'ExternalNetPartial'
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}/available
+    It 'Reject the Include Blocked Flag Without Expansion' -Tag @('AzureLive') {
+      # An unexpanded response is a list of resource IDs with nowhere to carry a reason,
+      # so the combination is refused rather than silently dropping the attribution.
+      { Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/available?include_blocked=true' } | Should -Throw -ExpectedMessage '*400*'
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}/available
+    It 'Return a Blocked Network and Name What Blocks It' -Tag @('AzureLive') {
+      # Recreated here rather than carried over, so this test sets up the state it asserts on.
+      $partialExternal = @{
+        name = 'ExternalNetPartial'
+        desc = 'Overlaps one prefix of a two prefix network'
+        cidr = '10.1.4.0/24'
+      }
+
+      New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals' $partialExternal
+
+      $available, $availableStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/available?expand=true&include_blocked=true'
+
+      $availableStatus | Should -Be 200
+
+      # The same network the default response withholds is returned once asked for.
+      $blockedNet = $available | Where-Object { $_.id -eq $script:newNetD.Id }
+
+      $blockedNet | Should -Not -BeNullOrEmpty
+      $blockedNet.blocked_by.Count | Should -Be 1
+
+      # The reason has to identify the offending range, not merely report that one exists.
+      $blockedNet.blocked_by[0].type | Should -Be 'external'
+      $blockedNet.blocked_by[0].name | Should -Be 'ExternalNetPartial'
+      $blockedNet.blocked_by[0].cidr | Should -Be '10.1.4.0/24'
+      $blockedNet.blocked_by[0].prefix | Should -Be '10.1.4.0/24'
+
+      # A network clear of the External Network is returned unblocked, so the field
+      # distinguishes between networks rather than being populated for every result.
+      $clearNet = $available | Where-Object { $_.id -eq $script:newNetE.Id }
+
+      $clearNet | Should -Not -BeNullOrEmpty
+      $clearNet.blocked_by.Count | Should -Be 0
+
+      Remove-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals/ExternalNetPartial'
+
+      $externals, $externalsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/externals'
+
+      $externalsStatus | Should -Be 200
+
+      ($externals | Select-Object -ExpandProperty name) | Should -Not -Contain 'ExternalNetPartial'
+    }
+  }
+
+  Context 'Utilization & Expansion' -Tag @('AzureLive') {
+    BeforeAll {
+      # Address count for a CIDR, used to check the engine's utilization math independently.
+      function Get-CidrSize {
+        param(
+          [Parameter(Mandatory=$True)]
+          [string]$cidr
+        )
+
+        $mask = [int]($cidr -split '/')[1]
+
+        return [int64][Math]::Pow(2, 32 - $mask)
+      }
+    }
+
+    # GET /api/spaces/{space}?utilization=true
+    It 'Get Space Utilization When a Block Contains External Networks' {
+      # Regression: this accumulated external address space onto the space *path parameter* rather
+      # than the space document, so it returned 500 for any space holding an external network.
+      $space, $spaceStatus = Get-ApiResource '/spaces/TestSpaceA?utilization=true'
+
+      $spaceStatus | Should -Be 200
+
+      $space.size | Should -BeGreaterThan 0
+      $space.used | Should -BeGreaterThan 0
+    }
+
+    # GET /api/spaces?utilization=true
+    It 'Get All Spaces with Utilization' {
+      $spaces, $spacesStatus = Get-ApiResource '/spaces?utilization=true'
+
+      $spacesStatus | Should -Be 200
+
+      $targetSpace = $spaces | Where-Object { $_.name -eq 'TestSpaceA' } | Select-Object -First 1
+
+      $targetSpace | Should -Not -BeNullOrEmpty
+      $targetSpace.size | Should -BeGreaterThan 0
+    }
+
+    # GET /api/spaces/{space}/blocks?utilization=true
+    It 'Get All Blocks with Utilization' {
+      $blocks, $blocksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks?utilization=true'
+
+      $blocksStatus | Should -Be 200
+
+      $targetBlock = $blocks | Where-Object { $_.name -eq 'TestBlockA' } | Select-Object -First 1
+
+      $targetBlock | Should -Not -BeNullOrEmpty
+      $targetBlock.size | Should -Be (Get-CidrSize $targetBlock.cidr)
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?utilization=true
+    It 'Get Block with Utilization' {
+      $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?utilization=true'
+
+      $blockStatus | Should -Be 200
+
+      $block.size | Should -Be (Get-CidrSize $block.cidr)
+      $block.used | Should -BeGreaterThan 0
+      $block.used | Should -BeLessOrEqual $block.size
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?utilization=true
+    It 'Block Utilization Matches Between Reference and Expanded Responses' {
+      # Utilization is answered from a lighter Resource Graph query when networks are not expanded,
+      # so both paths must report identical address counts.
+      $light, $lightStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?utilization=true'
+      $expanded, $expandedStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?expand=true&utilization=true'
+
+      $lightStatus | Should -Be 200
+      $expandedStatus | Should -Be 200
+
+      $light.size | Should -Be $expanded.size
+      $light.used | Should -Be $expanded.used
+    }
+
+    # GET /api/spaces/{space}?utilization=true
+    It 'Space Utilization Matches Between Reference and Expanded Responses' {
+      $light, $lightStatus = Get-ApiResource '/spaces/TestSpaceA?utilization=true'
+      $expanded, $expandedStatus = Get-ApiResource '/spaces/TestSpaceA?expand=true&utilization=true'
+
+      $lightStatus | Should -Be 200
+      $expandedStatus | Should -Be 200
+
+      $light.size | Should -Be $expanded.size
+      $light.used | Should -Be $expanded.used
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?expand=true&utilization=true
+    It 'Block Utilization Equals Network Plus External Address Space' {
+      $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?expand=true&utilization=true'
+
+      $blockStatus | Should -Be 200
+
+      $networkUsed = [int64](@($block.vnets) | Measure-Object -Property size -Sum).Sum
+      $externalUsed = [int64]0
+
+      foreach($external in @($block.externals)) {
+        $externalUsed += Get-CidrSize $external.cidr
+      }
+
+      $block.used | Should -Be ($networkUsed + $externalUsed)
+    }
+
+    # GET /api/spaces/{space}?utilization=true
+    It 'Space Utilization Equals Sum of Block Utilization' {
+      $space, $spaceStatus = Get-ApiResource '/spaces/TestSpaceA?utilization=true'
+
+      $spaceStatus | Should -Be 200
+
+      $blockSize = [int64](@($space.blocks) | Measure-Object -Property size -Sum).Sum
+      $blockUsed = [int64](@($space.blocks) | Measure-Object -Property used -Sum).Sum
+
+      $space.size | Should -Be $blockSize
+      $space.used | Should -Be $blockUsed
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?expand=true
+    It 'Expanded Block Returns Full Network Objects' {
+      # The Union response model silently falls back to the reference shape when expansion fails
+      # validation, so assert the expanded fields are actually present rather than trusting the 200.
+      $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?expand=true'
+
+      $blockStatus | Should -Be 200
+
+      @($block.vnets).Count | Should -BeGreaterThan 0
+
+      foreach($vnet in @($block.vnets)) {
+        $vnet.PSObject.Properties.Name | Should -Contain 'name'
+        $vnet.PSObject.Properties.Name | Should -Contain 'prefixes'
+        $vnet.PSObject.Properties.Name | Should -Contain 'subnets'
+      }
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}/networks?expand=true
+    It 'Expanded Block Networks Return Full Network Objects' {
+      $networks, $networksStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/networks?expand=true'
+
+      $networksStatus | Should -Be 200
+
+      @($networks).Count | Should -BeGreaterThan 0
+
+      foreach($network in @($networks)) {
+        $network.PSObject.Properties.Name | Should -Contain 'name'
+        $network.PSObject.Properties.Name | Should -Contain 'prefixes'
+      }
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?expand=true&utilization=true
+    It 'Expanded Network Utilization Never Exceeds Its Size' {
+      # Regression: size counted only the prefixes inside the Block while used counted the subnets of
+      # every prefix the network owns, so a network straddling the Block boundary reported used > size.
+      $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?expand=true&utilization=true'
+
+      $blockStatus | Should -Be 200
+
+      @($block.vnets).Count | Should -BeGreaterThan 0
+
+      foreach($vnet in @($block.vnets)) {
+        $vnet.PSObject.Properties.Name | Should -Contain 'size'
+        $vnet.PSObject.Properties.Name | Should -Contain 'used'
+
+        $vnet.used | Should -BeLessOrEqual $vnet.size
+      }
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?utilization=true
+    It 'External Networks Report Address Utilization' {
+      $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?utilization=true'
+
+      $blockStatus | Should -Be 200
+
+      @($block.externals).Count | Should -BeGreaterThan 0
+
+      foreach($external in @($block.externals)) {
+        $external.PSObject.Properties.Name | Should -Contain 'size'
+        $external.PSObject.Properties.Name | Should -Contain 'used'
+
+        $external.size | Should -Be (Get-CidrSize $external.cidr)
+
+        # An external network's used is the address space assigned to its subnets.
+        $subnetSize = [int64]0
+
+        foreach($subnet in @($external.subnets)) {
+          $subnetSize += Get-CidrSize $subnet.cidr
+        }
+
+        $external.used | Should -Be $subnetSize
+        $external.used | Should -BeLessOrEqual $external.size
+      }
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?utilization=true
+    It 'External Subnets Report Endpoints as Used Addresses' {
+      $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?utilization=true'
+
+      $blockStatus | Should -Be 200
+
+      $subnets = @(@($block.externals) | ForEach-Object { $_.subnets })
+
+      @($subnets).Count | Should -BeGreaterThan 0
+
+      foreach($subnet in $subnets) {
+        $subnet.PSObject.Properties.Name | Should -Contain 'size'
+        $subnet.PSObject.Properties.Name | Should -Contain 'used'
+
+        $subnet.size | Should -Be (Get-CidrSize $subnet.cidr)
+
+        # External networks are not Azure, so no addresses are reserved by the platform.
+        $subnet.used | Should -Be @($subnet.endpoints).Count
+        $subnet.used | Should -BeLessOrEqual $subnet.size
+      }
+    }
+
+    # GET /api/spaces/{space}/blocks/{block}?utilization=true
+    It 'Block Utilization Counts an External Network Once, Not Its Subnets Again' {
+      # An external network's subnets sit inside its own range, so counting both would double count.
+      $block, $blockStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?utilization=true'
+
+      $blockStatus | Should -Be 200
+
+      $externalSubnetSize = [int64](@(@($block.externals) | ForEach-Object { $_.subnets } | Where-Object { $_ }) | Measure-Object -Property size -Sum).Sum
+
+      # Guards against this passing vacuously if the external subnet fixture ever disappears.
+      $externalSubnetSize | Should -BeGreaterThan 0
+
+      $externalSize = [int64]0
+
+      foreach($external in @($block.externals)) {
+        $externalSize += Get-CidrSize $external.cidr
+      }
+
+      $networkSize, $networkStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA?expand=true&utilization=true'
+
+      $networkStatus | Should -Be 200
+
+      $networkUsed = [int64](@($networkSize.vnets) | Measure-Object -Property size -Sum).Sum
+
+      $block.used | Should -Be ($networkUsed + $externalSize)
+    }
   }
 
   Context 'Reservations' -Tag @('AzureLive') {
@@ -1693,6 +2081,34 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
       }
 
       { New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $body } | Should -Throw
+
+      $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations'
+
+      $reservationsStatus | Should -Be 200
+      $reservations.Count | Should -Be 3
+    }
+
+    # POST /api/spaces/{space}/blocks/{block}/reservations
+    It 'Reject Block Reservation When Smallest CIDR Search Finds No Candidate' {
+      # Requesting a network larger than the Block itself leaves the smallest CIDR
+      # search with no candidates, which must surface as a descriptive error.
+      $body = @{
+        size = 8
+        smallest_cidr = $true
+        desc = 'Oversized Reservation'
+      }
+
+      $caught = $null
+
+      try {
+        New-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations' $body
+      }
+      catch {
+        $caught = $_
+      }
+
+      $caught | Should -Not -BeNullOrEmpty
+      $caught.ErrorDetails.Message | Should -BeLike '*unavailable in target block*'
 
       $reservations, $reservationsStatus = Get-ApiResource '/spaces/TestSpaceA/blocks/TestBlockA/reservations'
 
@@ -2050,6 +2466,29 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
       $newSubnet.Cidr | Should -Be '198.51.100.0/26'
     }
 
+    # POST /api/tools/nextAvailableSubnet
+    It 'Reject Next Available Subnet When Smallest CIDR Search Finds No Candidate' {
+      # Requesting a subnet larger than the vNET itself leaves the smallest CIDR
+      # search with no candidates, which must surface as a descriptive error.
+      $body = @{
+        vnet_id = $script:toolsNet.Id
+        size = 23
+        smallest_cidr = $true
+      }
+
+      $caught = $null
+
+      try {
+        New-ApiResource '/tools/nextAvailableSubnet' $body
+      }
+      catch {
+        $caught = $_
+      }
+
+      $caught | Should -Not -BeNullOrEmpty
+      $caught.ErrorDetails.Message | Should -BeLike '*unavailable in target virtual network*'
+    }
+
     # POST /api/tools/cidrCheck
     It 'Check Where CIDR is Used' {
       $body = @{
@@ -2077,6 +2516,157 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
 
       (Compare-Object $cidrCheck.containers $containers -Property {$_.space}) | Should -BeNullOrEmpty
       (Compare-Object $cidrCheck.containers $containers -Property {$_.block}) | Should -BeNullOrEmpty
+    }
+
+    # POST /api/spaces/{space}/blocks
+    It 'Create Tools Fallback Blocks' {
+      # 'ToolsBlockSmall' is intentionally too small to satisfy a /25 request so
+      # that block list evaluation must fall through to 'ToolsBlockLarge'.
+      $smallBlock = @{
+        name = 'ToolsBlockSmall'
+        cidr = '203.0.113.0/26'
+      }
+
+      $largeBlock = @{
+        name = 'ToolsBlockLarge'
+        cidr = '203.0.113.128/25'
+      }
+
+      New-ApiResource '/spaces/ToolsSpace/blocks' $smallBlock
+      New-ApiResource '/spaces/ToolsSpace/blocks' $largeBlock
+
+      $blocks, $blocksStatus = Get-ApiResource '/spaces/ToolsSpace/blocks'
+
+      $blocksStatus | Should -Be 200
+      $blocks.Count | Should -Be 3
+
+      $blocks.Name | Should -Contain 'ToolsBlockSmall'
+      $blocks.Name | Should -Contain 'ToolsBlockLarge'
+    }
+
+    # POST /api/tools/nextAvailableVNet
+    It 'Skip Blocks That Cannot Satisfy Requested Size with Smallest CIDR Search' {
+      $body = @{
+        space = 'ToolsSpace'
+        blocks = @('ToolsBlockSmall', 'ToolsBlockLarge')
+        size = 25
+        reverse_search = $false
+        smallest_cidr = $true
+      }
+
+      $newNet, $newNetStatus = New-ApiResource '/tools/nextAvailableVNet' $body
+
+      $newNetStatus | Should -Be 200
+
+      $newNet.Space | Should -Be 'ToolsSpace'
+      $newNet.Block | Should -Be 'ToolsBlockLarge'
+      $newNet.Cidr | Should -Be '203.0.113.128/25'
+    }
+
+    # POST /api/tools/nextAvailableVNet
+    It 'Skip Blocks That Cannot Satisfy Requested Size without Smallest CIDR Search' {
+      $body = @{
+        space = 'ToolsSpace'
+        blocks = @('ToolsBlockSmall', 'ToolsBlockLarge')
+        size = 25
+        reverse_search = $false
+        smallest_cidr = $false
+      }
+
+      $newNet, $newNetStatus = New-ApiResource '/tools/nextAvailableVNet' $body
+
+      $newNetStatus | Should -Be 200
+
+      $newNet.Space | Should -Be 'ToolsSpace'
+      $newNet.Block | Should -Be 'ToolsBlockLarge'
+      $newNet.Cidr | Should -Be '203.0.113.128/25'
+    }
+
+    # POST /api/tools/nextAvailableVNet
+    It 'Reject Next Available vNET When No Block Can Satisfy Requested Size' {
+      $body = @{
+        space = 'ToolsSpace'
+        blocks = @('ToolsBlockSmall', 'ToolsBlockLarge')
+        size = 16
+        reverse_search = $false
+        smallest_cidr = $true
+      }
+
+      $caught = $null
+
+      try {
+        New-ApiResource '/tools/nextAvailableVNet' $body
+      }
+      catch {
+        $caught = $_
+      }
+
+      $caught | Should -Not -BeNullOrEmpty
+      $caught.ErrorDetails.Message | Should -BeLike '*unavailable in target block*'
+    }
+  }
+
+  Context 'Notifications' {
+    # GET /api/notifications
+    It 'Verify Notifications list' {
+
+      $notifications, $status = Get-ApiResource '/notifications'
+
+      $status | Should -Be 200
+
+      # The envelope always carries a 'notifications' collection (possibly empty).
+      $notifications.PSObject.Properties.Name | Should -Contain 'notifications'
+
+      # When notifications are present, each must be well-formed and self-describing.
+      foreach ($notification in $notifications.notifications) {
+        $notification.id | Should -Not -BeNullOrEmpty
+        $notification.title | Should -Not -BeNullOrEmpty
+        $notification.message | Should -Not -BeNullOrEmpty
+        $notification.category | Should -Not -BeNullOrEmpty
+        $notification.severity | Should -BeIn @('critical', 'warning', 'information')
+        $notification.audience | Should -BeIn @('all', 'admin')
+      }
+    }
+
+    # POST /api/notifications/{id}/resolve
+    It 'Returns an error resolving an unknown notification' {
+
+      { New-ApiResource '/notifications/does-not-exist/resolve' @{} } | Should -Throw -ExpectedMessage '*404*'
+    }
+
+    # POST /api/notifications/{id}/resolve
+    It 'Returns an error resolving a notification with no remediation' {
+
+      # 'update-available' is a real, link-only notification: it never carries a
+      # server-owned resolve action, so resolving it is always a 404.
+      { New-ApiResource '/notifications/update-available/resolve' @{} } | Should -Throw -ExpectedMessage '*404*'
+    }
+
+    # POST /api/notifications/{id}/resolve
+    It 'Returns an error resolving a remediable notification that is not active' {
+
+      # Never active against the test deployment's private ACR, so this hits the
+      # active-gate (409) instead of triggering a real remediation/restart.
+      { New-ApiResource '/notifications/registry-migration/resolve' @{} } | Should -Throw -ExpectedMessage '*409*'
+    }
+  }
+
+  Context 'Health' {
+    # GET /api/health
+    It 'Verify Health' {
+
+      $health, $healthStatus = Get-ApiResource '/health'
+
+      $healthStatus | Should -Be 200
+
+      $health.ok | Should -Be $true
+
+      $checkNames = $health.checks.PSObject.Properties.Name
+
+      foreach ($check in @('config', 'cosmos', 'arm', 'schema')) {
+        $checkNames | Should -Contain $check
+        $health.checks.$check.ok | Should -Be $true
+      }
     }
   }
 

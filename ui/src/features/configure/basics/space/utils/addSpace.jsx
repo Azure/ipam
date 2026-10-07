@@ -118,7 +118,12 @@ export default function AddSpace(props) {
           Add Space
         </DialogTitle>
         <DialogContent>
-          <Box display="flex" flexDirection="column" alignItems="center">
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center"
+            }}>
             <Tooltip
               arrow
               disableFocusListener
@@ -145,8 +150,10 @@ export default function AddSpace(props) {
                 onChange={(event) => {
                   onNameChange(event);
                 }}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -172,8 +179,10 @@ export default function AddSpace(props) {
                 variant="standard"
                 value={description.value}
                 onChange={(event) => onDescriptionChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
           </Box>

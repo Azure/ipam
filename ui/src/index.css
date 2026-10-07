@@ -67,3 +67,8 @@ code {
 .ag-theme-quartz-dark .ag-row-hover {
   filter: brightness(1.12);
 }
+
+/* AG Grid tooltips collapse newlines by default; unscoped as the tooltip is rendered in a popup */
+.ag-tooltip {
+  white-space: pre-line;
+}

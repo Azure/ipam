@@ -33,21 +33,42 @@ export const arrayFilterValueGetter = (params) => {
 };
 
 /**
- * Custom comparator for array fields in text filters.
- * Checks if any element in the array contains the filter value.
+ * Text matcher for columns whose underlying value is an array.
  *
- * @param {string} filterValue - The filter input value
- * @param {Array} cellValue - The cell's array value
- * @returns {boolean} - Whether the filter matches
+ * AG Grid compares the filter text against the column's filter value, which for
+ * these columns is the elements joined into one string -- so `equals` could never
+ * match a row holding more than one value. This compares each element instead.
+ *
+ * @param {Object} params - AG Grid text matcher params
+ * @returns {boolean} - Whether the row matches
  */
-export const arrayTextFilterComparator = (filterValue, cellValue) => {
-  if (!filterValue) return true;
-  if (!Array.isArray(cellValue) || cellValue.length === 0) return false;
+export const arrayTextMatcher = ({ filterOption, filterText, data, colDef }) => {
+  if (!filterText) return true;
 
-  const lowerFilter = filterValue.toLowerCase();
-  return cellValue.some(item =>
-    String(item).toLowerCase().includes(lowerFilter)
-  );
+  const values = data?.[colDef.field];
+
+  if (!Array.isArray(values)) return false;
+
+  const needle = filterText.toLowerCase();
+
+  const hit = values.some((item) => {
+    const candidate = String(item).toLowerCase();
+
+    switch (filterOption) {
+      case 'equals':
+      case 'notEqual':
+        return candidate === needle;
+      case 'startsWith':
+        return candidate.startsWith(needle);
+      case 'endsWith':
+        return candidate.endsWith(needle);
+      default:
+        return candidate.includes(needle);
+    }
+  });
+
+  // A negated operator asks whether no element matches at all.
+  return (filterOption === 'notEqual' || filterOption === 'notContains') ? !hit : hit;
 };
 
 /**
@@ -150,7 +171,7 @@ export const defaultColumnSettings = {
 export default {
   arrayValueGetter,
   arrayFilterValueGetter,
-  arrayTextFilterComparator,
+  arrayTextMatcher,
   createArrayColumnDef,
   caseInsensitiveFilterParams,
   numberFilterParams,

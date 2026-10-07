@@ -9,13 +9,16 @@ import { useSnackbar } from "notistack";
 import { styled, alpha } from "@mui/material/styles";
 import { SvgIcon } from "@mui/material";
 
-import { orderBy } from 'lodash';
+import { orderBy } from 'lodash-es';
 import { plural, singular } from 'pluralize';
 
 import { Routes, Route, Link, Navigate, useNavigate } from "react-router";
 
 import { callMsGraph, callMsGraphPhoto } from "../../msal/graph";
 import { getApiToken } from "../../msal/tokenService";
+
+import NotificationCenter from "../notifications/NotificationCenter";
+import ServiceRestartGate from "../restart/ServiceRestartGate";
 
 import {
   AppBar,
@@ -107,8 +110,8 @@ import {
   setUserId,
   getAdminStatus,
   getMeLoaded,
-  selectVNets,
-  selectVHubs,
+  selectUpdatedVNets,
+  selectUpdatedVHubs,
   selectSubnets,
   selectEndpoints
 } from "../ipam/ipamSlice";
@@ -193,8 +196,8 @@ export default function NavDrawer() {
 
   const isAdmin = useSelector(getAdminStatus);
   const meLoaded = useSelector(getMeLoaded);
-  const vNets = useSelector(selectVNets);
-  const vHubs = useSelector(selectVHubs);
+  const vNets = useSelector(selectUpdatedVNets);
+  const vHubs = useSelector(selectUpdatedVHubs);
   const subnets = useSelector(selectSubnets);
   const endpoints = useSelector(selectEndpoints);
 
@@ -512,7 +515,7 @@ export default function NavDrawer() {
     var newSearchData = [];
 
     if(vNets) {
-      const vNetExclusions = ['id', 'peerings', 'resv', 'type', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_space', 'subscription_id', 'tenant_id', 'metadata'];
+      const vNetExclusions = ['id', 'peerings', 'resv', 'type', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_containers', 'parent_spaces', 'subscription_id', 'subscription_name', 'tenant_id', 'metadata'];
       const vNetFiltered = objToFilter(vNets, 'Virtual Networks', '/discover/vnet', vNetExclusions);
       const vNetResults = orderBy(vNetFiltered, 'phrase', 'asc');
 
@@ -524,7 +527,7 @@ export default function NavDrawer() {
     }
 
     if(vHubs) {
-      const vHubExclusions = ['id', 'peerings', 'vwan_id', 'resv', 'type', 'size', 'used', 'available', 'utilization', 'parent_space'];
+      const vHubExclusions = ['id', 'peerings', 'vwan_id', 'resv', 'type', 'size', 'used', 'available', 'utilization', 'parent_containers', 'parent_spaces', 'subscription_name'];
       const vHubFiltered = objToFilter(vHubs, 'Virtual Hubs', '/discover/vhub', vHubExclusions);
       const vHubResults = orderBy(vHubFiltered, 'phrase', 'asc');
 
@@ -559,7 +562,7 @@ export default function NavDrawer() {
     >
       {navItems.map((navItem, navIndex) => {
         return (
-          <React.Fragment key={`navItem-${navIndex}`}>
+          <React.Fragment key={`navItem-${navItem[0].title}`}>
             <List>
               {navItem.map((item, itemIndex) => {
                 return item.hasOwnProperty('children')
@@ -719,32 +722,34 @@ export default function NavDrawer() {
       }}
       open={isMenuOpen}
       onClose={handleMenuClose}
-      PaperProps={{
-        elevation: 0,
-        style: {
-          width: 200,
-        },
-        sx: {
-          overflow: 'visible',
-          filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-          mt: 1.5,
-          '& .MuiAvatar-root': {
-            width: 32,
-            height: 32,
-            ml: -0.5,
-            mr: 1,
+      slotProps={{
+        paper: {
+          elevation: 0,
+          style: {
+            width: 200,
           },
-          '&:before': {
-            content: '""',
-            display: 'block',
-            position: 'absolute',
-            top: 0,
-            right: 26,
-            width: 10,
-            height: 10,
-            bgcolor: 'background.paper',
-            transform: 'translateY(-50%) rotate(45deg)',
-            zIndex: 0,
+          sx: {
+            overflow: 'visible',
+            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+            mt: 1.5,
+            '& .MuiAvatar-root': {
+              width: 32,
+              height: 32,
+              ml: -0.5,
+              mr: 1,
+            },
+            '&:before': {
+              content: '""',
+              display: 'block',
+              position: 'absolute',
+              top: 0,
+              right: 26,
+              width: 10,
+              height: 10,
+              bgcolor: 'background.paper',
+              transform: 'translateY(-50%) rotate(45deg)',
+              zIndex: 0,
+            },
           },
         },
       }}
@@ -794,32 +799,34 @@ export default function NavDrawer() {
       }}
       open={isMobileMenuOpen}
       onClose={handleMobileMenuClose}
-      PaperProps={{
-        elevation: 0,
-        style: {
-          width: 200,
-        },
-        sx: {
-          overflow: 'visible',
-          filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-          mt: 1.5,
-          '& .MuiAvatar-root': {
-            width: 32,
-            height: 32,
-            ml: -0.5,
-            mr: 1,
+      slotProps={{
+        paper: {
+          elevation: 0,
+          style: {
+            width: 200,
           },
-          '&:before': {
-            content: '""',
-            display: 'block',
-            position: 'absolute',
-            top: 0,
-            right: 19,
-            width: 10,
-            height: 10,
-            bgcolor: 'background.paper',
-            transform: 'translateY(-50%) rotate(45deg)',
-            zIndex: 0,
+          sx: {
+            overflow: 'visible',
+            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+            mt: 1.5,
+            '& .MuiAvatar-root': {
+              width: 32,
+              height: 32,
+              ml: -0.5,
+              mr: 1,
+            },
+            '&:before': {
+              content: '""',
+              display: 'block',
+              position: 'absolute',
+              top: 0,
+              right: 19,
+              width: 10,
+              height: 10,
+              bgcolor: 'background.paper',
+              transform: 'translateY(-50%) rotate(45deg)',
+              zIndex: 0,
+            },
           },
         },
       }}
@@ -904,16 +911,20 @@ export default function NavDrawer() {
                     placeholder={dataLoaded ? (searchData.length > 0 ? "Search..." : "No Resources...") : "Loading..."}
                     fullWidth
                     variant="standard"
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment:
-                        <InputAdornment position="start">
-                          <SearchIcon sx={{ color: 'white', pl: 1}}/>
-                        </InputAdornment>,
-                      disableUnderline: true,
-                      type: 'search',
-                      sx: {
-                        color: 'inherit'
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input,
+                        startAdornment:
+                          <InputAdornment position="start">
+                            <SearchIcon sx={{ color: 'white', pl: 1}}/>
+                          </InputAdornment>,
+                        disableUnderline: true,
+                        type: 'search',
+                        sx: {
+                          color: 'inherit'
+                        }
                       }
                     }}
                   />
@@ -927,6 +938,7 @@ export default function NavDrawer() {
               />
             </Search>
             <Box sx={{ flexGrow: 1 }} />
+            <NotificationCenter />
             <Box sx={{ display: { xs: "none", md: "flex" } }}>
               <IconButton
                 size="large"
@@ -1034,6 +1046,7 @@ export default function NavDrawer() {
           </Update>
         </Box> */}
       </Box>
+      <ServiceRestartGate />
     </React.Fragment>
   );
 }

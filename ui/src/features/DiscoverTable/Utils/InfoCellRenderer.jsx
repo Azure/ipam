@@ -48,16 +48,18 @@ export default function InfoCellRenderer(props) {
           arrow
           title={message || ''}
           placement="top"
-          PopperProps={{
-            popperOptions: {
-              modifiers: [
-                {
-                  name: 'offset',
-                  options: {
-                    offset: [0, -10]
+          slotProps={{
+            popper: {
+              popperOptions: {
+                modifiers: [
+                  {
+                    name: 'offset',
+                    options: {
+                      offset: [0, -10]
+                    }
                   }
-                }
-              ]
+                ]
+              }
             }
           }}
         >

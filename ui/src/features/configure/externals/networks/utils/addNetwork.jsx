@@ -165,10 +165,12 @@ export default function AddExtNetwork(props) {
 
       if(space && block && networks) {
         blockNetworks = networks?.reduce((acc, curr) => {
-          if(curr['parent_space'] && curr['parent_block']) {
-            if(curr['parent_space'] === space && curr['parent_block'].includes(block.name)) {
-              acc = acc.concat(curr['prefixes']);
-            }
+          const inBlock = curr['parent_containers']?.some((container) => (
+            container.space === space && container.block === block.name
+          ));
+
+          if(inBlock) {
+            acc = acc.concat(curr['prefixes']);
           }
 
           return acc;
@@ -235,7 +237,12 @@ export default function AddExtNetwork(props) {
         Add External Network
       </DialogTitle>
       <DialogContent>
-        <Box display="flex" flexDirection="column" alignItems="center">
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center"
+          }}>
           <Tooltip
             arrow
             disableFocusListener
@@ -260,8 +267,10 @@ export default function AddExtNetwork(props) {
               variant="standard"
               value={extName.value}
               onChange={(event) => onNameChange(event)}
-              inputProps={{ spellCheck: false }}
               sx={{ width: "80%" }}
+              slotProps={{
+                htmlInput: { spellCheck: false }
+              }}
             />
           </Tooltip>
           <Tooltip
@@ -287,16 +296,22 @@ export default function AddExtNetwork(props) {
               variant="standard"
               value={extDesc.value}
               onChange={(event) => onDescChange(event)}
-              inputProps={{ spellCheck: false }}
               sx={{ width: "80%" }}
+              slotProps={{
+                htmlInput: { spellCheck: false }
+              }}
             />
           </Tooltip>
           <Box sx={{ width: "80%", mt: 2, mb: 0.5, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Typography
               variant="caption"
-              color="text.secondary"
-              sx={{ display: 'block', mb: 0.75, width: '100%', textAlign: 'center' }}
-            >
+              sx={{
+                color: "text.secondary",
+                display: 'block',
+                mb: 0.75,
+                width: '100%',
+                textAlign: 'center'
+              }}>
               Allocation Mode
             </Typography>
             <ToggleButtonGroup
@@ -325,10 +340,6 @@ export default function AddExtNetwork(props) {
                   value={selectedMask}
                   onChange={(_, newValue) => setSelectedMask(newValue)}
                   sx={{ width: '7ch' }}
-                  ListboxProps={{
-                    style: { maxHeight: "15rem" },
-                    position: "bottom-start"
-                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -337,6 +348,12 @@ export default function AddExtNetwork(props) {
                       variant="standard"
                     />
                   )}
+                  slotProps={{
+                    listbox: {
+                      style: { maxHeight: "15rem" },
+                      position: "bottom-start"
+                    }
+                  }}
                 />
               </Box>
             ) : (
@@ -363,8 +380,10 @@ export default function AddExtNetwork(props) {
                     variant="standard"
                     value={extCidr.value}
                     onChange={(event) => onCidrChange(event)}
-                    inputProps={{ spellCheck: false }}
                     sx={{ width: "20ch" }}
+                    slotProps={{
+                      htmlInput: { spellCheck: false }
+                    }}
                   />
                 </Tooltip>
               </Box>

@@ -1,3 +1,4 @@
+from enum import Enum
 from functools import wraps
 
 import azure.cosmos.exceptions as exceptions
@@ -8,6 +9,7 @@ from azure.core.exceptions import (
     HttpResponseError,
     ServiceRequestError,
 )
+from azure.core.pipeline.policies import AsyncRetryPolicy
 from azure.cosmos.aio import CosmosClient
 from azure.identity.aio import (
     ClientSecretCredential,
@@ -15,27 +17,72 @@ from azure.identity.aio import (
     ManagedIdentityCredential,
     OnBehalfOfCredential,
 )
-from azure.mgmt.managementgroups.aio import ManagementGroupsAPI
+from azure.mgmt.managementgroups.aio import ManagementGroupsMgmtClient
 from azure.mgmt.resourcegraph.aio import ResourceGraphClient
 from azure.mgmt.resourcegraph.models import (
     QueryRequest,
     QueryRequestOptions,
     ResultFormat,
+    ResultTruncated,
 )
 from fastapi import HTTPException
 from netaddr import IPNetwork
 
 from app.globals import globals
+from app.logs.logs import ipam_logger as logger
 
-managed_identity_credential = ManagedIdentityCredential(
-    client_id = globals.MANAGED_IDENTITY_ID
-)
+_cosmos_client = None
 
-cosmos_client = CosmosClient(
-    url=globals.COSMOS_URL,
-    credential=(globals.COSMOS_KEY if globals.COSMOS_KEY else managed_identity_credential),
-    transport=globals.SHARED_TRANSPORT
-)
+class ArgRetryPolicy(AsyncRetryPolicy):
+    """Teach the SDK's retry policy how Azure Resource Graph reports throttling.
+
+    ARG throttles a POST and states the wait as ``x-ms-user-quota-resets-after`` rather than
+    ``Retry-After``. Stock azure-core therefore never retries it: POST sits outside the method
+    allowlist, and the ``Retry-After`` short circuit that would override that never fires. Supplying
+    the header on both counts restores the SDK's own retry behaviour and lets it wait exactly as
+    long as ARG asked instead of backing off blindly.
+    """
+
+    def __init__(self, **kwargs):
+        # ARG quota is shared by every caller using the same credentials and resets about every five
+        # seconds, so the stock three attempts give up while a burst of requests is still draining.
+        kwargs.setdefault('retry_status', 6)
+
+        super().__init__(**kwargs)
+
+    def get_retry_after(self, response):
+        retry_after = super().get_retry_after(response)
+
+        if retry_after is not None:
+            return retry_after
+
+        return arg_retry_after(getattr(response.http_response, 'headers', None))
+
+    def is_retry(self, settings, response):
+        if response.http_response.status_code == 429 and self.get_retry_after(response) is not None:
+            return True
+
+        return super().is_retry(settings, response)
+
+def get_cosmos_client():
+    # Created lazily so the shared aiohttp transport is built within a running event loop. Newer
+    # aiohttp requires a running loop when its ClientSession/TCPConnector are created; building the
+    # client (and thus accessing globals.SHARED_TRANSPORT) at import time raised "no running event
+    # loop" and crash-looped the engine on startup.
+    global _cosmos_client
+
+    if _cosmos_client is None:
+        managed_identity_credential = ManagedIdentityCredential(
+            client_id = globals.MANAGED_IDENTITY_ID
+        )
+
+        _cosmos_client = CosmosClient(
+            url=globals.COSMOS_URL,
+            credential=(globals.COSMOS_KEY if globals.COSMOS_KEY else managed_identity_credential),
+            transport=globals.SHARED_TRANSPORT
+        )
+
+    return _cosmos_client
 
 def valid_ipv4(addr):
     try:
@@ -85,14 +132,14 @@ def subnet_fixup(subnet_list):
     return subnet_list
 
 def get_tenant_from_jwt(token):
-    """DOCSTRING"""
+    """Return the tenant ID (``tid`` claim) from an unverified decode of the given JWT."""
 
     decoded = jwt.decode(token, options={"verify_signature": False})
 
     return decoded['tid']
 
 def get_username_from_jwt(token):
-    """DOCSTRING"""
+    """Return the caller's username from a JWT, falling back to ``spn:<oid>`` for service principals."""
 
     decoded = jwt.decode(token, options={"verify_signature": False})
 
@@ -102,14 +149,47 @@ def get_username_from_jwt(token):
         return f"spn:{decoded['oid']}"
 
 def get_user_id_from_jwt(token):
-    """DOCSTRING"""
+    """Return the caller's object ID (``oid`` claim) from an unverified decode of the given JWT."""
 
     decoded = jwt.decode(token, options={"verify_signature": False})
 
     return decoded['oid']
 
+def is_app_only_token(token):
+    """Return whether a JWT was issued to an application rather than a user.
+
+    Only user tokens carry the ``scp`` claim. App-only tokens can't be exchanged through the
+    on-behalf-of flow, so callers use this to avoid attempting an exchange that can't succeed.
+    """
+
+    decoded = jwt.decode(token, options={"verify_signature": False})
+
+    return "scp" not in decoded
+
+def associated_network_ids(spaces):
+    """Return the lowercased IDs of every network associated with a Block across the given Spaces."""
+
+    # Azure reports resource IDs with inconsistent casing, and stored IDs keep the caller's.
+    return {net['id'].lower() for space in spaces for block in space['blocks'] for net in block['vnets']}
+
+async def get_obo_token(assertion):
+    """Exchange a user assertion for an on-behalf-of access token scoped to Azure Resource Manager."""
+
+    azure_arm_url = 'https://{}/user_impersonation'.format(globals.AZURE_ARM_URL)
+
+    credential = OnBehalfOfCredential(
+        tenant_id=globals.TENANT_ID,
+        client_id=globals.CLIENT_ID,
+        client_secret=globals.CLIENT_SECRET,
+        user_assertion=assertion
+    )
+    obo_token = await credential.get_token(azure_arm_url)
+    await credential.close()
+
+    return obo_token
+
 async def get_client_credentials():
-    """DOCSTRING"""
+    """Return a client-secret credential for the IPAM service principal (app-only auth)."""
 
     # If CLIENT_SECRET is defined, use it for credentials. Otherwise, use the Managed Identity
     if globals.CLIENT_SECRET:
@@ -132,7 +212,7 @@ async def get_client_credentials():
     return credential
 
 async def get_obo_credentials(assertion):
-    """DOCSTRING"""
+    """Return an on-behalf-of credential built from the given user assertion (delegated auth)."""
 
     # If CLIENT_SECRET is defined, use it for credentials. Otherwise, use the Managed Identity
     if globals.CLIENT_SECRET:
@@ -157,10 +237,10 @@ async def get_obo_credentials(assertion):
     return credential
 
 async def get_mgmt_group_name(tenant_id):
-    """DOCSTRING"""
+    """Fetch the root management group for the given tenant using app-only credentials."""
 
     client_creds = await get_client_credentials()
-    mgmt_group_api = ManagementGroupsAPI(client_creds)
+    mgmt_group_api = ManagementGroupsMgmtClient(client_creds)
 
     try:
         result = await mgmt_group_api.management_groups.get(tenant_id)
@@ -174,12 +254,12 @@ async def get_mgmt_group_name(tenant_id):
 
 # Needs a try/except block for aiohttp.client_exceptions.ServerTimeoutError
 async def cosmos_query(query: str, tenant_id: str):
-    """DOCSTRING"""
+    """Run a Cosmos DB query within the tenant's partition and return all matching items."""
 
     # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
-    database = cosmos_client.get_database_client(database_name)
+    database = get_cosmos_client().get_database_client(database_name)
 
     container_name = globals.CONTAINER_NAME
     container = database.get_container_client(container_name)
@@ -197,12 +277,12 @@ async def cosmos_query(query: str, tenant_id: str):
     return result_array
 
 async def cosmos_upsert(data):
-    """DOCSTRING"""
+    """Insert or replace a document in the IPAM Cosmos DB container."""
 
     # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
-    database = cosmos_client.get_database_client(database_name)
+    database = get_cosmos_client().get_database_client(database_name)
 
     container_name = globals.CONTAINER_NAME
     container = database.get_container_client(container_name)
@@ -219,12 +299,12 @@ async def cosmos_upsert(data):
     return res
 
 async def cosmos_replace(old, new):
-    """DOCSTRING"""
+    """Replace an existing Cosmos DB document using optimistic concurrency (ETag match)."""
 
     # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
-    database = cosmos_client.get_database_client(database_name)
+    database = get_cosmos_client().get_database_client(database_name)
 
     container_name = globals.CONTAINER_NAME
     container = database.get_container_client(container_name)
@@ -246,12 +326,12 @@ async def cosmos_replace(old, new):
     return
 
 async def cosmos_delete(item, tenant_id: str):
-    """DOCSTRING"""
+    """Delete a document from the tenant's partition in the IPAM Cosmos DB container."""
 
     # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
     database_name = globals.DATABASE_NAME
-    database = cosmos_client.get_database_client(database_name)
+    database = get_cosmos_client().get_database_client(database_name)
 
     container_name = globals.CONTAINER_NAME
     container = database.get_container_client(container_name)
@@ -271,7 +351,7 @@ async def cosmos_delete(item, tenant_id: str):
     return
 
 def cosmos_retry(error_msg, max_retry = 5):
-    """DOCSTRING"""
+    """Decorator that retries a Cosmos DB operation on optimistic-concurrency conflicts, raising HTTP 500 with ``error_msg`` once retries are exhausted."""
 
     def cosmos_retry_decorator(func):
         @wraps(func)
@@ -290,16 +370,33 @@ def cosmos_retry(error_msg, max_retry = 5):
         return func_with_retries
     return cosmos_retry_decorator
 
-async def arg_query(auth, admin, query):
-    """DOCSTRING"""
+class AzureScope(Enum):
+    """Whose view of Azure a query uses. Always passed by keyword, and never derived from a bare flag."""
 
-    if admin:
-        creds = await get_client_credentials()
-        tenant_id = globals.TENANT_ID
-    else:
-        user_assertion=auth.split(' ')[1]
-        creds = await get_obo_credentials(user_assertion)
-        tenant_id = get_tenant_from_jwt(user_assertion)
+    # Azure IPAM's own work, such as overlap checks, allocation and settlement. Computed from everything,
+    # whoever is asking, and used only to compute an answer. Never chosen from the caller.
+    SYSTEM = "system"
+    # A caller entitled to Azure IPAM's full view.
+    TENANT = "tenant"
+    # A caller limited to their own Azure access, through the on-behalf-of flow.
+    CALLER = "caller"
+
+async def get_scope_credentials(scope, token):
+    """Return the credential and tenant to query Azure with for the given scope."""
+
+    if not isinstance(scope, AzureScope):
+        raise TypeError("scope must be an AzureScope, got {!r}".format(scope))
+
+    if scope is AzureScope.CALLER:
+        return await get_obo_credentials(token), get_tenant_from_jwt(token)
+
+    return await get_client_credentials(), globals.TENANT_ID
+
+async def arg_query(token, query, *, scope):
+    """Run an Azure Resource Graph query with the given scope's credentials, injecting the tenant's subscription exclusions."""
+
+    creds, tenant_id = await get_scope_credentials(scope, token)
+    app_only = scope is not AzureScope.CALLER
 
     exclusions_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
 
@@ -314,51 +411,99 @@ async def arg_query(auth, admin, query):
         exclusions = "('')"
 
     try:
-        results = await arg_query_helper(creds, query.format(exclusions))
-    except ClientAuthenticationError:
-        raise HTTPException(status_code=401, detail="Token has expired.")
-    except HttpResponseError as e:
-        print(e)
-        raise HTTPException(status_code=403, detail="Access denied.")
+        results = await arg_query_helper(creds, query.format(exclusions), app_only=app_only)
     finally:
         await creds.close()
 
     return results
 
 async def arg_query_client(query):
-    """DOCSTRING"""
+    """Run an Azure Resource Graph query using app-only (client secret) credentials."""
 
     client_creds = await get_client_credentials()
 
     try:
-        results = await arg_query_helper(client_creds, query)
-    except ClientAuthenticationError:
-        await client_creds.close()
-        raise HTTPException(status_code=401, detail="Token has expired.")
+        results = await arg_query_helper(client_creds, query, app_only=True)
     finally:
         await client_creds.close()
 
     return results
 
-async def arg_query_obo(auth, query):
-    """DOCSTRING"""
+async def arg_query_obo(token, query):
+    """Run an Azure Resource Graph query on-behalf-of the caller using their bearer token."""
 
-    user_assertion=auth.split(' ')[1]
 
-    obo_creds = await get_obo_credentials(user_assertion)
+    obo_creds = await get_obo_credentials(token)
 
     try:
-        results = await arg_query_helper(obo_creds, query)
-    except ClientAuthenticationError:
-        await obo_creds.close()
-        raise HTTPException(status_code=401, detail="Token has expired.")
+        results = await arg_query_helper(obo_creds, query, app_only=False)
     finally:
         await obo_creds.close()
 
     return results
 
-async def arg_query_helper(credentials, query):
-    """DOCSTRING"""
+def arg_header_value(headers, name):
+    """Look up a header case-insensitively, since header casing varies by transport."""
+
+    for key, value in (headers or {}).items():
+        if str(key).lower() == name:
+            return value
+
+    return None
+
+def arg_error_headers(error):
+    """Response headers carried by an Azure SDK error, if any."""
+
+    return getattr(getattr(error, 'response', None), 'headers', None)
+
+def arg_retry_after(headers):
+    """Seconds Azure Resource Graph asked us to wait, or None if it didn't say."""
+
+    retry_after = arg_header_value(headers, 'retry-after')
+
+    if retry_after:
+        try:
+            return float(retry_after)
+        except ValueError:
+            pass
+
+    # ARG reports its remaining quota window as hh:mm:ss.
+    quota_reset = arg_header_value(headers, 'x-ms-user-quota-resets-after')
+
+    if quota_reset:
+        try:
+            hours, minutes, seconds = quota_reset.split(':')
+
+            return (int(hours) * 3600) + (int(minutes) * 60) + float(seconds)
+        except ValueError:
+            pass
+
+    return None
+
+def arg_quota_remaining(headers):
+    """Queries left in the caller's Azure Resource Graph quota window, or None if not reported."""
+
+    remaining = arg_header_value(headers, 'x-ms-user-quota-remaining')
+
+    if remaining is not None:
+        try:
+            return int(remaining)
+        except (TypeError, ValueError):
+            pass
+
+    return None
+
+def arg_capture_headers(pipeline_response, deserialized, _):
+    """SDK ``cls`` hook that keeps the raw response headers alongside the deserialized page."""
+
+    return deserialized, pipeline_response.http_response.headers
+
+async def arg_query_helper(credentials, query, app_only = False):
+    """Execute an Azure Resource Graph query with the given credentials, paging through all results via skip tokens.
+
+    Set ``app_only`` when ``credentials`` belong to the IPAM service principal rather than the caller,
+    so an authentication failure is reported as a server fault instead of blaming the caller's token.
+    """
 
     results = []
 
@@ -369,7 +514,8 @@ async def arg_query_helper(credentials, query):
         credential=credentials,
         base_url=azure_arm_url,
         credential_scopes=[azure_arm_scope],
-        transport=globals.SHARED_TRANSPORT
+        transport=globals.SHARED_TRANSPORT,
+        retry_policy=ArgRetryPolicy()
     )
 
     try:
@@ -385,19 +531,68 @@ async def arg_query_helper(credentials, query):
                 )
             )
 
-            poll = await resource_graph_client.resources(query_request)
+            poll, response_headers = await resource_graph_client.resources(query_request, cls=arg_capture_headers)
             results = results + poll.data
 
             if poll.skip_token:
+                # Only worth reporting when another page is due, since that is the request that throttles.
+                if arg_quota_remaining(response_headers) == 0:
+                    logger.warning(
+                        "Azure Resource Graph quota exhausted with more pages to fetch, resets in {}s ({} of {} records collected)",
+                        arg_retry_after(response_headers), len(results), poll.total_records
+                    )
+
                 skip_token = poll.skip_token
             else:
                 break
+
+        # ARG withholds the continuation token when it truncates, so the missing rows are unreachable.
+        if poll.result_truncated == ResultTruncated.TRUE:
+            logger.error(
+                "Azure Resource Graph truncated the result set: {} of {} records returned with no continuation token",
+                len(results), poll.total_records
+            )
+
+            raise HTTPException(status_code=500, detail="Azure Resource Graph returned an incomplete result set.")
+
+        if len(results) != poll.total_records:
+            logger.warning(
+                "Azure Resource Graph returned {} records but reported {} total, resources likely changed while paging",
+                len(results), poll.total_records
+            )
     except ServiceRequestError as e:
-        print(e)
+        logger.error("Error communicating with Azure: {}", e)
         raise HTTPException(status_code=500, detail="Error communicating with Azure.")
+    # Must precede HttpResponseError: ClientAuthenticationError is a subclass of it.
+    except ClientAuthenticationError as e:
+        logger.error("Azure authentication failed (app_only={}): {}", app_only, e)
+
+        if app_only:
+            raise HTTPException(status_code=500, detail="Azure IPAM could not authenticate to Azure, its service principal credentials may be expired or invalid.")
+
+        raise HTTPException(status_code=401, detail="Azure authentication failed, your credentials may be expired or invalid.")
     except HttpResponseError as e:
-        print(e)
-        raise HTTPException(status_code=403, detail="Access denied.")
+        logger.error("Azure Resource Graph query failed: {}", e)
+
+        if e.status_code == 429:
+            retry_after = arg_retry_after(arg_error_headers(e))
+
+            raise HTTPException(
+                status_code=429,
+                detail="Azure Resource Graph is throttling requests, please retry shortly.",
+                headers={"Retry-After": str(max(1, int(retry_after)))} if retry_after else None
+            )
+
+        if e.status_code and e.status_code >= 500:
+            raise HTTPException(status_code=502, detail="Azure Resource Graph is unavailable, please retry shortly.")
+
+        # The SDK maps an ARG 401 to ClientAuthenticationError, so only 403 reaches here.
+        if e.status_code == 403:
+            raise HTTPException(status_code=403, detail="Access denied.")
+
+        # Any other upstream status reflects an ARG-side or query fault rather than a caller error,
+        # so the real status is logged instead of being relayed and blamed on the caller.
+        raise HTTPException(status_code=502, detail="Azure Resource Graph query failed.")
     finally:
         await resource_graph_client.close()
 

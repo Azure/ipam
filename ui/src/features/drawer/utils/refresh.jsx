@@ -9,16 +9,22 @@ import {
   refreshAllAsync,
   getMeAsync
 } from '../../ipam/ipamSlice';
+import { fetchNotificationsAsync } from '../../notifications/notificationsSlice';
+import { getRestart } from '../../restart/restartSlice';
 
 function Refresh() {
-  const intervalAll = React.useRef(null);
-  const intervalMe = React.useRef(null);
+  const intervalAllRef = React.useRef(null);
+  const intervalMeRef = React.useRef(null);
+  const intervalNotificationsRef = React.useRef(null);
   const refreshAllRef = React.useRef(null);
   const refreshMeRef = React.useRef(null);
+  const refreshNotificationsRef = React.useRef(null);
   const refreshLoadedRef = React.useRef(false);
   const inProgressRef = React.useRef(InteractionStatus.None);
+  const restartActiveRef = React.useRef(false);
 
   const refreshInterval = useSelector(getRefreshInterval);
+  const restart = useSelector(getRestart);
 
   const dispatch = useDispatch();
   const { inProgress } = useMsal();
@@ -27,8 +33,18 @@ function Refresh() {
     inProgressRef.current = inProgress;
   }, [inProgress]);
 
-  refreshAllRef.current = React.useCallback(() => {
+  // Pause all polling while a service restart is in progress; the app is cycling,
+  // so these calls would just error, and the restart gate drives recovery itself.
+  React.useEffect(() => {
+    restartActiveRef.current = restart.active;
+  }, [restart.active]);
+
+  const refreshAll = React.useCallback(() => {
     if (inProgressRef.current !== InteractionStatus.None) {
+      return;
+    }
+
+    if (restartActiveRef.current) {
       return;
     }
 
@@ -44,8 +60,12 @@ function Refresh() {
     })();
   }, [dispatch]);
 
-  refreshMeRef.current = React.useCallback(() => {
+  const refreshMe = React.useCallback(() => {
     if (inProgressRef.current !== InteractionStatus.None) {
+      return;
+    }
+
+    if (restartActiveRef.current) {
       return;
     }
 
@@ -61,24 +81,60 @@ function Refresh() {
     })();
   }, [dispatch]);
 
+  const refreshNotifications = React.useCallback(() => {
+    if (inProgressRef.current !== InteractionStatus.None) {
+      return;
+    }
+
+    if (restartActiveRef.current) {
+      return;
+    }
+
+    (async() => {
+      try {
+        await dispatch(fetchNotificationsAsync());
+      } catch (e) {
+        console.log("REFRESH NOTIFICATIONS ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+      }
+    })();
+  }, [dispatch]);
+
+  React.useEffect(() => {
+    refreshAllRef.current = refreshAll;
+    refreshMeRef.current = refreshMe;
+    refreshNotificationsRef.current = refreshNotifications;
+  }, [refreshAll, refreshMe, refreshNotifications]);
+
   React.useEffect(() => {
     if(refreshInterval) {
       refreshAllRef.current()
-      clearInterval(intervalAll.current);
-      intervalAll.current = setInterval(() => refreshAllRef.current(), refreshInterval * 60 * 1000);
+      clearInterval(intervalAllRef.current);
+      intervalAllRef.current = setInterval(() => refreshAllRef.current(), refreshInterval * 60 * 1000);
       return () => {
-        clearInterval(intervalAll.current);
-        intervalAll.current = null;
+        clearInterval(intervalAllRef.current);
+        intervalAllRef.current = null;
       }
     }
   }, [refreshInterval]);
 
   React.useEffect(() => {
-    clearInterval(intervalMe.current);
-    intervalMe.current = setInterval(() => refreshMeRef.current(), 60 * 1000);
+    clearInterval(intervalMeRef.current);
+    intervalMeRef.current = setInterval(() => refreshMeRef.current(), 60 * 1000);
     return () => {
-      clearInterval(intervalMe.current);
-      intervalMe.current = null;
+      clearInterval(intervalMeRef.current);
+      intervalMeRef.current = null;
+    }
+  }, []);
+
+  React.useEffect(() => {
+    clearInterval(intervalNotificationsRef.current);
+    intervalNotificationsRef.current = setInterval(() => refreshNotificationsRef.current(), 15 * 60 * 1000);
+    return () => {
+      clearInterval(intervalNotificationsRef.current);
+      intervalNotificationsRef.current = null;
     }
   }, []);
 
@@ -91,6 +147,7 @@ function Refresh() {
     if (!refreshLoadedRef.current && inProgress === InteractionStatus.None) {
       refreshLoadedRef.current = true;
       refreshMeRef.current();
+      refreshNotificationsRef.current();
     }
   }, [inProgress]);
 

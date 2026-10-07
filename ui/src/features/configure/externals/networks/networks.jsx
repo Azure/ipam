@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useSelector } from "react-redux";
 
-import { cloneDeep } from "lodash";
+import { cloneDeep } from "lodash-es";
 
 import { DataGrid } from "../../../../global/grids";
 
@@ -13,7 +13,7 @@ import {
 import {
   AddOutlined,
   EditOutlined,
-  DeleteOutline
+  DeleteOutlined
 } from "@mui/icons-material";
 
 import {
@@ -35,7 +35,7 @@ const Networks = (props) => {
     setExternals,
     setSelectedExternal
   } = props;
-  const { refreshing } = React.useContext(ExternalContext);
+  const { refreshing } = React.use(ExternalContext);
 
   const [addExtOpen, setAddExtOpen] = React.useState(false);
   const [editExtOpen, setEditExtOpen] = React.useState(false);
@@ -65,7 +65,7 @@ const Networks = (props) => {
       disabled: !selectedExternal || !isAdmin,
     },
     {
-      icon: DeleteOutline,
+      icon: DeleteOutlined,
       label: "Delete Network",
       onClick: () => setDelExtOpen(true),
       disabled: !selectedExternal || !isAdmin,
@@ -105,10 +105,15 @@ const Networks = (props) => {
   }, [externals, setSelectedExternal]);
 
   // No rows overlay component
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            display: "block",
+            mt: 1
+          }}>
           {selectedBlock
             ? "No External Networks Found for Selected Block"
             : "Please Select a Space & Block"
@@ -161,7 +166,7 @@ const Networks = (props) => {
             isLoading={refreshing}
             onRowSelectionChanged={handleRowSelectionChanged}
             extraMenuItems={extraMenuItems}
-            noRowsOverlay={NoRowsOverlay}
+            noRowsOverlay={noRowsOverlay}
             noBorder={true}
           />
         </Box>

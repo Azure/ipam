@@ -4,24 +4,37 @@ import {
   selectUpdatedVNets,
   selectUpdatedVHubs,
   selectUpdatedSubnets,
-  selectUpdatedEndpoints,
-  selectParentSpaceNames,
-  selectBlocksWithVNets,
-  selectBlocksWithVHubs,
-  selectParentVNetNames,
-  selectParentSubnetNames,
-  selectParentNetworkNames
+  selectUpdatedEndpoints
 } from '../../ipam/ipamSlice';
 
 import InfoCellRenderer from '../../DiscoverTable/Utils/InfoCellRenderer';
 import ProgressCellRenderer from '../../DiscoverTable/Utils/ProgressCellRenderer';
 import DrillDownCellRenderer from '../../DiscoverTable/Utils/DrillDownCellRenderer';
 
+import { arrayTextMatcher } from '../../../global/grids';
+
 /**
  * Value formatter for N/A fallback on empty values
  */
 function naValueFormatter(params) {
   return params.value || "N/A";
+}
+
+/**
+ * Value getter for a network's flattened parent container fields, which hold an
+ * array and fall back to a placeholder when a network sits in no Block.
+ */
+function containerValueGetter(params) {
+  const value = params.data?.[params.colDef.field];
+
+  return value?.length ? value.join(", ") : "<Unassigned>";
+}
+
+/**
+ * Filter value getter matching containerValueGetter, without the placeholder.
+ */
+function containerFilterValueGetter(params) {
+  return params.data?.[params.colDef.field]?.join(", ") ?? "";
 }
 
 // ============================================================================
@@ -40,6 +53,34 @@ const countFilterParams = {
   filterOptions: ['greaterThanOrEqual', 'equals', 'lessThan', 'greaterThan', 'lessThanOrEqual', 'inRange'],
   defaultOption: 'greaterThanOrEqual',
 };
+
+// Text filter params for parent container columns, which match per array element
+const containerFilterParams = { textMatcher: arrayTextMatcher };
+
+// ============================================================================
+// Drill-Down Filters
+// A drill-down asks for the children of one specific parent, so each filter
+// has to name every field needed to identify that parent uniquely.
+// ============================================================================
+
+// A Block name is unique only within its Space.
+//
+// These two columns are matched independently, so a network sitting in Blocks
+// across several Spaces can satisfy the Space from one Block and the name from
+// another, and appear under a Block it does not belong to. Pairing them would
+// mean a blended Block/Space column that exists only to serve this filter, so
+// the extra rows are accepted instead. Note the drill-down icon itself is exact.
+const blockChildFilter = [
+  { field: 'parent_spaces', valueFrom: 'parent_space' },
+  { field: 'parent_blocks', valueFrom: 'name' }
+];
+
+// A vNet name is unique only within its resource group and subscription.
+const vnetChildFilter = [
+  { field: 'vnet_name', valueFrom: 'name' },
+  { field: 'resource_group', valueFrom: 'resource_group' },
+  { field: 'subscription_id', valueFrom: 'subscription_id' }
+];
 
 // ============================================================================
 // Spaces Configuration
@@ -60,7 +101,14 @@ export const spaces = {
       cellRenderer: DrillDownCellRenderer,
       cellRendererParams: {
         targets: [
-          { label: 'Blocks', path: '/discover/block', filterField: 'parent_space', hasChildrenSelector: selectParentSpaceNames }
+          {
+            label: 'Blocks',
+            path: '/discover/block',
+            index: 'blocksBySpace',
+            keyFrom: 'name',
+            // Space names are unique on their own.
+            filter: [{ field: 'parent_space', valueFrom: 'name' }]
+          }
         ]
       }
     },
@@ -119,8 +167,8 @@ export const blocks = {
       cellRenderer: DrillDownCellRenderer,
       cellRendererParams: {
         targets: [
-          { label: 'Virtual Networks', path: '/discover/vnet', filterField: 'parent_block', hasChildrenSelector: selectBlocksWithVNets },
-          { label: 'Virtual Hubs', path: '/discover/vhub', filterField: 'parent_block', hasChildrenSelector: selectBlocksWithVHubs }
+          { label: 'Virtual Networks', path: '/discover/vnet', index: 'vnetsByBlock', keyFrom: 'id', filter: blockChildFilter },
+          { label: 'Virtual Hubs', path: '/discover/vhub', index: 'vhubsByBlock', keyFrom: 'id', filter: blockChildFilter }
         ]
       }
     },
@@ -181,7 +229,7 @@ export const vnets = {
       cellRenderer: DrillDownCellRenderer,
       cellRendererParams: {
         targets: [
-          { label: 'Subnets', path: '/discover/subnet', filterField: 'vnet_name', hasChildrenSelector: selectParentVNetNames }
+          { label: 'Subnets', path: '/discover/subnet', index: 'subnetsByVNet', keyFrom: 'id', filter: vnetChildFilter }
         ]
       }
     },
@@ -194,14 +242,20 @@ export const vnets = {
       cellRenderer: ProgressCellRenderer
     },
     {
-      field: "parent_block",
+      field: "parent_spaces",
+      headerName: "Space",
+      flex: 0.75,
+      valueGetter: containerValueGetter,
+      filterValueGetter: containerFilterValueGetter,
+      filterParams: containerFilterParams
+    },
+    {
+      field: "parent_blocks",
       headerName: "Block",
-      flex: 0.85,
-      valueGetter: (params) => {
-        const value = params.data?.parent_block;
-        return Array.isArray(value) ? value.join(", ") : "<Unassigned>";
-      },
-      filterValueGetter: (params) => params.data?.parent_block?.join(", ") ?? ""
+      flex: 0.75,
+      valueGetter: containerValueGetter,
+      filterValueGetter: containerFilterValueGetter,
+      filterParams: containerFilterParams
     },
     { field: "resource_group", headerName: "Resource Group", flex: 0.75, hide: true },
     { field: "subscription_name", headerName: "Subscription Name", flex: 0.85, hide: true },
@@ -237,8 +291,8 @@ export const vnets = {
     progressUsed: "used",
     fieldMap: [
       { name: "vNet Name", value: "name" },
-      { name: "Space", value: "parent_space" },
-      { name: "Block(s)", value: "parent_block" },
+      { name: "Space(s)", value: "parent_spaces" },
+      { name: "Block(s)", value: "parent_blocks" },
       { name: "Address Space", value: "prefixes" },
       { name: "Resource Group", value: "resource_group" },
       { name: "Subscription Name", value: "subscription_name" },
@@ -272,11 +326,14 @@ export const subnets = {
           {
             label: 'Endpoints',
             path: '/discover/endpoint',
-            filterField: [
+            index: 'endpointsBySubnet',
+            keyFrom: 'id',
+            // An Endpoint carries its own resource group and subscription, not
+            // its parent network's, so those cannot narrow this any further.
+            filter: [
               { field: 'vnet_name', valueFrom: 'vnet_name' },
               { field: 'subnet_name', valueFrom: 'name' }
-            ],
-            hasChildrenSelector: selectParentSubnetNames
+            ]
           }
         ]
       }
@@ -347,20 +404,34 @@ export const vhubs = {
       cellRenderer: DrillDownCellRenderer,
       cellRendererParams: {
         targets: [
-          { label: 'Endpoints', path: '/discover/endpoint', filterField: 'vnet_name', hasChildrenSelector: selectParentNetworkNames }
+          {
+            label: 'Endpoints',
+            path: '/discover/endpoint',
+            index: 'endpointsByNetwork',
+            keyFrom: 'id',
+            // Endpoints record a vHub under vnet_name, so this shares a namespace
+            // with vNet names and cannot be narrowed any further.
+            filter: [{ field: 'vnet_name', valueFrom: 'name' }]
+          }
         ]
       }
     },
     { field: "vwan_name", headerName: "Parent vWAN", flex: 0.6 },
     {
-      field: "parent_block",
+      field: "parent_spaces",
+      headerName: "Space",
+      flex: 0.6,
+      valueGetter: containerValueGetter,
+      filterValueGetter: containerFilterValueGetter,
+      filterParams: containerFilterParams
+    },
+    {
+      field: "parent_blocks",
       headerName: "Block",
-      flex: 0.75,
-      valueGetter: (params) => {
-        const value = params.data?.parent_block;
-        return Array.isArray(value) ? value.join(", ") : "<Unassigned>";
-      },
-      filterValueGetter: (params) => params.data?.parent_block?.join(", ") ?? ""
+      flex: 0.6,
+      valueGetter: containerValueGetter,
+      filterValueGetter: containerFilterValueGetter,
+      filterParams: containerFilterParams
     },
     { field: "subscription_name", headerName: "Subscription Name", flex: 0.75, hide: true },
     { field: "subscription_id", headerName: "Subscription ID", flex: 0.75, hide: true },
@@ -383,8 +454,8 @@ export const vhubs = {
     fieldMap: [
       { name: "vHub Name", value: "name" },
       { name: "vWAN Name", value: "vwan_name" },
-      { name: "Space", value: "parent_space" },
-      { name: "Block(s)", value: "parent_block" },
+      { name: "Space(s)", value: "parent_spaces" },
+      { name: "Block(s)", value: "parent_blocks" },
       { name: "Address Space", value: "prefixes" },
       { name: "Resource Group", value: "resource_group" },
       { name: "Subscription Name", value: "subscription_name" },
@@ -456,6 +527,9 @@ export const endpoints = {
       { name: "Subscription ID", value: "subscription_id" },
       { name: "Size", value: "metadata.size" },
       { name: "Private Endpoint Type", value: "metadata.group_id" },
+      { name: "Private Endpoint Name", value: "metadata.pe_name" },
+      { name: "Connection Status", value: "metadata.connection_status" },
+      { name: "Connection Alias", value: "metadata.alias" },
       { name: "VMSS Name", value: "metadata.vmss_name" },
       { name: "VMSS Instance ID", value: "metadata.vmss_vm_num" },
       { name: "Orphaned", value: "metadata.orphaned" }

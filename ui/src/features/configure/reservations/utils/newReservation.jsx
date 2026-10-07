@@ -80,11 +80,11 @@ export default function NewReservation(props) {
 
   function onSubmit() {
     var body = {
-      ...description.value.length > 0 && { desc: description.value },
-      ...checked && { size: mask.value },
-      ...checked && { reverse_search: reverseSearch },
-      ...checked && { smallest_cidr: smallestCIDR },
-      ...!checked && { cidr: cidr.value }
+      ...(description.value.length > 0 && { desc: description.value }),
+      ...(checked && { size: mask.value }),
+      ...(checked && { reverse_search: reverseSearch }),
+      ...(checked && { smallest_cidr: smallestCIDR }),
+      ...(!checked && { cidr: cidr.value })
     };
 
     (async () => {
@@ -169,7 +169,12 @@ export default function NewReservation(props) {
         Create Reservation
       </DialogTitle>
       <DialogContent>
-        <Box display="flex" flexDirection="column" alignItems="center">
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center"
+          }}>
           <Tooltip
             arrow
             disableFocusListener
@@ -194,16 +199,22 @@ export default function NewReservation(props) {
               variant="standard"
               value={description.value}
               onChange={(event) => onDescriptionChange(event)}
-              inputProps={{ spellCheck: false }}
               sx={{ width: "80%" }}
+              slotProps={{
+                htmlInput: { spellCheck: false }
+              }}
             />
           </Tooltip>
           <Box sx={{ width: "80%", mt: 2, mb: 0.5, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Typography
               variant="caption"
-              color="text.secondary"
-              sx={{ display: 'block', mb: 0.75, width: '100%', textAlign: 'center' }}
-            >
+              sx={{
+                color: "text.secondary",
+                display: 'block',
+                mb: 0.75,
+                width: '100%',
+                textAlign: 'center'
+              }}>
               Allocation Mode
             </Typography>
             <ToggleButtonGroup
@@ -232,10 +243,6 @@ export default function NewReservation(props) {
                 value={mask}
                 onChange={(_, newValue) => setMask(newValue)}
                 sx={{ width: '7ch', flexShrink: 0 }}
-                ListboxProps={{
-                  style: { maxHeight: "15rem" },
-                  position: "bottom-start"
-                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -244,6 +251,12 @@ export default function NewReservation(props) {
                     variant="standard"
                   />
                 )}
+                slotProps={{
+                  listbox: {
+                    style: { maxHeight: "15rem" },
+                    position: "bottom-start"
+                  }
+                }}
               />
               <FormGroup>
                 <FormControlLabel
@@ -292,8 +305,10 @@ export default function NewReservation(props) {
                   variant="standard"
                   value={cidr.value}
                   onChange={(event) => onCidrChange(event)}
-                  inputProps={{ spellCheck: false }}
                   sx={{ width: "20ch" }}
+                  slotProps={{
+                    htmlInput: { spellCheck: false }
+                  }}
                 />
               </Tooltip>
             </Box>

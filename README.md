@@ -13,9 +13,10 @@ Azure IPAM is a lightweight solution developed on top of the Azure platform desi
 | `engine/`            | Engine Application Code                                       |
 | `examples/`          | Example IaC Templates, Scripts, and Code Snippets             |
 | `migrate/`           | Migration Bicep Templates & PowerShell Migration Script       |
+| `update/`            | Update Bicep Templates & PowerShell Update Script             |
 | `lb/`                | Load Balancer (NGINX) Configs                                 |
 | `tests/`             | Testing Scripts                                               |
-| `tools/`             | Lifecycle Scripts (Build/Version/Update)                      |
+| `tools/`             | Lifecycle Scripts (Build/Version)                             |
 | `ui/`                | UI Application Code                                           |
 | `.dockerignore`      | Untracked Docker Files to Ignore                              |
 | `.env.example`       | Example ENV File to be Used with Docker Compose               |

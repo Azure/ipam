@@ -2,11 +2,14 @@ import * as React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useLocation } from "react-router";
 
-import { isEmpty, isEqual, sortBy, pick } from "lodash";
+import { isEmpty, isEqual, sortBy, pick } from "lodash-es";
 
 import { useSnackbar } from "notistack";
 
-import moment from "moment";
+import dayjs from "dayjs";
+import localizedFormat from "dayjs/plugin/localizedFormat";
+
+dayjs.extend(localizedFormat);
 
 import { DataGrid } from "../../../global/grids/DataGrid";
 
@@ -26,7 +29,7 @@ import {
   Autorenew,
   CheckOutlined,
   WarningAmber,
-  ErrorOutline,
+  ErrorOutlined,
   BlockOutlined,
   TimerOffOutlined,
   VisibilityOutlined,
@@ -77,13 +80,14 @@ const MESSAGE_MAP = {
     color: "warning"
   },
   "errCIDROverlap": {
-    msg: "A vNET with overlapping CIDR has already been associated with the target IP Block.",
-    icon: ErrorOutline,
+    msg: "One of the virtual network's address ranges in this Block overlaps an existing network, External Network, or Reservation.",
+    icon: ErrorOutlined,
     color: "error"
   },
+  // Placeholder for a future exact-duplicate check; the engine currently reports all overlaps as errCIDROverlap.
   "errCIDRExists": {
-    msg: "A vNET with overlapping CIDR has already been associated with the target IP Block.",
-    icon: ErrorOutline,
+    msg: "A virtual network with the reserved address range is already associated with this Block.",
+    icon: ErrorOutlined,
     color: "error"
   },
   "cancelledByUser": {
@@ -148,9 +152,10 @@ function ReservationStatus(props) {
 
 function ReservationId(props) {
   const { value } = props;
-  const { copied, setCopied } = React.useContext(ReservationContext);
+  const { copied, setCopied } = React.use(ReservationContext);
 
-  const contentCopied = (copied === value.id);
+  const contentCopied = (value.id !== null && copied === value.id);
+  const hidden = (value.id === null);
 
   const onClick = (e) => {
     e.stopPropagation();
@@ -170,6 +175,11 @@ function ReservationId(props) {
       disableFocusListener
       placement="right"
       title={
+        hidden ?
+        <div style={{ textAlign: "center" }}>
+          Only the creator of this Reservation
+          <br />and administrators can see its ID
+        </div> :
         value.settledOn === null ?
         <div style={{ textAlign: "center" }}>
           Click to Copy
@@ -192,7 +202,7 @@ function ReservationId(props) {
                 padding: 0
               }}
               onClick={onClick}
-              disabled={value.settledOn !== null}
+              disabled={hidden || value.settledOn !== null}
             >
               <ContentCopy fontSize="inherit" />
             </IconButton>
@@ -203,6 +213,13 @@ function ReservationId(props) {
     </Tooltip>
   );
 }
+
+// Reservations created by other users arrive without an ID, and can't be cancelled by the caller.
+// Only pending Reservations are hidden this way, and a Block can't hold two pending Reservations
+// for overlapping CIDRs, so the CIDR identifies those rows.
+const reservationKey = (resv) => resv.id ?? `pending:${resv.cidr}`;
+
+const isReservationSelectable = (node) => node.data?.id !== null;
 
 const Reservations = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -227,7 +244,7 @@ const Reservations = () => {
   const spaces = useSelector(selectSpaces);
   const blocks = useSelector(selectBlocks);
 
-  const msgTimer = React.useRef(null);
+  const msgTimerRef = React.useRef(null);
 
   const dispatch = useDispatch();
 
@@ -239,13 +256,13 @@ const Reservations = () => {
       field: "createdOn",
       headerName: "Creation Date",
       flex: 0.75,
-      valueFormatter: (params) => params.value ? moment.unix(params.value).format('lll') : null,
+      valueFormatter: (params) => params.value ? dayjs.unix(params.value).format('lll') : null,
       filter: 'agDateColumnFilter',
       filterParams: {
         comparator: (filterDate, cellValue) => {
           if (!cellValue) return -1;
-          const cellDate = moment.unix(cellValue).startOf('day').toDate();
-          const filterDateStart = moment(filterDate).startOf('day').toDate();
+          const cellDate = dayjs.unix(cellValue).startOf('day').toDate();
+          const filterDateStart = dayjs(filterDate).startOf('day').toDate();
           if (cellDate < filterDateStart) return -1;
           if (cellDate > filterDateStart) return 1;
           return 0;
@@ -257,13 +274,13 @@ const Reservations = () => {
       headerName: "Settled Date",
       flex: 0.75,
       hide: true,
-      valueFormatter: (params) => params.value ? moment.unix(params.value).format('lll') : null,
+      valueFormatter: (params) => params.value ? dayjs.unix(params.value).format('lll') : null,
       filter: 'agDateColumnFilter',
       filterParams: {
         comparator: (filterDate, cellValue) => {
           if (!cellValue) return -1;
-          const cellDate = moment.unix(cellValue).startOf('day').toDate();
-          const filterDateStart = moment(filterDate).startOf('day').toDate();
+          const cellDate = dayjs.unix(cellValue).startOf('day').toDate();
+          const filterDateStart = dayjs(filterDate).startOf('day').toDate();
           if (cellDate < filterDateStart) return -1;
           if (cellDate > filterDateStart) return 1;
           return 0;
@@ -310,20 +327,22 @@ const Reservations = () => {
   // Derive filtered grid data synchronously to prevent a flash of
   // the no-rows overlay when reservations or filter state changes.
   const gridData = React.useMemo(() => {
-    return filterActive ? reservations.filter(x => x.settledOn === null) : reservations;
+    const visible = filterActive ? reservations.filter(x => x.settledOn === null) : reservations;
+
+    return visible.map(x => ({ ...x, rowKey: reservationKey(x) }));
   }, [reservations, filterActive]);
 
   React.useEffect(() => {
     if(copied !== "") {
-      clearTimeout(msgTimer.current);
+      clearTimeout(msgTimerRef.current);
 
-      msgTimer.current = setTimeout(
+      msgTimerRef.current = setTimeout(
         function() {
           setCopied("");
         }, 3000
       );
     }
-  }, [msgTimer, copied]);
+  }, [msgTimerRef, copied]);
 
   React.useEffect(() => {
     if (spaces) {
@@ -424,18 +443,28 @@ const Reservations = () => {
     })();
   }
 
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <React.Fragment>
         { selectedBlock
-          ? <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+          ? <Typography
+              variant="overline"
+              sx={{
+                display: "block",
+                mt: 1
+              }}>
               {
                 filterActive ?
                 "No Active Reservations Found for Selected Block" :
                 "No Reservations Found for Selected Block"
               }
             </Typography>
-          : <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+          : <Typography
+              variant="overline"
+              sx={{
+                display: "block",
+                mt: 1
+              }}>
               Please Select a Space & Block
             </Typography>
         }
@@ -444,7 +473,7 @@ const Reservations = () => {
   }, [selectedBlock, filterActive]);
 
   return (
-    <ReservationContext.Provider value={{ copied, setCopied }}>
+    <ReservationContext value={{ copied, setCopied }}>
       <NewReservation
         open={newResvOpen}
         handleClose={() => setNewResvOpen(false)}
@@ -479,14 +508,18 @@ const Reservations = () => {
                   {...params}
                   label="Space"
                   placeholder="Please Select Space..."
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <React.Fragment>
-                        {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
-                      </React.Fragment>
-                    ),
+                  slotProps={{
+                    ...params.slotProps,
+
+                    input: {
+                      ...params.slotProps.input,
+                      endAdornment: (
+                        <React.Fragment>
+                          {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.slotProps.input.endAdornment}
+                        </React.Fragment>
+                      ),
+                    }
                   }}
                 />
               )}
@@ -497,7 +530,7 @@ const Reservations = () => {
                   </li>
                 );
               }}
-              componentsProps={{
+              slotProps={{
                 paper: {
                   sx: {
                     width: 'fit-content'
@@ -530,8 +563,12 @@ const Reservations = () => {
                   {...params}
                   label="Block"
                   placeholder="Please Select Block..."
-                  InputProps={{
-                    ...params.InputProps
+                  slotProps={{
+                    ...params.slotProps,
+
+                    input: {
+                      ...params.slotProps.input
+                    }
                   }}
                 />
               )}
@@ -542,7 +579,7 @@ const Reservations = () => {
                   </li>
                 );
               }}
-              componentsProps={{
+              slotProps={{
                 paper: {
                   sx: {
                     width: 'fit-content'
@@ -606,15 +643,17 @@ const Reservations = () => {
               onRowSelectionChanged={onRowSelectionChanged}
               multiSelect={true}
               checkboxSelect={true}
+              idProperty="rowKey"
+              isRowSelectable={isReservationSelectable}
               extraMenuItems={extraMenuItems}
               isLoading={sending || refreshing}
-              noRowsOverlay={NoRowsOverlay}
+              noRowsOverlay={noRowsOverlay}
               actionsCellRenderer={actionsCellRenderer}
             />
           </Box>
         </Box>
       </Box>
-    </ReservationContext.Provider>
+    </ReservationContext>
   );
 }
 

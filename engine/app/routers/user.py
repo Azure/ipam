@@ -4,12 +4,18 @@ import uuid
 from typing import List, Union
 
 import jsonpatch
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 
-from app.dependencies import api_auth_checks, get_admin, get_tenant_id
+from app.dependencies import (
+    UNAUTHORIZED,
+    api_auth_checks,
+    get_tenant_id,
+    get_token_auth_header,
+)
 from app.models import User, UserExpand, UserUpdate, ViewSettings
+from app.permissions import Permission, requires
 from app.routers.admin import new_admin_db
 from app.routers.common.helper import (
     cosmos_query,
@@ -22,7 +28,8 @@ from app.routers.common.helper import (
 router = APIRouter(
     prefix="/users",
     tags=["users"],
-    dependencies=[Depends(api_auth_checks)]
+    dependencies=[Depends(api_auth_checks)],
+    responses=UNAUTHORIZED
 )
 
 async def new_user(user_id, tenant_id):
@@ -90,21 +97,18 @@ async def scrub_patch(patch):
     "",
     summary = "Get All Users",
     response_model = List[User],
-    status_code = 200
+    status_code = 200,
+    dependencies = [Depends(requires(Permission.USERS_READ))]
 )
 async def get_users(
-    authorization: str = Header(None, description="Azure Bearer token"),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    token: str = Depends(get_token_auth_header),
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a list of IPAM Users.
     """
 
     user_list = []
-
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
 
     users = await cosmos_query("SELECT VALUE c.data FROM c WHERE c.type = 'user'", tenant_id)
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
@@ -138,15 +142,14 @@ async def get_users(
 )
 async def get_user(
     expand: bool = Query(False, description="Show expanded user details"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get your IPAM user details.
     """
 
-    user_assertion = authorization.split(' ')[1]
-    user_id = get_user_id_from_jwt(user_assertion)
+    user_id = get_user_id_from_jwt(token)
 
     user_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND c['data']['id'] = '{}')".format(user_id), tenant_id)
 
@@ -186,7 +189,7 @@ async def get_user(
 )
 async def update_user(
     updates: UserUpdate,
-    authorization: str = Header(None, description="Azure Bearer token"),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -202,8 +205,7 @@ async def update_user(
     - **/apiRefresh**
     """
 
-    user_assertion = authorization.split(' ')[1]
-    user_id = get_user_id_from_jwt(user_assertion)
+    user_id = get_user_id_from_jwt(token)
 
     user_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND c['data']['id'] = '{}')".format(user_id), tenant_id)
 
@@ -215,13 +217,13 @@ async def update_user(
     try:
         patch = jsonpatch.JsonPatch([x.model_dump() for x in updates])
     except jsonpatch.InvalidJsonPatch:
-        raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
+        raise HTTPException(status_code=400, detail="Invalid JSON patch, please review and try again.")
 
     try:
         scrubbed_patch = jsonpatch.JsonPatch(await scrub_patch(patch))
         user_data['data'] = scrubbed_patch.apply(user_data['data'], in_place = True)
     except jsonpatch.JsonPatchConflict as e:
-        raise HTTPException(status_code=500, detail=str(e).capitalize())
+        raise HTTPException(status_code=409, detail=str(e).capitalize())
 
     await cosmos_replace(user_query[0], user_data)
 

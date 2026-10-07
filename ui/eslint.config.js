@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import globals from "globals";
 
 import eslintReact from "@eslint-react/eslint-plugin";
-import reactCompiler from "eslint-plugin-react-compiler";
+import reactHooks from "eslint-plugin-react-hooks";
 
 export default [
   // Ignore build output
@@ -53,8 +53,7 @@ export default [
   },
 
   // Disable RSC rules (Vite SPA, not using React Server Components)
-  // Disable rules-of-hooks and exhaustive-deps (covered by react-compiler)
-  // Downgrade component-hook-factories (duplicates no-nested-component-definitions)
+  // Disable rules-of-hooks and exhaustive-deps (covered by react-hooks)
   // Disable set-state-in-effect (widespread pattern, to be addressed incrementally)
   {
     files: ["src/**/*.jsx"],
@@ -63,17 +62,22 @@ export default [
       "@eslint-react/no-nested-component-definitions": "warn",
       "@eslint-react/rules-of-hooks": "off",
       "@eslint-react/exhaustive-deps": "off",
-      "@eslint-react/component-hook-factories": "warn",
       "@eslint-react/set-state-in-effect": "off",
     },
   },
 
-  // React Compiler rules (replaces eslint-plugin-react-hooks)
+  // React Hooks + React Compiler rules (consolidated in eslint-plugin-react-hooks v7)
   {
-    ...reactCompiler.configs.recommended,
+    ...reactHooks.configs.flat["recommended-latest"],
+    files: ["src/**/*.jsx"],
+  },
+
+  // React Compiler rule overrides
+  // - set-state-in-effect: widespread pattern, to be addressed incrementally
+  {
     files: ["src/**/*.jsx"],
     rules: {
-      "react-compiler/react-compiler": "warn",
+      "react-hooks/set-state-in-effect": "off",
     },
   },
 

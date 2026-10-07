@@ -21,13 +21,13 @@ const OverlayContext = React.createContext(null);
 /**
  * CombinedOverlay - Single overlay component for both loading and no-rows states.
  *
- * Reads the consumer-provided noRowsOverlay component from OverlayContext
+ * Reads the consumer-provided noRowsOverlay element from OverlayContext
  * rather than from AG Grid props, so that React context reactivity drives
  * re-renders independently of AG Grid's overlay lifecycle.
  */
 const CombinedOverlay = React.memo(({ overlayType }) => {
-  const overlayConfig = React.useContext(OverlayContext);
-  const NoRowsContent = overlayConfig?.noRowsOverlay;
+  const overlayConfig = React.use(OverlayContext);
+  const noRowsContent = overlayConfig?.noRowsOverlay;
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
@@ -64,8 +64,8 @@ const CombinedOverlay = React.memo(({ overlayType }) => {
   }
 
   // noRows / noMatchingRows
-  if (NoRowsContent) {
-    return <NoRowsContent />;
+  if (noRowsContent) {
+    return noRowsContent;
   }
 
   return (
@@ -79,7 +79,12 @@ const CombinedOverlay = React.memo(({ overlayType }) => {
         padding: 2,
       }}
     >
-      <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+      <Typography
+        variant="overline"
+        sx={{
+          display: "block",
+          mt: 1
+        }}>
         No data available
       </Typography>
     </Box>
@@ -108,7 +113,7 @@ CombinedOverlay.displayName = 'CombinedOverlay';
  * @param {Function} props.onRowClick - Callback when a row is clicked, receives row data
  * @param {Object} props.selectedRow - Currently selected row (controlled selection)
  * @param {string} props.idProperty - Property to use as row identifier (default: 'name')
- * @param {React.Component} props.noRowsOverlay - Custom no rows overlay component (reactive via OverlayContext)
+ * @param {React.ReactNode} props.noRowsOverlay - Custom no rows overlay element (reactive via OverlayContext)
  * @param {boolean} props.isLoading - Show loading overlay (default: false)
  * @param {Object} props.gridOptions - Additional AG Grid options
  */
@@ -224,7 +229,7 @@ const ConfigureGrid = ({
   }, []);
 
   return (
-    <OverlayContext.Provider value={overlayContextValue}>
+    <OverlayContext value={overlayContextValue}>
     <div style={gridStyle} className="ag-theme-quartz">
       <AgGridReact
         ref={gridRef}
@@ -246,7 +251,7 @@ const ConfigureGrid = ({
         {...gridOptions}
       />
     </div>
-    </OverlayContext.Provider>
+    </OverlayContext>
   );
 };
 

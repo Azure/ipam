@@ -13,7 +13,15 @@ select = [
     "E9",   # pycodestyle runtime errors
     "F",    # pyflakes
     "I",    # isort
+    "TID",  # flake8-tidy-imports (banned-api, below)
     "W291", # trailing whitespace
     "W293", # blank line with whitespace
     "W605", # invalid escape sequence
 ]
+
+# Synchronous HTTP clients verify TLS against the bundled certifi roots and cannot see
+# the sovereign cloud roots injected via WEBSITES_INCLUDE_CLOUD_CERTS, so they fail in
+# secret clouds (IL6) while passing every commercial-cloud test.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"requests".msg = "Use aiohttp; requests validates TLS against certifi and breaks in sovereign clouds."
+"httpx".msg = "Use aiohttp; httpx validates TLS against certifi and breaks in sovereign clouds."

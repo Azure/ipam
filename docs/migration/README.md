@@ -213,16 +213,20 @@ Execute the migration script with auto-discovery:
 
 #### Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `-AppName` | String | Yes | Name of your existing Azure IPAM App Service |
-| `-ResourceGroupName` | String | Yes | Resource group containing your App Service |
-| `-NoVerify` | Switch | No | Skip resource existence verification **<sup>1</sup>** |
-| `-Force` | Switch | No | Skip user confirmation prompts **<sup>2</sup>** |
+| Parameter            | Type   | Required | Description                                                                                 |
+|----------------------|--------|----------|---------------------------------------------------------------------------------------------|
+| `-AppName`           | String | Yes      | Name of your existing Azure IPAM App Service                                                |
+| `-ResourceGroupName` | String | Yes      | Resource group containing your App Service                                                  |
+| `-ContainerType`     | String | No       | Container distro (`Debian` or `RHEL`) to build for private ACR deployments **<sup>3</sup>** |
+| `-NoVerify`          | Switch | No       | Skip resource existence verification **<sup>1</sup>**                                       |
+| `-Force`             | Switch | No       | Skip user confirmation prompts **<sup>2</sup>**                                             |
+| `-Debug`             | Switch | No       | Write verbose Azure deployment logs to `logs/debug_[timestamp].log`                         |
 
 > **NOTE 1:** Use with caution as this bypasses safety checks.
 
 > **NOTE 2:** Recommended for automated deployments only.
+
+> **NOTE 3:** Only applies to private ACR deployments, which rebuild the container image. When omitted, the distro is auto-detected by probing the source application's status API (`/api/status`). Specify it explicitly to skip that probe — for example when the application is stopped or otherwise unreachable, or when auto-detection returns the wrong distro.
 
 ### Step 2: Monitor Migration Progress
 
@@ -309,17 +313,21 @@ Execute the migration script with your resource JSON file specified:
 
 #### Manual Override Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `-AppName` | String | Yes | Name of your existing Azure IPAM App Service |
-| `-ResourceGroupName` | String | Yes | Resource group containing your App Service |
-| `-JsonFile` | String | Yes | Path to your JSON override file |
-| `-NoVerify` | Switch | No | Skip resource existence verification **<sup>1</sup>** |
-| `-Force` | Switch | No | Skip user confirmation prompts **<sup>2</sup>** |
+| Parameter            | Type   | Required | Description                                                                                 |
+|----------------------|--------|----------|---------------------------------------------------------------------------------------------|
+| `-AppName`           | String | Yes      | Name of your existing Azure IPAM App Service                                                |
+| `-ResourceGroupName` | String | Yes      | Resource group containing your App Service                                                  |
+| `-JsonFile`          | String | Yes      | Path to your JSON override file                                                             |
+| `-ContainerType`     | String | No       | Container distro (`Debian` or `RHEL`) to build for private ACR deployments **<sup>3</sup>** |
+| `-NoVerify`          | Switch | No       | Skip resource existence verification **<sup>1</sup>**                                       |
+| `-Force`             | Switch | No       | Skip user confirmation prompts **<sup>2</sup>**                                             |
+| `-Debug`             | Switch | No       | Write verbose Azure deployment logs to `logs/debug_[timestamp].log`                         |
 
 > **NOTE 1:** Use with caution as this bypasses safety checks.
 
 > **NOTE 2:** Recommended for automated deployments only.
+
+> **NOTE 3:** Only applies to private ACR deployments, which rebuild the container image. When omitted, the distro is auto-detected by probing the source application's status API (`/api/status`). Specify it explicitly to skip that probe — for example when the application is stopped or otherwise unreachable, or when auto-detection returns the wrong distro.
 
 ### Step 3: Monitor Migration Progress
 

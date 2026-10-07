@@ -2,10 +2,15 @@ import copy
 from typing import List
 
 import regex
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from netaddr import IPNetwork, IPSet
 
-from app.dependencies import api_auth_checks, get_tenant_id
+from app.dependencies import (
+    UNAUTHORIZED,
+    api_auth_checks,
+    get_tenant_id,
+    get_token_auth_header,
+)
 from app.models import (
     CIDRCheckReq,
     CIDRCheckRes,
@@ -14,15 +19,25 @@ from app.models import (
     SubnetCIDRReq,
     VNetCIDRReq,
 )
-from app.routers.azure import get_network
-from app.routers.common.helper import arg_query, cosmos_query, cosmos_retry, vnet_fixup
+from app.permissions import Grants, Permission, get_azure_scope, get_grants
+from app.routers.azure import fetch_network_prefixes
+from app.routers.common.helper import (
+    AzureScope,
+    arg_query,
+    associated_network_ids,
+    cosmos_query,
+    cosmos_retry,
+    is_app_only_token,
+    vnet_fixup,
+)
 
 from . import argquery
 
 router = APIRouter(
     prefix="/tools",
     tags=["tools"],
-    dependencies=[Depends(api_auth_checks)]
+    dependencies=[Depends(api_auth_checks)],
+    responses=UNAUTHORIZED
 )
 
 @router.post(
@@ -37,7 +52,9 @@ router = APIRouter(
 )
 async def next_available_subnet(
     req: SubnetCIDRReq,
-    authorization: str = Header(None, description="Azure Bearer token"),
+    token: str = Depends(get_token_auth_header),
+    tenant_id: str = Depends(get_tenant_id),
+    scope: AzureScope = Depends(get_azure_scope)
 ):
     """
     Get the next available Subnet CIDR in a Virtual Network with the following information:
@@ -50,6 +67,8 @@ async def next_available_subnet(
     - **smallest_cidr**:
         - **true**: New subnets will be created using the smallest possible available CIDR (e.g. it will not break up large CIDR blocks when possible)
         - **false (default)**: New subnets will be created using the first available CIDR, regardless of size
+
+    Non-admin callers can target any Virtual Network associated with a Block, plus any other Virtual Network they can read in Azure. Service principals that aren't administrators can only target Virtual Networks associated with a Block.
     """
 
     vnet_pattern = regex.compile(r'(?i)^\/subscriptions\/[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}\/resourceGroups\/(?=.{1,90})([a-zA-Z0-9-_\.\p{L}\p{N}]*)(?<!\.)\/providers\/Microsoft.Network\/virtualNetworks\/(?=.{2,64})([a-zA-Z0-9-_\.]*)(?<=[a-zA-Z0-9_])$')
@@ -59,13 +78,27 @@ async def next_available_subnet(
     if not valid_vnet:
         raise HTTPException(status_code=400, detail="Invalid Virtual Network ID.")
 
-    vnet_list = await arg_query(authorization, True, argquery.VNET)
+    # Networks associated with a Block are Azure IPAM data, so anyone may target them with the full
+    # view. Any other network is looked up as the caller sees it in Azure.
+    if scope is AzureScope.CALLER:
+        spaces = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
+
+        if req.vnet_id.lower() in associated_network_ids(spaces):
+            scope = AzureScope.TENANT
+
+    if scope is AzureScope.CALLER and is_app_only_token(token):
+        # On-behalf-of only works for users, so a service principal has no Azure view of its own.
+        vnet_list = []
+    else:
+        vnet_list = await arg_query(token, argquery.VNET, scope=scope)
+
     vnet_list = vnet_fixup(vnet_list)
 
     vnet_all_cidrs = []
 
     target = next((x for x in vnet_list if x['id'].lower() == req.vnet_id.lower()), None)
 
+    # Deliberately identical whether the network doesn't exist or the caller can't see it.
     if not target:
         raise HTTPException(status_code=400, detail="Virtual Network not found.")
 
@@ -85,14 +118,14 @@ async def next_available_subnet(
     if req.smallest_cidr:
         # cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
         cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set[available_slicer]))
-        min_mask = max(map(lambda x: x.prefixlen, cidr_list))
+        min_mask = max(map(lambda x: x.prefixlen, cidr_list), default = None)
         available_block = next((net for net in list(filter(lambda network: network.prefixlen == min_mask, cidr_list))), None)
     else:
         # available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
         available_block = next((net for net in available_set[available_slicer] if net.prefixlen <= req.size), None)
 
     if not available_block:
-        raise HTTPException(status_code=500, detail="Subnet of requested size unavailable in target virtual network.")
+        raise HTTPException(status_code=409, detail="Subnet of requested size unavailable in target virtual network.")
 
     next_cidr = list(available_block.subnet(req.size))[next_selector]
 
@@ -117,7 +150,7 @@ async def next_available_subnet(
 )
 async def next_available_vnet(
     req: VNetCIDRReq,
-    authorization: str = Header(None, description="Azure Bearer token"),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
@@ -148,7 +181,9 @@ async def next_available_vnet(
     if invalid_blocks:
         raise HTTPException(status_code=400, detail="Invalid Block(s) in Block list: {}.".format(list(invalid_blocks)))
 
-    net_list = await get_network(authorization, True)
+    # Allocation: the next available CIDR must not overlap any existing network, including ones the
+    # caller cannot see, so this deliberately asks for every network.
+    net_list = await fetch_network_prefixes(token, scope=AzureScope.SYSTEM)
 
     available_slicer = slice(None, None, -1) if req.reverse_search else slice(None)
     next_selector = -1 if req.reverse_search else 0
@@ -179,7 +214,7 @@ async def next_available_vnet(
 
             if req.smallest_cidr:
                 cidr_list = list(filter(lambda x: x.prefixlen <= req.size, available_set.iter_cidrs()[available_slicer]))
-                min_mask = max(map(lambda x: x.prefixlen, cidr_list))
+                min_mask = max(map(lambda x: x.prefixlen, cidr_list), default = None)
                 available_block = next((net for net in list(filter(lambda network: network.prefixlen == min_mask, cidr_list))), None)
             else:
                 available_block = next((net for net in list(available_set.iter_cidrs())[available_slicer] if net.prefixlen <= req.size), None)
@@ -187,7 +222,7 @@ async def next_available_vnet(
             available_block_name = block if available_block else None
 
     if not available_block:
-        raise HTTPException(status_code=500, detail="Network of requested size unavailable in target block(s).")
+        raise HTTPException(status_code=409, detail="Network of requested size unavailable in target block(s).")
 
     next_cidr = list(available_block.subnet(req.size))[next_selector]
 
@@ -211,13 +246,16 @@ async def next_available_vnet(
 )
 async def cidr_check(
     req: CIDRCheckReq,
-    authorization: str = Header(None, description="Azure Bearer token"),
-    tenant_id: str = Depends(get_tenant_id)
+    token: str = Depends(get_token_auth_header),
+    tenant_id: str = Depends(get_tenant_id),
+    grants: Grants = Depends(get_grants)
 ):
     """
     Get a list of Virtual Networks which overlap a given CIDR range with the following information:
 
     - **cidr**: CIDR range
+
+    For non-admin callers, overlapping networks that aren't associated with a Block are returned without their name, ID, resource group, subscription or tenant.
     """
 
     if IPNetwork(req.cidr).ip != IPNetwork(req.cidr).network:
@@ -225,7 +263,9 @@ async def cidr_check(
 
     spaces = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
-    nets = await arg_query(authorization, True, argquery.NET_BASIC)
+    # Overlap is Azure IPAM's own work, so it considers every network. What each caller may see of the
+    # overlapping networks is decided below.
+    nets = await arg_query(token, argquery.NET_BASIC, scope=AzureScope.SYSTEM)
 
     nets = vnet_fixup(nets)
 
@@ -245,7 +285,8 @@ async def cidr_check(
         for space in spaces:
             for block in space['blocks']:
                 for vnet in block['vnets']:
-                    if vnet['id'] == item['id']:
+                    # Azure reports resource IDs with inconsistent casing, and stored IDs keep the caller's.
+                    if vnet['id'].lower() == item['id'].lower():
                         container = {
                             "space": space['name'],
                             "block": block['name']
@@ -254,6 +295,12 @@ async def cidr_check(
                         # container = "/spaces/{}/blocks/{}".format(space['name'], block['name'])
 
                         item['containers'].append(container)
+
+        # Overlap is always computed from every network, but a network that isn't associated with a
+        # Block belongs to Azure, so a non-admin learns the space is in use without learning what uses it.
+        if not grants.can(Permission.AZURE_READ_ALL) and not item['containers']:
+            for field in ('name', 'id', 'resource_group', 'subscription_id', 'tenant_id'):
+                item[field] = None
 
     return overlap
 

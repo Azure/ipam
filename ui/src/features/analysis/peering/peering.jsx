@@ -13,7 +13,7 @@ import {
 
 import RestoreIcon from '@mui/icons-material/Restore';
 
-import { cloneDeep, isEmpty } from "lodash";
+import { cloneDeep, isEmpty } from "lodash-es";
 
 import {
   selectSubscriptions,
@@ -826,6 +826,8 @@ const Peering = () => {
     // restore: onRestore
   }), []);
 
+  // Manual memo retained; compiler bails due to mutation + mixed ref access below
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const setDataFocus = React.useCallback((target) => {
     if(target) {
       let newOptions = cloneDeep(options);

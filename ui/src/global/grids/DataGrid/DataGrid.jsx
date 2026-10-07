@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo, useCallback, useEffect } from "react"
 import { useSelector, useDispatch } from 'react-redux';
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
-import { isEmpty, sortBy, compact, map, filter, find } from 'lodash';
+import { isEmpty, sortBy, compact, map, filter, find } from 'lodash-es';
 import {
   Box,
   Menu,
@@ -47,7 +47,7 @@ const SUCCESS_INDICATOR_TIMEOUT = 3000;
 // Column Visibility Menu Component
 // ============================================================================
 const ColumnVisibilityMenu = React.memo(({ anchorEl, open, onClose }) => {
-  const { columnDefs, toggleColumnVisibility, getVisibleColumns, gridRef } = React.useContext(DataGridContext);
+  const { columnDefs, toggleColumnVisibility, getVisibleColumns, gridRef } = React.use(DataGridContext);
   const [visibleColumns, setVisibleColumns] = useState([]);
 
   // Update visible columns when menu opens
@@ -81,8 +81,11 @@ const ColumnVisibilityMenu = React.memo(({ anchorEl, open, onClose }) => {
       console.warn('Error getting column order:', error);
       return filter(columnDefs, col => col.field !== ACTIONS_COLUMN_FIELD);
     }
+  // gridRef is stable; reading current is a deliberate fallback pattern
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnDefs]);
 
+  // eslint-disable-next-line react-hooks/refs
   const dataColumns = useMemo(() => getColumnsInGridOrder(), [getColumnsInGridOrder]);
 
   const handleColumnToggle = useCallback((field) => {
@@ -151,7 +154,7 @@ ColumnVisibilityMenu.displayName = 'ColumnVisibilityMenu';
 // Header Menu Placeholder Component (renders icon in grid header)
 // ============================================================================
 const HeaderMenuPlaceholder = React.memo(() => {
-  const { saving, sendResults, menuOpen, setMenuOpen, setMenuAnchor } = React.useContext(DataGridContext);
+  const { saving, sendResults, menuOpen, setMenuOpen, setMenuAnchor } = React.use(DataGridContext);
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -219,7 +222,7 @@ const StandaloneHeaderMenu = React.memo(({ viewSettingKey = DEFAULT_VIEW_SETTING
     setMenuOpen,
     menuAnchor,
     viewSetting
-  } = React.useContext(DataGridContext);
+  } = React.use(DataGridContext);
 
   const [columnMenuOpen, setColumnMenuOpen] = useState(false);
   const [columnMenuAnchor, setColumnMenuAnchor] = useState(null);
@@ -274,17 +277,6 @@ const StandaloneHeaderMenu = React.memo(({ viewSettingKey = DEFAULT_VIEW_SETTING
         open={menuOpen}
         onClose={handleMenuToggle}
         disableAutoFocusItem
-        MenuListProps={{
-          'aria-label': 'Table settings menu',
-          disableListWrap: true,
-          autoFocusItem: true,
-          onKeyDown: (e) => {
-            if (e.key === 'Tab') {
-              e.preventDefault();
-              handleMenuToggle();
-            }
-          }
-        }}
         slotProps={{
           paper: {
             elevation: 0,
@@ -306,10 +298,21 @@ const StandaloneHeaderMenu = React.memo(({ viewSettingKey = DEFAULT_VIEW_SETTING
               },
             },
           },
+
+          list: {
+            'aria-label': 'Table settings menu',
+            disableListWrap: true,
+            autoFocusItem: true,
+            onKeyDown: (e) => {
+              if (e.key === 'Tab') {
+                e.preventDefault();
+                handleMenuToggle();
+              }
+            }
+          }
         }}
         transformOrigin={{ horizontal: 'center', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'center', vertical: 'bottom' }}
-      >
+        anchorOrigin={{ horizontal: 'center', vertical: 'bottom' }}>
         {/* Extra menu items passed from parent */}
         {extraMenuItems.map((item, index) => (
           <MenuItem
@@ -372,7 +375,6 @@ const StandaloneHeaderMenu = React.memo(({ viewSettingKey = DEFAULT_VIEW_SETTING
           />
         </MenuItem>
       </Menu>
-
       <ColumnVisibilityMenu
         anchorEl={columnMenuAnchor}
         open={columnMenuOpen}
@@ -397,7 +399,7 @@ const OverlayContext = React.createContext(null);
 /**
  * CombinedOverlay - Single overlay component for both loading and no-rows states.
  *
- * Reads the consumer-provided noRowsOverlay component from OverlayContext
+ * Reads the consumer-provided noRowsOverlay element from OverlayContext
  * rather than from AG Grid props, so that React context reactivity drives
  * re-renders independently of AG Grid's overlay lifecycle.
  *
@@ -405,8 +407,8 @@ const OverlayContext = React.createContext(null);
  * @param {'loading'|'noRows'|'noMatchingRows'} props.overlayType - Overlay type determined by AG Grid
  */
 const CombinedOverlay = React.memo(({ overlayType }) => {
-  const overlayConfig = React.useContext(OverlayContext);
-  const NoRowsContent = overlayConfig?.noRowsOverlay;
+  const overlayConfig = React.use(OverlayContext);
+  const noRowsContent = overlayConfig?.noRowsOverlay;
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
@@ -443,8 +445,8 @@ const CombinedOverlay = React.memo(({ overlayType }) => {
   }
 
   // noRows / noMatchingRows
-  if (NoRowsContent) {
-    return <NoRowsContent />;
+  if (noRowsContent) {
+    return noRowsContent;
   }
 
   return (
@@ -458,7 +460,12 @@ const CombinedOverlay = React.memo(({ overlayType }) => {
         padding: 2,
       }}
     >
-      <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+      <Typography
+        variant="overline"
+        sx={{
+          display: "block",
+          mt: 1
+        }}>
         No data available
       </Typography>
     </Box>
@@ -491,8 +498,9 @@ CombinedOverlay.displayName = 'CombinedOverlay';
  * @param {Array} props.extraMenuItems - Additional menu items for the header dropdown
  * @param {Array} props.initialSelectedRows - Rows to select initially
  * @param {Object} props.rowClassRules - AG Grid row class rules for conditional row styling
+ * @param {Function} props.isRowSelectable - Callback receiving a row node, returning false for rows which cannot be selected
  * @param {boolean} props.isLoading - Show loading overlay (default: false)
- * @param {React.Component} props.noRowsOverlay - Custom component to display when grid has no rows (reactive via OverlayContext)
+ * @param {React.ReactNode} props.noRowsOverlay - Custom element to display when grid has no rows (reactive via OverlayContext)
  * @param {boolean} props.copyOnDoubleClick - Copy cell value to clipboard on double-click (default: true)
  * @param {string} props.idProperty - Property to use as row ID (default: 'id')
  * @param {boolean} props.noBorder - Remove grid wrapper border (default: false) - useful when grid is inside a bordered container
@@ -510,6 +518,7 @@ const DataGrid = ({
   extraMenuItems = [],
   initialSelectedRows = [],
   rowClassRules = {},
+  isRowSelectable = null,
   isLoading = false,
   noRowsOverlay = null,
   copyOnDoubleClick = true,
@@ -558,7 +567,7 @@ const DataGrid = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const gridRef = useRef(null);
-  const initialSelectionApplied = useRef(false);
+  const initialSelectionAppliedRef = useRef(false);
 
   // Memoized column definitions with actions column appended
   const colDefs = useMemo(() => {
@@ -794,7 +803,9 @@ const DataGrid = ({
     // For single-select, we handle click selection manually to support toggle behavior
     enableClickSelection: multiSelect ? !checkboxSelect : false,
     headerCheckbox: checkboxSelect && multiSelect,
-  }), [multiSelect, checkboxSelect]);
+    // A checkbox that can never be checked still takes focus, so it is hidden rather than disabled.
+    ...(isRowSelectable && { isRowSelectable, hideDisabledCheckboxes: true }),
+  }), [multiSelect, checkboxSelect, isRowSelectable]);
 
   // ============================================================================
   // Event Handlers
@@ -855,27 +866,27 @@ const DataGrid = ({
   }, [initialSelectedRows, idProperty]);
 
   // Track if view settings have been applied
-  const viewSettingsApplied = useRef(false);
+  const viewSettingsAppliedRef = useRef(false);
 
   const onGridReady = useCallback((params) => {
     const { api } = params;
 
     // Apply saved view settings when grid is ready
-    if (viewSetting && viewSetting.columnState && !viewSettingsApplied.current) {
+    if (viewSetting && viewSetting.columnState && !viewSettingsAppliedRef.current) {
       try {
         api.applyColumnState({
           state: viewSetting.columnState,
           applyOrder: true,
         });
 
-        viewSettingsApplied.current = true;
+        viewSettingsAppliedRef.current = true;
       } catch (error) {
         console.error('Error applying saved view settings:', error);
       }
     }
 
     // Apply initial selection when grid is ready and has data
-    if (Object.keys(initialRowSelection).length > 0 && !initialSelectionApplied.current) {
+    if (Object.keys(initialRowSelection).length > 0 && !initialSelectionAppliedRef.current) {
       requestAnimationFrame(() => {
         api.deselectAll();
 
@@ -886,7 +897,7 @@ const DataGrid = ({
           }
         });
 
-        initialSelectionApplied.current = true;
+        initialSelectionAppliedRef.current = true;
 
         if (onRowSelectionChanged) {
           const selectedRows = api.getSelectedRows();
@@ -903,13 +914,13 @@ const DataGrid = ({
 
   // Reset selection state when initialSelectedRows changes
   useEffect(() => {
-    initialSelectionApplied.current = false;
+    initialSelectionAppliedRef.current = false;
   }, [initialSelectedRows]);
 
   // Apply saved view settings when they become available (after initial load from Redux)
   useEffect(() => {
     const gridApi = gridRef.current?.api;
-    if (!gridApi || !viewSetting || viewSettingsApplied.current) return;
+    if (!gridApi || !viewSetting || viewSettingsAppliedRef.current) return;
 
     // Only apply if we have the new AG Grid format
     if (viewSetting.columnState) {
@@ -919,7 +930,7 @@ const DataGrid = ({
           applyOrder: true,
         });
 
-        viewSettingsApplied.current = true;
+        viewSettingsAppliedRef.current = true;
       } catch (error) {
         console.error('Error applying saved view settings:', error);
       }
@@ -947,7 +958,7 @@ const DataGrid = ({
         }
       });
 
-      initialSelectionApplied.current = true;
+      initialSelectionAppliedRef.current = true;
     });
   }, [initialRowSelection, idProperty]);
 
@@ -1009,8 +1020,8 @@ const DataGrid = ({
   // ============================================================================
 
   return (
-    <DataGridContext.Provider value={gridContextValue}>
-      <OverlayContext.Provider value={overlayContextValue}>
+    <DataGridContext value={gridContextValue}>
+      <OverlayContext value={overlayContextValue}>
       <div style={{ width: "100%", height: "100%" }} className="ag-theme-quartz">
         <AgGridReact
           ref={gridRef}
@@ -1026,6 +1037,8 @@ const DataGrid = ({
           cellSelection={false}
           suppressCellFocus={true}
           suppressColumnVirtualisation={true}
+          // AG Grid waits two seconds by default, which reads as no tooltip at all.
+          tooltipShowDelay={500}
           colResizeDefault="shift"
           onColumnMoved={onColumnMoved}
           onColumnResized={onColumnResized}
@@ -1039,8 +1052,8 @@ const DataGrid = ({
         />
         <StandaloneHeaderMenu viewSettingKey={viewSettingKey} extraMenuItems={extraMenuItems} />
       </div>
-      </OverlayContext.Provider>
-    </DataGridContext.Provider>
+      </OverlayContext>
+    </DataGridContext>
   );
 };
 

@@ -4,7 +4,7 @@ import { styled } from '@mui/material/styles';
 
 import { useSnackbar } from 'notistack';
 
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 
 import { useTheme } from '@mui/material/styles';
 
@@ -218,11 +218,16 @@ export default function ManageExclusions() {
     });
   }
 
-  const NoRowsOverlay = React.useCallback(() => {
+  const noRowsOverlay = React.useMemo(() => {
     return (
       <React.Fragment>
         <Shrug />
-        <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            display: "block",
+            mt: 1
+          }}>
           Nothing yet...
         </Typography>
       </React.Fragment>
@@ -230,13 +235,21 @@ export default function ManageExclusions() {
   }, []);
 
   return (
-    <ExclusionContext.Provider value={{}}>
+    <ExclusionContext value={{}}>
       <Wrapper>
         <MainBody>
           <FloatingHeader>
             <Box sx={{ width: "20%" }}></Box>
             <HeaderTitle>Subscription Exclusions</HeaderTitle>
-            <Box display="flex" justifyContent="flex-end" alignItems="center" sx={{ width: "20%", ml: 2, mr: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "center",
+                width: "20%",
+                ml: 2,
+                mr: 2
+              }}>
               <Tooltip title="Save" >
                 <IconButton
                   color="primary"
@@ -260,7 +273,7 @@ export default function ManageExclusions() {
                 rowData={gridData}
                 columnDefs={columns}
                 isLoading={loading || sending || !subscriptions || !loadedExclusions}
-                noRowsOverlay={NoRowsOverlay}
+                noRowsOverlay={noRowsOverlay}
                 extraMenuItems={extraMenuItems}
                 rowClassRules={rowClassRules}
                 onRowClicked={(event) => onRowClick(event.data)}
@@ -269,6 +282,6 @@ export default function ManageExclusions() {
           </DataSection>
         </MainBody>
       </Wrapper>
-    </ExclusionContext.Provider>
+    </ExclusionContext>
   );
 }

@@ -8,7 +8,7 @@
 export {
   arrayValueGetter,
   arrayFilterValueGetter,
-  arrayTextFilterComparator,
+  arrayTextMatcher,
   createArrayColumnDef,
   caseInsensitiveFilterParams,
   numberFilterParams,

@@ -135,3 +135,70 @@ az cosmosdb update --resource-group <ResourceGroupName> --name <CosmosDBAccountN
 This flag may have been set by [Azure Policy](https://learn.microsoft.com/azure/governance/policy/overview). You can find more details about this policy in the [Azure Policy Built-Ins](https://learn.microsoft.com/azure/cosmos-db/policy-reference#azure-cosmos-db) documentation under *Azure Cosmos DB key based metadata write access should be disabled*. You may need to contact your policy administrator to request an exception for Azure IPAM.
 
 Additionally this issue only applies to legacy deployments of Azure IPAM (prior to v3.0.0) as the latest versions use SQL [role-based access control](https://learn.microsoft.com/azure/cosmos-db/how-to-setup-rbac) to read/write data from Cosmos DB.
+
+## Update Not Applied (ZIP Deploy)
+
+### <u>Symptoms</u>
+
+- An update completes successfully and the App Service restarts, but the application continues to run the previous version
+- Fixes known to be present in the ZIP Deploy archive are missing from the running application
+- Errors reported before the update continue to appear in the Application Log afterwards, unchanged
+- Repeating the update produces the same result
+
+<!-- SCREENSHOT PLACEHOLDER: Application Log showing an identical error before and after an update -->
+![Unchanged Application Log After Update](./images/stale_package_app_log.png)
+
+### <u>Verify</u>
+
+This applies to internet-restricted cloud deployments, which run the application directly from a ZIP package instead of building it on the server. The `WEBSITE_RUN_FROM_PACKAGE` app setting is set to `1`, uploaded packages are stored in `/home/data/SitePackages`, and a file named `packagename.txt` records which one is mounted as `/home/site/wwwroot`.
+
+If `packagename.txt` is not updated during a deployment, the App Service continues to mount the package it names, no matter how many times you redeploy.
+
+Connect to the App Service over SSH and inspect the package directory:
+
+#### SSH
+
+```bash
+cat /home/data/SitePackages/packagename.txt
+ls -la /home/data/SitePackages/
+```
+
+<!-- SCREENSHOT PLACEHOLDER: SSH session showing packagename.txt alongside the SitePackages listing -->
+![Active Package And Stored Packages](./images/site_packages_listing.png)
+
+Packages are named for the time they were uploaded, in the form `yyyyMMddHHmmss.zip`. If the name recorded in `packagename.txt` predates your most recent deployment, that deployment did not take effect.
+
+Archives produced by Azure IPAM v4.0.0 and later carry a manifest at their root. Where one is present, it identifies the running build directly:
+
+```bash
+cat /home/site/wwwroot/build.json
+```
+
+The `built` timestamp names the archive, which is useful in environments where deployment logs cannot be copied off the system. Archives produced before v4.0.0 do not contain this file &mdash; for those, compare the name recorded in `packagename.txt` against the time you uploaded the archive instead.
+
+### <u>Resolve</u>
+
+Redeploy with the Azure IPAM update script, supplying the archive explicitly:
+
+```powershell
+# Deploy a specific archive to an existing deployment
+.\update.ps1 -AppName "your-ipam-app" -ResourceGroupName "your-ipam-rg" -ZipFilePath ".\ipam.zip"
+```
+
+The update script uploads through the ZIP Deploy APIs, which place the package in `/home/data/SitePackages` and update `packagename.txt`. Deployment methods that perform a server-side build write to `/home/site/wwwroot` instead, and that content is hidden beneath the read-only package mount.
+
+Confirm that the active package advanced:
+
+```bash
+cat /home/data/SitePackages/packagename.txt
+```
+
+To return to an earlier build, redeploy that archive the same way.
+
+### <u>Notes</u>
+
+The five most recently deployed packages are retained as a cache. You can change this with the `SCM_MAX_ZIP_PACKAGE_COUNT` app setting. See the [Environment variables and app settings reference](https://learn.microsoft.com/azure/app-service/reference-app-settings#deployment) for details.
+
+Running directly from a package is only used for internet-restricted clouds, where the App Service cannot reach a package index to install the Python dependencies. Deployments in all other clouds build the application on the server and are unaffected by this issue.
+
+Microsoft does not support running from a package for Python apps on App Service, because the platform expects its build automation to create the virtual environment. Azure IPAM ships its dependencies inside the archive and adds them to `PYTHONPATH` at startup instead. As a result, `Could not find virtual environment directory /home/site/wwwroot/antenv` appears in the Application Log on every start. This is expected and is not an error.

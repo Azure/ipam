@@ -2,7 +2,7 @@ import * as React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { styled } from "@mui/material/styles";
 
-import { omit, isEqual, cloneDeep } from "lodash";
+import { omit, isEqual, cloneDeep } from "lodash-es";
 
 import { useSnackbar } from "notistack";
 
@@ -92,9 +92,9 @@ const Update = styled("span")(({ theme }) => ({
 const OverlayContext = React.createContext(null);
 
 const CombinedOverlay = React.memo(({ overlayType }) => {
-  const overlayConfig = React.useContext(OverlayContext);
+  const overlayConfig = React.use(OverlayContext);
   const loadingMessage = overlayConfig?.loadingMessage;
-  const NoRowsContent = overlayConfig?.noRowsOverlay;
+  const noRowsContent = overlayConfig?.noRowsOverlay;
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
@@ -131,8 +131,8 @@ const CombinedOverlay = React.memo(({ overlayType }) => {
   }
 
   // noRows / noMatchingRows
-  if (NoRowsContent) {
-    return <NoRowsContent />;
+  if (noRowsContent) {
+    return noRowsContent;
   }
 
   return (
@@ -146,7 +146,12 @@ const CombinedOverlay = React.memo(({ overlayType }) => {
         padding: 2,
       }}
     >
-      <Typography variant="overline" display="block" sx={{ mt: 1 }}>
+      <Typography
+        variant="overline"
+        sx={{
+          display: "block",
+          mt: 1
+        }}>
         No endpoints found
       </Typography>
     </Box>
@@ -157,7 +162,7 @@ CombinedOverlay.displayName = 'CombinedOverlay';
 
 function DeleteCellRenderer(props) {
   const { data } = props;
-  const { setChanges, selectedRow } = React.useContext(EndpointContext);
+  const { setChanges, selectedRow } = React.use(EndpointContext);
 
   const flexCenter = {
     display: "flex",
@@ -195,7 +200,7 @@ function DeleteCellRenderer(props) {
 
 function HeaderMenu(props) {
   const { setting } = props;
-  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.useContext(EndpointContext);
+  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.use(EndpointContext);
 
   const [menuOpen, setMenuOpen] = React.useState(false);
 
@@ -255,6 +260,7 @@ function HeaderMenu(props) {
           </IconButton>
           <Menu
             id="table-state-menu"
+            // eslint-disable-next-line react-hooks/refs
             anchorEl={menuRef.current}
             open={menuOpen}
             onClose={onClick}
@@ -266,33 +272,35 @@ function HeaderMenu(props) {
               vertical: 'top',
               horizontal: 'right',
             }}
-            PaperProps={{
-              elevation: 0,
-              style: {
-                width: 215,
-                transform: 'translateX(35px)',
-              },
-              sx: {
-                overflow: 'visible',
-                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-                mt: 1.5,
-                '& .MuiAvatar-root': {
-                  width: 32,
-                  height: 32,
-                  ml: -0.5,
-                  mr: 1,
+            slotProps={{
+              paper: {
+                elevation: 0,
+                style: {
+                  width: 215,
+                  transform: 'translateX(35px)',
                 },
-                '&:before': {
-                  content: '""',
-                  display: 'block',
-                  position: 'absolute',
-                  top: 0,
-                  right: 29,
-                  width: 10,
-                  height: 10,
-                  bgcolor: 'background.paper',
-                  transform: 'translateY(-50%) rotate(45deg)',
-                  zIndex: 0,
+                sx: {
+                  overflow: 'visible',
+                  filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                  mt: 1.5,
+                  '& .MuiAvatar-root': {
+                    width: 32,
+                    height: 32,
+                    ml: -0.5,
+                    mr: 1,
+                  },
+                  '&:before': {
+                    content: '""',
+                    display: 'block',
+                    position: 'absolute',
+                    top: 0,
+                    right: 29,
+                    width: 10,
+                    height: 10,
+                    bgcolor: 'background.paper',
+                    transform: 'translateY(-50%) rotate(45deg)',
+                    zIndex: 0,
+                  },
                 },
               },
             }}
@@ -334,7 +342,7 @@ export default function ManageExtEndpoints(props) {
     external,
     subnet
   } = props;
-  const { refreshing, refresh } = React.useContext(ExternalContext);
+  const { refreshing, refresh } = React.use(ExternalContext);
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -359,7 +367,7 @@ export default function ManageExtEndpoints(props) {
   const dispatch = useDispatch();
   const gridRef = React.useRef(null);
 
-  const saveTimer = React.useRef(null);
+  const saveTimerRef = React.useRef(null);
 
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -523,15 +531,15 @@ export default function ManageExtEndpoints(props) {
 
   React.useEffect(() => {
     if(sendResults !== null) {
-      clearTimeout(saveTimer.current);
+      clearTimeout(saveTimerRef.current);
 
-      saveTimer.current = setTimeout(
+      saveTimerRef.current = setTimeout(
         function() {
           setSendResults(null);
         }, 2000
       );
     }
-  }, [saveTimer, sendResults]);
+  }, [saveTimerRef, sendResults]);
 
 
 
@@ -670,6 +678,8 @@ export default function ManageExtEndpoints(props) {
     });
   }
 
+  // Manual memo retained; compiler bails on broader component (large stateful form)
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const hasError = React.useMemo(() => {
     const errorCheck = (endName.error || endDesc.error);
     const emptyCheck = (endName.value.length === 0 || endDesc.value.length === 0 || endAddr === null);
@@ -727,17 +737,19 @@ export default function ManageExtEndpoints(props) {
   }, [subnet, changes, onCancel]);
 
   return (
-    <EndpointContext.Provider value={{ endpoints, setChanges, selectedRow, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
+    <EndpointContext value={{ endpoints, setChanges, selectedRow, saving, sendResults, saveConfig, loadConfig, resetConfig }}>
       <Dialog
         open={open}
         onClose={onCancel}
         PaperComponent={DraggablePaper}
         maxWidth="lg"
         fullWidth
-        PaperProps={{
-          style: {
-            overflowY: "unset"
-          },
+        slotProps={{
+          paper: {
+            style: {
+              overflowY: "unset"
+            },
+          }
         }}
       >
         <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
@@ -957,7 +969,6 @@ export default function ManageExtEndpoints(props) {
                 value={endAddr}
                 onChange={(event, newValue) => setEndAddr(newValue)}
                 isOptionEqualToValue={(option, value) => isEqual(option, value)}
-                ListboxProps={{ style: { maxHeight: 375 } }}
                 sx={{ width: 300 }}
                 renderInput={(params) => (
                   <TextField
@@ -965,18 +976,25 @@ export default function ManageExtEndpoints(props) {
                     variant="standard"
                     // label="IP Address"
                     placeholder="IP Address"
-                    InputProps={{
-                      ...params.InputProps,
-                      disableUnderline: true,
-                      spellCheck: false,
-                      style: {
-                        fontSize: '14px',
-                        fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
-                        padding: '4px 0px 5px'
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input,
+                        disableUnderline: true,
+                        spellCheck: false,
+                        style: {
+                          fontSize: '14px',
+                          fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+                          padding: '4px 0px 5px'
+                        }
                       }
                     }}
                   />
                 )}
+                slotProps={{
+                  listbox: { style: { maxHeight: 375 } }
+                }}
               />
             </Box>
             <Box
@@ -1070,7 +1088,7 @@ export default function ManageExtEndpoints(props) {
               sx={{ height: '100%', width: '100%' }}
               data-ag-theme-mode={isDarkMode ? 'dark' : 'light'}
             >
-              <OverlayContext.Provider value={overlayContextValue}>
+              <OverlayContext value={overlayContextValue}>
               <AgGridReact
                 ref={gridRef}
                 theme={gridTheme}
@@ -1088,7 +1106,7 @@ export default function ManageExtEndpoints(props) {
                 loading={sending || !endpoints || refreshing}
                 overlayComponent={CombinedOverlay}
               />
-              </OverlayContext.Provider>
+              </OverlayContext>
             </Box>
           </Box>
         </DialogContent>
@@ -1108,6 +1126,6 @@ export default function ManageExtEndpoints(props) {
           </Button>
         </DialogActions>
       </Dialog>
-    </EndpointContext.Provider>
+    </EndpointContext>
   );
 }
