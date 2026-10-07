@@ -721,13 +721,6 @@ process {
       }
     }
 
-    Write-Host "INFO: Creating Azure IPAM Engine Secret" -ForegroundColor Green
-
-    # Create IPAM Engine Secret
-    $engineSecret = Invoke-WithGraphRetry -ScriptBlock {
-      New-AzADAppCredential -ApplicationObject $engineObject -StartDate (Get-Date) -EndDate (Get-Date).AddYears(2)
-    }
-
     if (-not $DisableUI) {
       Write-Host "INFO: Azure IPAM Engine & UI Applications/Service Principals created successfully" -ForegroundColor Green
     }
@@ -737,7 +730,6 @@ process {
 
     $appDetails = @{
       EngineAppId  = $engineApp.AppId
-      EngineSecret = $engineSecret.SecretText
     }
 
     # Add UI AppID to AppDetails (If DisableUI not specified)
@@ -894,8 +886,6 @@ process {
       [string]$UIAppId = [GUID]::Empty,
       [Parameter(Mandatory = $true)]
       [string]$EngineAppId,
-      [Parameter(Mandatory = $true)]
-      [string]$EngineSecret,
       [Parameter(Mandatory = $false)]
       [bool]$DisableUI = $false
     )
@@ -907,14 +897,13 @@ process {
 
     # Update Parameter Values
     $parametersObject.parameters.engineAppId.value = $EngineAppId
-    $parametersObject.parameters.engineAppSecret.value = $EngineSecret
 
     if (-not $DisableUI) {
       $parametersObject.parameters.uiAppId.value = $UIAppId
-      $parametersObject.parameters = $parametersObject.parameters | Select-Object -Property uiAppId, engineAppId, engineAppSecret
+      $parametersObject.parameters = $parametersObject.parameters | Select-Object -Property uiAppId, engineAppId
     }
     else {
-      $parametersObject.parameters = $parametersObject.parameters | Select-Object -Property engineAppId, engineAppSecret
+      $parametersObject.parameters = $parametersObject.parameters | Select-Object -Property engineAppId
     }
 
     # Output updated parameter file for Bicep deployment
@@ -937,13 +926,12 @@ process {
     # Read Values from Parameters
     $UIAppId = $parametersObject.parameters.uiAppId.value ?? [GUID]::Empty
     $EngineAppId = $parametersObject.parameters.engineAppId.value
-    $EngineSecret = $parametersObject.parameters.engineAppSecret.value
     $script:DisableUI = ($UIAppId -eq [GUID]::Empty) ? $true : $false
 
-    if ((-not $EngineAppId) -or (-not $EngineSecret)) {
+    if ((-not $EngineAppId)) {
       Write-Host "ERROR: Missing required parameters from Bicep parameter file" -ForegroundColor Red
       Write-Host "ERROR: Please ensure the following parameters are present in the Bicep parameter file" -ForegroundColor Red
-      Write-Host "ERROR: Required: [engineAppId, engineAppSecret]" -ForegroundColor Red
+      Write-Host "ERROR: Required: [engineAppId]" -ForegroundColor Red
       Write-Host ""
       Write-Host "ERROR: Please refer to the deployment documentation for more information" -ForegroundColor Red
       Write-Host "ERROR: " -ForegroundColor Red -NoNewline
@@ -960,7 +948,6 @@ process {
     $appDetails = @{
       UIAppId      = $UIAppId
       EngineAppId  = $EngineAppId
-      EngineSecret = $EngineSecret
     }
 
     return $appDetails
@@ -973,8 +960,6 @@ process {
       [Parameter(Mandatory = $true)]
       [string]$EngineAppId,
       [Parameter(Mandatory = $true)]
-      [string]$EngineSecret,
-      [Parameter(Mandatory = $false)]
       [string]$NamePrefix,
       [Parameter(Mandatory = $false)]
       [string]$AzureCloud,
@@ -997,7 +982,6 @@ process {
     # Instantiate deployment parameter object
     $deploymentParameters = @{
       engineAppId     = $EngineAppId
-      engineAppSecret = $EngineSecret
       uiAppId         = $UiAppId
     }
 
@@ -1160,8 +1144,28 @@ process {
     } while ($publishSuccess -eq $False -and $publishRetries -ge 0)
   }
 
-  function Update-UIApplication {
-    param(
+  Function New-FederatedCredential {
+    Param(
+      [Parameter(Mandatory = $true)]
+      [string]$EngineAppId,
+      [Parameter(Mandatory = $true)]
+      [string]$ManagedIdentityPrincipalId
+    )
+
+    Write-Host "INFO: Creating Federated Credential" -ForegroundColor Green
+
+    New-AzADAppFederatedCredential `
+      -ApplicationObjectId  (Get-AzADApplication -ApplicationId $EngineAppId).Id `
+      -Audience "api://AzureADTokenExchange" `
+      -Issuer "https://login.microsoftonline.com/$($(Get-AzContext).Tenant.Id)/v2.0" `
+      -Subject $ManagedIdentityPrincipalId `
+      -Name "ipam-engine-mi-credential" | Out-Null
+
+    Write-Host "INFO: Federated Credential Created" -ForegroundColor Green
+  }
+
+  Function Update-UIApplication {
+    Param(
       [Parameter(Mandatory = $true)]
       [string]$UIAppId,
       [Parameter(Mandatory = $true)]
@@ -1303,6 +1307,12 @@ process {
       Update-UIApplication `
         -UIAppId $appDetails.UIAppId `
         -Endpoint $deployment.Outputs["appServiceHostName"].Value
+    }
+
+    if ($PSCmdlet.ParameterSetName -notin 'AppsOnly') {
+      New-FederatedCredential `
+        -EngineAppId $appDetails.EngineAppId `
+        -ManagedIdentityPrincipalId $deployment.Outputs["managedIdentityPrincipalId"].Value
     }
 
     if ($PSCmdlet.ParameterSetName -in ('App', 'Function')) {

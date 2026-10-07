@@ -17,9 +17,6 @@
     "engineAppId": {
       "value": "<ENGINE APP REGISTRATION APP/CLIENT ID>"
     },
-    "engineAppSecret": {
-      "value": "<ENGINE APP REGISTRATION CLIENT SECRET>"
-    },
     "deployAsFunc": {
       "value": false
     },

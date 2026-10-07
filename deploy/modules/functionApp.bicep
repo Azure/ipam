@@ -96,10 +96,6 @@ var functionAppSiteConfig = {
         value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-ID/)'
       }
       {
-        name: 'ENGINE_APP_SECRET'
-        value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/ENGINE-SECRET/)'
-      }
-      {
         name: 'TENANT_ID'
         value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/TENANT-ID/)'
       }
