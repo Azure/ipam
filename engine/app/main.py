@@ -362,7 +362,7 @@ if os.path.isdir(BUILD_DIR) and UI_APP_ID and VALID_APP_ID:
         include_in_schema = False
     )
     def read_root(request: Request):
-        return FileResponse(BUILD_DIR + "/index.html")
+        return FileResponse(os.path.join(BUILD_DIR, "index.html"))
 
     @app.get(
         "/{full_path:path}",
@@ -370,10 +370,23 @@ if os.path.isdir(BUILD_DIR) and UI_APP_ID and VALID_APP_ID:
         include_in_schema = False
     )
     def read_index(request: Request, full_path: str):
-        target_file = BUILD_DIR + "/" + full_path
+        # Resolved per request because ipam_init() may relocate BUILD_DIR at startup
+        build_root = os.path.realpath(BUILD_DIR)
 
-        print('look for: ', full_path, target_file)
-        if os.path.exists(target_file):
+        try:
+            # String-only check first so out-of-root paths never touch the filesystem
+            candidate = os.path.normpath(os.path.join(build_root, full_path))
+            is_contained = os.path.commonpath([build_root, candidate]) == build_root
+
+            if is_contained:
+                # Resolve symlinks and re-check
+                target_file = os.path.realpath(candidate)
+                is_contained = os.path.commonpath([build_root, target_file]) == build_root
+        except (ValueError, OSError):
+            # Null bytes, mismatched drives, or unreachable paths
+            is_contained = False
+
+        if is_contained and os.path.isfile(target_file):
             return FileResponse(target_file)
 
-        return FileResponse(BUILD_DIR + "/index.html")
+        return FileResponse(os.path.join(build_root, "index.html"))
