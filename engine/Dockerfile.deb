@@ -5,10 +5,7 @@ FROM $BASE_IMAGE
 ARG PROD_BUILD=true
 
 # Set Default Port
-ARG PORT=80
-
-# Set Debian Frontend to Non-Interactive
-ARG DEBIAN_FRONTEND=noninteractive
+ARG PORT=8080
 
 # IPAM Version (for OCI Image Label)
 ARG IPAM_VERSION=0.0.0
@@ -26,6 +23,9 @@ LABEL org.opencontainers.image.title="Azure IPAM Engine" \
 
 # Set the Working Directory
 WORKDIR /ipam
+
+# Create Non-Root User (UID 1001, GID 0 to match the RHEL image)
+RUN useradd --uid 1001 --gid 0 --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin ipam
 
 # Copy Requirements File
 COPY ./requirements.txt .
@@ -47,6 +47,9 @@ COPY ./init.sh .
 
 # Set Script Execute Permissions
 RUN chmod +x init.sh
+
+# Switch to Non-Root User
+USER 1001
 
 # Expose Port
 EXPOSE $PORT

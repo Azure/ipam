@@ -21,11 +21,11 @@ LABEL org.opencontainers.image.title="Azure IPAM UI" \
       org.opencontainers.image.version="${IPAM_VERSION}" \
       org.opencontainers.image.source="https://github.com/Azure/ipam"
 
-# Set the Working Directory
-WORKDIR /ipam
-
 # Switch to Root User
 USER root
+
+# Set the Working Directory
+WORKDIR /ipam
 
 # Add Application Sources
 COPY . .
@@ -43,7 +43,9 @@ RUN npm run build
 # Set Script Execute Permissions
 RUN chmod +x init.sh
 RUN rm -rf src
-RUN chown -R 1001:0 /ipam
+
+# Allow the Standard User to Write env.js at Startup
+RUN chown -R 1001:0 dist
 
 # Switch to Standard User
 USER 1001
