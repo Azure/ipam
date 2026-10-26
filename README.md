@@ -31,7 +31,6 @@ Azure IPAM is a lightweight solution developed on top of the Azure platform desi
 | `LICENSE`            | Microsoft MIT License                                         |
 | `README.md`          | This README File                                              |
 | `SECURITY.md`        | Microsoft Open Source Security Information & Details          |
-| `sshd_config`        | Container SSH Config File                                     |
 | `SUPPORT.md`         | Support Contact Information                                   |
 
 ## Documentation

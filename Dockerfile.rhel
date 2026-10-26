@@ -62,31 +62,8 @@ LABEL org.opencontainers.image.title="Azure IPAM" \
       org.opencontainers.image.version="${IPAM_VERSION}" \
       org.opencontainers.image.source="https://github.com/Azure/ipam"
 
-# Set Working Directory
-WORKDIR /tmp
-
 # Switch to Root User
 USER root
-
-# Disable Subscription Manager DNF Plugin
-RUN sed -i s/enabled=./enabled=0/g /etc/dnf/plugins/subscription-manager.conf
-
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
-# Install OpenSSH and set the password for root to "Docker!"
-RUN dnf update -y \
-  && dnf install -y openssh-server \
-  && echo "root:Docker!" | chpasswd \
-  && dnf clean all \
-  && rm -rf /var/cache/dnf
-
-# Enable SSH root login with Password Authentication
-# RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config
-
-# Copy 'sshd_config File' to /etc/ssh/
-COPY sshd_config /etc/ssh/
-
-RUN ssh-keygen -A && mkdir /var/run/sshd
 
 # Set Working Directory
 WORKDIR /ipam
@@ -104,21 +81,21 @@ fi
 
 # Copy Engine Code
 COPY ./engine/app ./app
-COPY --from=builder /tmp/dist ./dist
+
+# Copy UI Build (writable so the engine can write env.js at startup)
+COPY --from=builder --chown=1001:0 /tmp/dist ./dist
 
 # Copy Init Script
 COPY ./init.sh .
 
 # Set Script Execute Permissions
 RUN chmod +x init.sh
-RUN chown -R 1001:0 /ipam
-RUN chown -R 1001:0 /etc/profile
 
 # Switch to Standard User
 USER 1001
 
-# Expose Ports
-EXPOSE $PORT 2222
+# Expose Port
+EXPOSE $PORT
 
 # Execute Startup Script
 ENTRYPOINT ["/bin/sh", "-c", "exec ./init.sh ${PORT}"]

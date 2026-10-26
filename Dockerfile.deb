@@ -45,9 +45,6 @@ ARG PROD_BUILD
 # Port to Listen On
 ARG PORT
 
-# Set Debian Frontend to Non-Interactive
-ARG DEBIAN_FRONTEND=noninteractive
-
 # Disable PIP Root Warnings
 ARG PIP_ROOT_USER_ACTION=ignore
 
@@ -65,25 +62,8 @@ LABEL org.opencontainers.image.title="Azure IPAM" \
       org.opencontainers.image.version="${IPAM_VERSION}" \
       org.opencontainers.image.source="https://github.com/Azure/ipam"
 
-# Set Working Directory
-WORKDIR /tmp
-
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
-# Install OpenSSH and set the password for root to "Docker!"
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssh-server \
-  && echo "root:Docker!" | chpasswd \
-  && rm -rf /var/lib/apt/lists/*
-
-# Enable SSH root login with Password Authentication
-# RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config
-
-# Copy 'sshd_config File' to /etc/ssh/
-COPY sshd_config /etc/ssh/
-
-# Set SSH Key Permissions
-RUN ssh-keygen -A && mkdir -p /var/run/sshd
+# Create Non-Root User (UID 1001, GID 0 to match the RHEL image)
+RUN useradd --uid 1001 --gid 0 --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin ipam
 
 # Set Working Directory
 WORKDIR /ipam
@@ -101,7 +81,9 @@ fi
 
 # Copy Engine Code
 COPY ./engine/app ./app
-COPY --from=builder /tmp/dist ./dist
+
+# Copy UI Build (writable so the engine can write env.js at startup)
+COPY --from=builder --chown=1001:0 /tmp/dist ./dist
 
 # Copy Init Script
 COPY ./init.sh .
@@ -109,8 +91,11 @@ COPY ./init.sh .
 # Set Script Execute Permissions
 RUN chmod +x init.sh
 
-# Expose Ports
-EXPOSE $PORT 2222
+# Switch to Non-Root User
+USER 1001
+
+# Expose Port
+EXPOSE $PORT
 
 # Execute Startup Script
 ENTRYPOINT ["/bin/sh", "-c", "exec ./init.sh ${PORT}"]

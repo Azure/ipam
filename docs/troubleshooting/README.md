@@ -202,3 +202,77 @@ The five most recently deployed packages are retained as a cache. You can change
 Running directly from a package is only used for internet-restricted clouds, where the App Service cannot reach a package index to install the Python dependencies. Deployments in all other clouds build the application on the server and are unaffected by this issue.
 
 Microsoft does not support running from a package for Python apps on App Service, because the platform expects its build automation to create the virtual environment. Azure IPAM ships its dependencies inside the archive and adds them to `PYTHONPATH` at startup instead. As a result, `Could not find virtual environment directory /home/site/wwwroot/antenv` appears in the Application Log on every start. This is expected and is not an error.
+
+## SSH Connection Fails (Container Deployments)
+
+### <u>Symptoms</u>
+
+Azure IPAM is deployed as a container, and opening an SSH session to it fails. For example, selecting **SSH** under **Development Tools** for the App Service in the Azure Portal reports that the connection was closed, or `az webapp ssh` cannot connect.
+
+![App Service SSH](./images/app_service_ssh.png)
+
+![SSH Connection Closed](./images/ssh_connection_closed.png)
+
+### <u>Verify</u>
+
+The Azure IPAM container images run as a non-root user (UID `1001`, GID `0`), and an SSH server cannot run under a non-root user. Tools that depend on an SSH server inside the container cannot connect:
+
+- **Debian** images (the default) run as a non-root user and no longer include an SSH server starting with v4.0.0
+- **RHEL** images have always run as a non-root user, so SSH has never been available in any version, even though earlier versions included an SSH server
+
+Confirm that the App Service is running a container:
+
+#### Azure PowerShell
+
+```powershell
+(Get-AzWebApp -ResourceGroupName "<resource-group>" -Name "<app-name>").SiteConfig.LinuxFxVersion
+```
+
+#### Azure CLI
+
+```bash
+az webapp config show --resource-group <resource-group> --name <app-name> --query linuxFxVersion --output tsv
+```
+
+A value beginning with `DOCKER|` indicates a container deployment. Function App container deployments also report `DOCKER|` but are not affected (see the notes below).
+
+### <u>Resolve</u>
+
+Use the shell access provided by your hosting platform. These tools connect through the platform instead of an SSH server inside the container:
+
+| Platform           | Command                                                               | Reference                                                                                                                    |
+| ------------------ | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| App Service        | `az webapp exec --resource-group <resource-group> --name <app-name>`  | [Open a container shell](https://learn.microsoft.com/azure/app-service/configure-linux-open-ssh-session?pivots=container-linux) |
+| Container Apps     | `az containerapp exec --resource-group <resource-group> --name <app-name>` | [Connect to a container console](https://learn.microsoft.com/azure/container-apps/container-console)                      |
+| Kubernetes (AKS)   | `kubectl exec -it <pod-name> -- /bin/bash`                            | [Get a shell to a running container](https://kubernetes.io/docs/tasks/debug/debug-application/get-shell-running-container/)  |
+| Docker             | `docker exec -it <container-name> /bin/bash`                          | [docker container exec](https://docs.docker.com/reference/cli/docker/container/exec/)                                        |
+
+`az webapp exec` is currently in preview and requires Azure CLI 2.90.0 or later.
+
+For App Service, the newer terminal is also available in the browser. The **SSH** option under **Development Tools** may still use the legacy connection and fail. At the time of writing, open **Development Tools** > **Advanced Tools** > **Go**, select **SSH** > **Application**, and then select **Try the new terminal** at the top of the page. The Azure Portal layout may change, so refer to the linked App Service documentation for current steps.
+
+![App Service Advanced Tools](./images/app_service_advanced_tools.png)
+
+![Try The New Terminal](./images/kudu_try_new_terminal.png)
+
+![New Terminal Session](./images/new_terminal_session.png)
+
+The shell runs as the same non-root user as Azure IPAM. Where root access is required, Docker accepts `--user 0` on `docker exec`, and Kubernetes can attach an [ephemeral debug container](https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/#ephemeral-container) with `kubectl debug`.
+
+Useful locations inside the container:
+
+| Path                 | Contents                                                                                           |
+| -------------------- | -------------------------------------------------------------------------------------------------- |
+| `/ipam/app`          | Engine application code                                                                            |
+| `/ipam/dist/env.js`  | UI configuration written at startup (`/tmp/dist/env.js` when `/ipam/dist` is not writable)          |
+| `/tmp/logs/ipam.log` | Engine log file, unless overridden with the `IPAM_LOGFILE_LOCATION` environment variable           |
+
+### <u>Notes</u>
+
+Running without root privileges or an SSH server limits what can be reached if the application is ever compromised, and allows the images to run on platforms that require non-root containers.
+
+This only applies to App Service (web app) container deployments. Code deployments (a `linuxFxVersion` beginning with `PYTHON|`) run on the App Service built-in Python image, which provides its own SSH server, so SSH continues to work as before.
+
+Function App container deployments use Microsoft's Azure Functions base image, which runs as root and includes its own SSH server, so SSH continues to work as before. `az webapp exec` does not support Function Apps.
+
+The commands above are maintained by each platform. Refer to the linked documentation for current options and requirements.
