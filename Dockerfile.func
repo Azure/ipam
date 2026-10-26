@@ -1,5 +1,5 @@
 ARG BUILD_IMAGE=mcr.microsoft.com/azure-functions/node:4-node22-appservice
-ARG SERVE_IMAGE=mcr.microsoft.com/azure-functions/python:4-python3.11-appservice
+ARG SERVE_IMAGE=mcr.microsoft.com/azure-functions/python:4-python3.11-appservice-bookworm
 
 # Set Production Build Flag
 ARG PROD_BUILD=true
