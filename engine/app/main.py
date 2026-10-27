@@ -39,7 +39,10 @@ from app.routers import (
 from app.schema import check_compatibility, run_convergence
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-BUILD_DIR = os.path.join(os.getcwd(), "dist")
+
+# UI build shipped with the app; ipam_init() may repoint BUILD_DIR to a writable copy
+SOURCE_BUILD_DIR = os.path.join(os.getcwd(), "dist")
+BUILD_DIR = SOURCE_BUILD_DIR
 
 try:
     UI_APP_ID = uuid.UUID(os.environ.get('UI_APP_ID'))
@@ -82,11 +85,12 @@ async def ipam_init():
     os.environ['VITE_CONTAINER_IMAGE_CODENAME'] = release_data['VERSION'].split(" ")[1][1:-1].lower() if "VERSION" in release_data else "N/A"
     os.environ['VITE_CONTAINER_IMAGE_PRETTY_NAME'] = release_data['PRETTY_NAME']
 
-    if os.path.exists(BUILD_DIR):
-        if(os.environ.get('FUNCTIONS_WORKER_RUNTIME') or (not os.access(BUILD_DIR, os.W_OK))):
+    if os.path.exists(SOURCE_BUILD_DIR):
+        if(os.environ.get('FUNCTIONS_WORKER_RUNTIME') or (not os.access(SOURCE_BUILD_DIR, os.W_OK))):
             new_build_dir = os.path.join(tempfile.gettempdir(), "dist")
 
-            shutil.copytree(BUILD_DIR, new_build_dir)
+            # Startup can be retried in the same process, and /tmp can outlive a restart
+            shutil.copytree(SOURCE_BUILD_DIR, new_build_dir, dirs_exist_ok=True)
 
             BUILD_DIR = new_build_dir
 
