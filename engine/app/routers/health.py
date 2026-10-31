@@ -66,7 +66,7 @@ async def _run_check(check):
         await asyncio.wait_for(check(), timeout=HEALTH_CHECK_TIMEOUT)
 
         return {"ok": True}
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return {"ok": False, "detail": f"Timed out after {HEALTH_CHECK_TIMEOUT}s."}
     except HTTPException as e:
         return {"ok": False, "detail": str(e.detail)}
