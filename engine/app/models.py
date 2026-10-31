@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from netaddr import IPAddress, IPNetwork
@@ -258,11 +258,11 @@ class Reservation(BaseModel):
     # Null for Reservations created by other users, unless the caller can see every user's Reservations.
     id: str | None
     cidr: str
-    desc: Union[str, None] = None
+    desc: str | None = None
     createdOn: float
     createdBy: str
-    settledOn: Union[float, None] = None
-    settledBy: Union[str, None] = None
+    settledOn: float | None = None
+    settledBy: str | None = None
     status: str
 
 class ReservationExpand(BaseModel):
@@ -273,11 +273,11 @@ class ReservationExpand(BaseModel):
     space: str | None = None
     block: str | None = None
     cidr: str
-    desc: Union[str, None] = None
+    desc: str | None = None
     createdOn: float
     createdBy: str
-    settledOn: Union[float, None] = None
-    settledBy: Union[str, None] = None
+    settledOn: float | None = None
+    settledBy: str | None = None
     status: str
     tag: dict | None = None
 
@@ -455,7 +455,7 @@ class ExtEndpointReq(BaseModel):
 
     name: str
     desc: str
-    ip: Union[IPv4Address, None]
+    ip: IPv4Address | None
 
 class JSONPatch(BaseModel):
     """A single JSON Patch (RFC 6902) operation used to update a resource."""
@@ -526,7 +526,7 @@ class AzureNetwork(BaseModel):
     tenant_id: str
     peerings: list[VNetPeering]
     size: int
-    used: Union[int, None] = None
+    used: int | None = None
 
     model_config = ConfigDict(
         json_encoders = {
@@ -577,7 +577,7 @@ class ViewSettings(BaseModel):
     # Legacy format (Inovua)
     values: dict[str, dict] | None = None
     order: list[str] | None = None
-    sort: Union[dict, None] = None
+    sort: dict | None = None
     # AG Grid format
     columnState: list[dict] | None = None
 

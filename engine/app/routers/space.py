@@ -2,7 +2,6 @@ import copy
 import re
 import time
 import uuid
-from typing import Union
 
 import jsonpatch
 import jwt
@@ -602,12 +601,12 @@ async def scrub_ext_endpoint_patch(patch, space_name, block_name, external_name,
 @router.get(
     "",
     summary = "Get All Spaces",
-    response_model = Union[
-        list[SpaceExpandUtil],
-        list[SpaceExpand],
-        list[SpaceUtil],
-        list[Space]
-    ],
+    response_model = (
+        list[SpaceExpandUtil]
+        | list[SpaceExpand]
+        | list[SpaceUtil]
+        | list[Space]
+    ),
     status_code = 200
 )
 async def get_spaces(
@@ -710,12 +709,12 @@ async def create_space(
 @router.get(
     "/{space}",
     summary = "Get Space Details",
-    response_model = Union[
-        SpaceExpandUtil,
-        SpaceExpand,
-        SpaceUtil,
-        Space
-    ],
+    response_model = (
+        SpaceExpandUtil
+        | SpaceExpand
+        | SpaceUtil
+        | Space
+    ),
     status_code = 200
 )
 async def get_space(
@@ -1018,12 +1017,12 @@ async def create_multi_block_reservation(
 @router.get(
     "/{space}/blocks",
     summary = "Get all Blocks within a Space",
-    response_model = Union[
-        list[BlockExpandUtil],
-        list[BlockExpand],
-        list[BlockUtil],
-        list[Block]
-    ],
+    response_model = (
+        list[BlockExpandUtil]
+        | list[BlockExpand]
+        | list[BlockUtil]
+        | list[Block]
+    ),
     status_code = 200
 )
 async def get_blocks(
@@ -1140,12 +1139,12 @@ async def create_block(
 @router.get(
     "/{space}/blocks/{block}",
     summary = "Get Block Details",
-    response_model = Union[
-        BlockExpandUtil,
-        BlockExpand,
-        BlockUtil,
-        Block
-    ],
+    response_model = (
+        BlockExpandUtil
+        | BlockExpand
+        | BlockUtil
+        | Block
+    ),
     status_code = 200
 )
 async def get_block(
@@ -1302,11 +1301,11 @@ async def delete_block(
 @router.get(
     "/{space}/blocks/{block}/available",
     summary = "List Available Block Networks",
-    response_model = Union[
-        list[NetworkExpandBlocked],
-        list[NetworkExpand],
-        list[str]
-    ],
+    response_model = (
+        list[NetworkExpandBlocked]
+        | list[NetworkExpand]
+        | list[str]
+    ),
     status_code = 200
 )
 async def available_block_nets(
@@ -1408,10 +1407,10 @@ async def available_block_nets(
 @router.get(
     "/{space}/blocks/{block}/networks",
     summary = "List Block Networks",
-    response_model = Union[
-        list[NetworkExpand],
-        list[Network]
-    ],
+    response_model = (
+        list[NetworkExpand]
+        | list[Network]
+    ),
     status_code = 200,
     dependencies = [Depends(requires(Permission.ASSOCIATIONS_READ))]
 )

@@ -1,7 +1,6 @@
 import copy
 import re
 import uuid
-from typing import Union
 
 import jsonpatch
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -130,10 +129,10 @@ async def get_users(
 @router.get(
     "/me",
     summary = "Get My User Details",
-    response_model = Union[
-        UserExpand,
-        User
-    ],
+    response_model = (
+        UserExpand
+        | User
+    ),
     status_code = 200
 )
 @cosmos_retry(
