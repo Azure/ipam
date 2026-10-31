@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Literal, Optional, Union
+from typing import Annotated, Any, Literal, Union
 from uuid import UUID
 
 from netaddr import IPAddress, IPNetwork
@@ -106,13 +106,13 @@ class VNet(BaseModel):
     """Reference to an Azure Virtual Network associated with a Block, tracked by resource ID and active status."""
 
     id: str
-    active: Optional[bool] = None
+    active: bool | None = None
 
 class Network(BaseModel):
     """Reference to a generic Azure network resource associated with a Block, tracked by resource ID and active status."""
 
     id: str
-    active: Optional[bool] = None
+    active: bool | None = None
 
 class ExtEndpoint(BaseModel):
     """An endpoint (named host) with a description and IP address defined within an external subnet."""
@@ -202,7 +202,7 @@ class BlockedBy(BaseModel):
 
     type: Literal['external', 'reservation']
     # A Reservation is named by its ID, which is null for Reservations created by other users.
-    name: Optional[str]
+    name: str | None
     cidr: str
     prefix: str
 
@@ -256,7 +256,7 @@ class Reservation(BaseModel):
     """A CIDR reservation within a Block, tracking creation/settlement metadata and status."""
 
     # Null for Reservations created by other users, unless the caller can see every user's Reservations.
-    id: Optional[str]
+    id: str | None
     cidr: str
     desc: Union[str, None] = None
     createdOn: float
@@ -269,9 +269,9 @@ class ReservationExpand(BaseModel):
     """A CIDR reservation enriched with its parent space, block, and a derived IPAM reservation ID tag."""
 
     # Null for Reservations created by other users, unless the caller can see every user's Reservations.
-    id: Optional[str]
-    space: Optional[str] = None
-    block: Optional[str] = None
+    id: str | None
+    space: str | None = None
+    block: str | None = None
     cidr: str
     desc: Union[str, None] = None
     createdOn: float
@@ -279,7 +279,7 @@ class ReservationExpand(BaseModel):
     settledOn: Union[float, None] = None
     settledBy: Union[str, None] = None
     status: str
-    tag: Optional[dict] = None
+    tag: dict | None = None
 
     @model_validator(mode='before')
     @classmethod
@@ -382,18 +382,18 @@ class SpaceCIDRReq(BaseModel):
 
     blocks: list
     size: int
-    desc: Optional[str] = None
-    reverse_search: Optional[bool] = False
-    smallest_cidr: Optional[bool] = False
+    desc: str | None = None
+    reverse_search: bool | None = False
+    smallest_cidr: bool | None = False
 
 class BlockCIDRReq(BaseModel):
     """Request body for reserving a CIDR within a Block, either by explicit CIDR or by size."""
 
-    size: Optional[int] = None
-    cidr: Optional[IPv4Network] = None
-    desc: Optional[str] = None
-    reverse_search: Optional[bool] = False
-    smallest_cidr: Optional[bool] = False
+    size: int | None = None
+    cidr: IPv4Network | None = None
+    desc: str | None = None
+    reverse_search: bool | None = False
+    smallest_cidr: bool | None = False
 
     @model_validator(mode='before')
     @classmethod
@@ -414,9 +414,9 @@ class ExtNetReq(BaseModel):
     """Request body for creating an external network, either by explicit CIDR or by size."""
 
     name: str
-    desc: Optional[str] = None
-    cidr: Optional[IPv4Network] = None
-    size: Optional[int] = None
+    desc: str | None = None
+    cidr: IPv4Network | None = None
+    size: int | None = None
 
     @model_validator(mode='before')
     @classmethod
@@ -434,9 +434,9 @@ class ExtSubnetReq(BaseModel):
     """Request body for creating an external subnet, either by explicit CIDR or by size."""
 
     name: str
-    desc: Optional[str] = None
-    cidr: Optional[IPv4Network] = None
-    size: Optional[int] = None
+    desc: str | None = None
+    cidr: IPv4Network | None = None
+    size: int | None = None
 
     @model_validator(mode='before')
     @classmethod
@@ -543,7 +543,7 @@ class Admin(BaseModel):
 
     type: Literal["User", "Principal"]
     name: str
-    email: Optional[EmailStr] = None
+    email: EmailStr | None = None
     id: UUID
 
     @model_validator(mode='before')
@@ -575,11 +575,11 @@ Exclusions = Annotated[list[UUID], None]
 
 class ViewSettings(BaseModel):
     # Legacy format (Inovua)
-    values: Optional[dict[str, dict]] = None
-    order: Optional[list[str]] = None
+    values: dict[str, dict] | None = None
+    order: list[str] | None = None
     sort: Union[dict, None] = None
     # AG Grid format
-    columnState: Optional[list[dict]] = None
+    columnState: list[dict] | None = None
 
 class User(BaseModel):
     """IPAM user settings such as dark mode, API refresh interval, and admin status."""
@@ -629,16 +629,16 @@ class VNetCIDRReq(BaseModel):
     space: str
     blocks: list[str]
     size: int
-    reverse_search: Optional[bool] = False
-    smallest_cidr: Optional[bool] = False
+    reverse_search: bool | None = False
+    smallest_cidr: bool | None = False
 
 class SubnetCIDRReq(BaseModel):
     """Request body for finding the next available CIDR for a new subnet within a Virtual Network."""
 
     vnet_id: str
     size: int
-    reverse_search: Optional[bool] = False
-    smallest_cidr: Optional[bool] = False
+    reverse_search: bool | None = False
+    smallest_cidr: bool | None = False
 
 class NewSubnetCIDR(BaseModel):
     """Response describing an available CIDR for a new subnet within a Virtual Network."""
@@ -666,11 +666,11 @@ class CIDRCheckRes(BaseModel):
     For non-admin callers, the identity fields are null when the network isn't associated with a Block.
     """
 
-    name: Optional[str]
-    id: Optional[str]
-    resource_group: Optional[str]
-    subscription_id: Optional[UUID]
-    tenant_id: Optional[UUID]
+    name: str | None
+    id: str | None
+    resource_group: str | None
+    subscription_id: UUID | None
+    tenant_id: UUID | None
     prefixes: list[IPv4Network]
     containers: list[CIDRContainer]
 
@@ -682,7 +682,7 @@ class HealthCheck(BaseModel):
     """Result of a single dependency health check."""
 
     ok: bool
-    detail: Optional[str] = None
+    detail: str | None = None
 
 class Health(BaseModel):
     """Overall health status with per-dependency check results."""
@@ -710,8 +710,8 @@ class Status(BaseModel):
     stack: str
     environment: str
     start_time: str
-    mode: Optional[str] = None
-    container: Optional[ImageDetails] = None
+    mode: str | None = None
+    container: ImageDetails | None = None
 
 ####################
 #   ERROR MODELS   #

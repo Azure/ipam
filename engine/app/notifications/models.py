@@ -12,7 +12,7 @@ notifications will be constrained to informational / link actions only; only
 local (in-code) detectors may emit actionable ``api`` remediations.
 """
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -39,13 +39,13 @@ class NotificationAction(BaseModel):
     kind: ActionKind
 
     # resolve / link
-    method: Optional[str] = None
-    href: Optional[str] = None
-    causesRestart: Optional[bool] = None
-    requiresAdmin: Optional[bool] = None
+    method: str | None = None
+    href: str | None = None
+    causesRestart: bool | None = None
+    requiresAdmin: bool | None = None
 
     # navigate
-    to: Optional[str] = None
+    to: str | None = None
 
 
 class Notification(BaseModel):
@@ -58,7 +58,7 @@ class Notification(BaseModel):
     title: str
     message: str
     dismissible: bool = True
-    data: Optional[dict] = None
+    data: dict | None = None
     actions: list[NotificationAction] = []
 
 

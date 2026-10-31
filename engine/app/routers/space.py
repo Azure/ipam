@@ -2,7 +2,7 @@ import copy
 import re
 import time
 import uuid
-from typing import Optional, Union
+from typing import Union
 
 import jsonpatch
 import jwt
@@ -833,7 +833,7 @@ async def update_space(
 )
 async def delete_space(
     space: str = Path(..., description="Name of the target Space"),
-    force: Optional[bool] = Query(False, description="Forcefully delete a Space with existing Blocks"),
+    force: bool | None = Query(False, description="Forcefully delete a Space with existing Blocks"),
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
@@ -1268,7 +1268,7 @@ async def update_block(
 async def delete_block(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
-    force: Optional[bool] = Query(False, description="Forcefully delete a Block with existing networks and/or reservations"),
+    force: bool | None = Query(False, description="Forcefully delete a Block with existing networks and/or reservations"),
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
@@ -1962,7 +1962,7 @@ async def delete_external_network(
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target external network"),
-    force: Optional[bool] = Query(False, description="Forcefully delete an External Network with existing Subnets"),
+    force: bool | None = Query(False, description="Forcefully delete an External Network with existing Subnets"),
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
@@ -2260,7 +2260,7 @@ async def delete_external_subnet(
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target external network"),
     subnet: str = Path(..., description="Name of the target external subnet"),
-    force: Optional[bool] = Query(False, description="Forcefully delete an External Network with existing Subnets"),
+    force: bool | None = Query(False, description="Forcefully delete an External Network with existing Subnets"),
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
