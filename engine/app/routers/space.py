@@ -157,7 +157,7 @@ def add_block_utilization(block, nets, expand):
             ext['used'] += ext_subnet['size']
 
 async def valid_space_name_update(name, space_name, tenant_id):
-    space_names = await cosmos_query("SELECT VALUE LOWER(c.name) FROM c WHERE c.type = 'space' AND LOWER(c.name) != LOWER('{}')".format(space_name), tenant_id)
+    space_names = await cosmos_query("SELECT VALUE LOWER(c.name) FROM c WHERE c.type = 'space' AND LOWER(c.name) != LOWER(@space)", tenant_id, [{"name": "@space", "value": space_name}])
 
     if name.lower() in space_names:
         raise HTTPException(status_code=400, detail="Updated Space name must be unique.")
@@ -205,7 +205,7 @@ async def scrub_space_patch(patch, space_name, tenant_id):
     return scrubbed_patch
 
 async def valid_block_name_update(name, space_name, block_name, tenant_id):
-    other_blocks = await cosmos_query("SELECT VALUE LOWER(t.name) FROM c join t IN c.blocks WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}') AND LOWER(t.name) != LOWER('{}')".format(space_name, block_name), tenant_id)
+    other_blocks = await cosmos_query("SELECT VALUE LOWER(t.name) FROM c join t IN c.blocks WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space) AND LOWER(t.name) != LOWER(@block)", tenant_id, [{"name": "@space", "value": space_name}, {"name": "@block", "value": block_name}])
 
     if name.lower() in other_blocks:
         raise HTTPException(status_code=400, detail="Updated Block name cannot match existing Blocks within the Space.")
@@ -219,7 +219,7 @@ async def valid_block_cidr_update(cidr, space_name, block_name, tenant_id):
     space_cidrs = []
     block_cidrs = []
 
-    blocks = await cosmos_query("SELECT VALUE t FROM c join t IN c.blocks WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space_name), tenant_id)
+    blocks = await cosmos_query("SELECT VALUE t FROM c join t IN c.blocks WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space_name}])
     target_block = next((x for x in blocks if x['name'].lower() == block_name.lower()), None)
 
     if target_block:
@@ -305,7 +305,7 @@ async def scrub_block_patch(patch, space_name, block_name, tenant_id):
     return scrubbed_patch
 
 async def valid_ext_network_name_update(name, space_name, block_name, external_name, tenant_id):
-    other_networks = await cosmos_query("SELECT VALUE LOWER(u.name) FROM c join t IN c.blocks join u in t.externals WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}') AND LOWER(t.name) = LOWER('{}') AND LOWER(u.name) != LOWER('{}')".format(space_name, block_name, external_name), tenant_id)
+    other_networks = await cosmos_query("SELECT VALUE LOWER(u.name) FROM c join t IN c.blocks join u in t.externals WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space) AND LOWER(t.name) = LOWER(@block) AND LOWER(u.name) != LOWER(@external)", tenant_id, [{"name": "@space", "value": space_name}, {"name": "@block", "value": block_name}, {"name": "@external", "value": external_name}])
 
     if name.lower() in other_networks:
         raise HTTPException(status_code=400, detail="Updated External Network name cannot match existing External Networks within the Block.")
@@ -319,10 +319,10 @@ async def valid_ext_network_cidr_update(cidr, space_name, block_name, external_n
     block_cidrs = []
     external_cidrs = []
 
-    blocks = await cosmos_query("SELECT VALUE t FROM c join t IN c.blocks WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space_name), tenant_id)
+    blocks = await cosmos_query("SELECT VALUE t FROM c join t IN c.blocks WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space_name}])
     target_block = next((x for x in blocks if x['name'].lower() == block_name.lower()), None)
 
-    externals = await cosmos_query("SELECT VALUE u FROM c join t IN c.blocks join u IN t.externals WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}') AND LOWER(t.name) = LOWER('{}')".format(space_name, block_name), tenant_id)
+    externals = await cosmos_query("SELECT VALUE u FROM c join t IN c.blocks join u IN t.externals WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space) AND LOWER(t.name) = LOWER(@block)", tenant_id, [{"name": "@space", "value": space_name}, {"name": "@block", "value": block_name}])
     target_external = next((x for x in externals if x['name'].lower() == external_name.lower()), None)
 
     if target_block and target_external:
@@ -415,7 +415,7 @@ async def scrub_ext_network_patch(patch, space_name, block_name, external_name, 
     return scrubbed_patch
 
 async def valid_ext_subnet_name_update(name, space_name, block_name, external_name, subnet_name, tenant_id):
-    other_subnets = await cosmos_query("SELECT VALUE v FROM c join t IN c.blocks join u IN t.externals join v IN u.subnets WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}') AND LOWER(t.name) = LOWER('{}') AND LOWER(u.name) = LOWER('{}') AND LOWER(v.name) != LOWER('{}')".format(space_name, block_name, external_name, subnet_name), tenant_id)
+    other_subnets = await cosmos_query("SELECT VALUE v FROM c join t IN c.blocks join u IN t.externals join v IN u.subnets WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space) AND LOWER(t.name) = LOWER(@block) AND LOWER(u.name) = LOWER(@external) AND LOWER(v.name) != LOWER(@subnet)", tenant_id, [{"name": "@space", "value": space_name}, {"name": "@block", "value": block_name}, {"name": "@external", "value": external_name}, {"name": "@subnet", "value": subnet_name}])
 
     if name.lower() in other_subnets:
         raise HTTPException(status_code=400, detail="Updated External Subnet name cannot match existing External Subnets within the External Network.")
@@ -429,10 +429,10 @@ async def valid_ext_subnet_cidr_update(cidr, space_name, block_name, external_na
     external_cidrs = []
     subnet_ips = []
 
-    externals = await cosmos_query("SELECT VALUE u FROM c join t IN c.blocks join u IN t.externals WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}') AND LOWER(t.name) = LOWER('{}')".format(space_name, block_name), tenant_id)
+    externals = await cosmos_query("SELECT VALUE u FROM c join t IN c.blocks join u IN t.externals WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space) AND LOWER(t.name) = LOWER(@block)", tenant_id, [{"name": "@space", "value": space_name}, {"name": "@block", "value": block_name}])
     target_external = next((x for x in externals if x['name'].lower() == external_name.lower()), None)
 
-    subnets = await cosmos_query("SELECT VALUE v FROM c join t IN c.blocks join u IN t.externals join v IN u.subnets WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}') AND LOWER(t.name) = LOWER('{}') AND LOWER(u.name) = LOWER('{}')".format(space_name, block_name, external_name), tenant_id)
+    subnets = await cosmos_query("SELECT VALUE v FROM c join t IN c.blocks join u IN t.externals join v IN u.subnets WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space) AND LOWER(t.name) = LOWER(@block) AND LOWER(u.name) = LOWER(@external)", tenant_id, [{"name": "@space", "value": space_name}, {"name": "@block", "value": block_name}, {"name": "@external", "value": external_name}])
     target_subnet = next((x for x in subnets if x['name'].lower() == subnet_name.lower()), None)
 
     if target_external and target_subnet:
@@ -513,7 +513,7 @@ async def scrub_ext_subnet_patch(patch, space_name, block_name, external_name, s
     return scrubbed_patch
 
 async def valid_ext_endpoint_name_update(name, space_name, block_name, external_name, subnet_name, endpoint_name, tenant_id):
-    other_endpoints = await cosmos_query("SELECT VALUE x FROM c join t IN c.blocks join u IN t.externals join v IN u.subnets join x in v.endpoints WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}') AND LOWER(t.name) = LOWER('{}') AND LOWER(u.name) = LOWER('{}') AND LOWER(v.name) = LOWER('{}') AND LOWER(x.name) != LOWER('{}')".format(space_name, block_name, external_name, subnet_name, endpoint_name), tenant_id)
+    other_endpoints = await cosmos_query("SELECT VALUE x FROM c join t IN c.blocks join u IN t.externals join v IN u.subnets join x in v.endpoints WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space) AND LOWER(t.name) = LOWER(@block) AND LOWER(u.name) = LOWER(@external) AND LOWER(v.name) = LOWER(@subnet) AND LOWER(x.name) != LOWER(@endpoint)", tenant_id, [{"name": "@space", "value": space_name}, {"name": "@block", "value": block_name}, {"name": "@external", "value": external_name}, {"name": "@subnet", "value": subnet_name}, {"name": "@endpoint", "value": endpoint_name}])
 
     if name.lower() in other_endpoints:
         raise HTTPException(status_code=400, detail="Updated External Endpoint name cannot match existing External Endpoints within the External Subnet.")
@@ -526,10 +526,10 @@ async def valid_ext_endpoint_name_update(name, space_name, block_name, external_
 async def valid_ext_endpoint_ip_update(ip, space_name, block_name, external_name, subnet_name, endpoint_name, tenant_id):
     subnet_ips = []
 
-    subnets = await cosmos_query("SELECT VALUE v FROM c join t IN c.blocks join u IN t.externals join v IN u.subnets WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}') AND LOWER(t.name) = LOWER('{}') AND LOWER(u.name) = LOWER('{}')".format(space_name, block_name, external_name), tenant_id)
+    subnets = await cosmos_query("SELECT VALUE v FROM c join t IN c.blocks join u IN t.externals join v IN u.subnets WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space) AND LOWER(t.name) = LOWER(@block) AND LOWER(u.name) = LOWER(@external)", tenant_id, [{"name": "@space", "value": space_name}, {"name": "@block", "value": block_name}, {"name": "@external", "value": external_name}])
     target_subnet = next((x for x in subnets if x['name'].lower() == subnet_name.lower()), None)
 
-    endpoints = await cosmos_query("SELECT VALUE x FROM c join t IN c.blocks join u IN t.externals join v IN u.subnets join x in v.endpoints WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}') AND LOWER(t.name) = LOWER('{}') AND LOWER(u.name) = LOWER('{}') and LOWER(v.name) = LOWER('{}')".format(space_name, block_name, external_name, subnet_name), tenant_id)
+    endpoints = await cosmos_query("SELECT VALUE x FROM c join t IN c.blocks join u IN t.externals join v IN u.subnets join x in v.endpoints WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space) AND LOWER(t.name) = LOWER(@block) AND LOWER(u.name) = LOWER(@external) and LOWER(v.name) = LOWER(@subnet)", tenant_id, [{"name": "@space", "value": space_name}, {"name": "@block", "value": block_name}, {"name": "@external", "value": external_name}, {"name": "@subnet", "value": subnet_name}])
     target_endpoint = next((x for x in endpoints if x['name'].lower() == endpoint_name.lower()), None)
 
     if target_subnet and target_endpoint:
@@ -733,7 +733,7 @@ async def get_space(
 
     user_name = get_username_from_jwt(token)
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -802,7 +802,7 @@ async def update_space(
     - **/desc**
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -841,7 +841,7 @@ async def delete_space(
     Remove a specific Space.
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -876,7 +876,7 @@ async def get_multi_block_reservations(
     """
 
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -931,7 +931,7 @@ async def create_multi_block_reservation(
 
     decoded = jwt.decode(token, options={"verify_signature": False})
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1041,7 +1041,7 @@ async def get_blocks(
 
     user_name = get_username_from_jwt(token)
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1099,7 +1099,7 @@ async def create_block(
     - **cidr**: IPv4 CIDR Range
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1163,7 +1163,7 @@ async def get_block(
     """
 
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1230,7 +1230,7 @@ async def update_block(
     - **/cidr**
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1276,7 +1276,7 @@ async def delete_block(
     Remove a specific Block.
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1429,7 +1429,7 @@ async def get_block_nets(
 
     block_nets = []
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1478,7 +1478,7 @@ async def create_block_net(
     - **id**: Azure Resource ID
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1559,7 +1559,7 @@ async def update_block_vnets(
     - **[&lt;str&gt;]**: Array of Azure Resource ID's
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1668,7 +1668,7 @@ async def delete_block_nets(
     - **[&lt;str&gt;]**: Array of Azure Resource ID's
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1726,7 +1726,7 @@ async def get_external_networks(
     Get a list of External Networks which are currently associated to the target Block.
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1772,7 +1772,7 @@ async def create_external_network(
     if not re.match(EXTERNAL_DESC_REGEX, req.desc, re.IGNORECASE):
         raise HTTPException(status_code=400, detail="External network description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1866,7 +1866,7 @@ async def get_external_network(
     Get the details of a specific External Network.
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1918,7 +1918,7 @@ async def update_ext_network(
     - **/cidr**
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -1970,7 +1970,7 @@ async def delete_external_network(
     Remove a specific External Network currently associated to the target Block
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -2015,7 +2015,7 @@ async def get_external_subnets(
     Get a list of Subnets which are currently associated to the target External Network.
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -2068,7 +2068,7 @@ async def create_external_subnet(
     if not re.match(EXTSUBNET_DESC_REGEX, req.desc, re.IGNORECASE):
         raise HTTPException(status_code=400, detail="External subnet description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -2152,7 +2152,7 @@ async def get_external_subnet(
     Get the details of a specific External Subnet.
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -2210,7 +2210,7 @@ async def update_ext_subnet(
     - **/cidr**
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -2268,7 +2268,7 @@ async def delete_external_subnet(
     Remove a specific Subnet currently associated to the target External Network
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -2319,7 +2319,7 @@ async def get_external_subnet_endpoints(
     Get a list of Endpoints which are currently associated to the target External Network Subnet.
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -2371,7 +2371,7 @@ async def create_external_subnet_endpoint(
     - **ip**: IP Address of the endpoint or NONE to automatically assign the next available IP address
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -2489,7 +2489,7 @@ async def update_external_subnet_enpoints(
     if invalid_descs:
         raise HTTPException(status_code=400, detail="Endpoint descriptions can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -2574,7 +2574,7 @@ async def delete_external_subnet_endpoints(
     - **[&lt;str&gt;]**: Array of Endpoint Names
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -2638,7 +2638,7 @@ async def get_external_subnet_endpoint(
     Get the details of a specific External Subnet Endpoint.
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -2702,7 +2702,7 @@ async def update_ext_endpoint(
     - **/ip**
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -2765,7 +2765,7 @@ async def delete_external_subnet_endpoint(
     Remove a specific Endpoint currently associated to the target External Network Subnet
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -2819,7 +2819,7 @@ async def get_block_reservations(
     """
 
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -2916,7 +2916,7 @@ async def create_block_reservation(
 
     decoded = jwt.decode(token, options={"verify_signature": False})
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -3025,7 +3025,7 @@ async def delete_block_reservations(
 
     user_name = get_username_from_jwt(token)
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -3092,7 +3092,7 @@ async def get_block_reservation(
     """
 
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])
@@ -3145,7 +3145,7 @@ async def delete_block_reservation(
 
     user_name = get_username_from_jwt(token)
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])

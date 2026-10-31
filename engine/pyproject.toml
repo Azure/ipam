@@ -13,6 +13,7 @@ select = [
     "E9",   # pycodestyle runtime errors
     "F",    # pyflakes
     "I",    # isort
+    "S608", # flake8-bandit: SQL built by string formatting (Cosmos DB queries must use parameters)
     "TID",  # flake8-tidy-imports (banned-api, below)
     "W291", # trailing whitespace
     "W293", # blank line with whitespace

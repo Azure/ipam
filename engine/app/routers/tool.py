@@ -167,7 +167,7 @@ async def next_available_vnet(
         - **false (default)**: New networks will be created using the first available block, regardless of size
     """
 
-    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER('{}')".format(req.space), tenant_id)
+    space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": req.space}])
 
     try:
         target_space = copy.deepcopy(space_query[0])

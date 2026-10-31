@@ -151,7 +151,7 @@ async def get_user(
 
     user_id = get_user_id_from_jwt(token)
 
-    user_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND c['data']['id'] = '{}')".format(user_id), tenant_id)
+    user_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND c['data']['id'] = @user_id)", tenant_id, [{"name": "@user_id", "value": user_id}])
 
     if not user_query:
         user_query = [await new_user(user_id, tenant_id)]
@@ -207,7 +207,7 @@ async def update_user(
 
     user_id = get_user_id_from_jwt(token)
 
-    user_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND c['data']['id'] = '{}')".format(user_id), tenant_id)
+    user_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND c['data']['id'] = @user_id)", tenant_id, [{"name": "@user_id", "value": user_id}])
 
     if not user_query:
         user_query = [await new_user(user_id, tenant_id)]

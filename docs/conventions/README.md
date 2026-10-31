@@ -128,6 +128,22 @@ Synchronous clients validate TLS against the bundled `certifi` roots and cannot 
 
 The ban lives in `engine/pyproject.toml` under `flake8-tidy-imports.banned-api`, so you will catch it at lint time rather than at deployment time.
 
+## Querying Cosmos DB
+
+Pass every value a query compares against as a parameter, and never build it into the query text. `cosmos_query()` takes the Cosmos DB SDK's own parameter list:
+
+```python
+await cosmos_query(
+    "SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)",
+    tenant_id,
+    [{"name": "@space", "value": space}]
+)
+```
+
+A parameter reaches Cosmos DB separately from the query and is only ever compared as a value, whatever characters it contains. It also lets Cosmos DB reuse one query plan for every value, rather than compiling a new query each time the text changes. Microsoft's guidance for Cosmos DB recommends parameters for both reasons.
+
+Ruff enforces this with `S608` in `engine/pyproject.toml`, which rejects query text built with `.format()`, an f-string or `+`, so you will catch it at lint time.
+
 ## Container Base Images
 
 Pin each base image to a Python version and an operating system release, and nothing finer. `python:3.12-slim-trixie` is the pattern to follow: Python 3.12 on Debian 13, with whatever patch release and security fixes are current when the image is built.

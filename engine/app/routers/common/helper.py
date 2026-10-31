@@ -229,8 +229,14 @@ async def get_mgmt_group_name(tenant_id):
     return result
 
 # Needs a try/except block for aiohttp.client_exceptions.ServerTimeoutError
-async def cosmos_query(query: str, tenant_id: str):
-    """Run a Cosmos DB query within the tenant's partition and return all matching items."""
+async def cosmos_query(query: str, tenant_id: str, parameters: list[dict[str, object]] | None = None):
+    """
+    Run a Cosmos DB query within the tenant's partition and return all matching items.
+
+    Pass request values as ``parameters`` (``[{"name": "@space", "value": space}]``) and reference
+    them by name in the query, never by building them into the query text. See the Conventions
+    documentation, "Querying Cosmos DB".
+    """
 
     # cosmos_client = CosmosClient(globals.COSMOS_URL, credential=globals.COSMOS_KEY)
 
@@ -242,6 +248,7 @@ async def cosmos_query(query: str, tenant_id: str):
 
     query_results = container.query_items(
         query = query,
+        parameters = parameters,
         # enable_cross_partition_query=True,
         partition_key = tenant_id
     )
