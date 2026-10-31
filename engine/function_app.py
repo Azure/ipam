@@ -7,7 +7,7 @@ if os.environ.get('WEBSITE_RUN_FROM_PACKAGE') == '1':
 
 import logging
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import azure.functions as func
 
@@ -29,7 +29,7 @@ timer_blueprint = func.Blueprint()
 @timer_blueprint.function_name("sentinel")
 @timer_blueprint.timer_trigger(schedule="0 * * * * *", arg_name="mytimer", run_on_startup=True, use_monitor=False)
 async def ipam_sentinel(mytimer: func.TimerRequest) -> None:
-    utc_timestamp = datetime.now(timezone.utc).isoformat()
+    utc_timestamp = datetime.now(UTC).isoformat()
 
     logger.info('Azure IPAM Sentinel function was triggered')
 

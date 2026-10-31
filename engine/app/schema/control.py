@@ -17,7 +17,7 @@ The document lives in the same container as everything else, partitioned by
 never pick it up.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
 
@@ -28,7 +28,7 @@ SCHEMA_DOC_ID = "schema"
 
 
 def _now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _iso(value):

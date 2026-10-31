@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import aiohttp
 from azure.core.pipeline.transport import AioHttpTransport
@@ -10,7 +10,7 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Process start time (ISO 8601, UTC), captured once when this module is first
 # imported at engine startup. Exposed via /api/status so clients can detect a
 # restart: the value changes when a new process comes up.
-_START_TIME = datetime.now(timezone.utc)
+_START_TIME = datetime.now(UTC)
 
 AZURE_ENV_MAP = {
     'AZURE_PUBLIC': {
