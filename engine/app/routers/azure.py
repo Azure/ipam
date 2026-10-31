@@ -2,7 +2,6 @@ import asyncio
 import copy
 import re
 import time
-from typing import List
 
 from azure.core.exceptions import ClientAuthenticationError, HttpResponseError
 from azure.mgmt.compute.aio import ComputeManagementClient
@@ -516,7 +515,7 @@ async def fetch_vhubs(token, tenant_id, *, scope):
 @router.get(
     "/vhub",
     summary = "Get All Virtual Hubs",
-    response_model = List[VWanHub]
+    response_model = list[VWanHub]
 )
 async def get_vhub(
     token: str = Depends(get_token_auth_header),

@@ -2,7 +2,7 @@ import copy
 import re
 import time
 import uuid
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import jsonpatch
 import jwt
@@ -603,10 +603,10 @@ async def scrub_ext_endpoint_patch(patch, space_name, block_name, external_name,
     "",
     summary = "Get All Spaces",
     response_model = Union[
-        List[SpaceExpandUtil],
-        List[SpaceExpand],
-        List[SpaceUtil],
-        List[Space]
+        list[SpaceExpandUtil],
+        list[SpaceExpand],
+        list[SpaceUtil],
+        list[Space]
     ],
     status_code = 200
 )
@@ -859,7 +859,7 @@ async def delete_space(
 @router.get(
     "/{space}/reservations",
     summary = "Get Reservations for all Blocks within a Space",
-    response_model = List[ReservationExpand],
+    response_model = list[ReservationExpand],
     status_code = 200
 )
 async def get_multi_block_reservations(
@@ -1019,10 +1019,10 @@ async def create_multi_block_reservation(
     "/{space}/blocks",
     summary = "Get all Blocks within a Space",
     response_model = Union[
-        List[BlockExpandUtil],
-        List[BlockExpand],
-        List[BlockUtil],
-        List[Block]
+        list[BlockExpandUtil],
+        list[BlockExpand],
+        list[BlockUtil],
+        list[Block]
     ],
     status_code = 200
 )
@@ -1303,9 +1303,9 @@ async def delete_block(
     "/{space}/blocks/{block}/available",
     summary = "List Available Block Networks",
     response_model = Union[
-        List[NetworkExpandBlocked],
-        List[NetworkExpand],
-        List[str]
+        list[NetworkExpandBlocked],
+        list[NetworkExpand],
+        list[str]
     ],
     status_code = 200
 )
@@ -1409,8 +1409,8 @@ async def available_block_nets(
     "/{space}/blocks/{block}/networks",
     summary = "List Block Networks",
     response_model = Union[
-        List[NetworkExpand],
-        List[Network]
+        list[NetworkExpand],
+        list[Network]
     ],
     status_code = 200,
     dependencies = [Depends(requires(Permission.ASSOCIATIONS_READ))]
@@ -1538,7 +1538,7 @@ async def create_block_net(
 @router.put(
     "/{space}/blocks/{block}/networks",
     summary = "Replace Block Networks",
-    response_model = List[Network],
+    response_model = list[Network],
     status_code = 200,
     dependencies = [Depends(requires(Permission.ASSOCIATIONS_UPDATE))]
 )
@@ -1712,7 +1712,7 @@ async def delete_block_nets(
 @router.get(
     "/{space}/blocks/{block}/externals",
     summary = "List External Networks",
-    response_model = List[ExtNet],
+    response_model = list[ExtNet],
     status_code = 200,
     dependencies = [Depends(requires(Permission.EXTERNALS_READ))]
 )
@@ -2000,7 +2000,7 @@ async def delete_external_network(
 @router.get(
     "/{space}/blocks/{block}/externals/{external}/subnets",
     summary = "List External Network Subnets",
-    response_model = List[ExtSubnet],
+    response_model = list[ExtSubnet],
     status_code = 200,
     dependencies = [Depends(requires(Permission.EXTERNALS_READ))]
 )
@@ -2303,7 +2303,7 @@ async def delete_external_subnet(
 @router.get(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints",
     summary = "List External Network Subnet Endpoints",
-    response_model = List[ExtEndpoint],
+    response_model = list[ExtEndpoint],
     status_code = 200,
     dependencies = [Depends(requires(Permission.EXTERNALS_READ))]
 )
@@ -2438,7 +2438,7 @@ async def create_external_subnet_endpoint(
 @router.put(
     "/{space}/blocks/{block}/externals/{external}/subnets/{subnet}/endpoints",
     summary = "Replace External Network Subnet Endpoints",
-    response_model = List[ExtEndpoint],
+    response_model = list[ExtEndpoint],
     status_code = 200,
     dependencies = [Depends(requires(Permission.EXTERNALS_UPDATE))]
 )
@@ -2447,7 +2447,7 @@ async def create_external_subnet_endpoint(
     error_msg = "Error updating external network subnet endpoints, please try again."
 )
 async def update_external_subnet_enpoints(
-    endpoints: List[ExtEndpointReq],
+    endpoints: list[ExtEndpointReq],
     space: str = Path(..., description="Name of the target Space"),
     block: str = Path(..., description="Name of the target Block"),
     external: str = Path(..., description="Name of the target External Network"),
@@ -2801,7 +2801,7 @@ async def delete_external_subnet_endpoint(
 @router.get(
     "/{space}/blocks/{block}/reservations",
     summary = "Get Block Reservations",
-    response_model = List[ReservationExpand],
+    response_model = list[ReservationExpand],
     status_code = 200
 )
 async def get_block_reservations(

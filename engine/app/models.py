@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Dict, List, Literal, Optional, Union
+from typing import Annotated, Any, Literal, Optional, Union
 from uuid import UUID
 
 from netaddr import IPAddress, IPNetwork
@@ -127,7 +127,7 @@ class ExtSubnet(BaseModel):
     name: str
     desc: str
     cidr: str
-    endpoints: List[ExtEndpoint]
+    endpoints: list[ExtEndpoint]
 
 class ExtSubnetExpand(BaseModel):
     """An external subnet enriched with its parent space, block, and external network context."""
@@ -138,7 +138,7 @@ class ExtSubnetExpand(BaseModel):
     block: str
     external: str
     cidr: str
-    endpoints: List[ExtEndpoint]
+    endpoints: list[ExtEndpoint]
 
 class ExtSubnetUtil(BaseModel):
     """An external subnet with address utilization (total addresses and endpoints defined within it)."""
@@ -146,7 +146,7 @@ class ExtSubnetUtil(BaseModel):
     name: str
     desc: str
     cidr: str
-    endpoints: List[ExtEndpoint]
+    endpoints: list[ExtEndpoint]
     size: int
     used: int
 
@@ -156,7 +156,7 @@ class ExtNet(BaseModel):
     name: str
     desc: str
     cidr: IPv4Network
-    subnets: List[ExtSubnet]
+    subnets: list[ExtSubnet]
 
 class ExtNetExpand(BaseModel):
     """An external network enriched with its parent space and block context."""
@@ -166,7 +166,7 @@ class ExtNetExpand(BaseModel):
     space: str
     block: str
     cidr: IPv4Network
-    subnets: List[ExtSubnet]
+    subnets: list[ExtSubnet]
 
 class ExtNetUtil(BaseModel):
     """An external network with address utilization (total addresses and address space assigned to subnets)."""
@@ -174,14 +174,14 @@ class ExtNetUtil(BaseModel):
     name: str
     desc: str
     cidr: IPv4Network
-    subnets: List[ExtSubnetUtil]
+    subnets: list[ExtSubnetUtil]
     size: int
     used: int
 
 class VNets(BaseModel):
     """A collection of Virtual Network resource IDs."""
 
-    ids: List[str]
+    ids: list[str]
 
 class Subnet(BaseModel):
     """A subnet within a Virtual Network, identified by name and address prefix."""
@@ -211,7 +211,7 @@ class NetworkExpand(BaseModel):
 
     name: str
     id: str
-    prefixes: List[str]
+    prefixes: list[str]
     resource_group: str
     subscription_id: str
     tenant_id: str
@@ -221,20 +221,20 @@ class NetworkExpandBlocked(BaseModel):
 
     name: str
     id: str
-    prefixes: List[str]
+    prefixes: list[str]
     resource_group: str
     subscription_id: str
     tenant_id: str
     # Required rather than defaulted, so an unblocked response cannot match this model.
-    blocked_by: List[BlockedBy]
+    blocked_by: list[BlockedBy]
 
 class VNetExpand(BaseModel):
     """A Virtual Network with expanded details including its prefixes, subnets, and Azure resource context."""
 
     name: str
     id: str
-    prefixes: List[str]
-    subnets: List[Subnet]
+    prefixes: list[str]
+    subnets: list[Subnet]
     resource_group: str
     subscription_id: str
     tenant_id: str
@@ -244,8 +244,8 @@ class VNetExpandUtil(BaseModel):
 
     name: str
     id: str
-    prefixes: List[str]
-    subnets: List[SubnetUtil]
+    prefixes: list[str]
+    subnets: list[SubnetUtil]
     resource_group: str
     subscription_id: str
     tenant_id: str
@@ -294,27 +294,27 @@ class Block(BaseModel):
 
     name: str
     cidr: str
-    vnets: List[VNet]
-    externals: List[ExtNet]
-    resv: List[Reservation]
+    vnets: list[VNet]
+    externals: list[ExtNet]
+    resv: list[Reservation]
 
 class BlockExpand(BaseModel):
     """A Block with its Virtual Networks expanded to full detail."""
 
     name: str
     cidr: str
-    vnets: List[VNetExpand]
-    externals: List[ExtNet]
-    resv: List[Reservation]
+    vnets: list[VNetExpand]
+    externals: list[ExtNet]
+    resv: list[Reservation]
 
 class BlockUtil(BaseModel):
     """A Block with address utilization (total and used address counts)."""
 
     name: str
     cidr: str
-    vnets: List[VNet]
-    externals: List[ExtNetUtil]
-    resv: List[Reservation]
+    vnets: list[VNet]
+    externals: list[ExtNetUtil]
+    resv: list[Reservation]
     size: int
     used: int
 
@@ -323,9 +323,9 @@ class BlockExpandUtil(BaseModel):
 
     name: str
     cidr: str
-    vnets: List[VNetExpandUtil]
-    externals: List[ExtNetUtil]
-    resv: List[Reservation]
+    vnets: list[VNetExpandUtil]
+    externals: list[ExtNetUtil]
+    resv: list[Reservation]
     size: int
     used: int
 
@@ -334,21 +334,21 @@ class Space(BaseModel):
 
     name: str
     desc: str
-    blocks: List[Block]
+    blocks: list[Block]
 
 class SpaceExpand(BaseModel):
     """A Space with its Blocks and Virtual Networks expanded to full detail."""
 
     name: str
     desc: str
-    blocks: List[BlockExpand]
+    blocks: list[BlockExpand]
 
 class SpaceUtil(BaseModel):
     """A Space with per-Block and aggregate address utilization."""
 
     name: str
     desc: str
-    blocks: List[BlockUtil]
+    blocks: list[BlockUtil]
     size: int
     used: int
 
@@ -357,7 +357,7 @@ class SpaceExpandUtil(BaseModel):
 
     name: str
     desc: str
-    blocks: List[BlockExpandUtil]
+    blocks: list[BlockExpandUtil]
     size: int
     used: int
 
@@ -464,23 +464,23 @@ class JSONPatch(BaseModel):
     path: str
     value: Any = None
 
-SpaceUpdate = Annotated[List[JSONPatch], None]
+SpaceUpdate = Annotated[list[JSONPatch], None]
 
-BlockUpdate = Annotated[List[JSONPatch], None]
+BlockUpdate = Annotated[list[JSONPatch], None]
 
-ExtNetUpdate = Annotated[List[JSONPatch], None]
+ExtNetUpdate = Annotated[list[JSONPatch], None]
 
-ExtSubnetUpdate = Annotated[List[JSONPatch], None]
+ExtSubnetUpdate = Annotated[list[JSONPatch], None]
 
-ExtEndpointUpdate = Annotated[List[JSONPatch], None]
+ExtEndpointUpdate = Annotated[list[JSONPatch], None]
 
-VNetsUpdate = Annotated[List[str], None]
+VNetsUpdate = Annotated[list[str], None]
 
-ExtNetsUpdate = Annotated[List[ExtNet], None]
+ExtNetsUpdate = Annotated[list[ExtNet], None]
 
-DeleteExtEndpointsReq = Annotated[List[str], None]
+DeleteExtEndpointsReq = Annotated[list[str], None]
 
-DeleteResvReq = Annotated[List[str], None]
+DeleteResvReq = Annotated[list[str], None]
 
 ####################
 #   AZURE MODELS   #
@@ -501,11 +501,11 @@ class VWanHub(BaseModel):
     prefix: IPv4Network
     vwan_name: str
     vwan_id: str
-    parent_containers: List[CIDRContainer] = []
+    parent_containers: list[CIDRContainer] = []
     resource_group: str
     subscription_id: UUID
     tenant_id: str
-    peerings: List[VNetPeering]
+    peerings: list[VNetPeering]
     size: int
 
     model_config = ConfigDict(
@@ -520,11 +520,11 @@ class AzureNetwork(BaseModel):
     name: str
     id: str
     type: str
-    prefixes: List[IPv4Network]
+    prefixes: list[IPv4Network]
     resource_group: str
     subscription_id: UUID
     tenant_id: str
-    peerings: List[VNetPeering]
+    peerings: list[VNetPeering]
     size: int
     used: Union[int, None] = None
 
@@ -567,7 +567,7 @@ class Admin(BaseModel):
 
 Subscription = Annotated[UUID, None]
 
-Exclusions = Annotated[List[UUID], None]
+Exclusions = Annotated[list[UUID], None]
 
 ###################
 #   USER MODELS   #
@@ -575,11 +575,11 @@ Exclusions = Annotated[List[UUID], None]
 
 class ViewSettings(BaseModel):
     # Legacy format (Inovua)
-    values: Optional[Dict[str, dict]] = None
-    order: Optional[List[str]] = None
+    values: Optional[dict[str, dict]] = None
+    order: Optional[list[str]] = None
     sort: Union[dict, None] = None
     # AG Grid format
-    columnState: Optional[List[dict]] = None
+    columnState: Optional[list[dict]] = None
 
 class User(BaseModel):
     """IPAM user settings such as dark mode, API refresh interval, and admin status."""
@@ -602,7 +602,7 @@ class UserExpand(BaseModel):
     darkMode: bool
     apiRefresh: int
     isAdmin: bool
-    views: Dict[str, ViewSettings]
+    views: dict[str, ViewSettings]
 
     model_config = ConfigDict(
         json_encoders = {
@@ -617,7 +617,7 @@ class JSONPatch(BaseModel):
     path: str
     value: Any = None
 
-UserUpdate = Annotated[List[JSONPatch], None]
+UserUpdate = Annotated[list[JSONPatch], None]
 
 ###################
 #   TOOL MODELS   #
@@ -627,7 +627,7 @@ class VNetCIDRReq(BaseModel):
     """Request body for finding the next available CIDR for a new Virtual Network."""
 
     space: str
-    blocks: List[str]
+    blocks: list[str]
     size: int
     reverse_search: Optional[bool] = False
     smallest_cidr: Optional[bool] = False
@@ -671,8 +671,8 @@ class CIDRCheckRes(BaseModel):
     resource_group: Optional[str]
     subscription_id: Optional[UUID]
     tenant_id: Optional[UUID]
-    prefixes: List[IPv4Network]
-    containers: List[CIDRContainer]
+    prefixes: list[IPv4Network]
+    containers: list[CIDRContainer]
 
 #####################
 #   HEALTH MODELS   #
@@ -688,7 +688,7 @@ class Health(BaseModel):
     """Overall health status with per-dependency check results."""
 
     ok: bool
-    checks: Dict[str, HealthCheck]
+    checks: dict[str, HealthCheck]
 
 #####################
 #   STATUS MODELS   #

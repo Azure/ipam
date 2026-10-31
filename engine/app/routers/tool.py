@@ -1,5 +1,4 @@
 import copy
-from typing import List
 
 import regex
 from fastapi import APIRouter, Depends, HTTPException
@@ -237,7 +236,7 @@ async def next_available_vnet(
 @router.post(
     "/cidrCheck",
     summary = "Find Virtual Networks that Overlap a Given CIDR Range",
-    response_model = List[CIDRCheckRes],
+    response_model = list[CIDRCheckRes],
     status_code = 200
 )
 @cosmos_retry(

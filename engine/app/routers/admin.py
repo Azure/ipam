@@ -1,5 +1,4 @@
 import copy
-from typing import List
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
@@ -48,7 +47,7 @@ async def new_admin_db(admin_list, exclusion_list, tenant_id):
 @router.get(
     "/admins",
     summary = "Get All Admins",
-    response_model = List[Admin],
+    response_model = list[Admin],
     status_code = 200,
     dependencies = [Depends(requires(Permission.ADMINS_READ))]
 )
@@ -122,7 +121,7 @@ async def create_admin(
     error_msg = "Error updating admins, please try again."
 )
 async def update_admins(
-    admin_list: List[Admin],
+    admin_list: list[Admin],
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
@@ -225,7 +224,7 @@ async def delete_admin(
 @router.get(
     "/exclusions",
     summary = "Get Excluded Subscriptions",
-    response_model = List[Subscription],
+    response_model = list[Subscription],
     status_code = 200,
     dependencies = [Depends(requires(Permission.EXCLUSIONS_READ))]
 )
@@ -257,7 +256,7 @@ async def get_exclusions(
     error_msg = "Error adding exclusion(s), please try again."
 )
 async def add_exclusions(
-    exclusions: List[Subscription],
+    exclusions: list[Subscription],
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
@@ -297,7 +296,7 @@ async def add_exclusions(
     error_msg = "Error updating exclusions, please try again."
 )
 async def update_exclusions(
-    exclusions: List[Subscription],
+    exclusions: list[Subscription],
     token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):

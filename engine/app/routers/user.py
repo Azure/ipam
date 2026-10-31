@@ -1,7 +1,7 @@
 import copy
 import re
 import uuid
-from typing import List, Union
+from typing import Union
 
 import jsonpatch
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -96,7 +96,7 @@ async def scrub_patch(patch):
 @router.get(
     "",
     summary = "Get All Users",
-    response_model = List[User],
+    response_model = list[User],
     status_code = 200,
     dependencies = [Depends(requires(Permission.USERS_READ))]
 )
