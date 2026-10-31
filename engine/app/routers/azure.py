@@ -62,8 +62,8 @@ async def get_subscriptions_sdk(credentials, *, tenant_id=None, include_excluded
         "Internal": "Microsoft Internal"
     }
 
-    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
-    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+    azure_arm_url = f'https://{globals.AZURE_ARM_URL}'
+    azure_arm_scope = f'{azure_arm_url}/.default'
 
     excluded_subscription_ids = set()
 
@@ -117,8 +117,8 @@ async def update_vhub_data(token, hubs, *, scope):
 
     creds, _ = await get_scope_credentials(scope, token)
 
-    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
-    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+    azure_arm_url = f'https://{globals.AZURE_ARM_URL}'
+    azure_arm_scope = f'{azure_arm_url}/.default'
 
     for hub in hubs:
         network_client = NetworkManagementClient(
@@ -187,8 +187,8 @@ async def get_vmss_list_sdk(credentials, subscriptions):
 async def get_vmss_list_sdk_helper(credentials, subscription, list):
     """Append the Virtual Machine Scale Sets found in a single subscription to the shared result list."""
 
-    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
-    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+    azure_arm_url = f'https://{globals.AZURE_ARM_URL}'
+    azure_arm_scope = f'{azure_arm_url}/.default'
 
     compute_client = ComputeManagementClient(
         credential=credentials,
@@ -239,8 +239,8 @@ async def get_vmss_interfaces_sdk(credentials, vmss_list):
 async def get_vmss_interfaces_sdk_helper(credentials, vmss, list):
     """Append the per-instance network interface details for a single Virtual Machine Scale Set to the shared result list."""
 
-    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
-    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+    azure_arm_url = f'https://{globals.AZURE_ARM_URL}'
+    azure_arm_scope = f'{azure_arm_url}/.default'
 
     network_client = NetworkManagementClient(
         credential=credentials,
@@ -301,8 +301,8 @@ async def get_factory_endpoints_sdk(credentials, factories):
     for factory in factories:
         factory_map.setdefault(factory['subscription_id'], []).append(factory)
 
-    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
-    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+    azure_arm_url = f'https://{globals.AZURE_ARM_URL}'
+    azure_arm_scope = f'{azure_arm_url}/.default'
 
     for subscription in factory_map.keys():
         data_factory_client = DataFactoryManagementClient(

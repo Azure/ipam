@@ -78,13 +78,13 @@ async def _get_latest_release_tag():
             ) as resp:
                 if resp.status != 200:
                     logger.warning(
-                        "GitHub latest-release lookup returned HTTP {} (no update notification this cycle).".format(resp.status)
+                        f"GitHub latest-release lookup returned HTTP {resp.status} (no update notification this cycle)."
                     )
                     return None
 
                 data = await resp.json()
     except Exception as e:
-        logger.warning("Failed to fetch latest release from GitHub: {}".format(e))
+        logger.warning(f"Failed to fetch latest release from GitHub: {e}")
         return None
 
     return data.get("tag_name")
@@ -113,10 +113,8 @@ async def detect():
             category="Update",
             title="A new version of Azure IPAM is available",
             message=(
-                "Azure IPAM {latest} is available (this deployment is running {current}). "
-                "See the update guide for your options and step-by-step instructions.".format(
-                    latest=latest_str, current=current_str
-                )
+                f"Azure IPAM {latest_str} is available (this deployment is running {current_str}). "
+                "See the update guide for your options and step-by-step instructions."
             ),
             dismissible=True,
             data={"currentVersion": current_str, "latestVersion": latest_str},

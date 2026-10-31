@@ -130,9 +130,9 @@ def build_openapi(app):
 
     try:
         marked = _apply_admin_markings(app, schema)
-        logger.info("OpenAPI generated successfully ({} admin-marked operations)".format(marked))
+        logger.info(f"OpenAPI generated successfully ({marked} admin-marked operations)")
     except Exception as e:
-        logger.warning("OpenAPI generated, but admin markings could not be applied: {}".format(e))
+        logger.warning(f"OpenAPI generated, but admin markings could not be applied: {e}")
 
     app.openapi_schema = schema
 

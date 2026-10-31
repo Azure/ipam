@@ -232,7 +232,7 @@ async def valid_block_cidr_update(cidr, space_name, block_name, tenant_id):
             raise HTTPException(status_code=400, detail="Updated Block CIDR must be in valid CIDR notation (x.x.x.x/x).")
 
         if(str(block_network.cidr) != cidr):
-            raise HTTPException(status_code=400, detail="Invalid CIDR value, try '{}' instead.".format(block_network.cidr))
+            raise HTTPException(status_code=400, detail=f"Invalid CIDR value, try '{block_network.cidr}' instead.")
 
     # Occupancy check: the new CIDR must contain every network already in the Block, including any
     # the caller cannot see, so this needs every network in the tenant.
@@ -335,7 +335,7 @@ async def valid_ext_network_cidr_update(cidr, space_name, block_name, external_n
             raise HTTPException(status_code=400, detail="Updated External Network CIDR must be in valid CIDR notation (x.x.x.x/x).")
 
         if(str(external_network.cidr) != cidr):
-            raise HTTPException(status_code=400, detail="Invalid CIDR value, try '{}' instead.".format(external_network.cidr))
+            raise HTTPException(status_code=400, detail=f"Invalid CIDR value, try '{external_network.cidr}' instead.")
 
         if external_network not in IPNetwork(target_block['cidr']):
             raise HTTPException(status_code=400, detail="Updated External Network CIDR must be contained within the Block CIDR.")
@@ -445,7 +445,7 @@ async def valid_ext_subnet_cidr_update(cidr, space_name, block_name, external_na
             raise HTTPException(status_code=400, detail="Updated External Subnet CIDR must be in valid CIDR notation (x.x.x.x/x).")
 
         if(str(subnet_network.cidr) != cidr):
-            raise HTTPException(status_code=400, detail="Invalid CIDR value, try '{}' instead.".format(subnet_network.cidr))
+            raise HTTPException(status_code=400, detail=f"Invalid CIDR value, try '{subnet_network.cidr}' instead.")
 
         if subnet_network not in IPNetwork(target_external['cidr']):
             raise HTTPException(status_code=400, detail="Updated External Subnet CIDR must be contained within the External Network CIDR.")
@@ -943,7 +943,7 @@ async def create_multi_block_reservation(
     invalid_blocks = (request_blocks - space_blocks)
 
     if invalid_blocks:
-        raise HTTPException(status_code=400, detail="Invalid Block(s) in Block list: {}.".format(list(invalid_blocks)))
+        raise HTTPException(status_code=400, detail=f"Invalid Block(s) in Block list: {list(invalid_blocks)}.")
 
     # Reservations are allocations: a CIDR must not overlap any existing network, including ones the
     # caller cannot see, so this deliberately asks for every network rather than the caller's scope.
@@ -1115,7 +1115,7 @@ async def create_block(
         raise HTTPException(status_code=400, detail="Invalid CIDR, please ensure CIDR is in valid IPv4 CIDR notation (x.x.x.x/x).")
 
     if str(block_network.cidr) != str(block.cidr):
-        raise HTTPException(status_code=400, detail="Invalid CIDR value, Try '{}' instead.".format(block_network.cidr))
+        raise HTTPException(status_code=400, detail=f"Invalid CIDR value, Try '{block_network.cidr}' instead.")
 
     block_cidrs = IPSet([x['cidr'] for x in target_space['blocks']])
 
@@ -1615,19 +1615,19 @@ async def update_block_vnets(
                     net_overlap.append(v)
 
     if len(invalid_nets) > 0:
-        raise HTTPException(status_code=400, detail="Invalid network ID(s): {}".format(invalid_nets))
+        raise HTTPException(status_code=400, detail=f"Invalid network ID(s): {invalid_nets}")
 
     if net_overlap:
-        raise HTTPException(status_code=400, detail="Network list contains overlapping CIDRs: {}".format(net_overlap))
+        raise HTTPException(status_code=400, detail=f"Network list contains overlapping CIDRs: {net_overlap}")
 
     if resv_overlap:
-        raise HTTPException(status_code=400, detail="Network list contains CIDR(s) that overlap outstanding reservations: {}".format(resv_overlap))
+        raise HTTPException(status_code=400, detail=f"Network list contains CIDR(s) that overlap outstanding reservations: {resv_overlap}")
 
     if ext_overlap:
-        raise HTTPException(status_code=400, detail="Network list contains CIDR(s) that overlap external networks: {}".format(ext_overlap))
+        raise HTTPException(status_code=400, detail=f"Network list contains CIDR(s) that overlap external networks: {ext_overlap}")
 
     if len(outside_block_cidr) > 0:
-        raise HTTPException(status_code=400, detail="Network CIDR(s) not within Block CIDR: {}".format(outside_block_cidr))
+        raise HTTPException(status_code=400, detail=f"Network CIDR(s) not within Block CIDR: {outside_block_cidr}")
 
     new_net_list = []
 
@@ -1703,7 +1703,7 @@ async def delete_block_nets(
             invalid_nets.append(id)
 
     if invalid_nets:
-        raise HTTPException(status_code=400, detail="Invalid network id(s): {}.".format(invalid_nets))
+        raise HTTPException(status_code=400, detail=f"Invalid network id(s): {invalid_nets}.")
 
     await cosmos_replace(space_query[0], target_space)
 
@@ -1811,7 +1811,7 @@ async def create_external_network(
             raise HTTPException(status_code=400, detail="Invalid CIDR, please ensure CIDR is in valid IPv4 CIDR notation (x.x.x.x/x).")
 
         if str(IPNetwork(req.cidr).cidr) != req.cidr:
-            raise HTTPException(status_code=400, detail="External network cidr invalid, should be {}".format(IPNetwork(req.cidr).cidr))
+            raise HTTPException(status_code=400, detail=f"External network cidr invalid, should be {IPNetwork(req.cidr).cidr}")
 
         if IPNetwork(req.cidr) not in IPNetwork(target_block['cidr']):
             raise HTTPException(status_code=400, detail="External network CIDR not within block CIDR.")
@@ -2101,7 +2101,7 @@ async def create_external_subnet(
             raise HTTPException(status_code=400, detail="Invalid CIDR, please ensure CIDR is in valid IPv4 CIDR notation (x.x.x.x/x).")
 
         if str(next_cidr.cidr) != req.cidr:
-            raise HTTPException(status_code=400, detail="External subnet CIDR invalid, should be {}".format(IPNetwork(req.cidr).cidr))
+            raise HTTPException(status_code=400, detail=f"External subnet CIDR invalid, should be {IPNetwork(req.cidr).cidr}")
 
         if IPNetwork(req.cidr) not in IPNetwork(target_external['cidr']):
             raise HTTPException(status_code=400, detail="External subnet CIDR not within external network CIDR.")
@@ -2612,7 +2612,7 @@ async def delete_external_subnet_endpoints(
             invalid_ext_nets.append(name)
 
     if invalid_ext_nets:
-        raise HTTPException(status_code=400, detail="Invalid endpoint name(s): {}.".format(invalid_ext_nets))
+        raise HTTPException(status_code=400, detail=f"Invalid endpoint name(s): {invalid_ext_nets}.")
 
     await cosmos_replace(space_query[0], target_space)
 

@@ -55,7 +55,7 @@ def _actions(notification_id):
             label="Switch",
             kind="resolve",
             method="POST",
-            href="/api/notifications/{}/resolve".format(notification_id),
+            href=f"/api/notifications/{notification_id}/resolve",
             causesRestart=True,
             requiresAdmin=True,
         ),
@@ -81,10 +81,8 @@ async def detect():
                 title="Azure IPAM container registry has moved",
                 message=(
                     "This deployment still pulls container images from the legacy "
-                    "registry ({legacy}). Migrate to the current official registry "
-                    "({official}) to keep receiving Azure IPAM updates.".format(
-                        legacy=registry, official=OFFICIAL_REGISTRY
-                    )
+                    f"registry ({registry}). Migrate to the current official registry "
+                    f"({OFFICIAL_REGISTRY}) to keep receiving Azure IPAM updates."
                 ),
                 dismissible=False,
                 data={"currentRegistry": registry, "targetRegistry": OFFICIAL_REGISTRY},
@@ -102,9 +100,9 @@ async def detect():
                 title="This deployment is using a development registry",
                 message=(
                     "This deployment is pulling container images from the Azure IPAM "
-                    "development registry ({dev}). If you were testing a pre-release "
-                    "build, switch back to the official registry ({official}) to stay "
-                    "on supported updates.".format(dev=registry, official=OFFICIAL_REGISTRY)
+                    f"development registry ({registry}). If you were testing a pre-release "
+                    f"build, switch back to the official registry ({OFFICIAL_REGISTRY}) to stay "
+                    "on supported updates."
                 ),
                 dismissible=True,
                 data={"currentRegistry": registry, "targetRegistry": OFFICIAL_REGISTRY},
@@ -141,7 +139,7 @@ async def resolve(background_tasks):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Failed to read service configuration: {}".format(e))
+        logger.error(f"Failed to read service configuration: {e}")
         raise HTTPException(status_code=500, detail="Failed to read the service configuration.")
     finally:
         await client.close()
@@ -152,9 +150,7 @@ async def resolve(background_tasks):
     if not await is_image_pullable(OFFICIAL_REGISTRY, repository, tag):
         raise HTTPException(
             status_code=502,
-            detail="The image '{}/{}:{}' could not be validated for pull from the official registry; no changes were made.".format(
-                OFFICIAL_REGISTRY, repository, tag
-            )
+            detail=f"The image '{OFFICIAL_REGISTRY}/{repository}:{tag}' could not be validated for pull from the official registry; no changes were made."
         )
 
     background_tasks.add_task(
@@ -167,7 +163,7 @@ async def resolve(background_tasks):
 
     return NotificationActionResult(
         status="accepted",
-        detail="Registry migration accepted. The service will restart to pull images from '{}'.".format(OFFICIAL_REGISTRY)
+        detail=f"Registry migration accepted. The service will restart to pull images from '{OFFICIAL_REGISTRY}'."
     )
 
 

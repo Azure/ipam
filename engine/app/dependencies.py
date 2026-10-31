@@ -164,7 +164,7 @@ async def get_signing_key(kid):
             try:
                 await _refresh_jwks_cache()
             except Exception as e:
-                logger.warning("Unable to refresh signing keys: {}".format(e))
+                logger.warning(f"Unable to refresh signing keys: {e}")
 
         if not _jwks_keys or time.monotonic() >= _jwks_expires_after:
             raise RuntimeError("No usable token signing keys available.")

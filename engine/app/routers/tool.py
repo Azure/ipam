@@ -179,7 +179,7 @@ async def next_available_vnet(
     invalid_blocks = (request_blocks - space_blocks)
 
     if invalid_blocks:
-        raise HTTPException(status_code=400, detail="Invalid Block(s) in Block list: {}.".format(list(invalid_blocks)))
+        raise HTTPException(status_code=400, detail=f"Invalid Block(s) in Block list: {list(invalid_blocks)}.")
 
     # Allocation: the next available CIDR must not overlap any existing network, including ones the
     # caller cannot see, so this deliberately asks for every network.

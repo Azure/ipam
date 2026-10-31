@@ -34,7 +34,7 @@ async def ipam_sentinel(mytimer: func.TimerRequest) -> None:
     logger.info('Azure IPAM Sentinel function was triggered')
 
     if mytimer.past_due:
-        logger.debug('The timer is past due ({})!'.format(utc_timestamp))
+        logger.debug(f'The timer is past due ({utc_timestamp})!')
 
     try:
         await match_resv_to_vnets()

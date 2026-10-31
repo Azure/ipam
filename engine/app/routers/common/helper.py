@@ -174,7 +174,7 @@ def associated_network_ids(spaces):
 async def get_obo_token(assertion):
     """Exchange a user assertion for an on-behalf-of access token scoped to Azure Resource Manager."""
 
-    azure_arm_url = 'https://{}/user_impersonation'.format(globals.AZURE_ARM_URL)
+    azure_arm_url = f'https://{globals.AZURE_ARM_URL}/user_impersonation'
 
     credential = OnBehalfOfCredential(
         tenant_id=globals.TENANT_ID,
@@ -368,7 +368,7 @@ async def get_scope_credentials(scope, token):
     """Return the credential and tenant to query Azure with for the given scope."""
 
     if not isinstance(scope, AzureScope):
-        raise TypeError("scope must be an AzureScope, got {!r}".format(scope))
+        raise TypeError(f"scope must be an AzureScope, got {scope!r}")
 
     if scope is AzureScope.CALLER:
         return await get_obo_credentials(token), get_tenant_from_jwt(token)
@@ -490,8 +490,8 @@ async def arg_query_helper(credentials, query, app_only = False):
 
     results = []
 
-    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
-    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+    azure_arm_url = f'https://{globals.AZURE_ARM_URL}'
+    azure_arm_scope = f'{azure_arm_url}/.default'
 
     resource_graph_client = ResourceGraphClient(
         credential=credentials,

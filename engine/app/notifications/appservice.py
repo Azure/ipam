@@ -42,8 +42,8 @@ def get_site_context():
 def get_web_client(subscription_id):
     """Create a WebSite management client authenticated as the deployment's managed identity (which holds Contributor on the resource group)."""
 
-    azure_arm_url = 'https://{}'.format(globals.AZURE_ARM_URL)
-    azure_arm_scope = '{}/.default'.format(azure_arm_url)
+    azure_arm_url = f'https://{globals.AZURE_ARM_URL}'
+    azure_arm_scope = f'{azure_arm_url}/.default'
 
     credential = ManagedIdentityCredential(
         client_id=globals.MANAGED_IDENTITY_ID
@@ -115,7 +115,7 @@ async def read_current_registry():
         finally:
             await client.close()
     except Exception as e:
-        logger.error("Failed to read current registry: {}".format(e))
+        logger.error(f"Failed to read current registry: {e}")
 
         return None
 
@@ -123,11 +123,11 @@ async def read_current_registry():
 async def is_image_pullable(registry, repository, tag):
     """Validate that an image can be anonymously pulled from the registry by resolving an anonymous pull token and performing a manifest HEAD."""
 
-    base_url = "https://{}".format(registry)
+    base_url = f"https://{registry}"
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get("{}/v2/".format(base_url)) as challenge_resp:
+            async with session.get(f"{base_url}/v2/") as challenge_resp:
                 challenge = challenge_resp.headers.get("WWW-Authenticate", "")
 
             match = re.search(r'realm="(?P<realm>[^"]+)",service="(?P<service>[^"]+)"', challenge)
@@ -137,7 +137,7 @@ async def is_image_pullable(registry, repository, tag):
 
             token_params = {
                 "service": match.group("service"),
-                "scope": "repository:{}:pull".format(repository)
+                "scope": f"repository:{repository}:pull"
             }
 
             async with session.get(match.group("realm"), params=token_params) as token_resp:
@@ -150,14 +150,14 @@ async def is_image_pullable(registry, repository, tag):
                 return False
 
             headers = {
-                "Authorization": "Bearer {}".format(token),
+                "Authorization": f"Bearer {token}",
                 "Accept": "application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.index.v1+json"
             }
 
-            async with session.head("{}/v2/{}/manifests/{}".format(base_url, repository, tag), headers=headers) as manifest_resp:
+            async with session.head(f"{base_url}/v2/{repository}/manifests/{tag}", headers=headers) as manifest_resp:
                 return manifest_resp.status == 200
     except Exception as e:
-        logger.error("Image pull validation failed: {}".format(e))
+        logger.error(f"Image pull validation failed: {e}")
         return False
 
 
@@ -171,6 +171,6 @@ async def apply_linux_fx_version(subscription_id, resource_group, site_name, lin
         config.linux_fx_version = linux_fx_version
         await client.web_apps.update_configuration(resource_group, site_name, config)
     except Exception as e:
-        logger.error("Failed to update container image reference: {}".format(e))
+        logger.error(f"Failed to update container image reference: {e}")
     finally:
         await client.close()
