@@ -26,8 +26,8 @@ read-before-write) so a re-run is a harmless no-op.
 
 import copy
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Awaitable, Callable
 
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
 from fastapi.encoders import jsonable_encoder
