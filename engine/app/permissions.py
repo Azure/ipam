@@ -6,7 +6,7 @@ response asks `grants.can(...)`. Enforcement and the API documentation both come
 declarations, so they cannot disagree. See the Conventions documentation, "Declaring Permissions".
 """
 
-from enum import Enum
+from enum import StrEnum
 
 from fastapi import Depends, HTTPException, Query
 
@@ -14,7 +14,7 @@ from app.dependencies import check_admin
 from app.routers.common.helper import AzureScope
 
 
-class Permission(str, Enum):
+class Permission(StrEnum):
     """
     Everything a caller may be permitted to do beyond what every signed-in user can.
 
