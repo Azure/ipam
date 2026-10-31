@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=python:3.11-slim
+ARG BASE_IMAGE=python:3.12-slim-trixie
 FROM $BASE_IMAGE
 
 # Set Production Build Flag

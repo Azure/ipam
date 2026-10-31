@@ -127,3 +127,25 @@ Use `aiohttp` for outbound HTTP requests. Both `requests` and `httpx` are banned
 Synchronous clients validate TLS against the bundled `certifi` roots and cannot see the sovereign cloud roots injected through `WEBSITES_INCLUDE_CLOUD_CERTS`. Code that uses them passes every commercial cloud test and then fails in secret clouds, where the failure is expensive to diagnose.
 
 The ban lives in `engine/pyproject.toml` under `flake8-tidy-imports.banned-api`, so you will catch it at lint time rather than at deployment time.
+
+## Container Base Images
+
+Pin each base image to a Python version and an operating system release, and nothing finer. `python:3.12-slim-trixie` is the pattern to follow: Python 3.12 on Debian 13, with whatever patch release and security fixes are current when the image is built.
+
+Each of the alternatives fails in its own way. A tag such as `python:3.11-slim` follows whichever Debian release is current, so when Debian 13 came out, Azure IPAM's App Service images quietly moved onto it at their next build without anything in this repository changing. Pin a patch release or an image digest instead, and security fixes stop arriving at all until someone remembers the pin is there. Pinning to the Python version and operating system release sits between the two: routine updates arrive on their own, and the big changes only happen when someone decides they should.
+
+The Function App image is the one exception. Microsoft doesn't publish an operating system variant of `azure-functions/python:4-python3.12-appservice`, so it runs on whichever release Microsoft chooses, Debian 12 at the moment. It's worth checking which one whenever you revisit the images.
+
+Each tag lives in more than one place, and they all need to change together:
+
+- `Dockerfile.deb`, `Dockerfile.rhel` and `Dockerfile.func`, both at the repository root and under `engine/`
+- The `containerMap` in `deploy/deploy.ps1`, `update/update.ps1` and `migrate/migrate.ps1`
+- `engine/Dockerfile.dev` and the engine dev container
+
+The scripts are the easy ones to miss. When they build into a private registry they pass their own image as a build argument, which overrides the default in the Dockerfile, so a script that gets left behind keeps building on the old image. Nothing fails. The only sign is a private deployment running a different Python version or operating system from the published images.
+
+The tags also carry the Python version, so they need to move whenever the `python` value in `engine/app/version.json` does. That file sets the Python version for the rest of Azure IPAM, but an image tag has no way to read it.
+
+There's no need to check the images on a schedule. Revisit them when the Python version is about a year from the end of its App Service support (`az webapp list-runtimes --os-type linux` lists the dates), when the Debian or RHEL release is nearing the end of its own support, or when Microsoft moves the Function App image to a new release.
+
+Before you change a tag, confirm the new one exists for every image, because they don't all follow the same naming. Microsoft publishes the Python 3.11 Function App image with a `-bookworm` suffix, for example, but there's no such tag for 3.12. `docker buildx imagetools inspect <image>` checks a tag without pulling it.

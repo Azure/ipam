@@ -1,4 +1,4 @@
-ARG VARIANT=3.11-bullseye
+ARG VARIANT=3.12-trixie
 FROM mcr.microsoft.com/vscode/devcontainers/python:${VARIANT}
 
 # Set Default Port

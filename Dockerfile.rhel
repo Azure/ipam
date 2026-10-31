@@ -1,5 +1,5 @@
 ARG BUILD_IMAGE=registry.access.redhat.com/ubi9/nodejs-22
-ARG SERVE_IMAGE=registry.access.redhat.com/ubi9/python-311
+ARG SERVE_IMAGE=registry.access.redhat.com/ubi9/python-312
 
 # Set Production Build Flag
 ARG PROD_BUILD=true

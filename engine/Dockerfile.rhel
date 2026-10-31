@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi9/python-311
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/python-312
 FROM $BASE_IMAGE
 
 # Set Production Build Flag

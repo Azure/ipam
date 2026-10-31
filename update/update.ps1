@@ -1910,7 +1910,7 @@ try {
         Port = 8080
         Images = @{
           Build = 'node:22-slim'
-          Serve = 'python:3.11-slim'
+          Serve = 'python:3.12-slim-trixie'
         }
       }
       RHEL = @{
@@ -1918,7 +1918,7 @@ try {
         Port = 8080
         Images = @{
           Build = 'registry.access.redhat.com/ubi9/nodejs-22'
-          Serve = 'registry.access.redhat.com/ubi9/python-311'
+          Serve = 'registry.access.redhat.com/ubi9/python-312'
         }
       }
     }

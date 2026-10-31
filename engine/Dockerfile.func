@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/azure-functions/python:4-python3.11-appservice-bookworm
+FROM mcr.microsoft.com/azure-functions/python:4-python3.12-appservice
 
 # Set Production Build Flag
 ARG PROD_BUILD=true

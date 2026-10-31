@@ -55,7 +55,7 @@ $PYTHON_VERSION = [version]$engineVersionJson.python
 # Wheels must target the App Service runtime, not the build host. manylinux2014
 # (glibc 2.17) maximizes compatibility for sovereign clouds that lag commercial.
 # If pip ever reports "no matching distribution", widen to 'manylinux_2_28_x86_64'
-# (glibc 2.28, still under bullseye's 2.31); the gate ceiling follows automatically.
+# (glibc 2.28, still under the 2.36 of the bookworm-based App Service runtime); the gate ceiling follows automatically.
 $PIP_PLATFORM = 'manylinux2014_x86_64'
 
 $PYTHON_TAG = "$($PYTHON_VERSION.Major).$($PYTHON_VERSION.Minor)"
