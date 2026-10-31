@@ -71,8 +71,8 @@ async def ipam_init():
 
     path = '/etc/os-release' if os.path.exists('/etc/os-release') else '/usr/lib/os-release'
 
-    release_info = open(path)
-    release_values = release_info.read().splitlines()
+    with open(path) as release_info:
+        release_values = release_info.read().splitlines()
     cleaned_values = [i for i in release_values if i]
 
     for value in cleaned_values:

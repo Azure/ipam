@@ -14,6 +14,7 @@ select = [
     "F",    # pyflakes
     "I",    # isort
     "S608", # flake8-bandit: SQL built by string formatting (Cosmos DB queries must use parameters)
+    "SIM115", # flake8-simplify: open() outside a with block (not flagged inside a return statement)
     "TID",  # flake8-tidy-imports (banned-api, below)
     "UP",   # pyupgrade: prefer syntax available at the target Python version
     "W291", # trailing whitespace

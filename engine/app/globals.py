@@ -46,14 +46,16 @@ class Globals:
 
     @property
     def IPAM_VERSION(self):
-        return json.load(open(os.path.join(ROOT_DIR, "version.json")))['app']
+        with open(os.path.join(ROOT_DIR, "version.json")) as version_file:
+            return json.load(version_file)['app']
 
     @property
     def SCHEMA_VERSION(self):
         # Monotonic integer, decoupled from the app SemVer. Bumped only when the
         # Cosmos document shapes change. Used for the startup compatibility gate
         # and to decide whether a production-slot convergence pass is needed.
-        return json.load(open(os.path.join(ROOT_DIR, "version.json")))['schema']
+        with open(os.path.join(ROOT_DIR, "version.json")) as version_file:
+            return json.load(version_file)['schema']
 
     @property
     def START_TIME(self):
