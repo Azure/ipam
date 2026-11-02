@@ -412,7 +412,7 @@ If you encounter issues during migration:
 1. **Review Migration Logs**: Check PowerShell output and log folder for detailed error messages
 2. **Validate Prerequisites**: Ensure all [required permissions](#prerequisites) are in place
 3. **Check Azure Status**: Verify Azure services are operational ([Azure Status](https://azure.status.microsoft/status))
-4. **Contact Support**: Create an [issue](https://github.com/Azure/ipam/issues/new?template=bug_report.md) in the Azure IPAM GitHub repository
+4. **Contact Support**: Create an [issue](https://github.com/Azure/ipam/issues/new?template=bug_report.yml) in the Azure IPAM GitHub repository
 
 ## Rollback Procedures
 

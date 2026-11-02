@@ -17,6 +17,8 @@ If you encounter a bug or have a feature request, please open a [GitHub Issue](h
 - The steps taken leading up to the issue, and whether it can be reproduced
 - Your deployment type (App Service or Function App) and container image variant (Debian or RHEL)
 
+From Azure IPAM, open **About** from the avatar menu in the upper right and select **Report an issue** to open a bug report with your environment details already filled in, or select the copy icon next to the details to paste them somewhere else.
+
 ## Contributing
 
 Interested in contributing code, documentation, or other improvements? See the [Contributing](/contributing/README) guide for the process, and [Development](/development/README) for setting up a development environment and building container images.

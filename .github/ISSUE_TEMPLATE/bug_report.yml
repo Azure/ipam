@@ -1,0 +1,128 @@
+name: Bug Report
+description: Report a bug with Azure IPAM
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Before you start:
+
+        - Search the [existing issues](https://github.com/Azure/ipam/issues) to see if it has already been reported.
+        - Check the [Troubleshooting guide](https://azure.github.io/ipam/#/troubleshooting/README) for known problems and fixes.
+        - **Don't report security vulnerabilities here.** Follow the [security policy](https://github.com/Azure/ipam/blob/main/SECURITY.md) instead.
+
+        **Tip:** In Azure IPAM, open **About** from your avatar menu and select **Report an issue** to fill in the Environment section automatically.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of Azure IPAM is affected?
+      options:
+        - UI
+        - Engine / API
+        - Deployment (deploy.ps1)
+        - Update (update.ps1)
+        - Migration (migrate.ps1)
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The steps that lead to the problem, and whether it happens every time.
+      value: |
+        1.
+        2.
+        3.
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen instead.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Errors and logs
+      description: |
+        Paste any error messages or log output. Useful places to look:
+        - The browser developer tools (Console and Network tabs)
+        - The App Service or Function App log stream
+        - The `logs` folder written by `deploy.ps1`, `update.ps1`, or `migrate.ps1`
+
+        Remove tenant IDs, secrets, and other sensitive values before posting.
+      render: text
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Drag images here if they help explain the problem.
+  - type: markdown
+    attributes:
+      value: |
+        ## Environment
+  - type: input
+    id: version
+    attributes:
+      label: Azure IPAM version
+      description: Shown in **About** (avatar menu), or returned by `/api/status`.
+      placeholder: e.g. 3.6.0
+    validations:
+      required: true
+  - type: input
+    id: deployment-type
+    attributes:
+      label: Deployment type
+      placeholder: e.g. App Service (Container), Function App (Native)
+  - type: input
+    id: container-variant
+    attributes:
+      label: Container variant
+      placeholder: e.g. Debian, RHEL, N/A (native)
+  - type: input
+    id: base-image
+    attributes:
+      label: Base image
+      placeholder: e.g. Debian GNU/Linux 13 (trixie)
+  - type: input
+    id: cloud
+    attributes:
+      label: Azure cloud
+      placeholder: e.g. Azure Public, Azure US Government
+  - type: dropdown
+    id: deployment-method
+    attributes:
+      label: Deployment method
+      description: How was this instance of Azure IPAM deployed?
+      options:
+        - PowerShell script (deploy.ps1)
+        - Bicep
+        - Docker Compose (legacy)
+        - Other
+  - type: dropdown
+    id: registry
+    attributes:
+      label: Container registry
+      description: Where the container image comes from. Each one updates differently.
+      options:
+        - Public (registry.azureipam.com)
+        - Private Azure Container Registry
+        - N/A (native)
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      placeholder: e.g. Microsoft Edge 142, Chrome 142, Firefox 145
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else that might help, such as recent changes to the deployment or environment.
