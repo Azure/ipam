@@ -509,6 +509,8 @@ Current Version: 3.5.0
   "version": "3.5.0",
   "stack": "AppContainer",
   "environment": "AZURE_PUBLIC",
+  "start_time": "2026-03-13T16:54:15Z",
+  "mode": "production",
   "container": {
     "image_id": "debian",
     "image_version": "13",
@@ -517,6 +519,8 @@ Current Version: 3.5.0
   }
 }
 ```
+
+`start_time` is when the engine started (UTC), so a new value confirms the application restarted. `mode` is `production` when the engine is serving normally, `staging` on a deployment slot that hasn't been swapped into production yet, or `incompatible` when this build is too old for the data in the database.
 
 Verify the version matches the expected updated version from the [Azure IPAM releases page](https://github.com/Azure/ipam/releases).
 
