@@ -42,10 +42,8 @@ import {
   MoreVert as MoreIcon,
   Token as TokenIcon,
   Logout as LogoutIcon,
-  // Info as InfoIcon,
-  // Close as CloseIcon,
+  Info as InfoIcon,
   AccountCircle as AccountCircleIcon,
-  // CloudDownloadOutlined as CloudDownloadIcon
 } from "@mui/icons-material";
 
 // Imports for the Drawer
@@ -766,13 +764,12 @@ export default function NavDrawer() {
         </ListItemIcon>
         <ListItemText>Token</ListItemText>
       </MenuItem>
-      {/* <MenuItem key='about' onClick={() => handleAboutOpen()}>
+      <MenuItem key='about' onClick={() => handleAboutOpen()}>
         <ListItemIcon>
           <InfoIcon fontSize="small" />
         </ListItemIcon>
         <ListItemText>About</ListItemText>
-        <CloudDownloadIcon fontSize="small" color="warning" />
-      </MenuItem> */}
+      </MenuItem>
       <Divider />
       <MenuItem key='logout' onClick={() => handleLogout()}>
         <ListItemIcon>
@@ -843,13 +840,12 @@ export default function NavDrawer() {
         </ListItemIcon>
         <ListItemText>Token</ListItemText>
       </MenuItem>
-      {/* <MenuItem key='about' onClick={() => handleAboutOpen()}>
+      <MenuItem key='mobile-about' onClick={() => handleAboutOpen()}>
         <ListItemIcon>
           <InfoIcon fontSize="small" />
         </ListItemIcon>
         <ListItemText>About</ListItemText>
-        <CloudDownloadIcon fontSize="small" color="warning" />
-      </MenuItem> */}
+      </MenuItem>
       <Divider />
       <MenuItem key='mobile-logout' onClick={() => handleLogout()}>
         <ListItemIcon>

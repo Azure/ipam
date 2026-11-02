@@ -2,7 +2,7 @@ import { createSlice, createSelector, createAsyncThunk } from '@reduxjs/toolkit'
 
 import { getAdminStatus } from '../ipam/ipamSlice';
 import { fetchNotifications, resolveNotification } from '../ipam/ipamAPI';
-import { SEVERITY_PRIORITY, NOTIFICATION_AUDIENCE } from './utils/notificationConstants';
+import { SEVERITY_PRIORITY, NOTIFICATION_AUDIENCE, UPDATE_NOTIFICATION_ID } from './utils/notificationConstants';
 
 const initialState = {
   items: [],     // Notification[] — replaced wholesale by the backend fetch later
@@ -134,6 +134,19 @@ export const getUnreadCount = createSelector(
 export const getWorstNotificationSeverity = createSelector(
   [getActiveNotifications],
   (items) => (items.length ? items[0].severity : null)
+);
+
+// The "new version available" advisory, if the engine reported one. Ignores
+// dismissal so read-only surfaces (e.g. About) still reflect it after the user
+// has cleared it from the bell.
+export const getUpdateNotification = createSelector(
+  [selectItems, getAdminStatus],
+  (items, isAdmin) =>
+    items.find(
+      (n) =>
+        n.id === UPDATE_NOTIFICATION_ID &&
+        (n.audience !== NOTIFICATION_AUDIENCE.ADMIN || isAdmin)
+    ) ?? null
 );
 
 export default notificationsSlice.reducer;

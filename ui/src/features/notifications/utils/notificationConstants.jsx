@@ -29,6 +29,10 @@ export const SEVERITY_COLOR = {
   [NOTIFICATION_SEVERITY.INFORMATION]: 'info',
 };
 
+// Stable id of the engine's "new version available" advisory (see the engine's
+// update detector).
+export const UPDATE_NOTIFICATION_ID = 'update-available';
+
 // UI-owned copy: the noun phrase shown in the restart gate for a remediation
 // that restarts the service, keyed by the notification's stable id. This is
 // presentation, so it lives in the UI (the API stays UI-agnostic); unmapped
