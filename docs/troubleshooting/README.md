@@ -74,7 +74,7 @@ Alternatively, if your organization (like many) has separate groups who manage M
 
 Here are the steps from the [Deployment](/deployment/README) section:
 
-1. [App Registration Only Deployment](/deployment/README?id=app-registration-only-deployment)
+1. [Azure Identities (Only) Deployment](/deployment/README?id=azure-identities-only-deployment)
 2. [Infrastructure Stack (Only) Deployment](/deployment/README?id=infrastructure-stack-only-deployment)
 
 ### <u>Notes</u>
@@ -276,3 +276,304 @@ This only applies to App Service (web app) container deployments. Code deploymen
 Function App container deployments use Microsoft's Azure Functions base image, which runs as root and includes its own SSH server, so SSH continues to work as before. `az webapp exec` does not support Function Apps.
 
 The commands above are maintained by each platform. Refer to the linked documentation for current options and requirements.
+
+## Key Vault Reference Not Resolved (App Service)
+
+### <u>Symptoms</u>
+
+One or more of the following, depending on which app setting can't be resolved:
+
+- **`ENGINE_APP_SECRET`:** Azure IPAM reports [AADSTS7000215 (Engine Secret Invalid)](#aadsts7000215-engine-secret-invalid), even though the value in Key Vault is correct
+- **`ENGINE_APP_ID`, `UI_APP_ID` or `TENANT_ID`:** signing in to Azure IPAM fails, or every request is rejected as unauthorized
+- **`MANAGED_IDENTITY_ID`:** Azure IPAM fails to start, because it can't authenticate to Cosmos DB, and errors appear in the Application Log during startup
+
+On the App Service or Function App's **Environment variables** page, an app setting whose source is **Key vault Reference** shows an error.
+
+<!-- SCREENSHOT PLACEHOLDER: App Service Environment variables showing a Key vault Reference app setting with an error -->
+![Key Vault Reference Error](./images/key_vault_reference_error.png)
+
+### <u>Verify</u>
+
+Azure IPAM reads its identifiers and secret from Key Vault through [Key Vault references](https://learn.microsoft.com/azure/app-service/app-service-key-vault-references) (`ENGINE_APP_SECRET`, `ENGINE_APP_ID`, `UI_APP_ID`, `TENANT_ID` and `MANAGED_IDENTITY_ID`). When a reference can't be resolved, App Service passes the reference text itself to Azure IPAM in place of the value.
+
+#### Azure Portal
+
+Navigate to your Azure IPAM **App Service** or **Function App** → **Settings** → **Environment variables** → **App settings**, and select any setting with an error to see its details.
+
+#### Azure PowerShell
+
+```powershell
+$path = "/subscriptions/<subscription-id>/resourceGroups/<your-ipam-rg>/providers/Microsoft.Web/sites/<your-ipam-app>/config/configreferences/appsettings?api-version=2022-03-01"
+
+((Invoke-AzRestMethod -Method GET -Path $path).Content | ConvertFrom-Json).value |
+  Select-Object name, @{ Name = "status"; Expression = { $_.properties.status } }, @{ Name = "details"; Expression = { $_.properties.details } }
+```
+
+#### Azure CLI
+
+```bash
+az rest --method get \
+  --url "/subscriptions/<subscription-id>/resourceGroups/<your-ipam-rg>/providers/Microsoft.Web/sites/<your-ipam-app>/config/configreferences/appsettings?api-version=2022-03-01" \
+  --query "value[].{setting: name, status: properties.status, details: properties.details}" \
+  --output table
+```
+
+Every reference should report a status of `Resolved`.
+
+### <u>Resolve</u>
+
+| Status                   | Likely Cause                                                                                    | Resolution                                                                                                                                                      |
+| ------------------------ | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AccessToKeyVaultDenied` | The managed identity has lost access, or the Key Vault firewall is blocking App Service          | Assign the Azure IPAM managed identity the **Key Vault Secrets User** role on the Key Vault, and review the Key Vault's **Networking** settings                 |
+| `SecretNotFound`         | The secret has been deleted or disabled                                                         | Recover the secret (soft delete keeps it for 90 days) or re-enable it. For `ENGINE-SECRET`, you can also [rotate the secret](/maintenance/README.md#rotate-the-secret) |
+| `VaultNotFound`          | The Key Vault has been deleted, or the `KEYVAULT_URL` app setting is wrong                      | Recover the Key Vault (soft delete keeps it for 90 days) or correct the app setting                                                                            |
+
+After fixing the cause, restart the App Service or Function App so the references are resolved again.
+
+### <u>Notes</u>
+
+The deployment configures the App Service or Function App to use the Azure IPAM managed identity, rather than a system-assigned identity, to read from Key Vault (the `keyVaultReferenceIdentity` site property). If that property has been changed, the references are resolved with the wrong identity.
+
+## Access Denied (Engine Reader Role)
+
+### <u>Symptoms</u>
+
+- When Azure IPAM is opened, Spaces and Blocks appear empty for every user, and no error message is shown. Administrators' views of subscriptions, virtual networks, subnets and endpoints are empty too, while other users still see the Azure resources they have access to
+- Actions that check address space against Azure, such as creating a Reservation or associating virtual networks with a Block, fail with an error stating *Access denied.*
+- Reservations stay waiting even after a matching virtual network has been created and tagged
+- An error in the Application Log for the App Service stating that *Azure Resource Graph query failed*, followed by *Access is denied to the requested resource. The user might not have enough permission*
+- The `arm` check returned by `/api/health` is not `ok`, reporting *Access denied.*
+
+### <u>Verify</u>
+
+Azure IPAM reads your Azure environment through the Engine's own **Reader** role assignment for administrators, and for its own work such as calculating utilization and checking for overlapping address space. Other users see Azure resources through their own permissions, which is why their views keep working. Check the Engine's role assignment by following [Restore Reader Access](/maintenance/README.md#restore-reader-access).
+
+### <u>Resolve</u>
+
+Restore the Engine's **Reader** role assignment by following [Restore Reader Access](/maintenance/README.md#restore-reader-access).
+
+### <u>Notes</u>
+
+A deployment where the role assignment was never created shows the same symptoms. See [New-AzRoleAssignment (Failed)](#new-azroleassignment-failed).
+
+If the Engine was given **Reader** at a Management Group other than the Tenant Root Group (using `-MgmtGroupId`), resources outside that Management Group are never visible to Azure IPAM. This is expected.
+
+## Timeouts Reaching Azure (Network)
+
+### <u>Symptoms</u>
+
+- Azure IPAM is slow to load, and Spaces, Blocks, virtual networks, subnets and endpoints then appear empty for every user, with no error message shown
+- Actions that read from Azure, such as creating a Reservation or associating virtual networks with a Block, fail with an error stating *Error communicating with Azure.*
+- Errors in the Application Log for the App Service stating *Error communicating with Azure*, followed by details of the failed connection to Microsoft Entra ID or Azure Resource Manager
+- The `arm` check returned by `/api/health` is not `ok`, reporting that it timed out or that there was an error communicating with Azure
+
+### <u>Verify</u>
+
+Azure IPAM needs outbound HTTPS (TCP 443) access to Microsoft Entra ID and Azure Resource Manager:
+
+| Azure Cloud          | Microsoft Entra ID                          | Azure Resource Manager                 |
+| -------------------- | ------------------------------------------- | -------------------------------------- |
+| Azure Public         | `login.microsoftonline.com`                 | `management.azure.com`                 |
+| Azure US Government  | `login.microsoftonline.us`                  | `management.usgovcloudapi.net`         |
+| Azure China          | `login.chinacloudapi.cn`                    | `management.chinacloudapi.cn`          |
+| Azure US Gov Secret  | `login.microsoftonline.microsoft.scloud`    | `management.azure.microsoft.scloud`    |
+
+Open a shell inside Azure IPAM (see [SSH Connection Fails (Container Deployments)](#ssh-connection-fails-container-deployments) for how), and test each endpoint for your cloud:
+
+```bash
+python -c "import socket; socket.create_connection(('login.microsoftonline.com', 443), timeout=10); print('OK')"
+python -c "import socket; socket.create_connection(('management.azure.com', 443), timeout=10); print('OK')"
+```
+
+A `timed out` or `Name or service not known` error points to a firewall or DNS problem respectively.
+
+### <u>Resolve</u>
+
+Allow outbound HTTPS to the endpoints above through any firewall, network virtual appliance or proxy in the path. With Azure Firewall, the `AzureActiveDirectory` and `AzureResourceManager` [service tags](https://learn.microsoft.com/azure/virtual-network/service-tags-overview) cover them.
+
+If the App Service or Function App uses vNet integration with custom DNS, make sure those DNS servers can resolve public Azure endpoints.
+
+### <u>Notes</u>
+
+This applies most often to deployments that route all outbound traffic through a vNet (see the vNet integration notes in the [Update](/update/README.md#vnet-integration-on-the-staging-slot) guide).
+
+## AADSTS53003 (Engine Blocked by Conditional Access)
+
+### <u>Symptoms</u>
+
+- When Azure IPAM is opened, Spaces and Blocks appear empty for every user, and no error message is shown. Administrators' views of virtual networks, subnets and endpoints are empty too. Depending on how the policy is configured, other users' views of Azure resources may also be affected
+- Actions that read from Azure, such as creating a Reservation or associating virtual networks with a Block, fail with an error stating that *Azure IPAM could not authenticate to Azure, its service principal credentials may be expired or invalid*
+- An error in the Application Log for the App Service stating that *Azure authentication failed*, followed by `AADSTS53003` and *Access has been blocked by Conditional Access policies. The access policy does not allow token issuance*
+- The `arm` check returned by `/api/health` is not `ok`, reporting that Azure IPAM could not authenticate to Azure
+
+### <u>Verify</u>
+
+A [Conditional Access policy for workload identities](https://learn.microsoft.com/entra/identity/conditional-access/workload-identity) is blocking the Engine's sign-in.
+
+Navigate to **Microsoft Entra ID** → **Monitoring & health** → **Sign-in logs** → **Service principal sign-ins**, and filter by the Engine's application ID. Select a failed sign-in, then select **Conditional Access** to see which policy blocked it.
+
+<!-- SCREENSHOT PLACEHOLDER: Service principal sign-in details showing the Conditional Access policy that blocked the Engine -->
+![Engine Sign-In Blocked By Conditional Access](./images/engine_signin_conditional_access.png)
+
+### <u>Resolve</u>
+
+Ask whoever manages Conditional Access in your organization to do one of the following:
+
+- Exclude the Engine's service principal from the policy, under **Assignments** → **Users or workload identities** → **Exclude**
+- If the policy only allows sign-ins from certain locations, add the App Service or Function App's outbound IP addresses (shown under **Networking** → **Outbound addresses**) to a trusted [named location](https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network)
+
+### <u>Notes</u>
+
+Changing Conditional Access policies requires the [Conditional Access Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#conditional-access-administrator) or [Security Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#security-administrator) role.
+
+## AADSTS700016 (Engine Application Not Found)
+
+### <u>Symptoms</u>
+
+- Signing in to Azure IPAM fails for every user, with an error on the Microsoft sign-in page stating that the application or resource could not be found
+- An error in the Application Log for the App Service containing `AADSTS700016`, stating that *the application wasn't found in the directory*
+- API calls to Azure IPAM fail, because access tokens can no longer be issued for it
+
+### <u>Verify</u>
+
+Either the Engine app registration or its service principal has been deleted, or Azure IPAM is using the wrong application ID.
+
+First, confirm the Key Vault references resolve, since an unresolved `ENGINE-ID` reference produces this error too. See [Key Vault Reference Not Resolved (App Service)](#key-vault-reference-not-resolved-app-service).
+
+Then check that the app registration and its service principal (enterprise application) both exist:
+
+#### Azure PowerShell
+
+```powershell
+Get-AzADApplication -ApplicationId "<engine-app-id>"
+Get-AzADServicePrincipal -ApplicationId "<engine-app-id>"
+```
+
+#### Azure CLI
+
+```bash
+az ad app show --id "<engine-app-id>"
+az ad sp show --id "<engine-app-id>"
+```
+
+If either is missing, look for it under **Microsoft Entra ID** → **App registrations** → **Deleted applications**, or **Microsoft Entra ID** → **Enterprise applications** → **Deleted applications**.
+
+<!-- SCREENSHOT PLACEHOLDER: App registrations Deleted applications tab listing the Engine application -->
+![Deleted Applications](./images/deleted_applications.png)
+
+### <u>Resolve</u>
+
+Deleted applications can be restored for 30 days. Select the Engine application under **Deleted applications** and select **Restore app registration**. Restoring the app registration from the Microsoft Entra admin center also restores its service principal. If only the enterprise application was deleted, restore it from **Enterprise applications** → **Deleted applications** instead.
+
+After restoring, confirm the Engine still has its Azure access by following [Restore Reader Access](/maintenance/README.md#restore-reader-access).
+
+If the application no longer appears under **Deleted applications**, it has been permanently deleted and the app registrations must be recreated with the [Azure Identities (Only) Deployment](/deployment/README.md#azure-identities-only-deployment). The new registrations have different IDs, so the `ENGINE-ID`, `UI-ID` and `ENGINE-SECRET` secrets in Key Vault, and the UI app registration's redirect URI, must then be updated to match. [Open an issue](https://github.com/Azure/ipam/issues) if you need help.
+
+### <u>Notes</u>
+
+Restoring an application requires [Application Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#application-administrator), [Cloud Application Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#cloud-application-administrator), or ownership of the application. See [Restore a recently deleted application](https://learn.microsoft.com/entra/identity-platform/howto-restore-app) for details.
+
+## AADSTS7000112 (Engine Application Disabled)
+
+### <u>Symptoms</u>
+
+- Signing in to Azure IPAM fails for every user, with an error on the Microsoft sign-in page containing `AADSTS7000112`, stating that *the application is disabled*
+- The same error in the Application Log for the App Service
+- API calls to Azure IPAM fail, because access tokens can no longer be issued for it
+
+### <u>Verify</u>
+
+The Engine's service principal has been disabled, which stops it from signing in.
+
+#### Azure Portal
+
+Navigate to **Microsoft Entra ID** → **Enterprise applications** → your Azure IPAM **Engine** application → **Properties**, and check **Enabled for users to sign-in?**
+
+<!-- SCREENSHOT PLACEHOLDER: Engine enterprise application Properties with Enabled for users to sign-in set to No -->
+![Engine Enterprise Application Properties](./images/engine_enterprise_app_properties.png)
+
+#### Azure PowerShell
+
+```powershell
+(Get-AzADServicePrincipal -ApplicationId "<engine-app-id>").AccountEnabled
+```
+
+#### Azure CLI
+
+```bash
+az ad sp show --id "<engine-app-id>" --query accountEnabled
+```
+
+### <u>Resolve</u>
+
+Re-enable the service principal.
+
+#### Azure Portal
+
+Set **Enabled for users to sign-in?** to **Yes**, then select **Save**.
+
+#### Azure PowerShell
+
+```powershell
+Update-AzADServicePrincipal -ApplicationId "<engine-app-id>" -AccountEnabled
+```
+
+#### Azure CLI
+
+```bash
+az ad sp update --id "<engine-app-id>" --set accountEnabled=true
+```
+
+### <u>Notes</u>
+
+Service principals are sometimes disabled deliberately, for example by a security team responding to an alert. Check with whoever manages Microsoft Entra ID in your organization before re-enabling it.
+
+## AADSTS7000215 (Engine Secret Invalid)
+
+### <u>Symptoms</u>
+
+- When Azure IPAM is opened, Spaces, Blocks, virtual networks, subnets and endpoints all appear empty for every user, and no error message is shown. Pages that were already open keep showing the data loaded before the problem started
+- Actions that read from Azure, such as creating a Reservation or associating virtual networks with a Block, fail with an error stating that *Azure IPAM could not authenticate to Azure, its service principal credentials may be expired or invalid*, or that *Azure authentication failed, your credentials may be expired or invalid*
+- An error in the Application Log for the App Service stating that *Azure authentication failed*, followed by `AADSTS7000215` and *Invalid client secret provided. Ensure the secret being sent in the request is the client secret value, not the client secret ID*
+- The `arm` check returned by `/api/health` is not `ok`, reporting that Azure IPAM could not authenticate to Azure
+
+### <u>Verify</u>
+
+Microsoft Entra ID doesn't recognize the secret Azure IPAM is using. Check the following, in order:
+
+1. **The Key Vault reference resolves.** If App Service can't read `ENGINE-SECRET` from Key Vault, it passes the reference text to Azure IPAM in place of the secret. See [Key Vault Reference Not Resolved (App Service)](#key-vault-reference-not-resolved-app-service).
+2. **The secret matches one on the Engine app registration.** Follow [Check When the Secret Expires](/maintenance/README.md#check-when-the-secret-expires). If no client secret on the app registration shares its first three characters with `ENGINE-SECRET`, the stored value is wrong. Common causes are storing the **Secret ID** instead of the **Value**, or removing the old secret during a rotation before Azure IPAM was restarted with the new one.
+
+### <u>Resolve</u>
+
+If a matching secret exists on the app registration, Azure IPAM hasn't loaded it yet. Restart the App Service or Function App.
+
+Otherwise, create a new client secret and store it in Key Vault by following [Rotate the Secret](/maintenance/README.md#rotate-the-secret).
+
+### <u>Notes</u>
+
+Removing the old secret is the last step of a rotation for this reason. Wait until [the rotation is confirmed](/maintenance/README.md#confirm-the-rotation) before removing it.
+
+## AADSTS7000222 (Engine Secret Expired)
+
+### <u>Symptoms</u>
+
+- When Azure IPAM is opened, Spaces, Blocks, virtual networks, subnets and endpoints all appear empty for every user, and no error message is shown. Pages that were already open keep showing the data loaded before the problem started
+- Actions that read from Azure, such as creating a Reservation or associating virtual networks with a Block, fail with an error stating that *Azure IPAM could not authenticate to Azure, its service principal credentials may be expired or invalid*, or that *Azure authentication failed, your credentials may be expired or invalid*
+- An error in the Application Log for the App Service stating that *Azure authentication failed*, followed by `AADSTS7000222` and *The provided client secret keys for app '...' are expired*
+- The `arm` check returned by `/api/health` is not `ok`, reporting that Azure IPAM could not authenticate to Azure
+
+<!-- SCREENSHOT PLACEHOLDER: Application Log showing an AADSTS7000222 error -->
+![AADSTS7000222 In Application Log](./images/aadsts7000222_app_log.png)
+
+### <u>Verify</u>
+
+The Engine app registration's client secret has passed its expiration date. Follow [Check When the Secret Expires](/maintenance/README.md#check-when-the-secret-expires) and confirm that the secret Azure IPAM is using has an **Expires** date in the past.
+
+### <u>Resolve</u>
+
+Create a new client secret and switch Azure IPAM over to it by following [Rotate the Secret](/maintenance/README.md#rotate-the-secret). Because the old secret has already expired, Azure IPAM is unavailable until the new one is in place.
+
+### <u>Notes</u>
+
+To be warned ahead of time in the future, see [Get Notified Before the Secret Expires](/maintenance/README.md#get-notified-before-the-secret-expires).

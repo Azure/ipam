@@ -47,6 +47,8 @@ The Azure IPAM solution is deployed via a PowerShell deployment script, `deploy.
 
 The two-part deployment option is provided in the event that a single team within your organization doesn't have the necessary permissions to deploy both the Azure identities within Entra ID, and the Azure infrastructure stack. If a single group does have all of the necessary permissions in Entra ID and on the Azure infrastructure side, then you have the option to deploy the complete solution all at once.
 
+> **NOTE:** The *Engine* app registration authenticates to Azure with a client secret, which has an expiration date. See [Maintenance](/maintenance/README.md) for how to check when it expires and rotate it before then.
+
 ## Authenticate to Azure PowerShell
 
 Before executing the Azure IPAM deployment script, you'll need to authenticate to [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) and set the context to the target subscription in which you'd like to deploy the solution.
@@ -297,6 +299,8 @@ You have the ability to pass optional flags to the deployment script:
 ```
 
 As part of the app registration deployment, a `main.parameters.json` file is generated with pre-populated parameters for the app registration IDs as well as the engine app registration secret. This parameter file will then be used to perform the infrastructure only deployment.
+
+> **NOTE:** Because `main.parameters.json` contains the engine app registration secret, store it securely. If you keep it after the deployment, update it whenever you [rotate the secret](/maintenance/README.md#rotate-the-secret).
 
 ## Infrastructure Stack (Only) Deployment
 

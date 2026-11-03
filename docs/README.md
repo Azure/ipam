@@ -19,6 +19,7 @@ Here is a more specific breakdown of the components used:
     - *Engine* App Registration
       - Granted **Reader** permission to the [Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) to facilitate IPAM Admin operations (global visibility)
       - Authentication point for IPAM API operations ([on-behalf-of](https://learn.microsoft.com/entra/identity-platform/v2-oauth2-on-behalf-of-flow) flow)
+      - Authenticates to Azure with a client secret that must be renewed before it expires (see [Maintenance](./maintenance/README.md))
     - *UI* App Registration *(Optional if no UI is desired)*
       - Granted **read** permissions for Microsoft Graph API's
       - Added as a *known client application* for the *Engine* App Registration

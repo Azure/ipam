@@ -6,6 +6,7 @@
 - [How-To](/how-to/README.md)
 - [Roles & Permissions](/roles-permissions/README.md)
 - [Update](/update/README.md)
+- [Maintenance](/maintenance/README.md)
 - [Migration](/migration/README.md)
 - [Troubleshooting](/troubleshooting/README.md)
 - [API](/api/README.md)
