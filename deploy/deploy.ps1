@@ -736,8 +736,9 @@ process {
     }
 
     $appDetails = @{
-      EngineAppId  = $engineApp.AppId
-      EngineSecret = $engineSecret.SecretText
+      EngineAppId        = $engineApp.AppId
+      EngineSecret       = $engineSecret.SecretText
+      EngineSecretExpiry = $engineSecret.EndDateTime.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     }
 
     # Add UI AppID to AppDetails (If DisableUI not specified)
@@ -897,6 +898,8 @@ process {
       [Parameter(Mandatory = $true)]
       [string]$EngineSecret,
       [Parameter(Mandatory = $false)]
+      [string]$EngineSecretExpiry,
+      [Parameter(Mandatory = $false)]
       [bool]$DisableUI = $false
     )
 
@@ -908,13 +911,14 @@ process {
     # Update Parameter Values
     $parametersObject.parameters.engineAppId.value = $EngineAppId
     $parametersObject.parameters.engineAppSecret.value = $EngineSecret
+    $parametersObject.parameters.engineAppSecretExpiry.value = $EngineSecretExpiry
 
     if (-not $DisableUI) {
       $parametersObject.parameters.uiAppId.value = $UIAppId
-      $parametersObject.parameters = $parametersObject.parameters | Select-Object -Property uiAppId, engineAppId, engineAppSecret
+      $parametersObject.parameters = $parametersObject.parameters | Select-Object -Property uiAppId, engineAppId, engineAppSecret, engineAppSecretExpiry
     }
     else {
-      $parametersObject.parameters = $parametersObject.parameters | Select-Object -Property engineAppId, engineAppSecret
+      $parametersObject.parameters = $parametersObject.parameters | Select-Object -Property engineAppId, engineAppSecret, engineAppSecretExpiry
     }
 
     # Output updated parameter file for Bicep deployment
@@ -938,6 +942,32 @@ process {
     $UIAppId = $parametersObject.parameters.uiAppId.value ?? [GUID]::Empty
     $EngineAppId = $parametersObject.parameters.engineAppId.value
     $EngineSecret = $parametersObject.parameters.engineAppSecret.value
+    $EngineSecretExpiry = $parametersObject.parameters.engineAppSecretExpiry.value ?? ''
+
+    # ConvertFrom-Json turns ISO 8601 strings into DateTime objects, so convert back to the format Bicep expects.
+    if ($EngineSecretExpiry -is [datetime]) {
+      # Values without a time zone are UTC, as documented and as Azure Resource Manager reads them.
+      if ($EngineSecretExpiry.Kind -eq [System.DateTimeKind]::Unspecified) {
+        $EngineSecretExpiry = [datetime]::SpecifyKind($EngineSecretExpiry, [System.DateTimeKind]::Utc)
+      }
+
+      $expiryUtc = $EngineSecretExpiry.ToUniversalTime()
+      $EngineSecretExpiry = $expiryUtc.ToString('yyyy-MM-ddTHH:mm:ssZ')
+
+      if ($expiryUtc -lt [datetime]::UtcNow) {
+        Write-Host "WARNING: The engine app registration secret in the Bicep parameter file expired on $EngineSecretExpiry" -ForegroundColor Yellow
+        Write-Host "WARNING: Azure IPAM will be unable to reach Azure until the secret is rotated" -ForegroundColor Yellow
+        Write-Host "WARNING: " -ForegroundColor Yellow -NoNewline
+        Write-Host "https://azure.github.io/ipam/#/maintenance/README" -ForegroundColor Cyan
+      }
+    }
+    elseif ($EngineSecretExpiry) {
+      Write-Host "ERROR: The engineAppSecretExpiry value in the Bicep parameter file is not a valid date" -ForegroundColor Red
+      Write-Host "ERROR: Use the UTC format yyyy-MM-ddTHH:mm:ssZ (e.g. 2028-11-03T03:51:05Z), or remove the parameter" -ForegroundColor Red
+      Write-Host ""
+
+      throw [System.ArgumentException]::New("The engineAppSecretExpiry parameter is not a valid date.")
+    }
     $script:DisableUI = ($UIAppId -eq [GUID]::Empty) ? $true : $false
 
     if ((-not $EngineAppId) -or (-not $EngineSecret)) {
@@ -958,9 +988,10 @@ process {
     Write-Host "INFO: Successfully import Bicep parameter values for deployment" -ForegroundColor Green
 
     $appDetails = @{
-      UIAppId      = $UIAppId
-      EngineAppId  = $EngineAppId
-      EngineSecret = $EngineSecret
+      UIAppId            = $UIAppId
+      EngineAppId        = $EngineAppId
+      EngineSecret       = $EngineSecret
+      EngineSecretExpiry = $EngineSecretExpiry
     }
 
     return $appDetails
@@ -974,6 +1005,8 @@ process {
       [string]$EngineAppId,
       [Parameter(Mandatory = $true)]
       [string]$EngineSecret,
+      [Parameter(Mandatory = $false)]
+      [string]$EngineSecretExpiry,
       [Parameter(Mandatory = $false)]
       [string]$NamePrefix,
       [Parameter(Mandatory = $false)]
@@ -1003,6 +1036,10 @@ process {
 
     if ($NamePrefix) {
       $deploymentParameters.Add('namePrefix', $NamePrefix)
+    }
+
+    if ($EngineSecretExpiry) {
+      $deploymentParameters.Add('engineAppSecretExpiry', $EngineSecretExpiry)
     }
 
     if ($AzureCloud) {

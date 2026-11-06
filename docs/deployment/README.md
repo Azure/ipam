@@ -306,6 +306,8 @@ As part of the app registration deployment, a `main.parameters.json` file is gen
 
 To deploy infrastructure only, ensure you have the auto-generated `main.parameters.json` file created by the [App Registration Only](#azure-identities-only-deployment) deployment in your `deploy` directory. Alternatively, you can generate your own using `main.parameters.example.json` as an example template.
 
+> **NOTE:** The auto-generated `main.parameters.json` includes `engineAppSecretExpiry`, the engine app registration secret's expiration date, which is applied to the secret in Key Vault. This parameter is optional when you create your own parameter file. If you include it, use the UTC format `yyyy-MM-ddTHH:mm:ssZ`, otherwise remove it.
+
 Once your parameters file is ready, run the following from within the `deploy` directory:
 
 ```powershell

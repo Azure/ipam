@@ -229,7 +229,9 @@ Your organization may limit how long client secrets can remain valid through an 
 
 ### Get Notified Before the Secret Expires
 
-Key Vault can notify you before a secret expires, but only when the secret has an expiration date. Rotations that follow the steps above set one. For an existing secret, set it yourself first.
+Key Vault can notify you before a secret expires, but only when the secret has an expiration date. The deployment script sets one when it creates `ENGINE-SECRET`, and rotations that follow the steps above set one too. Deployments created with earlier versions of Azure IPAM don't have one, so set it yourself first.
+
+You can check whether `ENGINE-SECRET` has an expiration date from the **Expiration date** column under **Objects** → **Secrets** in your Azure IPAM Key Vault.
 
 #### Set the Expiration Date
 

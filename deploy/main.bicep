@@ -36,6 +36,11 @@ param engineAppId string
 @description('IPAM-Engine App Registration Client Secret')
 param engineAppSecret string
 
+// Not a secret: the expiration date of the client secret above.
+@description('IPAM-Engine App Registration Client Secret Expiration Date (ISO 8601, UTC)')
+#disable-next-line secure-secrets-in-params
+param engineAppSecretExpiry string = ''
+
 @description('Tags')
 param tags object = {}
 
@@ -105,6 +110,7 @@ module keyVault './modules/keyVault.bicep' = {
     uiAppId: uiAppId
     engineAppId: engineAppId
     engineAppSecret: engineAppSecret
+    engineAppSecretExpiry: engineAppSecretExpiry
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
   }
 }
