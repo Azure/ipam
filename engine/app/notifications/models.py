@@ -66,6 +66,8 @@ class NotificationList(BaseModel):
     """Envelope returned by ``GET /api/notifications``."""
 
     notifications: list[Notification] = []
+    # Unix time (seconds) the oldest included result was produced. Omitted when no detector has succeeded yet.
+    checkedOn: float | None = None
 
 
 class NotificationActionResult(BaseModel):

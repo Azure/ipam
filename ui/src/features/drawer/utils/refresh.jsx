@@ -129,9 +129,10 @@ function Refresh() {
     }
   }, []);
 
+  // The engine reuses recent check results, so polling often only reads them back.
   React.useEffect(() => {
     clearInterval(intervalNotificationsRef.current);
-    intervalNotificationsRef.current = setInterval(() => refreshNotificationsRef.current(), 15 * 60 * 1000);
+    intervalNotificationsRef.current = setInterval(() => refreshNotificationsRef.current(), 5 * 60 * 1000);
     return () => {
       clearInterval(intervalNotificationsRef.current);
       intervalNotificationsRef.current = null;

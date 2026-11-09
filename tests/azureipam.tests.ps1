@@ -2617,6 +2617,9 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
       # The envelope always carries a 'notifications' collection (possibly empty).
       $notifications.PSObject.Properties.Name | Should -Contain 'notifications'
 
+      # The platform check always succeeds, so there is always a checkedOn time.
+      $notifications.checkedOn | Should -BeGreaterThan 0
+
       # When notifications are present, each must be well-formed and self-describing.
       foreach ($notification in $notifications.notifications) {
         $notification.id | Should -Not -BeNullOrEmpty
@@ -2626,6 +2629,17 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
         $notification.severity | Should -BeIn @('critical', 'warning', 'information')
         $notification.audience | Should -BeIn @('all', 'admin')
       }
+    }
+
+    # GET /api/notifications?refresh=true
+    It 'Verify Notifications refresh' {
+
+      $refreshed, $refreshedStatus = Get-ApiResource '/notifications?refresh=true'
+
+      $refreshedStatus | Should -Be 200
+
+      $refreshed.PSObject.Properties.Name | Should -Contain 'notifications'
+      $refreshed.checkedOn | Should -BeGreaterThan 0
     }
 
     # POST /api/notifications/{id}/resolve

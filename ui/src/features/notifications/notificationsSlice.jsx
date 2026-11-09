@@ -30,11 +30,12 @@ export const executeNotificationActionAsync = createAsyncThunk(
 
 // Fetch the active notifications from the backend. On success the payload
 // replaces the active set; on failure the existing items are left untouched so
-// a transient error never blanks the notification center.
+// a transient error never blanks the notification center. A manual refresh asks
+// the engine to run its checks again rather than reuse recent results.
 export const fetchNotificationsAsync = createAsyncThunk(
   'notifications/fetch',
-  async () => {
-    const data = await fetchNotifications();
+  async (args) => {
+    const data = await fetchNotifications(Boolean(args?.manual));
 
     return data?.notifications ?? [];
   }

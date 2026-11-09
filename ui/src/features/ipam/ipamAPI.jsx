@@ -314,8 +314,11 @@ export function fetchNextAvailableSubnet(body) {
   return api.post(url, body);
 }
 
-export function fetchNotifications() {
+export function fetchNotifications(refresh = false) {
   var url = new URL(`${ENGINE_URL}/api/notifications`);
+  var urlParams = url.searchParams;
+
+  refresh && urlParams.append('refresh', true);
 
   return api.get(url);
 }

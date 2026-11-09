@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from app.dependencies import (
@@ -6,7 +6,7 @@ from app.dependencies import (
     api_auth_checks,
     get_token_auth_header,
 )
-from app.notifications import get_notifications, get_resolver
+from app.notifications import get_notifications, get_resolver, is_active
 from app.notifications.models import NotificationActionResult
 from app.permissions import Permission, requires
 
@@ -23,7 +23,9 @@ router = APIRouter(
     summary="Get Azure IPAM Notifications",
     status_code=200
 )
-async def list_notifications():
+async def list_notifications(
+    refresh: bool = Query(False, description="Run every check again rather than reuse recent results")
+):
     """
     Active notifications about this Azure IPAM deployment.
 
@@ -32,11 +34,17 @@ async def list_notifications():
     An ``api`` action carries the ``method``/``endpoint``/``body`` to remediate
     it (some require an admin); a ``link`` action points at documentation.
 
+    Each check's result is reused for a period, so the response can be a few
+    minutes old: up to 15 minutes for the container registry and an hour for
+    available updates. ``checkedOn`` is the Unix time the oldest result was
+    produced. Pass ``refresh=true`` to run every check again; a check that ran
+    within the last few seconds, or minutes for available updates, isn't repeated.
+
     Visible to any authenticated user so a non-admin can surface an issue to an
     admin; the underlying remediation endpoints enforce their own authorization.
     """
 
-    result = await get_notifications()
+    result = await get_notifications(force=refresh)
 
     return JSONResponse(result.model_dump(exclude_none=True))
 
@@ -61,7 +69,8 @@ async def resolve_notification(
 
     Returns 404 when the notification has no remediation defined, and 409 when the
     notification is not currently active (e.g. it has already been resolved) — so
-    a stale or duplicate request never triggers work.
+    a stale or duplicate request never triggers work. Whether it is active is
+    checked again now, rather than taken from the results ``GET`` reuses.
     """
 
     resolver = get_resolver(notification_id)
@@ -71,9 +80,7 @@ async def resolve_notification(
 
     # The detector is the single source of truth for whether a notification is
     # active. Only remediate something that is actually being surfaced right now.
-    active = await get_notifications()
-
-    if not any(item.id == notification_id for item in active.notifications):
+    if not await is_active(notification_id):
         raise HTTPException(
             status_code=409,
             detail="This notification is not currently active; it may already have been resolved."

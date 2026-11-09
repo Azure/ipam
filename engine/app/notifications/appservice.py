@@ -96,28 +96,24 @@ def split_repository_tag(image):
 async def read_current_registry():
     """
     Return the container registry host the deployment currently pulls from, or
-    None for native/unknown deployments or if the lookup fails. Safe to call from
-    non-request contexts (e.g. notification detectors): never raises.
+    None for native/unknown deployments. Raises when the lookup fails, so the
+    notification framework keeps the last known result rather than reporting
+    that there is nothing to migrate.
     """
 
     if not is_container():
         return None
 
+    subscription_id, resource_group, site_name = get_site_context()
+    client = get_web_client(subscription_id)
+
     try:
-        subscription_id, resource_group, site_name = get_site_context()
-        client = get_web_client(subscription_id)
+        config = await client.web_apps.get_configuration(resource_group, site_name)
+        registry, _ = parse_image(config.linux_fx_version)
 
-        try:
-            config = await client.web_apps.get_configuration(resource_group, site_name)
-            registry, _ = parse_image(config.linux_fx_version)
-
-            return registry
-        finally:
-            await client.close()
-    except Exception as e:
-        logger.error(f"Failed to read current registry: {e}")
-
-        return None
+        return registry
+    finally:
+        await client.close()
 
 
 async def is_image_pullable(registry, repository, tag):

@@ -144,6 +144,18 @@ A parameter reaches Cosmos DB separately from the query and is only ever compare
 
 Ruff enforces this with `S608` in `engine/pyproject.toml`, which rejects query text built with `.format()`, an f-string or `+`, so you will catch it at lint time.
 
+## Notification Detectors
+
+Raise an exception when a notification detector can't complete its check. Never catch the error and return an empty list.
+
+The notification framework keeps each detector's last successful result and reuses it until the detector's maximum age passes. When a detector raises, the framework logs the error, keeps that last result, and tries again once the detector's minimum interval has passed. An empty list means something else entirely: the check ran and found nothing to report. A detector that returns one when it fails is telling the framework that every notification it raised has gone away.
+
+That is exactly what used to happen. The registry and update detectors both caught their own errors, so a brief Azure Resource Manager or GitHub failure hid their notifications until the next successful check, including the critical one for deployments still pulling from the legacy registry.
+
+When an upstream service asks you to wait, as GitHub does after a rate limit, raise `RetryAfter` from `app/notifications/errors.py` with the number of seconds it asked for. The detector won't run again until that time has passed, even when someone selects **Refresh**.
+
+Register each detector in `app/notifications/detectors/__init__.py` with a maximum age and a minimum interval that suit what it calls. A detector that only reads local state can use `0` for both and run on every request. One that calls an external service should keep well clear of that service's limits, remembering that every engine instance runs its detectors independently.
+
 ## Container Base Images
 
 Pin each base image to a Python version and an operating system release, and nothing finer. `python:3.12-slim-trixie` is the pattern to follow: Python 3.12 on Debian 13, with whatever patch release and security fixes are current when the image is built.
