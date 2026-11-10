@@ -11,6 +11,7 @@ from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
 from fastapi import APIRouter, Depends, HTTPException
 from netaddr import IPNetwork, IPSet
 
+from app import engine_access
 from app.dependencies import (
     UNAUTHORIZED,
     api_auth_checks,
@@ -162,8 +163,14 @@ async def get_vmss(token, *, scope):
         )
         vmss_list = await get_vmss_list_sdk(creds, subscriptions)
         vmss_vm_interfaces = await get_vmss_interfaces_sdk(creds, vmss_list)
-    except ClientAuthenticationError:
+    except ClientAuthenticationError as e:
         await creds.close()
+
+        problem = engine_access.problem_of(e)
+
+        if problem is not None:
+            raise HTTPException(status_code=problem.status, detail=problem.message)
+
         raise HTTPException(status_code=401, detail="Access token expired.")
 
     await creds.close()

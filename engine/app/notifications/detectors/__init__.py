@@ -13,7 +13,8 @@ notification that is still true.
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
-from app.notifications.detectors import platform, registry, update
+from app import engine_access
+from app.notifications.detectors import credentials, platform, registry, update
 
 
 @dataclass(frozen=True)
@@ -28,11 +29,15 @@ class Detector:
     min_interval: float
     # Notification id -> resolve handler, for the notifications this detector can remediate.
     resolvers: dict = field(default_factory=dict)
+    # For a detector that reports on data gathered elsewhere: when that data was observed (Unix time), or None.
+    observed_on: Callable[[], float | None] | None = None
 
 
 # Ordered list of local detectors. A future remote provider aggregates into the
 # same pipeline (see app.notifications.get_notifications).
 DETECTORS = [
+    # Reads what the engine's own sign-ins and Resource Graph queries have recorded. No calls of its own.
+    Detector("credentials", credentials.detect, max_age=0, min_interval=0, observed_on=engine_access.observed_on),
     # Reads the site configuration from Azure Resource Manager. Changing the image restarts the app.
     Detector("registry", registry.detect, max_age=15 * 60, min_interval=15, resolvers=registry.RESOLVERS),
     # Reads environment variables only.

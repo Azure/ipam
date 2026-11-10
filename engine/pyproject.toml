@@ -28,3 +28,13 @@ select = [
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "requests".msg = "Use aiohttp; requests validates TLS against certifi and breaks in sovereign clouds."
 "httpx".msg = "Use aiohttp; httpx validates TLS against certifi and breaks in sovereign clouds."
+# Engine credentials must come from get_client_credentials() / get_obo_credentials(), so every sign-in
+# is classified and recorded by app.engine_access. See "Engine Credentials" in the Conventions docs.
+"azure.identity.ClientSecretCredential".msg = "Use get_client_credentials() so the sign-in is classified and recorded."
+"azure.identity.OnBehalfOfCredential".msg = "Use get_obo_credentials() so the sign-in is classified and recorded."
+"azure.identity.aio.ClientSecretCredential".msg = "Use get_client_credentials() so the sign-in is classified and recorded."
+"azure.identity.aio.OnBehalfOfCredential".msg = "Use get_obo_credentials() so the sign-in is classified and recorded."
+
+[tool.ruff.lint.per-file-ignores]
+# The one module allowed to construct the engine's credentials, as the wrappers that observe them.
+"app/engine_access.py" = ["TID251"]

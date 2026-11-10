@@ -2642,6 +2642,18 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
       $refreshed.checkedOn | Should -BeGreaterThan 0
     }
 
+    # GET /api/notifications
+    It 'Reports no engine access problems on a healthy deployment' {
+
+      $notifications, $status = Get-ApiResource '/notifications'
+
+      $status | Should -Be 200
+
+      # The engine signs in and queries Azure as itself every minute, so a problem would be reported here.
+      $engineIds = @($notifications.notifications | Where-Object { $_.id -like 'engine-*' } | ForEach-Object { $_.id })
+      $engineIds | Should -BeNullOrEmpty
+    }
+
     # POST /api/notifications/{id}/resolve
     It 'Returns an error resolving an unknown notification' {
 

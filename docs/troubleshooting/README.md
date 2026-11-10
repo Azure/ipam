@@ -283,7 +283,7 @@ The commands above are maintained by each platform. Refer to the linked document
 
 One or more of the following, depending on which app setting can't be resolved:
 
-- **`ENGINE_APP_SECRET`:** Azure IPAM reports [AADSTS7000215 (Engine Secret Invalid)](#aadsts7000215-engine-secret-invalid), even though the value in Key Vault is correct
+- **`ENGINE_APP_SECRET`:** a notification titled *Azure IPAM's client secret isn't configured* appears in the notification center, and actions that read from Azure fail with an error stating *Azure IPAM's client secret isn't configured. Its Key Vault reference couldn't be resolved.*
 - **`ENGINE_APP_ID`, `UI_APP_ID` or `TENANT_ID`:** signing in to Azure IPAM fails, or every request is rejected as unauthorized
 - **`MANAGED_IDENTITY_ID`:** Azure IPAM fails to start, because it can't authenticate to Cosmos DB, and errors appear in the Application Log during startup
 
@@ -338,11 +338,12 @@ The deployment configures the App Service or Function App to use the Azure IPAM 
 
 ### <u>Symptoms</u>
 
-- When Azure IPAM is opened, Spaces and Blocks appear empty for every user, and no error message is shown. Administrators' views of subscriptions, virtual networks, subnets and endpoints are empty too, while other users still see the Azure resources they have access to
-- Actions that check address space against Azure, such as creating a Reservation or associating virtual networks with a Block, fail with an error stating *Access denied.*
+- A notification titled *Azure IPAM doesn't have access to Azure* appears in the notification center
+- When Azure IPAM is opened, Spaces and Blocks appear empty for every user, with an error stating *Azure IPAM doesn't have permission to read Azure resources. An administrator needs to restore its Reader role.* Administrators' views of subscriptions, virtual networks, subnets and endpoints are empty too, while other users still see the Azure resources they have access to
+- Actions that check address space against Azure, such as creating a Reservation or associating virtual networks with a Block, fail with the same error
 - Reservations stay waiting even after a matching virtual network has been created and tagged
-- An error in the Application Log for the App Service stating that *Azure Resource Graph query failed*, followed by *Access is denied to the requested resource. The user might not have enough permission*
-- The `arm` check returned by `/api/health` is not `ok`, reporting *Access denied.*
+- Errors in the Application Log for the App Service stating *Azure IPAM can't reach Azure as itself*, and *Azure Resource Graph query failed*, followed by *Access is denied to the requested resource. The user might not have enough permission*
+- The `arm` check returned by `/api/health` is not `ok`, reporting the same error
 
 ### <u>Verify</u>
 
@@ -362,10 +363,11 @@ If the Engine was given **Reader** at a Management Group other than the Tenant R
 
 ### <u>Symptoms</u>
 
-- Azure IPAM is slow to load, and Spaces, Blocks, virtual networks, subnets and endpoints then appear empty for every user, with no error message shown
-- Actions that read from Azure, such as creating a Reservation or associating virtual networks with a Block, fail with an error stating *Error communicating with Azure.*
+- Azure IPAM is slow to load, and Spaces, Blocks, virtual networks, subnets and endpoints then appear empty for every user, with an error stating *Azure IPAM couldn't reach Azure Resource Manager.* or *Azure IPAM couldn't reach Microsoft Entra ID.*
+- Actions that read from Azure, such as creating a Reservation or associating virtual networks with a Block, fail with the same error
+- If the problem lasts for more than a few minutes, a notification titled *Azure IPAM can't reach Azure* appears in the notification center
 - Errors in the Application Log for the App Service stating *Error communicating with Azure*, followed by details of the failed connection to Microsoft Entra ID or Azure Resource Manager
-- The `arm` check returned by `/api/health` is not `ok`, reporting that it timed out or that there was an error communicating with Azure
+- The `arm` check returned by `/api/health` is not `ok`, reporting that it timed out or the same error
 
 ### <u>Verify</u>
 
@@ -401,10 +403,11 @@ This applies most often to deployments that route all outbound traffic through a
 
 ### <u>Symptoms</u>
 
-- When Azure IPAM is opened, Spaces and Blocks appear empty for every user, and no error message is shown. Administrators' views of virtual networks, subnets and endpoints are empty too. Depending on how the policy is configured, other users' views of Azure resources may also be affected
-- Actions that read from Azure, such as creating a Reservation or associating virtual networks with a Block, fail with an error stating that *Azure IPAM could not authenticate to Azure, its service principal credentials may be expired or invalid*
-- An error in the Application Log for the App Service stating that *Azure authentication failed*, followed by `AADSTS53003` and *Access has been blocked by Conditional Access policies. The access policy does not allow token issuance*
-- The `arm` check returned by `/api/health` is not `ok`, reporting that Azure IPAM could not authenticate to Azure
+- A notification titled *Conditional Access is blocking Azure IPAM* appears in the notification center
+- When Azure IPAM is opened, Spaces and Blocks appear empty for every user, with an error stating *Conditional Access blocked Azure IPAM from signing in to Azure (AADSTS53003).* Administrators' views of virtual networks, subnets and endpoints are empty too. Depending on how the policy is configured, other users' views of Azure resources may also be affected
+- Actions that read from Azure, such as creating a Reservation or associating virtual networks with a Block, fail with the same error
+- Errors in the Application Log for the App Service stating *Azure IPAM can't reach Azure as itself*, and *Azure authentication failed*, followed by `AADSTS53003` and *Access has been blocked by Conditional Access policies. The access policy does not allow token issuance*
+- The `arm` check returned by `/api/health` is not `ok`, reporting the same error
 
 ### <u>Verify</u>
 
@@ -532,10 +535,11 @@ Service principals are sometimes disabled deliberately, for example by a securit
 
 ### <u>Symptoms</u>
 
-- When Azure IPAM is opened, Spaces, Blocks, virtual networks, subnets and endpoints all appear empty for every user, and no error message is shown. Pages that were already open keep showing the data loaded before the problem started
-- Actions that read from Azure, such as creating a Reservation or associating virtual networks with a Block, fail with an error stating that *Azure IPAM could not authenticate to Azure, its service principal credentials may be expired or invalid*, or that *Azure authentication failed, your credentials may be expired or invalid*
-- An error in the Application Log for the App Service stating that *Azure authentication failed*, followed by `AADSTS7000215` and *Invalid client secret provided. Ensure the secret being sent in the request is the client secret value, not the client secret ID*
-- The `arm` check returned by `/api/health` is not `ok`, reporting that Azure IPAM could not authenticate to Azure
+- A notification titled *Azure IPAM's client secret isn't valid* appears in the notification center
+- When Azure IPAM is opened, Spaces, Blocks, virtual networks, subnets and endpoints all appear empty for every user, with an error stating *Azure IPAM's client secret isn't valid (AADSTS7000215). An administrator needs to check the secret it's using.* Pages that were already open keep showing the data loaded before the problem started
+- Actions that read from Azure, such as creating a Reservation or associating virtual networks with a Block, fail with the same error
+- Errors in the Application Log for the App Service stating *Azure IPAM can't reach Azure as itself*, and *Azure authentication failed*, followed by `AADSTS7000215` and *Invalid client secret provided. Ensure the secret being sent in the request is the client secret value, not the client secret ID*
+- The `arm` check returned by `/api/health` is not `ok`, reporting the same error
 
 ### <u>Verify</u>
 
@@ -558,10 +562,11 @@ Removing the old secret is the last step of a rotation for this reason. Wait unt
 
 ### <u>Symptoms</u>
 
-- When Azure IPAM is opened, Spaces, Blocks, virtual networks, subnets and endpoints all appear empty for every user, and no error message is shown. Pages that were already open keep showing the data loaded before the problem started
-- Actions that read from Azure, such as creating a Reservation or associating virtual networks with a Block, fail with an error stating that *Azure IPAM could not authenticate to Azure, its service principal credentials may be expired or invalid*, or that *Azure authentication failed, your credentials may be expired or invalid*
-- An error in the Application Log for the App Service stating that *Azure authentication failed*, followed by `AADSTS7000222` and *The provided client secret keys for app '...' are expired*
-- The `arm` check returned by `/api/health` is not `ok`, reporting that Azure IPAM could not authenticate to Azure
+- A notification titled *Azure IPAM's client secret has expired* appears in the notification center
+- When Azure IPAM is opened, Spaces, Blocks, virtual networks, subnets and endpoints all appear empty for every user, with an error stating *Azure IPAM's client secret has expired (AADSTS7000222). An administrator needs to rotate it.* Pages that were already open keep showing the data loaded before the problem started
+- Actions that read from Azure, such as creating a Reservation or associating virtual networks with a Block, fail with the same error
+- Errors in the Application Log for the App Service stating *Azure IPAM can't reach Azure as itself*, and *Azure authentication failed*, followed by `AADSTS7000222` and *The provided client secret keys for app '...' are expired*
+- The `arm` check returned by `/api/health` is not `ok`, reporting the same error
 
 <!-- SCREENSHOT PLACEHOLDER: Application Log showing an AADSTS7000222 error -->
 ![AADSTS7000222 In Application Log](./images/aadsts7000222_app_log.png)

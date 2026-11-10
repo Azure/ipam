@@ -8,14 +8,11 @@ from azure.core.exceptions import (
     ClientAuthenticationError,
     HttpResponseError,
     ServiceRequestError,
+    ServiceResponseError,
 )
 from azure.core.pipeline.policies import AsyncRetryPolicy
 from azure.cosmos.aio import CosmosClient
-from azure.identity.aio import (
-    ClientSecretCredential,
-    ManagedIdentityCredential,
-    OnBehalfOfCredential,
-)
+from azure.identity.aio import ManagedIdentityCredential
 from azure.mgmt.managementgroups.aio import ManagementGroupsMgmtClient
 from azure.mgmt.resourcegraph.aio import ResourceGraphClient
 from azure.mgmt.resourcegraph.models import (
@@ -27,6 +24,7 @@ from azure.mgmt.resourcegraph.models import (
 from fastapi import HTTPException
 from netaddr import IPNetwork
 
+from app import engine_access
 from app.globals import globals
 from app.logs.logs import ipam_logger as logger
 
@@ -176,21 +174,20 @@ async def get_obo_token(assertion):
 
     azure_arm_url = f'https://{globals.AZURE_ARM_URL}/user_impersonation'
 
-    credential = OnBehalfOfCredential(
-        tenant_id=globals.TENANT_ID,
-        client_id=globals.CLIENT_ID,
-        client_secret=globals.CLIENT_SECRET,
-        user_assertion=assertion
-    )
+    credential = await get_obo_credentials(assertion)
     obo_token = await credential.get_token(azure_arm_url)
     await credential.close()
 
     return obo_token
 
+# Create every credential for the Engine app registration here, so each sign-in is classified and
+# recorded by app.engine_access. See "Engine Credentials" in the Conventions documentation.
 async def get_client_credentials():
     """Return a client-secret credential for the IPAM service principal (app-only auth)."""
 
-    credential = ClientSecretCredential(
+    engine_access.check_secret()
+
+    credential = engine_access.EngineClientSecretCredential(
         tenant_id=globals.TENANT_ID,
         client_id=globals.CLIENT_ID,
         client_secret=globals.CLIENT_SECRET,
@@ -202,7 +199,9 @@ async def get_client_credentials():
 async def get_obo_credentials(assertion):
     """Return an on-behalf-of credential built from the given user assertion (delegated auth)."""
 
-    credential = OnBehalfOfCredential(
+    engine_access.check_secret()
+
+    credential = engine_access.EngineOnBehalfOfCredential(
         tenant_id=globals.TENANT_ID,
         client_id=globals.CLIENT_ID,
         client_secret=globals.CLIENT_SECRET,
@@ -543,12 +542,25 @@ async def arg_query_helper(credentials, query, app_only = False):
                 "Azure Resource Graph returned {} records but reported {} total, resources likely changed while paging",
                 len(results), poll.total_records
             )
-    except ServiceRequestError as e:
+    except (ServiceRequestError, ServiceResponseError) as e:
         logger.error("Error communicating with Azure: {}", e)
-        raise HTTPException(status_code=500, detail="Error communicating with Azure.")
+
+        # A failure to reach Microsoft Entra ID while signing in arrives already classified.
+        problem = engine_access.problem_of(e)
+
+        if problem is None:
+            problem = engine_access.arm_unreachable()
+            engine_access.record_access_problem(problem)
+
+        raise HTTPException(status_code=problem.status, detail=problem.message)
     # Must precede HttpResponseError: ClientAuthenticationError is a subclass of it.
     except ClientAuthenticationError as e:
         logger.error("Azure authentication failed (app_only={}): {}", app_only, e)
+
+        problem = engine_access.problem_of(e)
+
+        if problem is not None:
+            raise HTTPException(status_code=problem.status, detail=problem.message)
 
         if app_only:
             raise HTTPException(status_code=500, detail="Azure IPAM could not authenticate to Azure, its service principal credentials may be expired or invalid.")
@@ -571,6 +583,13 @@ async def arg_query_helper(credentials, query, app_only = False):
 
         # The SDK maps an ARG 401 to ClientAuthenticationError, so only 403 reaches here.
         if e.status_code == 403:
+            # Azure IPAM's own role is missing, which is a fault of the deployment rather than the caller.
+            if app_only:
+                problem = engine_access.no_azure_access()
+                engine_access.record_access_problem(problem)
+
+                raise HTTPException(status_code=problem.status, detail=problem.message)
+
             raise HTTPException(status_code=403, detail="Access denied.")
 
         # Any other upstream status reflects an ARG-side or query fault rather than a caller error,
@@ -578,5 +597,8 @@ async def arg_query_helper(credentials, query, app_only = False):
         raise HTTPException(status_code=502, detail="Azure Resource Graph query failed.")
     finally:
         await resource_graph_client.close()
+
+    # A query as the caller shows Azure is reachable, but says nothing about Azure IPAM's own role.
+    engine_access.record_access_success(engine_identity=app_only)
 
     return results

@@ -93,7 +93,7 @@ async def _run(detector, state):
         return False
 
     state.result = result or []
-    state.checked_on = time.time()
+    state.checked_on = detector.observed_on() if detector.observed_on else time.time()
     state.succeeded_at = time.monotonic()
     state.next_run_at = now + detector.min_interval
 

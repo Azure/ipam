@@ -4,6 +4,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useMsal } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 
+import { useSnackbar } from "notistack";
+
 import {
   getRefreshInterval,
   refreshAllAsync,
@@ -22,12 +24,14 @@ function Refresh() {
   const refreshLoadedRef = React.useRef(false);
   const inProgressRef = React.useRef(InteractionStatus.None);
   const restartActiveRef = React.useRef(false);
+  const loadErrorRef = React.useRef(null);
 
   const refreshInterval = useSelector(getRefreshInterval);
   const restart = useSelector(getRestart);
 
   const dispatch = useDispatch();
   const { inProgress } = useMsal();
+  const { enqueueSnackbar } = useSnackbar();
 
   React.useEffect(() => {
     inProgressRef.current = inProgress;
@@ -50,7 +54,18 @@ function Refresh() {
 
     (async() => {
       try {
-        await dispatch(refreshAllAsync());
+        const result = await dispatch(refreshAllAsync());
+        const outcomes = Array.isArray(result.payload) ? result.payload : [];
+        const failed = outcomes.find((outcome) => outcome.status === 'rejected');
+        const message = failed ? (failed.reason?.message || 'Unable to load data from Azure IPAM.') : null;
+
+        // The failed data is left empty, so say why. Each distinct error is shown once rather
+        // than on every refresh while it lasts, and again only after a successful refresh.
+        if (message && message !== loadErrorRef.current) {
+          enqueueSnackbar(message, { variant: 'error' });
+        }
+
+        loadErrorRef.current = message;
       } catch (e) {
         console.log("REFRESH ALL ERROR");
         console.log("------------------");
@@ -58,7 +73,7 @@ function Refresh() {
         console.log("------------------");
       }
     })();
-  }, [dispatch]);
+  }, [dispatch, enqueueSnackbar]);
 
   const refreshMe = React.useCallback(() => {
     if (inProgressRef.current !== InteractionStatus.None) {

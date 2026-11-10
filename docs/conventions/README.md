@@ -156,6 +156,16 @@ When an upstream service asks you to wait, as GitHub does after a rate limit, ra
 
 Register each detector in `app/notifications/detectors/__init__.py` with a maximum age and a minimum interval that suit what it calls. A detector that only reads local state can use `0` for both and run on every request. One that calls an external service should keep well clear of that service's limits, remembering that every engine instance runs its detectors independently.
 
+## Engine Credentials
+
+Create every Azure credential for the Engine app registration with `get_client_credentials()` or `get_obo_credentials()` in `app/routers/common/helper.py`. Never construct a `ClientSecretCredential` or `OnBehalfOfCredential` yourself.
+
+Those two functions return credentials that classify each sign-in and record its outcome in `app/engine_access.py`. That record is how Azure IPAM tells everyone its client secret has expired, or that Conditional Access is blocking it, without making a single call of its own to find out. It's also how an error response knows whose fault a failure is. A sign-in that bypasses them is invisible to both, and a request made on a user's behalf goes back to telling them *your credentials may be expired or invalid* when the problem is Azure IPAM's own secret, sending them off to fix something that isn't broken.
+
+Resource Graph queries follow the same rule. Run them through `arg_query()` or `arg_query_helper()`, and pass `app_only=True` whenever the query runs as Azure IPAM itself. A successful query as the engine is what proves its Reader role is intact, and a denied one is what reports it missing. Without `app_only`, a missing role is mistaken for a user who simply can't see the resource.
+
+Ruff enforces the first half of this through `banned-api` in `engine/pyproject.toml`, which rejects importing either credential class anywhere except `app/engine_access.py`. Managed identity credentials, used for Cosmos DB and the App Service configuration, belong to a separate identity and aren't affected.
+
 ## Container Base Images
 
 Pin each base image to a Python version and an operating system release, and nothing finer. `python:3.12-slim-trixie` is the pattern to follow: Python 3.12 on Debian 13, with whatever patch release and security fixes are current when the image is built.

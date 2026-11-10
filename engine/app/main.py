@@ -11,6 +11,11 @@ from urllib.parse import urlparse
 
 import aiohttp
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from azure.core.exceptions import (
+    ClientAuthenticationError,
+    ServiceRequestError,
+    ServiceResponseError,
+)
 from azure.cosmos import PartitionKey
 from azure.cosmos.aio import CosmosClient
 from azure.cosmos.exceptions import CosmosHttpResponseError
@@ -22,6 +27,8 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from app import engine_access
+from app.engine_access import EngineAccessError
 from app.globals import globals
 from app.logs.logs import ipam_logger as logger
 from app.openapi import build_openapi
@@ -320,6 +327,28 @@ app.add_middleware(
 async def http_exception_handler(request, exc):
     # Preserve any headers the raiser set (for example Retry-After on a 429).
     return JSONResponse({"error": str(exc.detail)}, status_code=exc.status_code, headers=getattr(exc, "headers", None))
+
+@app.exception_handler(EngineAccessError)
+async def engine_access_exception_handler(request, exc):
+    return JSONResponse({"error": exc.problem.message}, status_code=exc.problem.status)
+
+# Azure sign-in and connection failures that no route caught. The wrapped credentials attach a
+# classification, so the response explains the cause instead of a plain-text 500.
+@app.exception_handler(ClientAuthenticationError)
+@app.exception_handler(ServiceRequestError)
+@app.exception_handler(ServiceResponseError)
+async def azure_exception_handler(request, exc):
+    logger.error("Unhandled Azure error: {}", exc)
+
+    problem = engine_access.problem_of(exc)
+
+    if problem is not None:
+        return JSONResponse({"error": problem.message}, status_code=problem.status)
+
+    if isinstance(exc, ClientAuthenticationError):
+        return JSONResponse({"error": "Azure authentication failed."}, status_code=500)
+
+    return JSONResponse({"error": "Azure IPAM couldn't reach Azure."}, status_code=500)
 
 @app.middleware("http")
 async def service_mode_gate(request: Request, call_next):

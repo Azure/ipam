@@ -1,10 +1,13 @@
 import asyncio
 
+from azure.cosmos.exceptions import CosmosHttpResponseError
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
 from app.dependencies import UNAUTHORIZED, validate_token
+from app.engine_access import EngineAccessError
 from app.globals import globals
+from app.logs.logs import ipam_logger as logger
 from app.routers.common.helper import arg_query_helper, get_client_credentials
 from app.schema.control import read_schema_doc
 
@@ -29,6 +32,10 @@ REQUIRED_SETTINGS = (
 )
 
 
+class CheckFailed(Exception):
+    """A failed check whose message is safe to return to the caller."""
+
+
 async def _check_config():
     """Verify required settings resolved (no network)."""
 
@@ -39,13 +46,27 @@ async def _check_config():
         missing.append("MANAGED_IDENTITY_ID|COSMOS_KEY")
 
     if missing:
-        raise RuntimeError("Missing required settings: " + ", ".join(missing))
+        raise CheckFailed("Missing required settings: " + ", ".join(missing))
+
+
+def _cosmos_detail(e):
+    """A safe description of a Cosmos DB failure. The full error is logged."""
+
+    if isinstance(e, CosmosHttpResponseError) and e.status_code:
+        return f"Unable to read from Cosmos DB (HTTP {e.status_code})."
+
+    return "Unable to read from Cosmos DB."
 
 
 async def _check_cosmos():
     """Point-read the schema document: proves reachability + identity + read access."""
 
-    await read_schema_doc()
+    try:
+        await read_schema_doc()
+    except Exception as e:
+        logger.error("Health check could not read from Cosmos DB: {}", e)
+
+        raise CheckFailed(_cosmos_detail(e)) from e
 
 
 async def _check_arm():
@@ -60,7 +81,13 @@ async def _check_arm():
 
 
 async def _run_check(check):
-    """Run one dependency check, bounded by a timeout, and normalize the result."""
+    """
+    Run one dependency check, bounded by a timeout, and normalize the result.
+
+    Any user who can sign in can call this endpoint, so only messages written for
+    the purpose are returned. Raw errors, which can include resource names and
+    identifiers, are logged instead.
+    """
 
     try:
         await asyncio.wait_for(check(), timeout=HEALTH_CHECK_TIMEOUT)
@@ -70,8 +97,14 @@ async def _run_check(check):
         return {"ok": False, "detail": f"Timed out after {HEALTH_CHECK_TIMEOUT}s."}
     except HTTPException as e:
         return {"ok": False, "detail": str(e.detail)}
-    except Exception as e:
+    except EngineAccessError as e:
+        return {"ok": False, "detail": e.problem.message}
+    except CheckFailed as e:
         return {"ok": False, "detail": str(e)}
+    except Exception as e:
+        logger.error("Health check '{}' failed: {}", check.__name__.strip("_"), e)
+
+        return {"ok": False, "detail": "Unexpected error, see the Application Log for details."}
 
 
 async def _evaluate_schema():
@@ -87,7 +120,9 @@ async def _evaluate_schema():
     try:
         doc = await asyncio.wait_for(read_schema_doc(), timeout=HEALTH_CHECK_TIMEOUT)
     except Exception as e:
-        return {"ok": False, "detail": f"Unable to read schema version (Cosmos error): {e}"}
+        logger.error("Health check could not read the schema version: {}", e)
+
+        return {"ok": False, "detail": f"Unable to read schema version. {_cosmos_detail(e)}"}
 
     current = doc["current"] if doc else 0
     min_readable = doc["minReadable"] if doc else 0
