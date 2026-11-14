@@ -9,7 +9,10 @@ UI, while the UI can override presentation by the stable ``id``.
 The same shape is intended to be produced by future *remote* notification
 providers (a hosted feed fetched periodically). For security, remotely-authored
 notifications will be constrained to informational / link actions only; only
-local (in-code) detectors may emit actionable ``api`` remediations.
+local (in-code) detectors may emit actionable ``resolve`` remediations.
+
+A notification with an ``admin`` audience is only returned to callers who hold
+``notifications/read/all``.
 """
 
 from typing import Literal
@@ -38,11 +41,12 @@ class NotificationAction(BaseModel):
     label: str
     kind: ActionKind
 
+    # Fields that don't apply to an action's kind are null.
     # resolve / link
     method: str | None = None
     href: str | None = None
-    causesRestart: bool | None = None
-    requiresAdmin: bool | None = None
+    causesRestart: bool = False
+    requiresAdmin: bool = False
 
     # navigate
     to: str | None = None
@@ -66,7 +70,7 @@ class NotificationList(BaseModel):
     """Envelope returned by ``GET /api/notifications``."""
 
     notifications: list[Notification] = []
-    # Unix time (seconds) the oldest included result was produced. Omitted when no detector has succeeded yet.
+    # Unix time (seconds) the oldest included result was produced. Null when no detector has succeeded yet.
     checkedOn: float | None = None
 
 

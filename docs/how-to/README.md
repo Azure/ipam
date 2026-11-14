@@ -737,3 +737,45 @@ Additionally, for guidance on integrating External Network management into autom
 - **Leverage auto-assignment**: When adding endpoints, use the auto-assign IP feature (`ip: null` in the API, or `<auto>` in the UI) to let IPAM track the next available address
 - **Plan before you allocate**: Since External Network CIDRs are accounted for in Block utilization calculations, adding them *before* creating new Azure virtual networks ensures you won't accidentally encounter overlap
 - **Use force delete judiciously**: The force delete option on External Networks and External Subnets will remove all child objects. Use it carefully, especially in production environments
+
+## Notifications
+
+Azure IPAM keeps an eye on your deployment and lets you know when something needs attention, such as a newer version being available or a problem with Azure IPAM's own access to Azure. Notifications appear behind the **bell** icon in the upper-right corner of every page.
+
+<!-- SCREENSHOT PLACEHOLDER: App bar showing the notification bell with an unread badge -->
+![Notification Bell](./images/ipam_notification_bell.png)
+
+The badge on the bell shows how many notifications you haven't read yet, and its color reflects the most severe one: <span style="color: red">**red**</span> for critical, <span style="color: darkorange">**orange**</span> for a warning and <span style="color: dodgerblue">**blue**</span> for information. When something critical needs attention, the bell also pulses briefly to draw your eye.
+
+Click the bell to open the list of notifications, with the most severe at the top.
+
+<!-- SCREENSHOT PLACEHOLDER: Notification list open beneath the bell, showing notifications of different severities -->
+![Notification List](./images/ipam_notification_list.png)
+
+From the list you can:
+
+- **Open a notification** — Click it to see the full details and anything you can do about it.
+- **Dismiss a notification** — Click the **X** next to it to hide it. Some notifications can't be dismissed, because they describe a problem that stops Azure IPAM from working properly.
+- **Mark all as read** — Click the double check mark to clear the unread badge without opening each one.
+- **Refresh** — Click the refresh icon to have Azure IPAM check everything again right away, rather than wait for its next regular check.
+
+> **Note:** Dismissing a notification only hides it in your current browser session. It returns when you click **Refresh** or reload the page, as long as it still applies.
+
+### Acting on a Notification
+
+Opening a notification shows its full message, along with whatever actions it offers. Not every notification offers every kind of action:
+
+- **Links** — Open documentation that explains the notification and what to do about it. These open in a new tab.
+- **Fix it for you** — Some notifications can be fixed directly from Azure IPAM, with a button such as **Switch**. Only administrators can use these. For everyone else the button is disabled, so let your administrator know.
+- **Take you there** — Some notifications offer a button that opens the relevant page in Azure IPAM.
+
+<!-- SCREENSHOT PLACEHOLDER: Notification details dialog showing a message, a documentation link and an action button -->
+![Notification Details](./images/ipam_notification_details.png)
+
+Some fixes restart Azure IPAM. When they do, a progress screen is shown while it restarts, and the page reloads once Azure IPAM is back. Once a problem is fixed, its notification disappears the next time Azure IPAM checks.
+
+Some notifications are meant only for administrators, and are shown only to them.
+
+### Notifications via the API
+
+Notifications are also available through the Azure IPAM REST API, for automation and monitoring. For details and example calls, please see the [Notifications](/api/README.md#notifications) section of the API documentation.

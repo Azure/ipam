@@ -49,6 +49,7 @@ class Permission(StrEnum):
     EXCLUSIONS_UPDATE = "exclusions/update"
     EXCLUSIONS_DELETE = "exclusions/delete"
     USERS_READ = "users/read"
+    NOTIFICATIONS_READ_ALL = "notifications/read/all"
     NOTIFICATIONS_UPDATE = "notifications/update"
 
 DESCRIPTIONS = {
@@ -79,6 +80,7 @@ DESCRIPTIONS = {
     Permission.EXCLUSIONS_UPDATE: "Replace the list of excluded subscriptions.",
     Permission.EXCLUSIONS_DELETE: "Stop excluding a subscription.",
     Permission.USERS_READ: "List every Azure IPAM user.",
+    Permission.NOTIFICATIONS_READ_ALL: "See notifications meant for administrators, not only those for everyone.",
     Permission.NOTIFICATIONS_UPDATE: "Resolve notifications.",
 }
 

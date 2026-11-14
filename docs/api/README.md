@@ -1156,3 +1156,174 @@ tenant_id       :
 prefixes        : {10.1.8.0/24}
 containers      : {}
 ```
+
+## Notifications
+
+Notifications let you know when something about your Azure IPAM deployment needs attention, such as a newer version being available or a problem with Azure IPAM's own access to Azure. For how notifications appear in the UI, please see the [Notifications](/how-to/README.md#notifications) section of the How-To documentation.
+
+Every notification describes itself completely: how severe it is, what it means, and what you can do about it. New kinds of notification are added over time, and because each one carries everything needed to understand and act on it, your automation can handle them without knowing about them in advance.
+
+The API base path for the Notifications endpoints is:
+
+```text
+/api/notifications
+```
+
+### Notification Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/notifications` | List the notifications that currently apply |
+| `POST` | `/notifications/{notification_id}/resolve` | Fix the problem a notification describes, where it offers a fix |
+
+> **Note:** Every signed-in user can list notifications, but notifications meant for administrators are only returned to administrators. Resolving a notification requires an administrator. See the [Permissions Reference](/roles-permissions/permissions-reference.md#users-and-notifications) for details.
+
+### The Notification Object
+
+`GET /notifications` returns the notifications that currently apply, along with `checkedOn`, the Unix time at which the oldest of them was last checked. `checkedOn` is `null` until Azure IPAM has finished checking for the first time after it starts.
+
+```json
+{
+  "notifications": [ ... ],
+  "checkedOn": 1794268800.418276
+}
+```
+
+Every field described below is always included in the response. A field with no value is `null`.
+
+Each notification has the following fields:
+
+| Field | Description |
+|-------|-------------|
+| `id` | Identifies the notification. The same situation always produces the same `id`, so you can use it to recognize a notification you've already seen. |
+| `severity` | `critical`, `warning` or `information` |
+| `audience` | `all`, or `admin` for notifications that are only returned to administrators |
+| `category` | A short label that groups related notifications |
+| `title` | A one-line summary |
+| `message` | A full description of what is happening, and what to do about it |
+| `dismissible` | Whether the UI lets people hide the notification. It's `false` for problems that stop Azure IPAM from working properly, and has no effect on the API. |
+| `data` | Additional values specific to the notification, such as version numbers. Its contents vary from one notification to another, and it's `null` when there are none. |
+| `actions` | The actions the notification offers, which may be none |
+
+Each action has an `id`, a `label` describing it, and a `kind` that says what it does. Fields that don't apply to an action's kind are `null`, apart from `requiresAdmin` and `causesRestart`, which are `false`.
+
+| Kind | What It Does | Fields |
+|------|--------------|--------|
+| `link` | Points to documentation about the notification | `href` is the URL of the documentation |
+| `resolve` | Fixes the problem through the Azure IPAM API | `method` and `href` are the request to make. `requiresAdmin` is `true` when only administrators can make it, and `causesRestart` is `true` when Azure IPAM restarts to apply the fix. |
+| `navigate` | Opens a page in the Azure IPAM UI | `to` is the path of the page. It's only meaningful in the UI. |
+
+### How Current Notifications Are
+
+Azure IPAM reuses the result of each check for a short time, which varies from one check to another, so a notification can take a few minutes to appear or clear. Use `checkedOn` to see how current the response is. Like `createdOn` on a Reservation, it's a Unix time, and the [List Notifications](#list-notifications) example shows how to convert it to a date.
+
+To check everything again right away, add `refresh=true`. A check that has only just run isn't repeated, so the response may still include some results from moments earlier.
+
+> **Note:** If Azure IPAM runs on more than one instance, each one checks independently, so consecutive calls can return slightly different values for `checkedOn`.
+
+### Resolving a Notification
+
+Notifications that Azure IPAM can fix itself offer a `resolve` action. Make the request it describes, using its `method` and `href`, with no request body. Before making any change, Azure IPAM checks again whether the notification still applies.
+
+| Response | Meaning |
+|----------|---------|
+| `202 Accepted` | The fix has started. The response includes a `status` and a `detail` describing what happens next. |
+| `403 Forbidden` | Only administrators can resolve notifications |
+| `404 Not Found` | The notification doesn't offer a fix that Azure IPAM can apply |
+| `409 Conflict` | The notification no longer applies, for example because it has already been resolved |
+
+When `causesRestart` is `true`, Azure IPAM restarts shortly after accepting the request, and requests fail for a short time while it does.
+
+### Using Notifications in Automation
+
+Notifications are a convenient way to monitor an Azure IPAM deployment, for example from a pipeline or a scheduled job:
+
+- **Act on `severity`.** Treat `critical` as a problem that needs fixing now, and `warning` and `information` as things to look at when convenient.
+- **Use `id` to follow a notification over time.** Raise an alert the first time an `id` appears, rather than on every check, and close it when the `id` no longer appears.
+- **Don't keep a fixed list of `id` values.** New notifications are added over time. Treat an `id` you haven't seen before as new, and use its `title`, `message` and `link` actions to explain it.
+- **There's no need to poll often.** Results are reused for a few minutes anyway, so checking every few minutes is plenty.
+
+### Example API Calls
+
+```powershell
+$engineClientId = '<Engine App Registration Client ID>'
+$appName = 'ipamdev'
+
+$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
+
+$headers = @{
+    'Accept'       = 'application/json'
+    'Content-Type' = 'application/json'
+}
+```
+
+#### List Notifications
+
+```powershell
+$response = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/notifications" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+
+$response.notifications | Select-Object severity, title, id
+```
+
+`checkedOn` is a Unix time. To see when the results were checked as a local date and time:
+
+```powershell
+[DateTimeOffset]::FromUnixTimeSeconds([long]$response.checkedOn).LocalDateTime
+```
+
+#### Check Everything Again
+
+```powershell
+$response = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/notifications?refresh=true" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+```
+
+#### Fail a Pipeline When Something Is Critical
+
+```powershell
+$critical = $response.notifications | Where-Object severity -eq 'critical'
+
+foreach ($notification in $critical) {
+    Write-Host "$($notification.title): $($notification.message)"
+
+    foreach ($link in ($notification.actions | Where-Object kind -eq 'link')) {
+        Write-Host "  $($link.label): $($link.href)"
+    }
+}
+
+if ($critical) {
+    throw "Azure IPAM reported $(@($critical).Count) critical notification(s)."
+}
+```
+
+#### Resolve a Notification
+
+Find the notification's `resolve` action, then make the request it describes.
+
+```powershell
+$notification = $response.notifications | Where-Object id -eq '<notification id>'
+$action = $notification.actions | Where-Object kind -eq 'resolve'
+
+$result = Invoke-RestMethod `
+    -Method $action.method `
+    -Uri "https://$appName.azurewebsites.net$($action.href)" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+```
+
+```text
+$result
+
+status : accepted
+detail : <a description of what happens next>
+```

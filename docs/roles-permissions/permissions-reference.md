@@ -30,7 +30,7 @@ These actions need no permission, so they're available to every signed-in user, 
 - Create Reservations, view and cancel their own, and see every other user's pending Reservations without their ID or description.
 - View Azure resources in the Discover section and through `/azure`, limited to what their own Azure permissions allow.
 - View the virtual networks available to associate with a Block, limited to what their own Azure permissions allow.
-- View notifications, and view and change their own settings.
+- View [notifications](/how-to/README.md#notifications), apart from those meant only for administrators, and view and change their own settings.
 
 ## Permissions
 
@@ -105,10 +105,11 @@ Creating Reservations, viewing and cancelling your own, and seeing other users' 
 
 ### Users and Notifications
 
-| Permission             | Allows                        | Routes and Decisions                                   | Held By       |
-|------------------------|-------------------------------|--------------------------------------------------------|---------------|
-| `users/read`           | List every Azure IPAM user.   | `GET /users`                                           | Administrator |
-| `notifications/update` | Resolve notifications.        | `POST /notifications/{notification_id}/resolve`        | Administrator |
+| Permission               | Allows                                                                   | Routes and Decisions                                                                                     | Held By       |
+|--------------------------|--------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|---------------|
+| `users/read`             | List every Azure IPAM user.                                              | `GET /users`                                                                                             | Administrator |
+| `notifications/read/all` | See notifications meant for administrators, not only those for everyone. | **Decision:** without it, `GET /notifications` leaves out notifications whose `audience` is `admin`.     | Administrator |
+| `notifications/update`   | Resolve notifications.                                                   | `POST /notifications/{notification_id}/resolve`                                                          | Administrator |
 
 ## Responses When a Permission Is Missing
 

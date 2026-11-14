@@ -1,5 +1,4 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from fastapi.responses import JSONResponse
 
 from app.dependencies import (
     UNAUTHORIZED,
@@ -7,8 +6,8 @@ from app.dependencies import (
     get_token_auth_header,
 )
 from app.notifications import get_notifications, get_resolver, is_active
-from app.notifications.models import NotificationActionResult
-from app.permissions import Permission, requires
+from app.notifications.models import NotificationActionResult, NotificationList
+from app.permissions import Grants, Permission, get_grants, requires
 
 router = APIRouter(
     prefix="/notifications",
@@ -21,32 +20,44 @@ router = APIRouter(
 @router.get(
     "",
     summary="Get Azure IPAM Notifications",
+    response_model=NotificationList,
     status_code=200
 )
 async def list_notifications(
-    refresh: bool = Query(False, description="Run every check again rather than reuse recent results")
+    refresh: bool = Query(False, description="Run every check again rather than reuse recent results"),
+    grants: Grants = Depends(get_grants)
 ):
     """
     Active notifications about this Azure IPAM deployment.
 
-    Each notification is self-describing: a stable ``id``, ``severity``, human
-    ``title``/``message``, structured ``data``, and zero or more ``actions``.
-    An ``api`` action carries the ``method``/``endpoint``/``body`` to remediate
-    it (some require an admin); a ``link`` action points at documentation.
+    Each notification is self-describing: a stable ``id``, a ``severity``, an
+    ``audience``, a ``category``, a human-readable ``title`` and ``message``,
+    optional structured ``data``, and zero or more ``actions``. A ``link``
+    action points at documentation, a ``navigate`` action at a page in the UI,
+    and a ``resolve`` action at the endpoint that fixes the problem. Every field
+    is always returned, and is ``null`` when it has no value, such as an action
+    field that doesn't apply to that kind of action.
 
-    Each check's result is reused for a period, so the response can be a few
-    minutes old: up to 15 minutes for the container registry and an hour for
-    available updates. ``checkedOn`` is the Unix time the oldest result was
-    produced. Pass ``refresh=true`` to run every check again; a check that ran
-    within the last few seconds, or minutes for available updates, isn't repeated.
+    Each check's result is reused for a short period, which varies by check, so
+    the response can be a few minutes old. ``checkedOn`` is the Unix time the
+    oldest result was produced, or ``null`` before the first check completes.
+    Pass ``refresh=true`` to run every check again; a check that ran very
+    recently isn't repeated.
 
     Visible to any authenticated user so a non-admin can surface an issue to an
-    admin; the underlying remediation endpoints enforce their own authorization.
+    admin. Notifications with an ``admin`` audience are only returned to
+    administrators, and the remediation endpoints enforce their own authorization.
     """
 
     result = await get_notifications(force=refresh)
 
-    return JSONResponse(result.model_dump(exclude_none=True))
+    if not grants.can(Permission.NOTIFICATIONS_READ_ALL):
+        result = NotificationList(
+            notifications=[item for item in result.notifications if item.audience != "admin"],
+            checkedOn=result.checkedOn,
+        )
+
+    return result
 
 
 @router.post(

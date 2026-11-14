@@ -31,7 +31,7 @@ The table below lists common tasks and who can perform them.
 | Associate any virtual network with a Block, or remove one         | Yes            | No                                                                                            |
 | Create, change and delete Spaces, Blocks and External Networks    | Yes            | No                                                                                            |
 | Manage administrators and subscription exclusions                 | Yes            | No                                                                                            |
-| Act on notifications, such as switching container registries      | Yes            | No                                                                                            |
+| [Act on notifications](/how-to/README.md#acting-on-a-notification), such as switching container registries | Yes | No |
 
 In the UI, users can open every section of the menu except **Admin**. The **Configure** pages are read-only for them, apart from **Reservations**.
 
@@ -46,6 +46,7 @@ In the UI, users can open every section of the menu except **Admin**. The **Conf
 | Settled Reservations                                   | All                                    | Their own                                                           |
 | Azure resources that aren't associated with a Block    | Everything within Azure IPAM's scope   | What their own Azure permissions allow                              |
 | Networks reported by an overlap check                  | In full                                | In full if associated with a Block, otherwise only the overlapping ranges |
+| Notifications                                          | All                                    | All, except those meant only for administrators                     |
 
 A Reservation's ID stays with the person who created it because the ID is what claims the address space. Any virtual network tagged with the ID, and matching the reserved CIDR, fulfils the Reservation.
 
