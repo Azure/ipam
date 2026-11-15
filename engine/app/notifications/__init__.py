@@ -34,6 +34,7 @@ __all__ = [
     "get_notifications",
     "get_resolver",
     "is_active",
+    "recheck",
 ]
 
 # Upper bound on a single detector so a hung dependency can't stall the endpoint.
@@ -139,6 +140,20 @@ async def get_notifications(force=False):
         notifications=[item for state in succeeded for item in state.result],
         checkedOn=min((state.checked_on for state in succeeded), default=None),
     )
+
+
+async def recheck(detector_name):
+    """
+    Run a detector now, ignoring its stored result and minimum interval, after a
+    change that affects what it reports. Never raises: a failed run keeps the
+    previous result, as it would on a scheduled run.
+    """
+
+    detector = next(detector for detector in DETECTORS if detector.name == detector_name)
+    state = _states[detector.name]
+
+    async with state.lock:
+        await _run(detector, state)
 
 
 async def is_active(notification_id):

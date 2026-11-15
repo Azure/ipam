@@ -12,6 +12,7 @@ from app.dependencies import (
     get_token_auth_header,
 )
 from app.models import Admin, Subscription
+from app.notifications import recheck
 from app.permissions import Permission, requires
 from app.routers.common.helper import (
     AzureScope,
@@ -108,6 +109,8 @@ async def create_admin(
 
         await cosmos_replace(admin_query[0], admin_data)
 
+    await recheck("setup")
+
     return Response(status_code=status.HTTP_201_CREATED)
 
 @router.put(
@@ -151,6 +154,8 @@ async def update_admins(
         admin_data['admins'] = jsonable_encoder(admin_list)
 
         await cosmos_replace(admin_query[0], admin_data)
+
+    await recheck("setup")
 
     return PlainTextResponse(status_code=status.HTTP_200_OK)
 
@@ -218,6 +223,8 @@ async def delete_admin(
     del admin_data['admins'][admin_index]
 
     await cosmos_replace(admin_query[0], admin_data)
+
+    await recheck("setup")
 
     return Response(status_code=status.HTTP_200_OK)
 

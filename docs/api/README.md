@@ -20,6 +20,8 @@ You'll then be presented with a message notifying you that your token has been s
 
 ![IPAM Azure AD Token Clipboard](./images/token_clipboard.png)
 
+You can also copy your token from **Profile** in the same menu. Profile shows how long your current token has left, and links straight to the [Swagger UI](#using-the-swagger-ui) where you can use it. Either way, a copied token always has at least 10 minutes left, as Azure IPAM fetches a new one when the current token is about to expire.
+
 You can also retrieve an Azure AD token from Azure IPAM via Azure PowerShell by using the [Get-AzAccessToken](https://docs.microsoft.com/powershell/module/az.accounts/get-azaccesstoken) commandlet. The token is retrieved from the API exposed via the backend engine application registration. This is the **ResourceUrl** you will be making the access token call against via Azure PowerShell.
 
 ![IPAM API Resource URL](./images/ipam_api_resource_url.png)
@@ -1326,4 +1328,100 @@ $result
 
 status : accepted
 detail : <a description of what happens next>
+```
+
+## Users and Roles
+
+Every signed-in user has a set of preferences in Azure IPAM, such as dark mode and the tables whose layouts they've saved, and holds one or more roles that decide what they can do. For what each role allows, see [Roles & Permissions](/roles-permissions/README.md).
+
+The API base paths for the Users and Roles endpoints are:
+
+```text
+/api/users
+/api/roles
+```
+
+### User and Role Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/users` | List every Azure IPAM user (Admin Only) |
+| `GET` | `/users/me` | Get your own preferences and access |
+| `PATCH` | `/users/me` | Change your own preferences |
+| `GET` | `/roles` | List the roles that can be held in Azure IPAM |
+
+### Your Access
+
+`GET /users/me` reports the roles you hold in `roles`, as a list of role IDs. Look up a role's name and description in `GET /roles`, which every signed-in user can read. Role IDs never change, so use them rather than names in automation.
+
+| Field | Description |
+|-------|-------------|
+| `roles` | The IDs of the roles you hold. The IDs of the built-in roles are listed in the [Permissions Reference](/roles-permissions/permissions-reference.md) |
+| `isAdmin` | Whether you're an administrator |
+
+Each role in `GET /roles` has an `id`, a `name` and `description` for display, and `builtIn`, which is `true` for the roles defined by Azure IPAM itself.
+
+### Setup Mode
+
+Until at least one administrator is designated, every signed-in user is an administrator. This is a state of the whole deployment rather than of any one user, so it's reported as a [notification](#notifications) with the ID `setup-mode`, rather than by `/users/me`. Its severity is `critical` and it stays until an administrator is designated, so automation can check for it alongside other critical notifications. Removing the last administrator returns Azure IPAM to setup mode.
+
+### Changing Your Preferences
+
+`PATCH /users/me` takes a list of [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902) operations. Only the following are accepted, and anything else is ignored:
+
+| Operation | Path | Description |
+|-----------|------|-------------|
+| `replace` | `/darkMode` | `true` or `false` |
+| `replace` | `/apiRefresh` | How often the UI refreshes its data, in minutes: `5`, `10`, `15` or `30` |
+| `add`, `replace` | `/views/{view}` | Save the layout of a table |
+| `remove` | `/views/{view}` | Remove a table's saved layout. Removing a layout that isn't saved returns `409`. |
+
+### Example API Calls
+
+```powershell
+$engineClientId = '<Engine App Registration Client ID>'
+$appName = 'ipamdev'
+
+$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
+
+$headers = @{
+    'Accept'       = 'application/json'
+    'Content-Type' = 'application/json'
+}
+```
+
+#### Check Your Roles
+
+```powershell
+$me = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/users/me" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+
+$roles = Invoke-RestMethod `
+    -Method 'Get' `
+    -Uri "https://$appName.azurewebsites.net/api/roles" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers
+
+$roles | Where-Object id -in $me.roles | Select-Object name, description
+```
+
+#### Remove a Saved Table Layout
+
+```powershell
+$body = @(
+    @{ op = 'remove'; path = '/views/spaces' }
+)
+
+Invoke-RestMethod `
+    -Method 'Patch' `
+    -Uri "https://$appName.azurewebsites.net/api/users/me" `
+    -Authentication 'Bearer' `
+    -Token $accessToken `
+    -Headers $headers `
+    -Body (ConvertTo-Json -InputObject $body)
 ```

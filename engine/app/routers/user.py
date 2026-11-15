@@ -12,9 +12,10 @@ from app.dependencies import (
     api_auth_checks,
     get_tenant_id,
     get_token_auth_header,
+    resolve_admin,
 )
 from app.models import User, UserExpand, UserUpdate, ViewSettings
-from app.permissions import Permission, requires
+from app.permissions import Permission, requires, role_for
 from app.routers.admin import new_admin_db
 from app.routers.common.helper import (
     cosmos_query,
@@ -24,12 +25,32 @@ from app.routers.common.helper import (
     get_user_id_from_jwt,
 )
 
+VIEW_NAMES = "spaces|blocks|vnets|vhubs|subnets|endpoints|networks|reservations|admins|exclusions|extnetworks|extsubnets|extendpoints"
+
 router = APIRouter(
     prefix="/users",
     tags=["users"],
     dependencies=[Depends(api_auth_checks)],
     responses=UNAUTHORIZED
 )
+
+async def get_admins(tenant_id):
+    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
+
+    if not admin_query:
+        admin_query = [await new_admin_db([], [], tenant_id)]
+
+    return admin_query[0]['admins']
+
+def get_access(user_id, admins):
+    """The access fields reported for a user: their admin status and the roles they hold."""
+
+    is_admin = resolve_admin(user_id, admins)
+
+    return {
+        "isAdmin": is_admin,
+        "roles": [role_for(is_admin).id]
+    }
 
 async def new_user(user_id, tenant_id):
     new_user = {
@@ -66,9 +87,15 @@ async def scrub_patch(patch):
         },
         {
             "ops": ["add", "replace"],
-            "path": "/views/(spaces|blocks|vnets|vhubs|subnets|endpoints|networks|reservations|admins|exclusions|extnetworks|extsubnets|extendpoints)",
+            "path": f"/views/({VIEW_NAMES})",
             "valid": ViewSettings,
-            "error": "Valid views are [spaces|blocks|vnets|vhubs|subnets|endpoints|networks|reservations|admins|exclusions|extnetworks|extsubnets|extendpoints]."
+            "error": f"Valid views are [{VIEW_NAMES}]."
+        },
+        {
+            "ops": ["remove"],
+            "path": f"/views/({VIEW_NAMES})$",
+            "valid": None,
+            "error": f"Valid views are [{VIEW_NAMES}]."
         }
     ]
 
@@ -76,7 +103,9 @@ async def scrub_patch(patch):
         target = next((x for x in allowed_ops if ((item['op'] in x['ops']) and re.match(x['path'], item['path']))), None)
 
         if target:
-            if isinstance(target['valid'], str):
+            if target['valid'] is None:
+                scrubbed_patch.append(item)
+            elif isinstance(target['valid'], str):
                 if re.match(target['valid'], str(item['value']), re.IGNORECASE):
                     scrubbed_patch.append(item)
                 else:
@@ -110,16 +139,12 @@ async def get_users(
     user_list = []
 
     users = await cosmos_query("SELECT VALUE c.data FROM c WHERE c.type = 'user'", tenant_id)
-    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
-
-    admins = admin_query[0]
+    admins = await get_admins(tenant_id)
 
     for user in users:
-        is_admin = next((x for x in admins['admins'] if x['id'] == user['id']), None)
-
         current_user = {
             **user,
-            "isAdmin": True if is_admin else False
+            **get_access(user['id'], admins)
         }
 
         user_list.append(current_user)
@@ -157,19 +182,7 @@ async def get_user(
 
     user_data = copy.deepcopy(user_query[0])
 
-    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
-
-    if not admin_query:
-        admin_query = [await new_admin_db([], [], tenant_id)]
-
-    admins = admin_query[0]
-
-    if admins['admins']:
-        is_admin = next((x for x in admins['admins'] if x['id'] == user_id), None)
-    else:
-        is_admin = True
-
-    user_data['data']['isAdmin'] = True if is_admin else False
+    user_data['data'].update(get_access(user_id, await get_admins(tenant_id)))
 
     if expand:
         return UserExpand(**user_data['data'])
@@ -192,16 +205,22 @@ async def update_user(
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
-    Update a User with a JSON patch:
+    Update your own user settings with a JSON patch:
 
     - **[&lt;JSON Patch&gt;]**: Array of JSON Patches
 
-    Allowed operations:
-    - **replace**
-
-    Allowed paths:
+    Allowed paths and operations:
     - **/darkMode**
+        - **replace**: `true` or `false`
     - **/apiRefresh**
+        - **replace**: how often the UI refreshes its data, in minutes: `5`, `10`, `15` or `30`
+    - **/views/{view}**: the saved layout of a table, where **{view}** is one of
+      `spaces`, `blocks`, `vnets`, `vhubs`, `subnets`, `endpoints`, `networks`, `reservations`,
+      `admins`, `exclusions`, `extnetworks`, `extsubnets` or `extendpoints`
+        - **add**, **replace**: save the layout
+        - **remove**: remove the saved layout; returns **409** if none is saved
+
+    Operations on any other path are ignored.
     """
 
     user_id = get_user_id_from_jwt(token)
@@ -226,12 +245,6 @@ async def update_user(
 
     await cosmos_replace(user_query[0], user_data)
 
-    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
-
-    admins = admin_query[0]
-
-    is_admin = next((x for x in admins['admins'] if x['id'] == user_id), None)
-
-    user_data['data']['isAdmin'] = True if is_admin else False
+    user_data['data'].update(get_access(user_id, await get_admins(tenant_id)))
 
     return user_data['data']

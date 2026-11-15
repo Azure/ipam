@@ -19,6 +19,7 @@ from app.notifications.detectors import (
     platform,
     registry,
     secret_expiry,
+    setup,
     update,
 )
 
@@ -50,6 +51,9 @@ DETECTORS = [
     Detector("registry", registry.detect, max_age=15 * 60, min_interval=15, resolvers=registry.RESOLVERS),
     # Reads environment variables only.
     Detector("platform", platform.detect, max_age=0, min_interval=0),
+    # Reads the admin record from Cosmos DB. Re-run whenever the list of administrators changes, so the
+    # minute only bounds how long another engine instance can lag behind.
+    Detector("setup", setup.detect, max_age=60, min_interval=5),
     # Calls GitHub anonymously, whose limit may be shared with other apps on the same outbound IP address.
     Detector("update", update.detect, max_age=60 * 60, min_interval=5 * 60),
 ]

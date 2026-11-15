@@ -17,7 +17,7 @@ from fastapi.openapi.utils import get_openapi
 
 from app.dependencies import ADMIN_FORBIDDEN
 from app.logs.logs import ipam_logger as logger
-from app.permissions import ROLES
+from app.permissions import USER_ROLE
 
 ADMIN_MARKER = "(Admin Only)"
 
@@ -26,7 +26,7 @@ def _admin_only(gate):
 
     permission = getattr(gate, "required_permission", None)
 
-    return permission is not None and permission not in ROLES["User"]
+    return permission is not None and permission not in USER_ROLE.permissions
 
 def _requires_admin(dependant):
     """Recursively test whether a route's dependency tree contains an admin-only route gate."""

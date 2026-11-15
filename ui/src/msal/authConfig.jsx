@@ -22,6 +22,9 @@ export const msalConfig = {
   },
   system: {
     allowRedirectInIframe: false,
+    // Renew tokens within 10 minutes of expiry (MSAL's default is 5), so a token copied from the UI
+    // for use with the API always has time left on it.
+    tokenRenewalOffsetSeconds: 600,
     /**
      * Below you can configure MSAL.js logs. For more information, visit:
      * https://docs.microsoft.com/azure/active-directory/develop/msal-logging-js

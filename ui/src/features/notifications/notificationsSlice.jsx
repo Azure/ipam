@@ -2,7 +2,7 @@ import { createSlice, createSelector, createAsyncThunk } from '@reduxjs/toolkit'
 
 import { getAdminStatus } from '../ipam/ipamSlice';
 import { fetchNotifications, resolveNotification } from '../ipam/ipamAPI';
-import { SEVERITY_PRIORITY, NOTIFICATION_AUDIENCE, UPDATE_NOTIFICATION_ID } from './utils/notificationConstants';
+import { SEVERITY_PRIORITY, NOTIFICATION_AUDIENCE, UPDATE_NOTIFICATION_ID, SETUP_MODE_NOTIFICATION_ID } from './utils/notificationConstants';
 
 const initialState = {
   items: [],     // Notification[] — replaced wholesale by the backend fetch later
@@ -148,6 +148,14 @@ export const getUpdateNotification = createSelector(
         n.id === UPDATE_NOTIFICATION_ID &&
         (n.audience !== NOTIFICATION_AUDIENCE.ADMIN || isAdmin)
     ) ?? null
+);
+
+// The setup mode notification, if the engine reported one. While it's active no
+// administrators are designated, so every administrator holds the role because
+// of setup mode, which Profile explains.
+export const getSetupModeNotification = createSelector(
+  [selectItems],
+  (items) => items.find((n) => n.id === SETUP_MODE_NOTIFICATION_ID) ?? null
 );
 
 export default notificationsSlice.reducer;

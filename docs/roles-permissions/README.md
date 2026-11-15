@@ -2,7 +2,7 @@
 
 ## Overview
 
-Access in Azure IPAM is based on roles. There are currently two. **Administrators** set up and maintain your address plan, and **users** work within it. Administrators can also do everything a user can.
+Access in Azure IPAM is based on roles. There are currently two. **Administrators** set up and maintain your address plan, and **users** work within it. Administrators can also do everything a user can. You can see which roles you hold in **Profile**, in the menu under your avatar.
 
 When Azure IPAM is deployed, it's granted read-only access to your Azure environment. By default this covers your whole tenant through the [Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory), though you can choose a different management group during [deployment](/deployment/README.md). This access lets Azure IPAM account for every applicable network within its scope when it plans and checks address space, so the answers it gives are accurate. It's never used to widen what you can see. The principles below describe how Azure IPAM keeps those two goals in balance.
 

@@ -36,13 +36,41 @@ function getAccount() {
  * interactive redirect to re-authenticate the user.
  */
 export async function getApiToken() {
+  const { accessToken } = await getApiTokenDetails();
+
+  return accessToken;
+}
+
+/**
+ * Acquire an access token for the IPAM Engine API along with its expiry.
+ *
+ * Same CacheLookupPolicy rationale as getApiToken above.
+ */
+export async function getApiTokenDetails() {
   const response = await msalInstance.acquireTokenSilent({
     ...apiRequest,
     account: getAccount(),
     cacheLookupPolicy: CacheLookupPolicy.AccessTokenAndRefreshToken,
   });
 
-  return response.accessToken;
+  return {
+    accessToken: response.accessToken,
+    expiresOn: response.expiresOn,
+  };
+}
+
+/**
+ * Copy an access token for the IPAM Engine API to the clipboard and return its expiry.
+ *
+ * MSAL renews a token close to expiry before returning it (see tokenRenewalOffsetSeconds
+ * in authConfig), so the copied token always has time left on it.
+ */
+export async function copyApiToken() {
+  const { accessToken, expiresOn } = await getApiTokenDetails();
+
+  await window.navigator.clipboard.writeText(accessToken);
+
+  return expiresOn;
 }
 
 /**

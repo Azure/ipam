@@ -25,63 +25,86 @@ _NOTIFICATIONS = {
     "secret_expired": (
         "engine-secret-expired",
         "Azure IPAM's client secret has expired",
-        f"Azure IPAM can't sign in to Azure because its client secret has expired. An administrator needs to rotate it. {REASON}",
+        f"""
+            Azure IPAM can't sign in to Azure because its client secret has expired. An administrator needs to
+            rotate it. {REASON}
+        """,
         "aadsts7000222-engine-secret-expired",
         [("rotate-secret", "How to rotate the secret", ROTATE_URL)],
     ),
     "secret_invalid": (
         "engine-secret-invalid",
         "Azure IPAM's client secret isn't valid",
-        f"Azure IPAM can't sign in to Azure because the client secret it's using isn't valid. An administrator needs to check it. {REASON}",
+        f"""
+            Azure IPAM can't sign in to Azure because the client secret it's using isn't valid. An administrator
+            needs to check it. {REASON}
+        """,
         "aadsts7000215-engine-secret-invalid",
         [],
     ),
     "secret_unresolved": (
         "engine-secret-not-configured",
         "Azure IPAM's client secret isn't configured",
-        f"Azure IPAM can't sign in to Azure because the Key Vault reference for its client secret couldn't be resolved. {REASON}",
+        f"""
+            Azure IPAM can't sign in to Azure because the Key Vault reference for its client secret couldn't be
+            resolved. {REASON}
+        """,
         "key-vault-reference-not-resolved-app-service",
         [],
     ),
     "secret_missing": (
         "engine-secret-not-configured",
         "Azure IPAM's client secret isn't configured",
-        f"Azure IPAM can't sign in to Azure because its client secret isn't configured. {REASON}",
+        f"""
+            Azure IPAM can't sign in to Azure because its client secret isn't configured. {REASON}
+        """,
         None,
         [],
     ),
     "blocked_conditional_access": (
         "engine-blocked-conditional-access",
         "Conditional Access is blocking Azure IPAM",
-        f"A Conditional Access policy is blocking Azure IPAM from signing in to Azure. An administrator needs to review the policy. {REASON}",
+        f"""
+            A Conditional Access policy is blocking Azure IPAM from signing in to Azure. An administrator needs
+            to review the policy. {REASON}
+        """,
         "aadsts53003-engine-blocked-by-conditional-access",
         [],
     ),
     "no_azure_access": (
         "engine-no-azure-access",
         "Azure IPAM doesn't have access to Azure",
-        f"Azure IPAM doesn't have permission to read Azure resources. An administrator needs to restore its Reader role. {REASON}",
+        f"""
+            Azure IPAM doesn't have permission to read Azure resources. An administrator needs to restore its
+            Reader role. {REASON}
+        """,
         "access-denied-engine-reader-role",
         [],
     ),
     "entra_unreachable": (
         "engine-azure-unreachable",
         "Azure IPAM can't reach Azure",
-        f"Azure IPAM hasn't been able to reach Microsoft Entra ID for several minutes. {REASON}",
+        f"""
+            Azure IPAM hasn't been able to reach Microsoft Entra ID for several minutes. {REASON}
+        """,
         "timeouts-reaching-azure-network",
         [],
     ),
     "arm_unreachable": (
         "engine-azure-unreachable",
         "Azure IPAM can't reach Azure",
-        f"Azure IPAM hasn't been able to reach Azure Resource Manager for several minutes. {REASON}",
+        f"""
+            Azure IPAM hasn't been able to reach Azure Resource Manager for several minutes. {REASON}
+        """,
         "timeouts-reaching-azure-network",
         [],
     ),
     "sign_in_failed": (
         "engine-sign-in-failed",
         "Azure IPAM can't sign in to Azure",
-        f"Azure IPAM can't sign in to Azure. {REASON}",
+        f"""
+            Azure IPAM can't sign in to Azure. {REASON}
+        """,
         None,
         [],
     ),

@@ -15,7 +15,8 @@ import { plural, singular } from 'pluralize';
 import { Routes, Route, Link, Navigate, useNavigate } from "react-router";
 
 import { callMsGraph, callMsGraphPhoto } from "../../msal/graph";
-import { getApiToken } from "../../msal/tokenService";
+import { copyApiToken } from "../../msal/tokenService";
+import { getInitials } from "../../utils/initials";
 
 import NotificationCenter from "../notifications/NotificationCenter";
 import ServiceRestartGate from "../restart/ServiceRestartGate";
@@ -56,8 +57,7 @@ import {
   ListItemButton,
   Divider,
   Collapse,
-  Avatar,
-  Badge
+  Avatar
 } from "@mui/material";
 
 import {
@@ -101,7 +101,7 @@ import AdminTabs from "../tabs/adminTabs";
 import ConfigTabs from "../tabs/configTabs";
 
 import Refresh from "./utils/refresh";
-import UserSettings from "./utils/userSettings";
+import Profile from "./utils/profile";
 import About from "./utils/about";
 
 import {
@@ -133,49 +133,9 @@ const Search = styled("div")(({ theme }) => ({
   },
 }));
 
-// const Update = styled(Typography)(({ theme }) => ({
-//   display: 'flex',
-//   justifyContent: 'center',
-//   alignItems: 'center',
-//   width: '100vw',
-//   fontSize: '12px',
-//   color: theme.palette.mode == 'dark' ? 'black' : 'white',
-//   backgroundColor: theme.palette.warning.light,
-//   height: '100%'
-// }));
-
-// const StyledBadge = styled(Badge)(({ theme }) => ({
-//   '& .MuiBadge-badge': {
-//     backgroundColor: theme.palette.warning.light,
-//     color: theme.palette.warning.light,
-//     boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
-//     '&::after': {
-//       position: 'absolute',
-//       top: 0,
-//       left: 0,
-//       width: '100%',
-//       height: '100%',
-//       borderRadius: '50%',
-//       animation: 'ripple 1.2s infinite ease-in-out',
-//       border: '1px solid currentColor',
-//       content: '""',
-//     },
-//   },
-//   '@keyframes ripple': {
-//     '0%': {
-//       transform: 'scale(.8)',
-//       opacity: 1,
-//     },
-//     '100%': {
-//       transform: 'scale(2.4)',
-//       opacity: 0,
-//     },
-//   },
-// }));
-
 export default function NavDrawer() {
   const { instance, inProgress } = useMsal();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+  const { enqueueSnackbar } = useSnackbar();
 
   const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
   const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = React.useState(null);
@@ -183,7 +143,7 @@ export default function NavDrawer() {
   const [graphPhoto, setGraphPhoto] = React.useState(null);
   const [navChildOpen, setNavChildOpen] = React.useState({});
   const [drawerState, setDrawerState] = React.useState(false);
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [profileOpen, setProfileOpen] = React.useState(false);
   const [aboutOpen, setAboutOpen] = React.useState(false);
   const [searchData, setSearchData] = React.useState([]);
   const [dataLoaded, setDataLoaded] = React.useState(false);
@@ -414,20 +374,6 @@ export default function NavDrawer() {
     setDrawerState(open);
   };
 
-  // React.useEffect(() => {
-  //   const action = snackbarId => (
-  //     <>
-  //       <IconButton onClick={() => { closeSnackbar(snackbarId) }}>
-  //         <CloseIcon sx={{ color: 'white' }} />
-  //       </IconButton>
-  //     </>
-  //   );
-
-  //   if(meLoaded && graphData) {
-  //     enqueueSnackbar("Update available! See menu for details.", { action, variant: "info", preventDuplicate: true, persist: true });
-  //   }
-  // }, [meLoaded, graphData, enqueueSnackbar, closeSnackbar]);
-
   React.useEffect(() => {
     function getTitleCase(str) {
       const titleCase = str
@@ -639,8 +585,7 @@ export default function NavDrawer() {
 
     (async () => {
       try {
-        const token = await getApiToken();
-        navigator.clipboard.writeText(token);
+        await copyApiToken();
         handleMenuClose();
         enqueueSnackbar('Token copied to clipboard!', { variant: 'success' });
       } catch (e) {
@@ -659,15 +604,7 @@ export default function NavDrawer() {
     });
   }
 
-  function stringAvatar(name) {
-    const nameSplit = name.split(" ");
-
-    return {
-      children: nameSplit.length === 1 ? `${nameSplit[0][0]}` : `${nameSplit[0][0]}${nameSplit[1][0]}`,
-    };
-  }
-
-  const handleProfileMenuOpen = (event) => {
+  const handleAccountMenuOpen = (event) => {
     setMenuAnchorEl(event.currentTarget);
   };
 
@@ -684,8 +621,8 @@ export default function NavDrawer() {
     setMobileMenuAnchorEl(event.currentTarget);
   };
 
-  const handleSettingsOpen = () => {
-    setSettingsOpen(true);
+  const handleProfileOpen = () => {
+    setProfileOpen(true);
     handleMenuClose();
     handleMobileMenuClose();
   };
@@ -696,8 +633,8 @@ export default function NavDrawer() {
     handleMobileMenuClose();
   };
 
-  const handleSettingsClose = () => {
-    setSettingsOpen(false);
+  const handleProfileClose = () => {
+    setProfileOpen(false);
   };
 
   const handleAboutClose = () => {
@@ -752,7 +689,7 @@ export default function NavDrawer() {
         },
       }}
     >
-      <MenuItem key='settings' onClick={() => handleSettingsOpen()}>
+      <MenuItem key='profile' onClick={() => handleProfileOpen()}>
         <ListItemIcon>
           <AccountCircleIcon fontSize="small" />
         </ListItemIcon>
@@ -828,7 +765,7 @@ export default function NavDrawer() {
         },
       }}
     >
-      <MenuItem key='mobile-settings' onClick={() => handleSettingsOpen()}>
+      <MenuItem key='mobile-profile' onClick={() => handleProfileOpen()}>
         <ListItemIcon>
           <AccountCircleIcon fontSize="small" />
         </ListItemIcon>
@@ -942,21 +879,15 @@ export default function NavDrawer() {
                 aria-label="account of current user"
                 aria-controls={menuId}
                 aria-haspopup="true"
-                onClick={handleProfileMenuOpen}
+                onClick={handleAccountMenuOpen}
                 color="inherit"
               >
-                {/* <StyledBadge
-                  overlap="circular"
-                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                  variant="dot"
-                > */}
                 { graphData ?
-                  graphPhoto ?
-                  <Avatar alt={graphData.displayName} src={graphPhoto} /> :
-                  <Avatar {...stringAvatar(graphData.displayName)} /> :
+                  <Avatar alt={graphData.displayName} src={graphPhoto ?? undefined}>
+                    {getInitials(graphData.displayName)}
+                  </Avatar> :
                   <Avatar />
                 }
-                {/* </StyledBadge> */}
               </IconButton>
             </Box>
             <Box sx={{ display: { xs: "flex", md: "none" } }}>
@@ -997,9 +928,11 @@ export default function NavDrawer() {
         </Box>
       </Drawer>
       <Box sx={{ height: "calc(100vh - 64px)", overflow: "hidden" }}>
-        <UserSettings
-          open={settingsOpen}
-          handleClose={handleSettingsClose}
+        <Profile
+          open={profileOpen}
+          handleClose={handleProfileClose}
+          user={graphData}
+          photo={graphPhoto}
         />
         <About
           open={aboutOpen}

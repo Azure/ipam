@@ -6,6 +6,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     EmailStr,
+    Field,
     GetCoreSchemaHandler,
     GetJsonSchemaHandler,
     model_validator,
@@ -13,6 +14,11 @@ from pydantic import (
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
+#####################
+#   COMMON MODELS   #
+#####################
+
+# Generic building blocks that don't describe an Azure IPAM resource or belong to one area of the API.
 
 class IPv4Network(str):
     """
@@ -91,6 +97,13 @@ class IPv4Address(str):
         if not m:
             raise ValueError('invalid ip address format')
         return input_value
+
+class JSONPatch(BaseModel):
+    """A single JSON Patch (RFC 6902) operation used to update a resource."""
+
+    op: str
+    path: str
+    value: Any = None
 
 #######################
 #   RESPONSE MODELS   #
@@ -457,13 +470,6 @@ class ExtEndpointReq(BaseModel):
     desc: str
     ip: IPv4Address | None
 
-class JSONPatch(BaseModel):
-    """A single JSON Patch (RFC 6902) operation used to update a resource."""
-
-    op: str
-    path: str
-    value: Any = None
-
 SpaceUpdate = Annotated[list[JSONPatch], None]
 
 BlockUpdate = Annotated[list[JSONPatch], None]
@@ -582,12 +588,13 @@ class ViewSettings(BaseModel):
     columnState: list[dict] | None = None
 
 class User(BaseModel):
-    """IPAM user settings such as dark mode, API refresh interval, and admin status."""
+    """IPAM user settings such as dark mode and API refresh interval, along with the user's access."""
 
     id: UUID
     darkMode: bool
     apiRefresh: int
     isAdmin: bool
+    roles: list[UUID] = Field(description="IDs of the roles the user holds, as listed by `GET /roles`.")
 
     model_config = ConfigDict(
         json_encoders = {
@@ -602,6 +609,7 @@ class UserExpand(BaseModel):
     darkMode: bool
     apiRefresh: int
     isAdmin: bool
+    roles: list[UUID] = Field(description="IDs of the roles the user holds, as listed by `GET /roles`.")
     views: dict[str, ViewSettings]
 
     model_config = ConfigDict(
@@ -610,14 +618,19 @@ class UserExpand(BaseModel):
         }
     )
 
-class JSONPatch(BaseModel):
-    """A single JSON Patch (RFC 6902) operation used to update a resource."""
-
-    op: str
-    path: str
-    value: Any = None
-
 UserUpdate = Annotated[list[JSONPatch], None]
+
+###################
+#   ROLE MODELS   #
+###################
+
+class RoleDefinition(BaseModel):
+    """A role that can be held in Azure IPAM."""
+
+    id: UUID = Field(description="Stable identifier, referenced by a user's `roles`. Never changes once published.")
+    name: str
+    description: str
+    builtIn: bool = Field(description="Defined by Azure IPAM rather than created in this deployment.")
 
 ###################
 #   TOOL MODELS   #

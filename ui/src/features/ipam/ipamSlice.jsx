@@ -2,8 +2,6 @@ import { createAsyncThunk, createSelector, createSlice } from '@reduxjs/toolkit'
 
 import { concat, merge, cloneDeep, isEqual, uniq } from 'lodash-es';
 
-// import SnackbarUtils from '../../utils/snackbar';
-
 import {
   fetchSpaces,
   createSpace,
@@ -44,6 +42,7 @@ const initialState = {
   refreshInterval: null,
   viewSettings: null,
   isAdmin: false,
+  roles: [],
   spaces: null,
   subscriptions: null,
   vNets: null,
@@ -463,7 +462,6 @@ export const ipamSlice = createSlice({
       .addCase(fetchSpacesAsync.rejected, (state, action) => {
         console.log("fetchSpacesAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(createSpaceAsync.fulfilled, (state, action) => {
@@ -479,7 +477,6 @@ export const ipamSlice = createSlice({
       .addCase(createSpaceAsync.rejected, (state, action) => {
         console.log("createSpaceAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(updateSpaceAsync.fulfilled, (state, action) => {
@@ -517,7 +514,6 @@ export const ipamSlice = createSlice({
       .addCase(updateSpaceAsync.rejected, (state, action) => {
         console.log("updateSpaceAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(deleteSpaceAsync.fulfilled, (state, action) => {
@@ -532,7 +528,6 @@ export const ipamSlice = createSlice({
       .addCase(deleteSpaceAsync.rejected, (state, action) => {
         console.log("deleteSpaceAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(createBlockAsync.fulfilled, (state, action) => {
@@ -551,7 +546,6 @@ export const ipamSlice = createSlice({
       .addCase(createBlockAsync.rejected, (state, action) => {
         console.log("createBlockAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(updateBlockAsync.fulfilled, (state, action) => {
@@ -589,7 +583,6 @@ export const ipamSlice = createSlice({
       .addCase(updateBlockAsync.rejected, (state, action) => {
         console.log("updateBlockAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(deleteBlockAsync.fulfilled, (state, action) => {
@@ -606,7 +599,6 @@ export const ipamSlice = createSlice({
       .addCase(deleteBlockAsync.rejected, (state, action) => {
         console.log("deleteBlockAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(replaceBlockNetworksAsync.fulfilled, (state, action) => {
@@ -673,7 +665,6 @@ export const ipamSlice = createSlice({
       .addCase(createBlockExternalAsync.rejected, (state, action) => {
         console.log("createBlockExternalAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(updateBlockExternalAsync.fulfilled, (state, action) => {
@@ -698,7 +689,6 @@ export const ipamSlice = createSlice({
       .addCase(updateBlockExternalAsync.rejected, (state, action) => {
         console.log("updateBlockExternalAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(deleteBlockExternalAsync.fulfilled, (state, action) => {
@@ -717,7 +707,6 @@ export const ipamSlice = createSlice({
       .addCase(deleteBlockExternalAsync.rejected, (state, action) => {
         console.log("deleteBlockExternalAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(createBlockExtSubnetAsync.fulfilled, (state, action) => {
@@ -737,7 +726,6 @@ export const ipamSlice = createSlice({
       .addCase(createBlockExtSubnetAsync.rejected, (state, action) => {
         console.log("createBlockExtSubnetAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(updateBlockExtSubnetAsync.fulfilled, (state, action) => {
@@ -767,7 +755,6 @@ export const ipamSlice = createSlice({
       .addCase(updateBlockExtSubnetAsync.rejected, (state, action) => {
         console.log("updateBlockExtSubnetAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(deleteBlockExtSubnetAsync.fulfilled, (state, action) => {
@@ -788,7 +775,6 @@ export const ipamSlice = createSlice({
       .addCase(deleteBlockExtSubnetAsync.rejected, (state, action) => {
         console.log("deleteBlockExtSubnetAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(replaceBlockExtSubnetEndpointsAsync.fulfilled, (state, action) => {
@@ -809,7 +795,6 @@ export const ipamSlice = createSlice({
       .addCase(replaceBlockExtSubnetEndpointsAsync.rejected, (state, action) => {
         console.log("replaceBlockExtSubnetEndpoints Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
 
@@ -832,7 +817,6 @@ export const ipamSlice = createSlice({
       .addCase(createBlockResvAsync.rejected, (state, action) => {
         console.log("createBlockResvAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
 
@@ -861,7 +845,6 @@ export const ipamSlice = createSlice({
       .addCase(deleteBlockResvsAsync.rejected, (state, action) => {
         console.log("deleteBlockResvsAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(fetchVNetsAsync.fulfilled, (state, action) => {
@@ -906,7 +889,6 @@ export const ipamSlice = createSlice({
       .addCase(fetchVNetsAsync.rejected, (state, action) => {
         console.log("fetchVNetsAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(fetchSubnetsAsync.fulfilled, (state, action) => {
@@ -923,7 +905,6 @@ export const ipamSlice = createSlice({
       .addCase(fetchSubnetsAsync.rejected, (state, action) => {
         console.log("fetchSubnetsAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(fetchEndpointsAsync.fulfilled, (state, action) => {
@@ -932,7 +913,6 @@ export const ipamSlice = createSlice({
       .addCase(fetchEndpointsAsync.rejected, (state, action) => {
         console.log("fetchEndpointsAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(fetchNetworksAsync.fulfilled, (state, action) => {
@@ -985,7 +965,6 @@ export const ipamSlice = createSlice({
       .addCase(fetchNetworksAsync.rejected, (state, action) => {
         console.log("fetchNetworksAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(refreshAllAsync.fulfilled, (state, action) => {
@@ -1088,7 +1067,6 @@ export const ipamSlice = createSlice({
 
         console.log("refreshAllAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(getMeAsync.fulfilled, (state, action) => {
@@ -1109,12 +1087,12 @@ export const ipamSlice = createSlice({
         }
 
         state.isAdmin = action.payload['isAdmin'];
+        state.roles = action.payload['roles'] ?? [];
         state.meLoaded = true;
       })
       .addCase(getMeAsync.rejected, (state, action) => {
         console.log("getMeAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       })
       .addCase(updateMeAsync.fulfilled, (state, action) => {
@@ -1124,10 +1102,14 @@ export const ipamSlice = createSlice({
 
           if(index !== -1) {
             const viewName = update.path.substring(index + key.length);
-            const viewValue = update.value;
 
             var newViewSettings = cloneDeep(state.viewSettings);
-            newViewSettings[viewName] = viewValue;
+
+            if(update.op === 'remove') {
+              delete newViewSettings[viewName];
+            } else {
+              newViewSettings[viewName] = update.value;
+            }
 
             state.viewSettings = newViewSettings;
           }
@@ -1136,7 +1118,6 @@ export const ipamSlice = createSlice({
       .addCase(updateMeAsync.rejected, (state, action) => {
         console.log("updateMeAsync Rejected");
         console.log(action);
-        // SnackbarUtils.error(`Error fetching user settings (${action.error.message})`);
         throw action.payload;
       });
   },
@@ -1150,6 +1131,7 @@ export const { setUserId, setDarkMode } = ipamSlice.actions;
 export const getRefreshInterval = (state) => state.ipam.refreshInterval;
 export const getViewSettings = (state) => state.ipam.viewSettings;
 export const getAdminStatus = (state) => state.ipam.isAdmin;
+export const getRoles = (state) => state.ipam.roles;
 export const getRefreshing = (state) => state.ipam.refreshing;
 export const getDarkMode = (state) => state.ipam.darkMode;
 export const getMeLoaded = (state) => state.ipam.meLoaded;

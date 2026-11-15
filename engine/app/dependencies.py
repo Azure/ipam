@@ -1,5 +1,4 @@
 import asyncio
-import copy
 import json
 import random
 import time
@@ -239,6 +238,16 @@ async def validate_token(
 
     return payload
 
+def in_setup_mode(admins: list[dict]) -> bool:
+    """Whether IPAM is in setup mode: no admins are designated yet, so every user is one."""
+
+    return not admins
+
+def resolve_admin(user_id: str, admins: list[dict]) -> bool:
+    """Whether a user is an IPAM admin. In setup mode, everyone is."""
+
+    return in_setup_mode(admins) or any(admin['id'] == user_id for admin in admins)
+
 async def check_admin(payload: dict = Depends(validate_token)) -> bool:
     """Resolve whether the caller is an IPAM admin."""
 
@@ -247,17 +256,9 @@ async def check_admin(payload: dict = Depends(validate_token)) -> bool:
 
     admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", user_tid)
 
-    if admin_query:
-        admin_data = copy.deepcopy(admin_query[0])
+    admins = admin_query[0]['admins'] if admin_query else []
 
-        if admin_data['admins']:
-            is_admin = next((x for x in admin_data['admins'] if user_oid == x['id']), None)
-        else:
-            is_admin = True
-    else:
-        is_admin = True
-
-    return True if is_admin else False
+    return resolve_admin(user_oid, admins)
 
 # Router-level gate. Resolving `check_admin` runs the whole chain (bearer scheme,
 # token validation, admin lookup), so declaring this alone protects a router.

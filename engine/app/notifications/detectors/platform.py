@@ -40,12 +40,11 @@ async def detect():
             audience="all",
             category="Deployment",
             title="Migrate off the legacy Docker Compose platform",
-            message=(
-                "This deployment is running on the legacy Docker Compose App Service "
-                f"model, which Microsoft is retiring on {RETIREMENT_DATE}. Migrate to the "
-                "modern single-container deployment to keep receiving Azure IPAM "
-                "updates and avoid disruption."
-            ),
+            message=f"""
+                This deployment is running on the legacy Docker Compose App Service model, which Microsoft is
+                retiring on {RETIREMENT_DATE}. Migrate to the modern single-container deployment to keep receiving
+                Azure IPAM updates and avoid disruption.
+            """,
             dismissible=False,
             data={"currentStack": LEGACY_STACK, "retirementDate": RETIREMENT_DATE},
             actions=[

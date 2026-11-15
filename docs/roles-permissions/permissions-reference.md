@@ -2,14 +2,16 @@
 
 ## Overview
 
-Every action that Azure IPAM restricts is controlled by a named **permission**. A **role** is a set of permissions, and what you can do depends on the role you hold. For the principles behind these decisions, see [Roles & Permissions](/roles-permissions/README.md).
+Every action that Azure IPAM restricts is controlled by a named **permission**. A **role** is a set of permissions, and what you can do depends on the roles you hold. For the principles behind these decisions, see [Roles & Permissions](/roles-permissions/README.md).
 
 There are currently two fixed roles:
 
-| Role          | Permissions                          |
-|---------------|--------------------------------------|
-| Administrator | Every permission on this page        |
-| User          | `associations/read`, `externals/read` |
+| Role          | ID                                     | Permissions                           |
+|---------------|----------------------------------------|---------------------------------------|
+| Administrator | `c253f57d-6a28-4e5b-a4b4-70702322d5e5` | Every permission on this page         |
+| User          | `cd6cd44f-5ff3-499f-8d25-fdc630de3d97` | `associations/read`, `externals/read` |
+
+A role's ID is how the API refers to it, for example in the `roles` your user reports in `GET /users/me`. IDs are UUIDs that never change, so automation should use them rather than role names, which may.
 
 The User role holds only two permissions, but that doesn't make it read-only. Everything described in [What Every User Can Do](#what-every-user-can-do) needs no permission at all, so the permissions below mostly cover administration and the wider views that go with it.
 
@@ -31,6 +33,7 @@ These actions need no permission, so they're available to every signed-in user, 
 - View Azure resources in the Discover section and through `/azure`, limited to what their own Azure permissions allow.
 - View the virtual networks available to associate with a Block, limited to what their own Azure permissions allow.
 - View [notifications](/how-to/README.md#notifications), apart from those meant only for administrators, and view and change their own settings.
+- View the roles defined in Azure IPAM, with `GET /roles`.
 
 ## Permissions
 

@@ -6,7 +6,9 @@ response asks `grants.can(...)`. Enforcement and the API documentation both come
 declarations, so they cannot disagree. See the Conventions documentation, "Declaring Permissions".
 """
 
+from dataclasses import dataclass
 from enum import StrEnum
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, Query
 
@@ -84,22 +86,55 @@ DESCRIPTIONS = {
     Permission.NOTIFICATIONS_UPDATE: "Resolve notifications.",
 }
 
-ROLES = {
-    "Admin": frozenset(Permission),
+@dataclass(frozen=True)
+class Role:
+    """
+    A named set of permissions.
+
+    The `id` is the stable identifier exposed through the API, and never changes once published. Built-in
+    roles have fixed, documented IDs; `name` and `description` are for display and may change freely.
+    """
+
+    id: UUID
+    name: str
+    description: str
+    permissions: frozenset[Permission]
+
+ADMIN_ROLE = Role(
+    id=UUID("c253f57d-6a28-4e5b-a4b4-70702322d5e5"),
+    name="Administrator",
+    description=(
+        "Manage the address plan, including Spaces, Blocks, External Networks, network associations "
+        "and administrators."
+    ),
+    permissions=frozenset(Permission),
+)
+
+USER_ROLE = Role(
+    id=UUID("cd6cd44f-5ff3-499f-8d25-fdc630de3d97"),
+    name="User",
+    description="Reserve address space and work within the plan that administrators create.",
     # Associations and External Networks are already part of every Space and Block response, so their
     # dedicated routes are open to everyone as well.
-    "User": frozenset({
+    permissions=frozenset({
         Permission.ASSOCIATIONS_READ,
         Permission.EXTERNALS_READ,
     }),
-}
+)
+
+ROLES = {role.id: role for role in (ADMIN_ROLE, USER_ROLE)}
+
+def role_for(is_admin: bool) -> Role:
+    """The built-in role held by an administrator or by everyone else."""
+
+    return ADMIN_ROLE if is_admin else USER_ROLE
 
 class Grants:
     """The caller's role and the permissions it holds."""
 
-    def __init__(self, role: str):
+    def __init__(self, role: Role):
         self.role = role
-        self.permissions = ROLES[role]
+        self.permissions = role.permissions
 
     def can(self, permission: Permission) -> bool:
         return permission in self.permissions
@@ -107,7 +142,7 @@ class Grants:
 async def get_grants(is_admin: bool = Depends(check_admin)) -> Grants:
     """Resolve the caller's grants. When no administrators are configured, everyone is an administrator."""
 
-    return Grants("Admin" if is_admin else "User")
+    return Grants(role_for(is_admin))
 
 async def get_azure_scope(grants: Grants = Depends(get_grants)) -> AzureScope:
     """The caller's view of Azure: Azure IPAM's full view if they may have it, otherwise their own."""

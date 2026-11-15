@@ -79,11 +79,10 @@ async def detect():
                 audience="all",
                 category="Deployment",
                 title="Azure IPAM container registry has moved",
-                message=(
-                    "This deployment still pulls container images from the legacy "
-                    f"registry ({registry}). Migrate to the current official registry "
-                    f"({OFFICIAL_REGISTRY}) to keep receiving Azure IPAM updates."
-                ),
+                message=f"""
+                    This deployment still pulls container images from the legacy registry ({registry}). Migrate to
+                    the current official registry ({OFFICIAL_REGISTRY}) to keep receiving Azure IPAM updates.
+                """,
                 dismissible=False,
                 data={"currentRegistry": registry, "targetRegistry": OFFICIAL_REGISTRY},
                 actions=_actions("registry-migration"),
@@ -98,12 +97,11 @@ async def detect():
                 audience="all",
                 category="Deployment",
                 title="This deployment is using a development registry",
-                message=(
-                    "This deployment is pulling container images from the Azure IPAM "
-                    f"development registry ({registry}). If you were testing a pre-release "
-                    f"build, switch back to the official registry ({OFFICIAL_REGISTRY}) to stay "
-                    "on supported updates."
-                ),
+                message=f"""
+                    This deployment is pulling container images from the Azure IPAM development registry
+                    ({registry}). If you were testing a pre-release build, switch back to the official registry
+                    ({OFFICIAL_REGISTRY}) to stay on supported updates.
+                """,
                 dismissible=True,
                 data={"currentRegistry": registry, "targetRegistry": OFFICIAL_REGISTRY},
                 actions=_actions("registry-dev"),

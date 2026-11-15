@@ -11,7 +11,7 @@ Azure IPAM leverages the [Microsoft Authentication Library (MSAL)](https://docs.
 
 For the full picture of what each role can see and do, see [Roles & Permissions](/roles-permissions/README.md).
 
-> **Note:** Upon initial deployment, no administrators are defined. When the admin list is empty, **all** users are treated as administrators. This grants full access so you can complete initial setup, but you should designate at least one administrator promptly to restrict administrative functions.
+> **Note:** Upon initial deployment, no administrators are defined. When the admin list is empty, **all** users are treated as administrators. This grants full access so you can complete initial setup, but you should designate at least one administrator promptly to restrict administrative functions. Until you do, a critical [notification](#notifications) is shown to everyone, and **Profile** explains why each person is an administrator. Removing the last administrator returns Azure IPAM to this state.
 
 ### Managing Administrators
 

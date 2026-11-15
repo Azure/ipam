@@ -56,6 +56,10 @@ BeforeAll {
     "Content-Type" = "application/json"
   }
 
+  # IDs of the built-in roles, as published in the Permissions Reference. They're a contract and must never change.
+  $script:adminRoleId = 'c253f57d-6a28-4e5b-a4b4-70702322d5e5'
+  $script:userRoleId = 'cd6cd44f-5ff3-499f-8d25-fdc630de3d97'
+
   # Transient failures worth a retry: Resource Graph throttling surfaced by the engine, plus upstream
   # faults. Client errors (400/403/404/409/422) are deliberately excluded because this suite asserts
   # them, and retrying would both mask regressions and slow every negative test.
@@ -2675,6 +2679,30 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
       # active-gate (409) instead of triggering a real remediation/restart.
       { New-ApiResource '/notifications/registry-migration/resolve' @{} } | Should -Throw -ExpectedMessage '*409*'
     }
+
+    # GET /api/notifications
+    It 'Reports setup mode only while no administrators are designated' {
+
+      # The suite creates Spaces and Blocks, so it always runs as an administrator and can read the list.
+      $admins, $null = Get-ApiResource '/admin/admins'
+      $notifications, $null = Get-ApiResource '/notifications'
+      $me, $null = Get-ApiResource '/users/me'
+
+      $setup = @($notifications.notifications | Where-Object { $_.id -eq 'setup-mode' })
+
+      if (@($admins | Where-Object { $null -ne $_ }).Count -eq 0) {
+        $setup.Count | Should -Be 1
+        $setup[0].severity | Should -Be 'critical'
+        $setup[0].dismissible | Should -Be $false
+        ($setup[0].actions | Where-Object { $_.kind -eq 'navigate' }).to | Should -Be '/admin/admins'
+
+        # Until an administrator is designated, every user is one.
+        $me.isAdmin | Should -Be $true
+      }
+      else {
+        $setup.Count | Should -Be 0
+      }
+    }
   }
 
   Context 'Health' {
@@ -2707,6 +2735,115 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
       $status.status | Should -Be 'OK'
       $status.stack | Should -Be 'AppContainer'
       $status.environment | Should -Be 'AZURE_PUBLIC'
+    }
+  }
+
+  Context 'Users' {
+    BeforeAll {
+      # The saved-view tests run as the suite's own identity, so whatever layout it already has saved
+      # under this key is put back afterwards.
+      $script:testViewKey = 'extendpoints'
+
+      $me, $null = Get-ApiResource '/users/me?expand=true'
+      $script:originalView = $me.views.PSObject.Properties[$script:testViewKey]
+    }
+
+    AfterAll {
+      if ($script:originalView) {
+        # Serialized here rather than through Update-ApiResource, whose default depth would truncate a real layout.
+        $restore = ConvertTo-Json -InputObject @(@{ op = 'add'; path = "/views/$($script:testViewKey)"; value = $script:originalView.Value }) -Depth 20
+
+        $null = Invoke-ApiRequest -method Patch -resource '/users/me' -body $restore
+      }
+      else {
+        $me, $null = Get-ApiResource '/users/me?expand=true'
+
+        if ($me.views.PSObject.Properties[$script:testViewKey]) {
+          $null = Update-ApiResource '/users/me' @(@{ op = 'remove'; path = "/views/$($script:testViewKey)" })
+        }
+      }
+    }
+
+    # GET /api/users/me
+    It 'Reports the roles the caller holds' {
+
+      $roles, $null = Get-ApiResource '/roles'
+      $me, $status = Get-ApiResource '/users/me'
+
+      $status | Should -Be 200
+
+      $me.roles | Should -Not -BeNullOrEmpty
+
+      foreach ($id in $me.roles) {
+        $roles.id | Should -Contain $id
+      }
+
+      $me.isAdmin | Should -Be ($me.roles -contains $script:adminRoleId)
+    }
+
+    # PATCH /api/users/me
+    It 'Reports the same access after an update as before it' {
+
+      $me, $null = Get-ApiResource '/users/me'
+
+      $updated, $status = Update-ApiResource '/users/me' @(@{ op = 'replace'; path = '/darkMode'; value = $me.darkMode })
+
+      $status | Should -Be 200
+
+      $updated.isAdmin | Should -Be $me.isAdmin
+      ($updated.roles -join ',') | Should -Be ($me.roles -join ',')
+    }
+
+    # PATCH /api/users/me
+    It 'Removes a saved view' {
+
+      $null = Update-ApiResource '/users/me' @(@{ op = 'add'; path = "/views/$($script:testViewKey)"; value = @{} })
+
+      $me, $null = Get-ApiResource '/users/me?expand=true'
+      $me.views.PSObject.Properties[$script:testViewKey] | Should -Not -BeNullOrEmpty
+
+      $null, $status = Update-ApiResource '/users/me' @(@{ op = 'remove'; path = "/views/$($script:testViewKey)" })
+
+      $status | Should -Be 200
+
+      $me, $null = Get-ApiResource '/users/me?expand=true'
+      $me.views.PSObject.Properties[$script:testViewKey] | Should -BeNullOrEmpty
+    }
+
+    # PATCH /api/users/me
+    It 'Returns an error removing a view that is not saved' {
+
+      { Update-ApiResource '/users/me' @(@{ op = 'remove'; path = "/views/$($script:testViewKey)" }) } | Should -Throw -ExpectedMessage '*409*'
+    }
+
+    # PATCH /api/users/me
+    It 'Ignores removing anything other than a saved view' {
+
+      $null, $status = Update-ApiResource '/users/me' @(@{ op = 'remove'; path = '/darkMode' })
+
+      $status | Should -Be 200
+
+      $me, $null = Get-ApiResource '/users/me'
+      $me.darkMode | Should -BeOfType [bool]
+    }
+  }
+
+  Context 'Roles' {
+    # GET /api/roles
+    It 'Verify Roles' {
+
+      $roles, $status = Get-ApiResource '/roles'
+
+      $status | Should -Be 200
+
+      $roles.id | Should -Contain $script:adminRoleId
+      $roles.id | Should -Contain $script:userRoleId
+
+      foreach ($role in $roles) {
+        $role.name | Should -Not -BeNullOrEmpty
+        $role.description | Should -Not -BeNullOrEmpty
+        $role.builtIn | Should -Be $true
+      }
     }
   }
 }

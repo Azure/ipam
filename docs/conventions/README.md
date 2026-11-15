@@ -41,7 +41,7 @@ For the principles behind these rules, see the [Roles & Permissions](/roles-perm
 
 Never check whether the caller is an administrator, and never hand-write an "admin only" note or a `403` response. Declare the permission a route or decision needs, and let both enforcement and the documentation come from that declaration.
 
-Permissions live in `app/permissions.py`. Each `Permission` is a `resource/action` pair, such as `externals/update`, where the action matches the HTTP method: `read`, `create`, `update` or `delete`. The qualifier `/all` means "not just your own", as in `reservations/read/all`. `ROLES` states which role holds which permission.
+Permissions live in `app/permissions.py`. Each `Permission` is a `resource/action` pair, such as `externals/update`, where the action matches the HTTP method: `read`, `create`, `update` or `delete`. The qualifier `/all` means "not just your own", as in `reservations/read/all`. Each `Role` defines a stable `id`, the `name` and `description` shown to people, and the permissions the role holds. `ROLES` lists every role by `id`, and `GET /roles` publishes the same definitions, so the API and the UI describe roles from one place.
 
 A permission exists only where the code makes a decision about it. Anything every signed-in user may do, such as reading Spaces or creating their own Reservations, needs no permission, so don't add one in anticipation of a future need.
 
@@ -87,7 +87,9 @@ Decisions made with `grants.can(...)` inside an open route aren't annotated, bec
 
 Enforcement and documentation come from a single declaration, so they cannot disagree. The alternative, annotating `responses={403: ...}` by hand on every restricted endpoint, was tried and rejected. That approach leaves roughly 46 pieces of metadata sitting next to, but not derived from, the actual check. The first time someone adds a guard and forgets the annotation, the published API contract is wrong and nothing catches it.
 
-To add a permission, add it to `Permission` with a one-line description in `DESCRIPTIONS`, and to each role that holds it in `ROLES`. To add a parameter gate, create it with `requires_param`. The generator reads the markers these gates carry as it walks the dependency tree, so there is no registry for you to keep in sync.
+To add a permission, add it to `Permission` with a one-line description in `DESCRIPTIONS`, and to the `permissions` of each role that holds it. To add a parameter gate, create it with `requires_param`. The generator reads the markers these gates carry as it walks the dependency tree, so there is no registry for you to keep in sync.
+
+A role's `id` is part of the API: users report the roles they hold by `id`, and automation can rely on it. Change a role's `name` or `description` freely, but never its `id`.
 
 Marking is best effort and never fatal. If route introspection breaks, most likely after a FastAPI upgrade because it relies on `fastapi.routing.iter_route_contexts`, the engine still serves a valid schema and simply loses the annotations. Watch for this line at startup:
 
@@ -155,6 +157,10 @@ That is exactly what used to happen. The registry and update detectors both caug
 When an upstream service asks you to wait, as GitHub does after a rate limit, raise `RetryAfter` from `app/notifications/errors.py` with the number of seconds it asked for. The detector won't run again until that time has passed, even when someone selects **Refresh**.
 
 Register each detector in `app/notifications/detectors/__init__.py` with a maximum age and a minimum interval that suit what it calls. A detector that only reads local state can use `0` for both and run on every request. One that calls an external service should keep well clear of that service's limits, remembering that every engine instance runs its detectors independently.
+
+When a change made through Azure IPAM itself alters what a detector reports, call `recheck` from `app/notifications` with the detector's name once the change is saved, as the admin endpoints do for the `setup` detector. The notification then reflects the change on the next request rather than after the detector's maximum age, which only has to bound how long another engine instance can lag behind.
+
+Write every notification `message` as a triple-quoted string, however short, wrapped wherever reads best (an f-string if it includes values). Write every `title` as an ordinary single-line string, and keep shared sentences that are inserted into messages, such as `REASON`, as ordinary strings too. Don't split text into adjacent string literals. That style makes every author decide where to break the text, and a missing space at the end of one piece silently runs two words together. The `Notification` model normalizes the text for you: the title is collapsed onto one line, and each paragraph of the message is joined into one, so line breaks and indentation in the source never reach the reader. Separate paragraphs with a blank line. The interface displays them as separate paragraphs.
 
 ## Engine Credentials
 

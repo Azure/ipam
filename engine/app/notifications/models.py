@@ -15,13 +15,17 @@ A notification with an ``admin`` audience is only returned to callers who hold
 ``notifications/read/all``.
 """
 
+import re
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 Severity = Literal["critical", "warning", "information"]
 Audience = Literal["all", "admin"]
 ActionKind = Literal["resolve", "link", "navigate"]
+
+# A blank line, possibly holding indentation, separates paragraphs.
+_PARAGRAPH_BREAK = re.compile(r"\n\s*\n")
 
 
 class NotificationAction(BaseModel):
@@ -64,6 +68,22 @@ class Notification(BaseModel):
     dismissible: bool = True
     data: dict | None = None
     actions: list[NotificationAction] = []
+
+    # Detectors write every message as a triple-quoted string and every title as a single-line string (see
+    # "Notification Detectors" in the Conventions documentation). The title is collapsed onto one line and each
+    # paragraph of the message is joined into one, so source line breaks and indentation never reach the reader.
+    # A blank line separates paragraphs. (A comment rather than the docstring, which is published as the schema.)
+    @field_validator("title")
+    @classmethod
+    def _single_line(cls, value: str) -> str:
+        return " ".join(value.split())
+
+    @field_validator("message")
+    @classmethod
+    def _paragraphs(cls, value: str) -> str:
+        paragraphs = (" ".join(paragraph.split()) for paragraph in _PARAGRAPH_BREAK.split(value))
+
+        return "\n\n".join(paragraph for paragraph in paragraphs if paragraph)
 
 
 class NotificationList(BaseModel):

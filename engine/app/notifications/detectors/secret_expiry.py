@@ -102,10 +102,10 @@ def _expiring(expires_on, now):
                 audience="all",
                 category="Azure Access",
                 title="Client secret is past its expiration date",
-                message=(
-                    f"The expiration date recorded for Azure IPAM's client secret passed {ago}, and Azure IPAM may "
-                    "stop reaching Azure at any time. Let an administrator know right away so they can rotate it."
-                ),
+                message=f"""
+                    The expiration date recorded for Azure IPAM's client secret passed {ago}, and Azure IPAM may
+                    stop reaching Azure at any time. Let an administrator know right away so they can rotate it.
+                """,
                 dismissible=False,
                 data={"expiresOn": expires_on},
                 actions=[_rotate_action()],
@@ -123,7 +123,10 @@ def _expiring(expires_on, now):
                 audience="all",
                 category="Azure Access",
                 title=f"Client secret expires {when}",
-                message=f"Azure IPAM's client secret expires {when}. Let an administrator know so they can rotate it before then. {IMPACT}",
+                message=f"""
+                    Azure IPAM's client secret expires {when}. Let an administrator know so they can rotate it
+                    before then. {IMPACT}
+                """,
                 dismissible=True,
                 data={"expiresOn": expires_on},
                 actions=[_rotate_action()],
@@ -137,7 +140,10 @@ def _expiring(expires_on, now):
             audience="all",
             category="Azure Access",
             title=f"Client secret expires {when}",
-            message=f"Azure IPAM's client secret expires {when}. Let an administrator know right away so they can rotate it. {IMPACT}",
+            message=f"""
+                Azure IPAM's client secret expires {when}. Let an administrator know right away so they can
+                rotate it. {IMPACT}
+            """,
             dismissible=False,
             data={"expiresOn": expires_on},
             actions=[_rotate_action()],
@@ -153,11 +159,11 @@ def _not_set():
             audience="admin",
             category="Azure Access",
             title="Client secret expiration date not set",
-            message=(
-                "Azure IPAM can't provide advance notice before its client secret expires, because no expiration date "
-                "is recorded for it. Setting the expiration date allows Azure IPAM to warn users and administrators "
-                "ahead of time, so the secret can be rotated before it expires."
-            ),
+            message="""
+                Azure IPAM can't provide advance notice before its client secret expires, because no expiration
+                date is recorded for it. Setting the expiration date allows Azure IPAM to warn users and
+                administrators ahead of time, so the secret can be rotated before it expires.
+            """,
             dismissible=True,
             actions=[
                 NotificationAction(id="set-expiry", label="How to set the expiration date", kind="link", href=SET_EXPIRY_URL),

@@ -144,10 +144,10 @@ async def detect():
             audience="all",
             category="Update",
             title="A new version of Azure IPAM is available",
-            message=(
-                f"Azure IPAM {latest_str} is available (this deployment is running {current_str}). "
-                "See the update guide for your options and step-by-step instructions."
-            ),
+            message=f"""
+                Azure IPAM {latest_str} is available (this deployment is running {current_str}). See the update
+                guide for your options and step-by-step instructions.
+            """,
             dismissible=True,
             data={"currentVersion": current_str, "latestVersion": latest_str},
             actions=[

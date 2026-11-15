@@ -38,6 +38,7 @@ from app.routers import (
     health,
     internal,
     notifications,
+    role,
     space,
     status,
     tool,
@@ -256,6 +257,11 @@ app.include_router(
 
 app.include_router(
     user.router,
+    prefix = "/api"
+)
+
+app.include_router(
+    role.router,
     prefix = "/api"
 )
 

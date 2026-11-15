@@ -302,6 +302,12 @@ export function updateMe(body) {
   return api.patch(url, body);
 }
 
+export function fetchRoles() {
+  var url = new URL(`${ENGINE_URL}/api/roles`);
+
+  return api.get(url);
+}
+
 export function fetchNextAvailableVNet(body) {
   const url = new URL(`${ENGINE_URL}/api/tools/nextAvailableVNet`);
 

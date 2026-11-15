@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useDispatch } from 'react-redux';
 import { styled } from '@mui/material/styles';
 
 import { useSnackbar } from 'notistack';
@@ -34,6 +35,9 @@ import {
   getAdmins,
   replaceAdmins
 } from "../../ipam/ipamAPI";
+
+import { getMeAsync } from "../../ipam/ipamSlice";
+import { fetchNotificationsAsync } from "../../notifications/notificationsSlice";
 
 import {
   callMsGraphUsersFilter,
@@ -171,6 +175,7 @@ function MyPopper(props) {
 
 export default function Administration() {
   const { enqueueSnackbar } = useSnackbar();
+  const dispatch = useDispatch();
 
   const [admins, setAdmins] = React.useState(null);
   const [loadedAdmins, setLoadedAdmins] = React.useState(null);
@@ -289,6 +294,9 @@ export default function Administration() {
         await replaceAdmins(admins);
         enqueueSnackbar("Successfully updated admins", { variant: "success" });
         refreshData();
+        // Changing the admins can end or start setup mode, and change the caller's own role.
+        dispatch(fetchNotificationsAsync());
+        dispatch(getMeAsync());
       } catch (e) {
         console.log("ERROR");
         console.log("------------------");

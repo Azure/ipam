@@ -33,6 +33,10 @@ export const SEVERITY_COLOR = {
 // update detector).
 export const UPDATE_NOTIFICATION_ID = 'update-available';
 
+// Stable id of the engine's setup mode notification, active while no
+// administrators are designated (see the engine's setup detector).
+export const SETUP_MODE_NOTIFICATION_ID = 'setup-mode';
+
 // UI-owned copy: the noun phrase shown in the restart gate for a remediation
 // that restarts the service, keyed by the notification's stable id. This is
 // presentation, so it lives in the UI (the API stays UI-agnostic); unmapped
