@@ -742,14 +742,12 @@ Additionally, for guidance on integrating External Network management into autom
 
 Azure IPAM keeps an eye on your deployment and lets you know when something needs attention, such as a newer version being available or a problem with Azure IPAM's own access to Azure. Notifications appear behind the **bell** icon in the upper-right corner of every page.
 
-<!-- SCREENSHOT PLACEHOLDER: App bar showing the notification bell with an unread badge -->
 ![Notification Bell](./images/ipam_notification_bell.png)
 
 The badge on the bell shows how many notifications you haven't read yet, and its color reflects the most severe one: <span style="color: red">**red**</span> for critical, <span style="color: darkorange">**orange**</span> for a warning and <span style="color: dodgerblue">**blue**</span> for information. When something critical needs attention, the bell also pulses briefly to draw your eye.
 
 Click the bell to open the list of notifications, with the most severe at the top.
 
-<!-- SCREENSHOT PLACEHOLDER: Notification list open beneath the bell, showing notifications of different severities -->
 ![Notification List](./images/ipam_notification_list.png)
 
 From the list you can:
@@ -769,7 +767,6 @@ Opening a notification shows its full message, along with whatever actions it of
 - **Fix it for you** — Some notifications can be fixed directly from Azure IPAM, with a button such as **Switch**. Only administrators can use these. For everyone else the button is disabled, so let your administrator know.
 - **Take you there** — Some notifications offer a button that opens the relevant page in Azure IPAM.
 
-<!-- SCREENSHOT PLACEHOLDER: Notification details dialog showing a message, a documentation link and an action button -->
 ![Notification Details](./images/ipam_notification_details.png)
 
 Some fixes restart Azure IPAM. When they do, a progress screen is shown while it restarts, and the page reloads once Azure IPAM is back. Once a problem is fixed, its notification disappears the next time Azure IPAM checks.
