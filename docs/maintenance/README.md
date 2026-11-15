@@ -215,7 +215,7 @@ $health.checks.arm
 
 You can also call `GET /api/health` from the interactive API documentation at `https://<your-ipam-app>.azurewebsites.net/api/docs`, as described in the [API](/api/README.md) guide.
 
-> **NOTE:** Key Vault references are refreshed automatically about once a day, which is why the steps above restart Azure IPAM rather than waiting. Don't remove the old secret until the health check passes.
+> **NOTE:** Key Vault references are [refreshed automatically about once a day](https://learn.microsoft.com/azure/app-service/app-service-key-vault-references#rotation), which is why the steps above restart Azure IPAM rather than waiting. Azure IPAM's expiration warnings follow the new version's expiration date as soon as it's stored, even before Azure IPAM has loaded it. Don't remove the old secret until the health check passes.
 
 #### Other Hosting Environments
 
@@ -230,6 +230,8 @@ Your organization may limit how long client secrets can remain valid through an 
 ### Get Notified Before the Secret Expires
 
 Key Vault can notify you before a secret expires, but only when the secret has an expiration date. The deployment script sets one when it creates `ENGINE-SECRET`, and rotations that follow the steps above set one too. Deployments created with earlier versions of Azure IPAM don't have one, so set it yourself first.
+
+Azure IPAM uses the same expiration date to warn you itself. Starting 30 days before it, everyone who signs in to Azure IPAM sees a [notification](/how-to/README.md#notifications) asking them to let an administrator know, and it becomes critical in the final 7 days. When `ENGINE-SECRET` has no expiration date, administrators see a reminder to set one instead. These notifications are only available when Azure IPAM reads its secret from Key Vault, as App Service and Function App deployments do. Because they rely on the date recorded in Key Vault rather than on the app registration, keep the two matching.
 
 You can check whether `ENGINE-SECRET` has an expiration date from the **Expiration date** column under **Objects** → **Secrets** in your Azure IPAM Key Vault.
 

@@ -14,7 +14,13 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
 from app import engine_access
-from app.notifications.detectors import credentials, platform, registry, update
+from app.notifications.detectors import (
+    credentials,
+    platform,
+    registry,
+    secret_expiry,
+    update,
+)
 
 
 @dataclass(frozen=True)
@@ -38,6 +44,8 @@ class Detector:
 DETECTORS = [
     # Reads what the engine's own sign-ins and Resource Graph queries have recorded. No calls of its own.
     Detector("credentials", credentials.detect, max_age=0, min_interval=0, observed_on=engine_access.observed_on),
+    # Reads the client secret's expiration date from Key Vault, as metadata only.
+    Detector("secret_expiry", secret_expiry.detect, max_age=15 * 60, min_interval=60),
     # Reads the site configuration from Azure Resource Manager. Changing the image restarts the app.
     Detector("registry", registry.detect, max_age=15 * 60, min_interval=15, resolvers=registry.RESOLVERS),
     # Reads environment variables only.

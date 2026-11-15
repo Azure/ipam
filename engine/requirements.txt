@@ -10,6 +10,7 @@ loguru
 regex
 azure-core
 azure-identity
+azure-keyvault-secrets
 azure-cosmos
 azure-functions
 azure-mgmt-core
