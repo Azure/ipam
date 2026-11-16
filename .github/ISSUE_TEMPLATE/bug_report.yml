@@ -9,9 +9,10 @@ body:
 
         - Search the [existing issues](https://github.com/Azure/ipam/issues) to see if it has already been reported.
         - Check the [Troubleshooting guide](https://azure.github.io/ipam/#/troubleshooting/README) for known problems and fixes.
+        - For usage or configuration questions, such as how to grant a service principal access, start a [discussion](https://github.com/Azure/ipam/discussions) instead.
         - **Don't report security vulnerabilities here.** Follow the [security policy](https://github.com/Azure/ipam/blob/main/SECURITY.md) instead.
 
-        **Tip:** In Azure IPAM, open **About** from your avatar menu and select **Report an issue** to fill in the Environment section automatically.
+        **Tip:** In Azure IPAM, open **About** from your avatar menu and select **Report an issue** to fill in your version, deployment type, container details, Azure cloud, and browser automatically.
   - type: dropdown
     id: area
     attributes:
@@ -20,6 +21,8 @@ body:
       options:
         - UI
         - Engine / API
+        - Automation & IaC (Terraform, Bicep, pipelines)
+        - Roles & permissions
         - Deployment (deploy.ps1)
         - Update (update.ps1)
         - Migration (migrate.ps1)
@@ -27,6 +30,27 @@ body:
         - Other
     validations:
       required: true
+  - type: dropdown
+    id: access-method
+    attributes:
+      label: How were you using Azure IPAM?
+      description: Select all that apply.
+      multiple: true
+      options:
+        - UI
+        - API, signed in as a user
+        - API, as a service principal
+        - Terraform provider
+        - Deployment, update, or migration scripts
+  - type: dropdown
+    id: role
+    attributes:
+      label: Your Azure IPAM role
+      description: Shown under **Access** in **Profile** (avatar menu). Administrators and other users see different data, so this often matters.
+      options:
+        - Administrator
+        - Non-administrator
+        - Not sure
   - type: textarea
     id: description
     attributes:
@@ -38,7 +62,7 @@ body:
     id: steps
     attributes:
       label: Steps to reproduce
-      description: The steps that lead to the problem, and whether it happens every time.
+      description: The steps that lead to the problem, whether it happens every time, and whether it affects everything or only some items (for example, specific Blocks).
       value: |
         1.
         2.
@@ -58,7 +82,7 @@ body:
         - The App Service or Function App log stream
         - The `logs` folder written by `deploy.ps1`, `update.ps1`, or `migrate.ps1`
 
-        Remove tenant IDs, secrets, and other sensitive values before posting.
+        Remove tenant and subscription IDs, access tokens, secrets, and other sensitive values before posting.
       render: text
   - type: textarea
     id: screenshots
@@ -73,10 +97,16 @@ body:
     id: version
     attributes:
       label: Azure IPAM version
-      description: Shown in **About** (avatar menu), or returned by `/api/status`.
+      description: Shown in **About** (avatar menu), or returned by `/api/status`. If you built from source, include the branch or commit.
       placeholder: e.g. 3.6.0
     validations:
       required: true
+  - type: input
+    id: previous-version
+    attributes:
+      label: Previous version
+      description: For update or migration problems, the version you were updating from.
+      placeholder: e.g. 3.1.0
   - type: input
     id: deployment-type
     attributes:
@@ -105,6 +135,7 @@ body:
       options:
         - PowerShell script (deploy.ps1)
         - Bicep
+        - Terraform or other custom infrastructure
         - Docker Compose (legacy)
         - Other
   - type: dropdown
@@ -116,6 +147,17 @@ body:
         - Public (registry.azureipam.com)
         - Private Azure Container Registry
         - N/A (native)
+  - type: textarea
+    id: customizations
+    attributes:
+      label: Deployment options and customizations
+      description: |
+        The `deploy.ps1` command you ran (without secrets), and anything that differs from a standard deployment, such as:
+        - App Registrations created manually (`-AppsOnly` or `-ParameterFile`)
+        - Container images you built yourself, or infrastructure deployed with your own templates
+        - A reverse proxy or Application Gateway in front of Azure IPAM, private endpoints, or firewall rules
+        - App settings or Key Vault references changed by hand
+      placeholder: e.g. ./deploy.ps1 -Location eastus -Function -PrivateACR -ContainerType RHEL
   - type: input
     id: browser
     attributes:

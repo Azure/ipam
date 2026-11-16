@@ -1,0 +1,82 @@
+name: Feature Request
+description: Suggest an improvement or new feature for Azure IPAM
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest an improvement! Before you start:
+
+        - Search the [existing issues](https://github.com/Azure/ipam/issues) to see if it has already been requested. If it has, add a 👍 reaction or a comment describing your use case instead.
+        - Check the [documentation](https://azure.github.io/ipam/) and the [release notes](https://github.com/Azure/ipam/releases), since what you need may already be available in a newer version.
+        - For usage or configuration questions, start a [discussion](https://github.com/Azure/ipam/discussions) instead.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which parts of Azure IPAM does this relate to? Select all that apply.
+      multiple: true
+      options:
+        - UI
+        - Engine / API
+        - Automation & IaC (Terraform, Bicep, pipelines)
+        - Roles & permissions
+        - Deployment (deploy.ps1)
+        - Update (update.ps1)
+        - Migration (migrate.ps1)
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Who is this for?
+      description: Who would use this feature? Select all that apply. See [Roles & Permissions](https://azure.github.io/ipam/#/roles-permissions/README) for what each role can do today.
+      multiple: true
+      options:
+        - IPAM administrators
+        - Non-administrator users
+        - Automation and API callers (service principals, pipelines)
+        - Operators who deploy and maintain Azure IPAM
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem are you trying to solve, or what are you unable to do today? Describe it clearly and concisely.
+      placeholder: e.g. When managing large address spaces, I find it difficult to...
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What you want to happen. If it applies to both the UI and the API, describe how it should work in each.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any alternative solutions or workarounds you've considered or are using today.
+  - type: input
+    id: version
+    attributes:
+      label: Azure IPAM version
+      description: The version you're running, shown in **About** (avatar menu) or returned by `/api/status`.
+      placeholder: e.g. 3.6.0
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: |
+        Anything else that helps explain the request, such as the size of your environment, the Azure cloud you use, mockups, screenshots, or links to related issues. Drag images here if they help.
+
+        Remove tenant and subscription IDs, access tokens, secrets, and other sensitive values before posting.
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing
+      description: Pull requests are welcome. See the [Contributing](https://azure.github.io/ipam/#/contributing/README) guide to get started.
+      options:
+        - label: I'm willing to submit a pull request for this feature.
