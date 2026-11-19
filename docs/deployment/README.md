@@ -16,8 +16,8 @@ To successfully deploy the solution, the following prerequisites must be met:
   - Required to clone the Azure IPAM GitHub repository
 - [PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
 - [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 11.4.0 or later installed
-- [Microsoft Graph PowerShell SDK](https://learn.microsoft.com/powershell/microsoftgraph/installation) version 2.0.0 or later installed
-  - Required for *Full* or *Identities Only* deployments to grant [Admin Consent](https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent) to the App Registrations
+- [Microsoft Graph PowerShell SDK](https://learn.microsoft.com/powershell/microsoftgraph/installation) version 2.0.0 or later installed (at minimum the `Microsoft.Graph.Authentication` and `Microsoft.Graph.Identity.SignIns` modules)
+  - Required to grant [Admin Consent](https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent) to the App Registrations. The deployment script checks for it on every run, including *Infrastructure Stack (Only)* deployments
 - [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install) version 0.21.1 or later installed
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) version 2.35.0 or later installed (optional)
   - Required only if you are building your own container image and pushing it to a private Azure Container Registry (Private ACR)
@@ -143,7 +143,7 @@ You have the ability to pass optional flags to the deployment script:
 | `-Function`                                                        | Deploys the engine container only to an Azure Function                                        |
 | `-PrivateACR`                                                      | Deploys a private Azure Container Registry and builds the IPAM containers                     |
 | `-Native`                                                          | Deploys the application natively via zip-deploy instead of using containers                    |
-| `-ContainerType <type>`                                            | Specifies the container base image: `Debian` (default) or `RHEL` **<sup>4</sup>**             |
+| `-ContainerType <type>`                                            | Specifies the container image to build with `-PrivateACR`: `Debian` (default) or `RHEL` **<sup>4</sup>**             |
 | `-DisableUI`                                                       | Solution will be deployed without a UI, no UI identities will be created                      |
 | `-MgmtGroupId`                                                     | Specifies an alternate Management Group instead of the Root Management Group **<sup>5</sup>** |
 
@@ -153,7 +153,7 @@ You have the ability to pass optional flags to the deployment script:
 
 > **NOTE 3:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
 
-> **NOTE 4:** The `RHEL` option is intended for environments that require Red Hat Enterprise Linux, such as government, DoD, or other controlled environments. In most cases the default `Debian` image is sufficient.
+> **NOTE 4:** The `RHEL` option is intended for environments that require Red Hat Enterprise Linux, such as government, DoD, or other controlled environments. In most cases the default `Debian` image is sufficient. The public Azure IPAM registry only provides the Debian image, so `RHEL` requires `-PrivateACR`, and `-ContainerType` can't be combined with `-Function` or `-Native`.
 
 > **NOTE 5:** It is **highly discouraged** to use a [Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview) other than the [Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) as it will limit the visibility of the Azure IPAM platform. This option should only be used for testing or proof-of-concept deployments.
 
@@ -325,7 +325,7 @@ You have the ability to pass optional flags to the deployment script:
 | `-NamePrefix <prefix>`                                             | Replaces the default resource prefix of "ipam" with an alternative prefix **<sup>3</sup>** |
 | `-PrivateACR`                                                      | Deploys a private Azure Container Registry and builds the IPAM containers                  |
 | `-Native`                                                          | Deploys the application natively via zip-deploy instead of using containers                 |
-| `-ContainerType <type>`                                            | Specifies the container base image: `Debian` (default) or `RHEL` **<sup>4</sup>**          |
+| `-ContainerType <type>`                                            | Specifies the container image to build with `-PrivateACR`: `Debian` (default) or `RHEL` **<sup>4</sup>**          |
 | `-Function`                                                        | Deploys the engine container only to an Azure Function                                     |
 
 > **NOTE 1:** The required values will vary based on the deployment type.
@@ -334,7 +334,7 @@ You have the ability to pass optional flags to the deployment script:
 
 > **NOTE 3:** Maximum of seven (7) characters. This is because the prefix is used to generate names for several different Azure resource types with varying maximum lengths.
 
-> **NOTE 4:** The `RHEL` option is intended for environments that require Red Hat Enterprise Linux, such as government, DoD, or other controlled environments. In most cases the default `Debian` image is sufficient.
+> **NOTE 4:** The `RHEL` option is intended for environments that require Red Hat Enterprise Linux, such as government, DoD, or other controlled environments. In most cases the default `Debian` image is sufficient. The public Azure IPAM registry only provides the Debian image, so `RHEL` requires `-PrivateACR`, and `-ContainerType` can't be combined with `-Function` or `-Native`.
 
 **Change the name prefix for the Azure resources:**
 
