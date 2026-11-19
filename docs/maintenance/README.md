@@ -83,8 +83,8 @@ The steps are:
 
 1. Create a new client secret on the Engine app registration
 2. Store it in Key Vault as a new version of `ENGINE-SECRET`, with its expiration date
-3. Restart the App Service or Function App so it loads the new value
-4. Confirm that Azure IPAM can reach Azure
+3. Refresh Azure IPAM's Key Vault references, then restart the App Service or Function App so it loads the new value
+4. Confirm that Azure IPAM can reach Azure, and if you can, that it's using the new secret
 5. Remove the old client secret
 6. Remove the Key Vault Secrets Officer role assignment you granted yourself
 
@@ -107,11 +107,12 @@ The steps are:
    <!-- SCREENSHOT PLACEHOLDER: Create a new version of ENGINE-SECRET with the secret value and expiration date set -->
    ![New ENGINE-SECRET Version](./images/engine_secret_new_version.png)
 
-8. Navigate to your Azure IPAM **App Service** or **Function App** → **Overview** and select **Restart**
-9. If the `staging` [deployment slot](/update/README.md#staging-slots) is running, restart it too from **Deployment slots** → **staging** → **Restart**
-10. Confirm that Azure IPAM can reach Azure (see [Confirm the Rotation](#confirm-the-rotation))
-11. Return to the Engine app registration's **Certificates & secrets** → **Client secrets**, and select the delete icon next to the **old** secret
-12. Remove the Key Vault Secrets Officer role assignment you granted yourself
+8. Navigate to your Azure IPAM **App Service** or **Function App** → **Settings** → **Environment variables** and select **Pull reference values**, so it reads the new version from Key Vault
+9. Select **Overview** → **Restart**
+10. If the `staging` [deployment slot](/update/README.md#staging-slots) is running, repeat steps 8 and 9 for it from **Deployment slots** → **staging**
+11. Confirm the rotation (see [Confirm the Rotation](#confirm-the-rotation))
+12. Return to the Engine app registration's **Certificates & secrets** → **Client secrets**, and select the delete icon next to the **old** secret
+13. Remove the Key Vault Secrets Officer role assignment you granted yourself
 
 #### Azure PowerShell
 
@@ -135,16 +136,21 @@ $newSecret | Select-Object Hint, KeyId, EndDateTime
 Remove-Variable newSecret
 ```
 
-Restart Azure IPAM so it loads the new value:
+Refresh Azure IPAM's Key Vault references so it reads the new version, then restart it so it loads the new value. Each refresh should return `200`:
 
 ```powershell
 # App Service
+$app = Get-AzWebApp -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-app>"
+(Invoke-AzRestMethod -Method POST -Path "$($app.Id)/config/configreferences/appsettings/refresh?api-version=2022-03-01").StatusCode
 Restart-AzWebApp -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-app>"
 
 # App Service staging slot (only if it is running)
+(Invoke-AzRestMethod -Method POST -Path "$($app.Id)/slots/staging/config/configreferences/appsettings/refresh?api-version=2022-03-01").StatusCode
 Restart-AzWebAppSlot -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-app>" -Slot "staging"
 
 # Function App
+$function = Get-AzFunctionApp -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-function>"
+(Invoke-AzRestMethod -Method POST -Path "$($function.Id)/config/configreferences/appsettings/refresh?api-version=2022-03-01").StatusCode
 Restart-AzFunctionApp -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-function>" -Force
 ```
 
@@ -165,27 +171,36 @@ vaultName="<your-ipam-kv>"
 # Create a new secret alongside the existing one, with a lifetime your organization's policies allow
 secret=$(az ad app credential reset --id "$appId" --append --years 2 --query password --output tsv)
 
-# Look up the new secret's expiration date by its first three characters
-expires=$(az ad app credential list --id "$appId" --query "[?hint=='${secret:0:3}'].endDateTime | [0]" --output tsv)
+# Look up the new secret's expiration date by its first three characters.
+# Key Vault only accepts whole seconds, so drop any fraction of a second.
+expires=$(az ad app credential list --id "$appId" --query "[?hint=='${secret:0:3}'].endDateTime | [0]" --output tsv | sed -E 's/\.[0-9]+Z$/Z/')
 
 # Store it in Key Vault with the same expiration date
 az keyvault secret set --vault-name "$vaultName" --name "ENGINE-SECRET" --value "$secret" --expires "$expires" --output none
+
+# Note the new secret's details, without its value
+az ad app credential list --id "$appId" --query "[?hint=='${secret:0:3}'].{hint: hint, keyId: keyId, end: endDateTime}" --output table
 
 unset secret
 ```
 
 > **IMPORTANT:** Always include `--append`. Without it, `az ad app credential reset` **removes every existing secret** on the app registration, and Azure IPAM stops working until the new secret is in place.
 
-Restart Azure IPAM so it loads the new value:
+Refresh Azure IPAM's Key Vault references so it reads the new version, then restart it so it loads the new value:
 
 ```bash
 # App Service
+appResourceId=$(az webapp show --resource-group "<your-ipam-rg>" --name "<your-ipam-app>" --query id --output tsv)
+az rest --method post --url "$appResourceId/config/configreferences/appsettings/refresh?api-version=2022-03-01"
 az webapp restart --resource-group "<your-ipam-rg>" --name "<your-ipam-app>"
 
 # App Service staging slot (only if it is running)
+az rest --method post --url "$appResourceId/slots/staging/config/configreferences/appsettings/refresh?api-version=2022-03-01"
 az webapp restart --resource-group "<your-ipam-rg>" --name "<your-ipam-app>" --slot staging
 
 # Function App
+functionResourceId=$(az functionapp show --resource-group "<your-ipam-rg>" --name "<your-ipam-function>" --query id --output tsv)
+az rest --method post --url "$functionResourceId/config/configreferences/appsettings/refresh?api-version=2022-03-01"
 az functionapp restart --resource-group "<your-ipam-rg>" --name "<your-ipam-function>"
 ```
 
@@ -199,7 +214,9 @@ az ad app credential delete --id "$appId" --key-id "<old-key-id>"
 
 #### Confirm the Rotation
 
-The health endpoint signs in to Azure as the Engine, so it confirms the new secret works. Look for `ok` set to `true` on the `arm` check.
+Confirm the rotation before removing the old secret.
+
+The health endpoint signs in to Azure as the Engine, so it confirms that Azure IPAM can reach Azure. Look for `ok` set to `true` on the `arm` check.
 
 ```powershell
 $accessToken = (Get-AzAccessToken -ResourceUrl api://<engine-app-id>).Token
@@ -215,7 +232,16 @@ $health.checks.arm
 
 You can also call `GET /api/health` from the interactive API documentation at `https://<your-ipam-app>.azurewebsites.net/api/docs`, as described in the [API](/api/README.md) guide.
 
-> **NOTE:** Key Vault references are [refreshed automatically about once a day](https://learn.microsoft.com/azure/app-service/app-service-key-vault-references#rotation), which is why the steps above restart Azure IPAM rather than waiting. Azure IPAM's expiration warnings follow the new version's expiration date as soon as it's stored, even before Azure IPAM has loaded it. Don't remove the old secret until the health check passes.
+Both secrets stay valid until you remove the old one, so the health check passes whichever one Azure IPAM has loaded. If you can view sign-in logs in Microsoft Entra ID, for example with the [Reports Reader](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#reports-reader) or [Security Reader](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#security-reader) role, also confirm that it's using the new secret:
+
+1. Navigate to **Microsoft Entra ID** → **Monitoring** → **Sign-in logs** → **Service principal sign-ins**
+2. Use **Add filters** to show only the Engine application, and set **Time aggregate** to **1 hour**. Sign-ins are grouped by application for each period
+3. Expand the most recent successful row from after the restart, then select one of the sign-ins listed under it
+4. In **Activity Details: Sign-ins** → **Basic info**, confirm that **Credential key ID** matches the key ID of the new secret
+
+Sign-ins can take a few minutes to appear. If you can't view sign-in logs, rely on the health check, having refreshed Azure IPAM's Key Vault references before restarting it.
+
+> **NOTE:** App Service caches Key Vault reference values and [refetches them about once a day](https://learn.microsoft.com/azure/app-service/app-service-key-vault-references#rotation). Restarting on its own doesn't refetch them, which is why the steps above refresh the references first. Azure IPAM's expiration warnings follow the new version's expiration date within about 15 minutes of it being stored, even before Azure IPAM has loaded it.
 
 #### Other Hosting Environments
 
@@ -273,6 +299,9 @@ vaultName="<your-ipam-kv>"
 hint=$(az keyvault secret show --vault-name "$vaultName" --name "ENGINE-SECRET" --query value --output tsv | cut -c1-3)
 
 expires=$(az ad app credential list --id "$appId" --query "[?hint=='$hint'].endDateTime | [0]" --output tsv)
+
+# Key Vault only accepts whole seconds, so drop any fraction of a second
+expires=$(sed -E 's/\.[0-9]+Z$/Z/' <<< "$expires")
 
 az keyvault secret set-attributes --vault-name "$vaultName" --name "ENGINE-SECRET" --expires "$expires" --output none
 ```

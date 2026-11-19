@@ -413,7 +413,7 @@ This applies most often to deployments that route all outbound traffic through a
 
 A [Conditional Access policy for workload identities](https://learn.microsoft.com/entra/identity/conditional-access/workload-identity) is blocking the Engine's sign-in.
 
-Navigate to **Microsoft Entra ID** → **Monitoring & health** → **Sign-in logs** → **Service principal sign-ins**, and filter by the Engine's application ID. Select a failed sign-in, then select **Conditional Access** to see which policy blocked it.
+Navigate to **Microsoft Entra ID** → **Monitoring** → **Sign-in logs** → **Service principal sign-ins**, and filter to the Engine application. Sign-ins are grouped by application, so expand a row with a failed sign-in, select one of the sign-ins listed under it, then select **Conditional Access** to see which policy blocked it.
 
 <!-- SCREENSHOT PLACEHOLDER: Service principal sign-in details showing the Conditional Access policy that blocked the Engine -->
 ![Engine Sign-In Blocked By Conditional Access](./images/engine_signin_conditional_access.png)
@@ -546,11 +546,11 @@ Service principals are sometimes disabled deliberately, for example by a securit
 Microsoft Entra ID doesn't recognize the secret Azure IPAM is using. Check the following, in order:
 
 1. **The Key Vault reference resolves.** If App Service can't read `ENGINE-SECRET` from Key Vault, it passes the reference text to Azure IPAM in place of the secret. See [Key Vault Reference Not Resolved (App Service)](#key-vault-reference-not-resolved-app-service).
-2. **The secret matches one on the Engine app registration.** Follow [Check When the Secret Expires](/maintenance/README.md#check-when-the-secret-expires). If no client secret on the app registration shares its first three characters with `ENGINE-SECRET`, the stored value is wrong. Common causes are storing the **Secret ID** instead of the **Value**, or removing the old secret during a rotation before Azure IPAM was restarted with the new one.
+2. **The secret matches one on the Engine app registration.** Follow [Check When the Secret Expires](/maintenance/README.md#check-when-the-secret-expires). If no client secret on the app registration shares its first three characters with `ENGINE-SECRET`, the stored value is wrong. A common cause is storing the **Secret ID** instead of the **Value**.
 
 ### <u>Resolve</u>
 
-If a matching secret exists on the app registration, Azure IPAM hasn't loaded it yet. Restart the App Service or Function App.
+If a matching secret exists on the app registration, Azure IPAM hasn't loaded it yet. This happens when the old secret is removed during a rotation before Azure IPAM loads the new one. Refresh Azure IPAM's Key Vault references, then restart the App Service or Function App, as described in [Rotate the Secret](/maintenance/README.md#rotate-the-secret). Restarting on its own isn't enough, because App Service caches Key Vault reference values for up to a day.
 
 Otherwise, create a new client secret and store it in Key Vault by following [Rotate the Secret](/maintenance/README.md#rotate-the-secret).
 
