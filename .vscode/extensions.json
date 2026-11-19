@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "DavidAnson.vscode-markdownlint",
+    "ms-vscode.powershell",
+    "ms-python.python",
+    "charliermarsh.ruff",
+    "dbaeumer.vscode-eslint",
+    "ms-azuretools.vscode-bicep",
+    "ms-azuretools.vscode-containers"
+  ]
+}
