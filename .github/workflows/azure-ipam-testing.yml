@@ -16,7 +16,7 @@ on:
       - '.gitattributes'
       - '.gitignore'
       - 'LICENSE'
-      - '*.md'
+      - '**/*.md'
 
 permissions:
   id-token: write
