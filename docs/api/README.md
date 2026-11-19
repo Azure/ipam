@@ -158,7 +158,7 @@ $body = @(
         path  = '/desc'
         value = 'Updated production IP space description'
     }
-) | ConvertTo-Json
+) | ConvertTo-Json -AsArray
 
 $response = Invoke-RestMethod `
     -Method 'Patch' `
@@ -292,7 +292,7 @@ $body = @(
         path  = '/cidr'
         value = '10.0.0.0/15'
     }
-) | ConvertTo-Json
+) | ConvertTo-Json -AsArray
 
 $response = Invoke-RestMethod `
     -Method 'Patch' `
@@ -485,7 +485,7 @@ $body = @(
     '/subscriptions/.../providers/Microsoft.Network/virtualNetworks/my-vnet-01',
     '/subscriptions/.../providers/Microsoft.Network/virtualNetworks/my-vnet-02',
     '/subscriptions/.../providers/Microsoft.Network/virtualHubs/my-vhub-01'
-) | ConvertTo-Json
+) | ConvertTo-Json -AsArray
 
 $response = Invoke-RestMethod `
     -Method 'Put' `
@@ -513,7 +513,7 @@ Remove one or more virtual network associations by providing an array of resourc
 ```powershell
 $body = @(
     '/subscriptions/.../providers/Microsoft.Network/virtualNetworks/my-vnet-01'
-) | ConvertTo-Json
+) | ConvertTo-Json -AsArray
 
 Invoke-RestMethod `
     -Method 'Delete' `
@@ -736,7 +736,7 @@ Invoke-RestMethod `
 $body = @(
     'ABNsJjXXyTRDTRCdJEJThu',
     'CDPtKkYYzUSEUSdKFKUViv'
-) | ConvertTo-Json
+) | ConvertTo-Json -AsArray
 
 Invoke-RestMethod `
     -Method 'Delete' `
@@ -928,7 +928,7 @@ $body = @(
         path  = '/desc'
         value = 'Updated description for DC1'
     }
-) | ConvertTo-Json
+) | ConvertTo-Json -AsArray
 
 $response = Invoke-RestMethod `
     -Method 'Patch' `
@@ -960,7 +960,7 @@ $body = @(
         desc = 'Application server'
         ip   = $null
     }
-) | ConvertTo-Json
+) | ConvertTo-Json -AsArray
 
 $response = Invoke-RestMethod `
     -Method 'Put' `
@@ -979,7 +979,7 @@ You can remove one or more Endpoints from a Subnet by passing an array of endpoi
 $body = @(
     'db-server-01',
     'app-server-01'
-) | ConvertTo-Json
+) | ConvertTo-Json -AsArray
 
 $response = Invoke-RestMethod `
     -Method 'Delete' `
