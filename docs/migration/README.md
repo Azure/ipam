@@ -36,8 +36,12 @@ To successfully migrate your Azure IPAM deployment, the following prerequisites 
 
 - An Azure Subscription containing your existing Azure IPAM deployment
 - The following Azure RBAC Roles:
-  - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner) at the Resource Group scope containing your Azure IPAM resources
-  - [Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#reader) at the Subscription scope for resource discovery
+  - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner) at the Subscription scope (needed to discover your Azure IPAM resources and run the subscription-level deployment)
+  - One of the following roles on the Azure IPAM Key Vault, or a scope above it (needed to re-apply the Managed Identity's access to the Key Vault):
+    - [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner)
+    - [User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#user-access-administrator)
+    - [Role Based Access Control Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#role-based-access-control-administrator)
+    - [Custom Role](https://learn.microsoft.com/azure/role-based-access-control/custom-roles) with *allow* permissions of `Microsoft.Authorization/roleAssignments/write`
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
   - Required to clone the Azure IPAM GitHub repository
 - [PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
@@ -45,6 +49,8 @@ To successfully migrate your Azure IPAM deployment, the following prerequisites 
 - [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install) version 0.21.1 or later installed
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) version 2.35.0 or later installed (optional)
   - Required only if your deployment uses a private Azure Container Registry (Private ACR)
+
+> **NOTE:** [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner) at the Subscription scope covers both of the roles above.
 
 > **NOTE:** The migration script requires access to your existing Azure IPAM resources. Ensure you have the necessary permissions to both read the current configuration and modify the App Service deployment.
 
@@ -199,7 +205,7 @@ The migration script supports two methods for resource discovery, choose the met
 
 2. Manual Resource Specification
 
-    Use a JSON configuration file to specify exact resource details. This method is useful for complex deployments, cross-subscription resources, or when auto-discovery fails.
+    Use a JSON configuration file to specify exact resource details. This method is useful when your Azure IPAM resources are spread across multiple resource groups, or when auto-discovery fails. All of the resources must be in the same subscription.
 
 ## Migration Process (Method 1: Auto-Discovery)
 
