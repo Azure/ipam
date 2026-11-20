@@ -22,7 +22,7 @@ The core automation pattern for reservations is a three-step workflow:
 
 1. **Reserve** — Call the reservation API to claim a CIDR of the desired size (or a specific CIDR). IPAM returns the reserved range and a tag (`X-IPAM-RES-ID`).
 2. **Deploy** — Create your Azure virtual network using the reserved CIDR as its address prefix, and apply the reservation tag to the resource.
-3. **Settle** — Azure IPAM's background task automatically detects the tagged virtual network and marks the reservation as fulfilled. No additional API call is needed.
+3. **Settle** — Azure IPAM checks for tagged virtual networks about once a minute. When one of the network's address prefixes is exactly the reserved CIDR, and none of its address space in the Block overlaps anything else, Azure IPAM associates the network with the Block and marks the reservation as fulfilled. No additional API call is needed.
 
 This pattern ensures that CIDR allocation, infrastructure deployment, and IPAM tracking all happen in a single automated flow with no manual steps.
 
@@ -53,7 +53,7 @@ Because non-admin users can create (and cancel) their own reservations, this pat
 
 ### Reservation Lifecycle Management
 
-For long-running automation, consider monitoring reservation status to catch reservations that remain in a `wait` state longer than expected. A scheduled job can list active reservations (via `GET`) and alert or clean up stale entries. Reservations can be cancelled via `DELETE` if the corresponding deployment was abandoned. See the [Reservations](/api/README.md#reservations) section of the API documentation for the full set of query and delete operations.
+For long-running automation, consider monitoring reservation status. A reservation that stays at `wait` longer than expected may belong to a deployment that was abandoned or never tagged. A status of `warnCIDRMismatch` or `errCIDROverlap` means the reservation was tagged on a virtual network that can't fulfill it, because the network's address space doesn't match the reserved CIDR or overlaps something else in the Block. These reservations stay unsettled, and Azure IPAM fulfills them as soon as the problem is corrected. A scheduled job can list unsettled reservations (via `GET`) and alert on them, or cancel them via `DELETE` if the deployment was abandoned. A job that doesn't run as an Azure IPAM administrator can only cancel reservations it created. See the [Reservations](/api/README.md#reservations) section of the API documentation for the full set of query and delete operations.
 
 ## Virtual Network Association Automation
 
@@ -84,15 +84,18 @@ Calling `POST /networks` requires an Azure IPAM administrator. A pipeline that r
 
 Over time, associations can drift if virtual networks are created, deleted, or moved outside of your automated pipelines. A scheduled reconciliation job can detect and correct this:
 
-1. **Query** the available networks for a Block (`GET /available`) to find eligible VNets that are not yet associated
-2. **Query** the current associations (`GET /networks`) to find stale entries pointing to deleted resources
-3. **Reconcile** by adding missing associations and removing stale ones
+1. **Query** the networks that can be associated with the Block (`GET /available`). This list includes networks that are already associated
+2. **Query** the Block's current associations (`GET /networks`). An association with `active` set to `false` points to a network that no longer exists or no longer has address space in the Block
+3. **Compare** the two lists to find networks that should be associated but aren't, and associations that are stale
+4. **Reconcile** by adding the missing associations and removing the stale ones
 
 This is particularly valuable in large environments where multiple teams deploy infrastructure independently.
 
 ## External Network Automation
 
 [External Networks](/how-to/README.md#external-networks) represent IP address space that lives outside of Azure — on-premises datacenters, co-location facilities, other cloud providers, etc. Because this information is often managed by separate systems and processes, keeping Azure IPAM up to date manually can be tedious and error-prone.
+
+Any signed-in user can read External Networks, but creating, changing and deleting them, along with their subnets and endpoints, is restricted to Azure IPAM administrators. Synchronization and scanner pipelines therefore need to run as a service principal that has been made an administrator (see [Managing Administrators](/how-to/README.md#managing-administrators)).
 
 For the full set of external network endpoints and example API calls, see the [External Networks](/api/README.md#external-networks) section of the API documentation.
 
@@ -133,7 +136,7 @@ For teams that manage network configurations through version-controlled reposito
 
 ## Azure IPAM Terraform Provider
 
-The [Azure IPAM Terraform provider](https://registry.terraform.io/providers/XtratusCloud/azureipam/latest/docs) (`xtratuscloud/azureipam`) is a community-maintained provider that wraps the Azure IPAM REST API and exposes it as native Terraform resources and data sources. For teams that already manage their Azure estate with Terraform, it offers a fully declarative alternative to calling the REST API directly — covering the same surface area as the three automation areas above (reservations, virtual network associations, and external networks).
+The [Azure IPAM Terraform provider](https://registry.terraform.io/providers/XtratusCloud/azureipam/latest/docs) (`xtratuscloud/azureipam`) is a community-maintained provider that wraps the Azure IPAM REST API and exposes it as native Terraform resources and data sources. For teams that already manage their Azure estate with Terraform, it offers a fully declarative alternative to calling the REST API directly — covering reservations, virtual network associations and External Networks. It doesn't manage External Network subnets or endpoints, so the CMDB and scanner flows above still call the REST API directly.
 
 > **Note:** The provider is published and maintained by [XtratusCloud](https://github.com/XtratusCloud/terraform-provider-azureipam), not by the Azure IPAM project. It is not a Microsoft-supported component. The REST API remains the authoritative interface to Azure IPAM, and the snippets below are intended as a starting point — always refer to the [provider documentation on the Terraform Registry](https://registry.terraform.io/providers/XtratusCloud/azureipam/latest/docs) for the current, authoritative reference.
 
@@ -169,7 +172,7 @@ provider "azureipam" {
 
 ```bash
 export AZUREIPAM_TOKEN=$(az account get-access-token \
-  --resource "api://<engine-app-id>" --query accessToken -o tsv)
+  --scope "api://<engine-app-id>/.default" --query accessToken -o tsv)
 terraform apply
 ```
 
