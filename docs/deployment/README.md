@@ -6,22 +6,22 @@ To successfully deploy the solution, the following prerequisites must be met:
 
 - An Azure Subscription (to deploy the solution into)
 - The following Azure RBAC Roles:
-  - [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner) at the above mentioned Subscription scope
+  - [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner) at the above mentioned Subscription scope
   - One of the following roles at the [Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) scope (needed to grant App Registrations and Managed Identity RBAC permissions):
-    - [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner)
-    - [User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#user-access-administrator)
+    - [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner)
+    - [User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#user-access-administrator)
     - [Custom Role](https://learn.microsoft.com/azure/role-based-access-control/custom-roles) with *allow* permissions of `Microsoft.Authorization/roleAssignments/write`
   - [Global Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#global-administrator) (needed to grant admin consent for the App Registration API permissions)
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
   - Required to clone the Azure IPAM GitHub repository
-- [PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
-- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 11.4.0 or later installed
+- [PowerShell](https://learn.microsoft.com/powershell/scripting/install/install-powershell) version 7.2.0 or later installed
+- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell) version 11.4.0 or later installed
 - [Microsoft Graph PowerShell SDK](https://learn.microsoft.com/powershell/microsoftgraph/installation) version 2.0.0 or later installed (at minimum the `Microsoft.Graph.Authentication` and `Microsoft.Graph.Identity.SignIns` modules)
   - Required to grant [Admin Consent](https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent) to the App Registrations. The deployment script checks for it on every run, including *Infrastructure Stack (Only)* deployments
 - [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install) version 0.21.1 or later installed
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) version 2.35.0 or later installed (optional)
   - Required only if you are building your own container image and pushing it to a private Azure Container Registry (Private ACR)
-- [Docker (Linux)](https://docs.docker.com/engine/install/) / [Docker Desktop (Windows)](https://docs.docker.com/desktop/install/windows-install/) installed (optional)
+- [Docker (Linux)](https://docs.docker.com/engine/install/) / [Docker Desktop (Windows)](https://docs.docker.com/desktop/setup/install/windows-install/) installed (optional)
   - Required only if you are building your own container image and running it locally for development/testing purposes
 
 > **NOTE:** An alternate [Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview) can be specified, but is **highly discouraged** as it will limit the visibility of the Azure IPAM platform. This option should only be used for testing or proof-of-concept deployments.
@@ -51,7 +51,7 @@ The two-part deployment option is provided in the event that a single team withi
 
 ## Authenticate to Azure PowerShell
 
-Before executing the Azure IPAM deployment script, you'll need to authenticate to [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) and set the context to the target subscription in which you'd like to deploy the solution.
+Before executing the Azure IPAM deployment script, you'll need to authenticate to [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell) and set the context to the target subscription in which you'd like to deploy the solution.
 
 ### Connect to Azure PowerShell
 
@@ -63,7 +63,7 @@ Connect-AzAccount
 Connect-AzAccount -UseDeviceAuthentication
 ```
 
-> **NOTE:** If you're connecting to an Azure Cloud besides Azure Public (such as Gov, China, etc.), you may need to specify the `-Environment` flag as described in the [Authentication Methods](https://learn.microsoft.com/powershell/azure/authenticate-azureps#sign-in-to-another-cloud) documentation when using `Connect-AzAccount`
+> **NOTE:** If you're connecting to an Azure Cloud besides Azure Public (such as Gov, China, etc.), you may need to specify the `-Environment` flag as described in the [Azure PowerShell](https://learn.microsoft.com/powershell/module/az.accounts/connect-azaccount#-environment) documentation when using `Connect-AzAccount`
 
 ### Set the Active Subscription for Azure PowerShell
 

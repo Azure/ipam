@@ -44,8 +44,8 @@ To successfully migrate your Azure IPAM deployment, the following prerequisites 
     - [Custom Role](https://learn.microsoft.com/azure/role-based-access-control/custom-roles) with *allow* permissions of `Microsoft.Authorization/roleAssignments/write`
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
   - Required to clone the Azure IPAM GitHub repository
-- [PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
-- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 11.4.0 or later installed
+- [PowerShell](https://learn.microsoft.com/powershell/scripting/install/install-powershell) version 7.2.0 or later installed
+- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell) version 11.4.0 or later installed
 - [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install) version 0.21.1 or later installed
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) version 2.35.0 or later installed (optional)
   - Required only if your deployment uses a private Azure Container Registry (Private ACR)
@@ -129,7 +129,7 @@ For detailed information about App Service backups, including limitations and re
 
 ## Authenticate to Azure PowerShell
 
-Before executing the Azure IPAM migration script, you'll need to authenticate to [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) and set the context to the subscription containing your Azure IPAM deployment.
+Before executing the Azure IPAM migration script, you'll need to authenticate to [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell) and set the context to the subscription containing your Azure IPAM deployment.
 
 ### Connect to Azure PowerShell
 
@@ -141,7 +141,7 @@ Connect-AzAccount
 Connect-AzAccount -UseDeviceAuthentication
 ```
 
-> **NOTE:** If you're connecting to an Azure Cloud besides Azure Public (such as Gov, China, etc.), you may need to specify the `-Environment` flag as described in the [Azure PowerShell](https://learn.microsoft.com/powershell/module/az.accounts/connect-azaccount) documentation when using `Connect-AzAccount`
+> **NOTE:** If you're connecting to an Azure Cloud besides Azure Public (such as Gov, China, etc.), you may need to specify the `-Environment` flag as described in the [Azure PowerShell](https://learn.microsoft.com/powershell/module/az.accounts/connect-azaccount#-environment) documentation when using `Connect-AzAccount`
 
 ### Set the Active Subscription for Azure PowerShell
 

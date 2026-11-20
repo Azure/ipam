@@ -36,13 +36,13 @@ Contact your Azure Administrator (or equivalent) to request a role which has `Mi
 
 This role could be one of the following:
 
-- [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner)
-- [User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#user-access-administrator)
+- [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner)
+- [User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#user-access-administrator)
 - [Custom Role](https://learn.microsoft.com/azure/role-based-access-control/custom-roles) with *allow* permissions of `Microsoft.Authorization/roleAssignments/write`
 
 ### <u>Notes</u>
 
-You can read more about the requirements for deploying Azure IPAM in the [Prerequisites](/deployment/README?id=prerequisites) section of the deployment guide.
+You can read more about the requirements for deploying Azure IPAM in the [Prerequisites](/deployment/README.md#prerequisites) section of the deployment guide.
 
 ## New-MgOauth2PermissionGrant (Failed)
 
@@ -72,14 +72,14 @@ Contact your Microsoft Entra ID Administrator (or equivalent) to request the [Gl
 
 Alternatively, if your organization (like many) has separate groups who manage Microsoft Entra ID permissions and Azure infrastructure, you can leverage the two-step deployment method for Azure IPAM where a member of the [Global Administrators](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#global-administrator) can deploy the required [App Registrations](https://learn.microsoft.com/entra/identity-platform/app-objects-and-service-principals#application-registration), then pass the generated [Parameters](https://learn.microsoft.com/azure/azure-resource-manager/templates/parameter-files) file to the Azure Infrastructure team to complete the deployment.
 
-Here are the steps from the [Deployment](/deployment/README) section:
+Here are the steps from the [Deployment](/deployment/README.md) section:
 
-1. [Azure Identities (Only) Deployment](/deployment/README?id=azure-identities-only-deployment)
-2. [Infrastructure Stack (Only) Deployment](/deployment/README?id=infrastructure-stack-only-deployment)
+1. [Azure Identities (Only) Deployment](/deployment/README.md#azure-identities-only-deployment)
+2. [Infrastructure Stack (Only) Deployment](/deployment/README.md#infrastructure-stack-only-deployment)
 
 ### <u>Notes</u>
 
-You can read more about the requirements for deploying Azure IPAM in the [Prerequisites](/deployment/README?id=prerequisites) section of the deployment guide.
+You can read more about the requirements for deploying Azure IPAM in the [Prerequisites](/deployment/README.md#prerequisites) section of the deployment guide.
 
 ## DisableKeyBasedMetadataWriteAccess (Cosmos DB)
 

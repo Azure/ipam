@@ -20,7 +20,7 @@ Once the secret expires, Azure IPAM can no longer reach Azure (see [AADSTS700022
 
 An app registration can have more than one client secret. Microsoft Entra ID shows the first three characters of each one, which is how you can tell which secret Azure IPAM is using: it is the one whose first three characters match the value of `ENGINE-SECRET` in Key Vault.
 
-Reading a secret value from Key Vault requires a Key Vault data-plane role. Azure IPAM's Key Vault uses Azure RBAC, and by default only the Azure IPAM managed identity has data-plane access, so you may need to assign yourself the [Key Vault Secrets Officer](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#key-vault-secrets-officer) role first. Remove it again when you are done.
+Reading a secret value from Key Vault requires a Key Vault data-plane role. Azure IPAM's Key Vault uses Azure RBAC, and by default only the Azure IPAM managed identity has data-plane access, so you may need to assign yourself the [Key Vault Secrets Officer](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/security#key-vault-secrets-officer) role first. Remove it again when you are done.
 
 #### Azure Portal
 
@@ -76,8 +76,8 @@ You will need:
   - Owner of the Engine app registration
   - [Application Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#application-administrator)
   - [Cloud Application Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#cloud-application-administrator)
-- [Key Vault Secrets Officer](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#key-vault-secrets-officer) on the Azure IPAM Key Vault, to store the new secret. Assign it to yourself for the rotation and remove it afterwards
-- [Website Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#website-contributor) or [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#contributor) on the App Service or Function App, to restart it
+- [Key Vault Secrets Officer](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/security#key-vault-secrets-officer) on the Azure IPAM Key Vault, to store the new secret. Assign it to yourself for the rotation and remove it afterwards
+- [Website Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/web-and-mobile#website-contributor) or [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#contributor) on the App Service or Function App, to restart it
 
 The steps are:
 
@@ -330,13 +330,13 @@ Microsoft's [Key Vault and Event Grid tutorial](https://learn.microsoft.com/azur
 
 ## Engine Azure Access
 
-The Engine app registration is assigned the [Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#reader) role at the [Tenant Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory), or at the Management Group specified with `-MgmtGroupId` during deployment. Azure IPAM uses this access to show administrators your Azure resources, to calculate utilization, to check new address space against existing virtual networks, and to fulfil Reservations.
+The Engine app registration is assigned the [Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/general#reader) role at the [Tenant Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory), or at the Management Group specified with `-MgmtGroupId` during deployment. Azure IPAM uses this access to show administrators your Azure resources, to calculate utilization, to check new address space against existing virtual networks, and to fulfil Reservations.
 
 If the assignment is removed, Azure IPAM keeps running but can no longer read your Azure environment on its own behalf (see [Access Denied (Engine Reader Role)](/troubleshooting/README.md#access-denied-engine-reader-role)).
 
 ### Restore Reader Access
 
-Assigning a role at the Management Group scope requires [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner), [User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#user-access-administrator), or another role with `Microsoft.Authorization/roleAssignments/write` at that scope.
+Assigning a role at the Management Group scope requires [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner), [User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#user-access-administrator), or another role with `Microsoft.Authorization/roleAssignments/write` at that scope.
 
 #### Azure Portal
 

@@ -25,4 +25,4 @@ To suggest an improvement, use the [Feature Request](https://github.com/Azure/ip
 
 ## Contributing
 
-Interested in contributing code, documentation, or other improvements? See the [Contributing](/contributing/README) guide for the process, and [Development](/development/README) for setting up a development environment and building container images.
+Interested in contributing code, documentation, or other improvements? See the [Contributing](/contributing/README.md) guide for the process, and [Development](/development/README.md) for setting up a development environment and building container images.

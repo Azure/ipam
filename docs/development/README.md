@@ -42,7 +42,7 @@ docker build --rm --no-cache -t <Repository Name>/ipamfunc:latest -f ./Dockerfil
 docker push <Repository Name>/ipamfunc:latest
 ```
 
-## Building & Updating Production Containers Images Using a Private ACR
+## Building and Updating Production Container Images Using a Private ACR
 
 In addition to the DockerHub option (above), alternatively you may choose to leverage an Azure Container Registry to host your Azure IPAM containers. Also, you may have selected the `-PrivateACR` flag during the deployment of your Azure IPAM environment, and from time to time you will need to update your containers as new code is released.
 

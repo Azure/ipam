@@ -14,12 +14,12 @@ To successfully update your Azure IPAM deployment, ensure the following prerequi
 
 - An Azure Subscription containing your existing Azure IPAM deployment
 - The following Azure RBAC Roles:
-  - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner) at the Resource Group scope containing your Azure IPAM resources
-  - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#owner) at the **Subscription** scope, required only to create the [staging slot](#staging-slots) — its additive deployment is evaluated at subscription scope. If you cannot grant subscription-scope access, run the update with `-SkipInfraUpdate` to bypass this step.
+  - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner) at the Resource Group scope containing your Azure IPAM resources
+  - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner) at the **Subscription** scope, required only to create the [staging slot](#staging-slots) — its additive deployment is evaluated at subscription scope. If you cannot grant subscription-scope access, run the update with `-SkipInfraUpdate` to bypass this step.
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
   - Required to clone the Azure IPAM GitHub repository
-- [PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) version 7.2.0 or later installed
-- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) version 11.4.0 or later installed
+- [PowerShell](https://learn.microsoft.com/powershell/scripting/install/install-powershell) version 7.2.0 or later installed
+- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell) version 11.4.0 or later installed
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) version 2.35.0 or later installed (required only for Private ACR deployments)
 
 > **NOTE:** The update script requires access to your existing Azure IPAM resources. Ensure you have the necessary permissions to both read the current configuration and restart/redeploy the App Service.
@@ -107,7 +107,7 @@ Everything else — deployment type, container vs native, registry, and the full
 
 ### Authenticate to Azure PowerShell
 
-Before executing the update script, authenticate to [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) and set the context to the subscription containing your Azure IPAM deployment.
+Before executing the update script, authenticate to [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell) and set the context to the subscription containing your Azure IPAM deployment.
 
 #### Connect to Azure PowerShell
 
@@ -119,7 +119,7 @@ Connect-AzAccount
 Connect-AzAccount -UseDeviceAuthentication
 ```
 
-> **NOTE:** If you're connecting to an Azure Cloud besides Azure Public (such as Gov, China, etc.), you may need to specify the `-Environment` flag as described in the [Azure PowerShell documentation](https://learn.microsoft.com/powershell/module/az.accounts/connect-azaccount) when using `Connect-AzAccount`
+> **NOTE:** If you're connecting to an Azure Cloud besides Azure Public (such as Gov, China, etc.), you may need to specify the `-Environment` flag as described in the [Azure PowerShell documentation](https://learn.microsoft.com/powershell/module/az.accounts/connect-azaccount#-environment) when using `Connect-AzAccount`
 
 #### Set the Active Subscription for Azure PowerShell
 
@@ -267,14 +267,14 @@ By default, the script automatically creates a temporary directory for downloadi
 
 The update script follows this automated process and will automatically determine the appropriate update method based on your deployment configuration:
 
-### 1. Application Discovery and Validation
+### Application Discovery and Validation
 
 - Verifies the specified App Service or Function App exists in the subscription
 - Detects the application type (App Service vs Function App, Container vs Native)
 - Checks for legacy Docker Compose deployments (redirects to migration guide if found)
 - Determines deployment architecture (Public ACR, Private ACR, or Native ZIP Deploy)
 
-### 2. Configuration Drift Detection and Remediation
+### Configuration Drift Detection and Remediation
 
 Azure IPAM has evolved since earlier releases, and a deployment created with an older version can differ from what a fresh deployment produces today. Before updating any code, the script compares your deployment against the **current** deployment templates, shows you exactly what differs, and asks for approval before changing anything.
 
@@ -303,9 +303,9 @@ Key behaviors:
 
 > **NOTE:** Applying configuration changes recycles the application, so expect a brief interruption. Production is converged **before** the staging slot, so a newly created slot inherits the corrected configuration rather than the old one.
 
-Use `-SkipInfraUpdate` to skip creating the staging slot. Legacy Docker Compose deployments are not handled here — they are redirected to the [migration guide](https://azure.github.io/ipam/#/migration/README).
+Use `-SkipInfraUpdate` to skip creating the staging slot. Legacy Docker Compose deployments are not handled here — they are redirected to the [migration guide](/migration/README.md).
 
-### 3. Deployment Type Detection and Processing
+### Deployment Type Detection and Processing
 
 #### For Public ACR Container Deployments
 
@@ -343,7 +343,7 @@ Use `-SkipInfraUpdate` to skip creating the staging slot. Legacy Docker Compose 
 - Handles retry logic for deployment failures (3 attempts)
 - Cleans up temporary files
 
-### 4. Restart and Validation
+### Restart and Validation
 
 - Restarts the App Service or Function App
 - Implements retry logic for restart failures
@@ -360,7 +360,7 @@ This additional deployment slot:
 - Is created **disabled** so it consumes no runtime capacity until needed
 - Mirrors production, making it a safe target for future **slot-swap** upgrades (deploy to the slot, validate, then swap)
 
-When you run `update.ps1` against an older deployment that predates slots, the script auto-detects the missing slot and includes it in the change plan (see [Configuration Drift Detection and Remediation](#2-configuration-drift-detection-and-remediation)). Use `-SkipInfraUpdate` to bypass it, or `-Force` to add it without the confirmation prompt.
+When you run `update.ps1` against an older deployment that predates slots, the script auto-detects the missing slot and includes it in the change plan (see [Configuration Drift Detection and Remediation](#configuration-drift-detection-and-remediation)). Use `-SkipInfraUpdate` to bypass it, or `-Force` to add it without the confirmation prompt.
 
 > **NOTE:** Adding the slot is **additive**, and your existing app-setting values are always preserved. Only missing baseline settings are backfilled.
 
@@ -421,7 +421,7 @@ Removing a secret is a Key Vault **data-plane** operation. Azure IPAM's Key Vaul
 
 If you want to remove it:
 
-1. Assign yourself the [Key Vault Secrets Officer](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#key-vault-secrets-officer) role on the Azure IPAM Key Vault
+1. Assign yourself the [Key Vault Secrets Officer](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/security#key-vault-secrets-officer) role on the Azure IPAM Key Vault
 2. Confirm nothing references the secret (no `COSMOS_KEY` app setting, no custom automation)
 3. Remove it:
 
@@ -433,7 +433,7 @@ If you want to remove it:
 
 > **NOTE:** Azure IPAM Key Vaults have soft delete and purge protection enabled, so the secret is recoverable for 90 days with `Undo-AzKeyVaultSecretRemoval`.
 
-> **IMPORTANT:** Removing the secret deletes a *stored copy* of the key — it does **not** revoke it. The Cosmos DB account key itself remains valid. If the value may have been exposed, [rotate the Cosmos DB key](https://learn.microsoft.com/azure/cosmos-db/secure-access-to-data#key-rotation) as well.
+> **IMPORTANT:** Removing the secret deletes a *stored copy* of the key — it does **not** revoke it. The Cosmos DB account key itself remains valid. If the value may have been exposed, [rotate the Cosmos DB key](https://learn.microsoft.com/azure/cosmos-db/how-to-rotate-keys) as well.
 
 ### Microsoft Entra Implicit Grant Flow
 
@@ -580,7 +580,7 @@ az account set --subscription "your-subscription-id"
 2. Verify ACR permissions and storage capacity
 3. Review Azure Container Registry task logs in Azure Portal
 4. Ensure the application's `/api/status` endpoint is accessible for container type detection
-5. For manual container build instructions, see the [Development Guide](/development/README.md#building--updating-production-containers-images-using-a-private-acr)
+5. For manual container build instructions, see the [Development Guide](/development/README.md#building-and-updating-production-container-images-using-a-private-acr)
 
 > **NOTE:** The update script will only attempt an automated build when the private ACR resides in the **same resource group** as the App Service. If your registry is in a different resource group, the script skips the build and directs you here — build and push a new image manually using the Development Guide instructions above, then restart the App Service or Function App to pull the new image.
 
