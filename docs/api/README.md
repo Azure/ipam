@@ -2,7 +2,7 @@
 
 You can interface with the full set of capabilities of Azure IPAM via a REST API. We use Swagger to define API documentation in OpenAPI v3 Specification format.
 
-API docs can be found at the `/api/docs` path of your Azure IPAM website. Here you will find information on methods, parameters, and request body details for all available APIs. You can also call the endpoints directly from that page, see [Using the Swagger UI](#using-the-swagger-ui).
+API docs can be found at the `/api/docs` path of your Azure IPAM website. It's the complete reference for every endpoint, including its parameters, request body and responses, and you can call the endpoints directly from that page (see [Using the Swagger UI](#using-the-swagger-ui)). This guide covers how to authenticate and how to perform the most common operations.
 
 ![IPAM OpenAPI specification](./images/openapispec.png)
 
@@ -10,19 +10,24 @@ API docs can be found at the `/api/docs` path of your Azure IPAM website. Here y
 
 You can interface with the API like you would any other REST API. We'll be using [Postman](https://www.postman.com) and [Azure PowerShell](https://learn.microsoft.com/powershell/azure/what-is-azure-powershell) for our examples.
 
-## Obtaining an Azure AD Token
+> **NOTE:** The Azure PowerShell examples use `Invoke-RestMethod -Authentication Bearer -Token`, which requires PowerShell 7 or later.
 
-First things first, you'll need to obtain an Azure AD token for authentication purposes. You can retrieve one via the Azure IPAM UI at anytime by selecting **Token** from the menu presented when clicking on your user avatar in the upper righthand corner.
+<!-- Earlier versions of Azure IPAM link to this anchor from the Swagger UI, so keep it -->
+<span id="obtaining-an-azure-ad-token"></span>
 
-![IPAM Azure AD Token](./images/token.png)
+## Obtaining an Access Token
+
+First things first, you'll need to obtain an access token for authentication purposes. You can retrieve one via the Azure IPAM UI at anytime by selecting **Token** from the menu presented when clicking on your user avatar in the upper righthand corner.
+
+![Azure IPAM Access Token](./images/token.png)
 
 You'll then be presented with a message notifying you that your token has been saved to your clipboard.
 
-![IPAM Azure AD Token Clipboard](./images/token_clipboard.png)
+![Azure IPAM Access Token Clipboard](./images/token_clipboard.png)
 
 You can also copy your token from **Profile** in the same menu. Profile shows how long your current token has left, and links straight to the [Swagger UI](#using-the-swagger-ui) where you can use it. Either way, a copied token always has at least 10 minutes left, as Azure IPAM fetches a new one when the current token is about to expire.
 
-You can also retrieve an Azure AD token from Azure IPAM via Azure PowerShell by using the [Get-AzAccessToken](https://learn.microsoft.com/powershell/module/az.accounts/get-azaccesstoken) commandlet. The token is retrieved from the API exposed via the backend engine application registration. This is the **ResourceUrl** you will be making the access token call against via Azure PowerShell.
+You can also retrieve an access token for Azure IPAM via Azure PowerShell by using the [Get-AzAccessToken](https://learn.microsoft.com/powershell/module/az.accounts/get-azaccesstoken) commandlet. The token is retrieved from the API exposed via the backend engine application registration. This is the **ResourceUrl** you will be making the access token call against via Azure PowerShell.
 
 ![IPAM API Resource URL](./images/ipam_api_resource_url.png)
 
@@ -36,7 +41,7 @@ $accessToken = (Get-AzAccessToken -ResourceUrl api://e3ff2k34-2271-58b5-9g2g-500
 
 The API documentation at `/api/docs` is interactive. You can call any endpoint directly from your browser via the **Try it out** button, without needing a separate REST client. Every endpoint requires authentication, so you'll need to supply a token first.
 
-1. Obtain a token using either of the methods described in [Obtaining an Azure AD Token](#obtaining-an-azure-ad-token).
+1. Obtain a token using either of the methods described in [Obtaining an Access Token](#obtaining-an-access-token).
 
 2. Click the **Authorize** button near the top right of the page.
 
@@ -305,7 +310,7 @@ $response = Invoke-RestMethod `
 
 #### Delete a Block
 
-Deleting a Block will fail if it contains virtual network associations or active reservations unless you pass the `force` query parameter.
+Deleting a Block will fail if it contains virtual network associations or any reservations, including fulfilled and cancelled ones, unless you pass the `force` query parameter.
 
 ```powershell
 $block = 'ProductionBlock'
@@ -383,7 +388,7 @@ Networks which can be associated are returned with an empty `blocked_by` array. 
 
 ### Example API Calls
 
-The following examples demonstrate common Virtual Network Association operations using Azure PowerShell. As with the other examples, you'll need to obtain an Azure AD token and set up your common variables first.
+The following examples demonstrate common Virtual Network Association operations using Azure PowerShell. As with the other examples, you'll need to obtain an access token and set up your common variables first.
 
 ```powershell
 $engineClientId = '<Engine App Registration Client ID>'
@@ -619,12 +624,19 @@ The call will return key information regarding your CIDR block reservation. Make
 $response
 
 id        : ABNsJjXXyTRDTRCdJEJThu
+space     : TestSpace
+block     : TestBlock
 cidr      : 10.1.5.0/24
 desc      : Reservation for Project Alpha vNET
 createdOn : 1662514052.26623
+createdBy : user@contoso.com
+settledOn :
+settledBy :
 status    : wait
 tag       : @{X-IPAM-RES-ID=ABNsJjXXyTRDTRCdJEJThu}
 ```
+
+`createdBy` is the caller's user principal name, or `spn:<object-id>` when a service principal created the Reservation.
 
 You can also control how IPAM selects the available range:
 
@@ -797,7 +809,7 @@ The API base path for External Networks is:
 
 ### Example API Calls
 
-The following examples demonstrate common External Network operations using Azure PowerShell. As with the CIDR Reservation examples above, you'll need to obtain an Azure AD token and set up your common variables first.
+The following examples demonstrate common External Network operations using Azure PowerShell. As with the CIDR Reservation examples above, you'll need to obtain an access token and set up your common variables first.
 
 ```powershell
 $engineClientId = '<Engine App Registration Client ID>'
