@@ -20,7 +20,7 @@ Once the secret expires, Azure IPAM can no longer reach Azure (see [AADSTS700022
 
 An app registration can have more than one client secret. Microsoft Entra ID shows the first three characters of each one, which is how you can tell which secret Azure IPAM is using: it is the one whose first three characters match the value of `ENGINE-SECRET` in Key Vault.
 
-Reading a secret value from Key Vault requires a Key Vault data-plane role. Azure IPAM's Key Vault uses Azure RBAC, and by default only the Azure IPAM managed identity has data-plane access, so you may need to assign yourself the [Key Vault Secrets Officer](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/security#key-vault-secrets-officer) role first. Remove it again when you are done.
+Reading a secret value from Key Vault requires a Key Vault data-plane role. Azure IPAM's Key Vault uses Azure RBAC, and by default only the Azure IPAM managed identity has data-plane access, so you may need to assign yourself a role first. [Key Vault Secrets User](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/security#key-vault-secrets-user) is the least privileged role that can read the secret. If you are about to [rotate it](#rotate-the-secret), assign [Key Vault Secrets Officer](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/security#key-vault-secrets-officer) instead, which covers both. Remove the role again when you are done.
 
 #### Azure Portal
 
@@ -28,14 +28,16 @@ Reading a secret value from Key Vault requires a Key Vault data-plane role. Azur
 2. Select **Certificates & secrets** → **Client secrets**
 3. Note the **Expires** date and the first three characters shown under **Value** for each secret
 
-   <!-- SCREENSHOT PLACEHOLDER: Engine app registration, Certificates & secrets, showing client secrets with their Expires dates and masked values -->
    ![Engine Client Secrets](./images/engine_client_secrets.png)
 
 4. Navigate to your Azure IPAM **Key Vault** → **Objects** → **Secrets** → **ENGINE-SECRET**
+
+   ![Key Vault ENGINE-SECRET](./images/engine_secret_keyvault.png)
+
 5. Select the current version and select **Show Secret Value**, then compare its first three characters against the secrets from step 3
 
-   <!-- SCREENSHOT PLACEHOLDER: ENGINE-SECRET current version in Key Vault with Show Secret Value selected -->
    ![ENGINE-SECRET Current Version](./images/engine_secret_current_version.png)
+   ![ENGINE-SECRET Version Details](./images/engine_secret_current_version_details.png)
 
 #### Azure PowerShell
 
@@ -76,7 +78,7 @@ You will need:
   - Owner of the Engine app registration
   - [Application Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#application-administrator)
   - [Cloud Application Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#cloud-application-administrator)
-- [Key Vault Secrets Officer](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/security#key-vault-secrets-officer) on the Azure IPAM Key Vault, to store the new secret. Assign it to yourself for the rotation and remove it afterwards
+- [Key Vault Secrets Officer](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/security#key-vault-secrets-officer) on the Azure IPAM Key Vault, to store the new secret. Key Vault Secrets User can only read secrets, so it isn't enough here. Assign the role to yourself for the rotation and remove it afterwards
 - [Website Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/web-and-mobile#website-contributor) or [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#contributor) on the App Service or Function App, to restart it
 
 The steps are:
@@ -95,17 +97,22 @@ The steps are:
 1. Navigate to **Microsoft Entra ID** → **App registrations** → **All applications** → your Azure IPAM **Engine** application
 2. Select **Certificates & secrets** → **Client secrets** → **New client secret**
 3. Enter a description, choose an expiration period that your organization's policies allow, then select **Add**
-4. Copy the new secret's **Value** and note its **Expires** date
 
-   <!-- SCREENSHOT PLACEHOLDER: Add a client secret panel with a description and expiration period selected -->
    ![Add A Client Secret](./images/engine_add_client_secret.png)
 
+4. Copy the new secret's **Value** and note its **Expires** date
+
+   ![Copy Client Secret](./images/engine_copy_client_secret.png)
+
 5. Navigate to your Azure IPAM **Key Vault** → **Objects** → **Secrets** → **ENGINE-SECRET** → **New Version**
+
+   ![Key Vault ENGINE-SECRET](./images/engine_secret_keyvault.png)
+   ![New ENGINE-SECRET Version](./images/engine_secret_new_version.png)
+
 6. Paste the value into **Secret value**, select **Set expiration date**, and enter the **Expires** date from step 4
 7. Select **Create**
 
-   <!-- SCREENSHOT PLACEHOLDER: Create a new version of ENGINE-SECRET with the secret value and expiration date set -->
-   ![New ENGINE-SECRET Version](./images/engine_secret_new_version.png)
+   ![Create New ENGINE-SECRET Version](./images/engine_secret_new_version_create.png)
 
 8. Navigate to your Azure IPAM **App Service** or **Function App** → **Settings** → **Environment variables** and select **Pull reference values**, so it reads the new version from Key Vault
 9. Select **Overview** → **Restart**
@@ -273,13 +280,18 @@ You can check whether `ENGINE-SECRET` has an expiration date from the **Expirati
 
 Look up the expiration date of the secret Azure IPAM is using (see [Check When the Secret Expires](#check-when-the-secret-expires)), then apply it to `ENGINE-SECRET`. Changing the expiration date doesn't create a new version of the secret, so Azure IPAM doesn't need a restart.
 
+Changing it requires [Key Vault Secrets Officer](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/security#key-vault-secrets-officer) on the Azure IPAM Key Vault, since Key Vault Secrets User can only read secrets. Remove the role again when you are done.
+
 ##### Azure Portal
 
 1. Navigate to your Azure IPAM **Key Vault** → **Objects** → **Secrets** → **ENGINE-SECRET** and select the current version
+
+   ![Key Vault ENGINE-SECRET](./images/engine_secret_keyvault.png)
+   ![ENGINE-SECRET Current Version](./images/engine_secret_current_version2.png)
+
 2. Select **Set expiration date** and enter the date
 3. Select **Save**
 
-   <!-- SCREENSHOT PLACEHOLDER: ENGINE-SECRET current version with Set expiration date selected -->
    ![Set ENGINE-SECRET Expiration Date](./images/engine_secret_set_expiration.png)
 
 ##### Azure PowerShell
@@ -326,11 +338,13 @@ Key Vault publishes the following events through [Azure Event Grid](https://lear
 Send them wherever your team will see them, such as an email from a Logic App, a Teams message, or an Azure Function:
 
 1. Navigate to your Azure IPAM **Key Vault** → **Events** → **Event Subscription**
+
+   ![Key Vault Event Subscription](./images/key_vault_event_subscription.png)
+
 2. Under **Event Types**, select only **Secret Near Expiry** and **Secret Expired**
 3. Choose an **Endpoint Type** and endpoint, then select **Create**
 
-   <!-- SCREENSHOT PLACEHOLDER: Key Vault Create Event Subscription with Secret Near Expiry and Secret Expired selected -->
-   ![Key Vault Event Subscription](./images/key_vault_event_subscription.png)
+   ![Key Vault Event Subscription Details](./images/key_vault_event_subscription_details.png)
 
 Microsoft's [Key Vault and Event Grid tutorial](https://learn.microsoft.com/azure/key-vault/general/event-grid-logicapps) walks through sending these events as email with a Logic App.
 
@@ -342,20 +356,77 @@ The Engine app registration is assigned the [Reader](https://learn.microsoft.com
 
 If the assignment is removed, Azure IPAM keeps running but can no longer read your Azure environment on its own behalf (see [Access Denied (Engine Reader Role)](/troubleshooting/README.md#access-denied-engine-reader-role)).
 
-### Restore Reader Access
+### Check Reader Access
 
-Assigning a role at the Management Group scope requires [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner), [User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#user-access-administrator), or another role with `Microsoft.Authorization/roleAssignments/write` at that scope.
+Checking the assignment requires permission to read role assignments at the Management Group scope. [Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/general#reader) at that scope is enough.
 
 #### Azure Portal
 
 1. Navigate to **Management groups** and select the **Tenant Root Group**, or the Management Group specified during deployment
-2. Select **Access control (IAM)** → **Role assignments**, and search for your Azure IPAM **Engine** application
-3. If no **Reader** assignment is listed, select **Add** → **Add role assignment**
-4. Select **Reader**, then **Next**
-5. Select **User, group, or service principal** → **Select members**, search for the Engine application, and select it
-6. Select **Review + assign**
 
-   <!-- SCREENSHOT PLACEHOLDER: Tenant Root Group Access control (IAM) showing the Engine application with the Reader role -->
+   ![Root Management Group](./images/root_mgmt_group.png)
+
+2. Select **Access control (IAM)** → **Check access** → **Check access**
+3. Search for your Azure IPAM **Engine** application (`ipam-engine-app` by default) and select it
+
+   ![Engine Reader Access Check](./images/engine_reader_check_access.png)
+
+4. Confirm that **Reader** is listed among its role assignments. An assignment inherited from a parent Management Group also counts
+
+   ![Engine Reader Access Check Details](./images/engine_reader_check_access_details.png)
+
+#### Azure PowerShell
+
+```powershell
+$engineAppId = "<engine-app-id>"
+
+# The Tenant Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
+$mgmtGroupId = (Get-AzContext).Tenant.Id
+$scope = "/providers/Microsoft.Management/managementGroups/$mgmtGroupId"
+
+# Includes assignments inherited from parent Management Groups
+Get-AzRoleAssignment -ServicePrincipalName $engineAppId -RoleDefinitionName "Reader" -Scope $scope
+```
+
+#### Azure CLI
+
+```bash
+appId="<engine-app-id>"
+
+# The Tenant Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
+mgmtGroupId=$(az account show --query tenantId --output tsv)
+scope="/providers/Microsoft.Management/managementGroups/$mgmtGroupId"
+
+az role assignment list --assignee "$appId" --role "Reader" --scope "$scope" --include-inherited --output table
+```
+
+If no assignment is returned, [restore it](#restore-reader-access).
+
+### Restore Reader Access
+
+Assigning a role at the Management Group scope requires `Microsoft.Authorization/roleAssignments/write` at that scope. [Role Based Access Control Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#role-based-access-control-administrator) is the least privileged built-in role that grants it, and [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner) and [User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#user-access-administrator) grant it too.
+
+#### Azure Portal
+
+1. Navigate to **Management groups** and select the **Tenant Root Group**, or the Management Group specified during deployment
+
+   ![Root Management Group](./images/root_mgmt_group.png)
+
+2. Select **Access control (IAM)** → **Add** → **Add role assignment**
+
+   ![Engine Reader Role Add Assignment](./images/engine_reader_add_role_assignment.png)
+
+3. Select **Reader**, then **Next**
+
+   ![Engine Reader Role Selection](./images/engine_reader_role_selection.png)
+
+4. Select **User, group, or service principal** → **Select members**, search for your Azure IPAM **Engine** application, and select it
+
+   ![Engine Role Assignment Membership](./images/engine_role_assignment_membership.png)
+   ![Engine Role Assignment Membership Confirmation](./images/engine_role_assignment_membership_confirm.png)
+
+5. Select **Review + assign**
+
    ![Engine Reader Role Assignment](./images/engine_reader_role_assignment.png)
 
 #### Azure PowerShell
@@ -363,13 +434,10 @@ Assigning a role at the Management Group scope requires [Owner](https://learn.mi
 ```powershell
 $engineAppId = "<engine-app-id>"
 
-# The Tenant Root Management Group shares its ID with the tenant
-$scope = "/providers/Microsoft.Management/managementGroups/$((Get-AzContext).Tenant.Id)"
+# The Tenant Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
+$mgmtGroupId = (Get-AzContext).Tenant.Id
+$scope = "/providers/Microsoft.Management/managementGroups/$mgmtGroupId"
 
-# Check for an existing assignment
-Get-AzRoleAssignment -ServicePrincipalName $engineAppId -Scope $scope
-
-# Restore it if it is missing
 New-AzRoleAssignment -ApplicationId $engineAppId -RoleDefinitionName "Reader" -Scope $scope
 ```
 
@@ -378,16 +446,11 @@ New-AzRoleAssignment -ApplicationId $engineAppId -RoleDefinitionName "Reader" -S
 ```bash
 appId="<engine-app-id>"
 
-# The Tenant Root Management Group shares its ID with the tenant
-scope="/providers/Microsoft.Management/managementGroups/$(az account show --query tenantId --output tsv)"
+# The Tenant Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
+mgmtGroupId=$(az account show --query tenantId --output tsv)
+scope="/providers/Microsoft.Management/managementGroups/$mgmtGroupId"
 
-# Check for an existing assignment
-az role assignment list --assignee "$appId" --scope "$scope" --output table
-
-# Restore it if it is missing
 az role assignment create --assignee "$appId" --role "Reader" --scope "$scope"
 ```
 
-If you deployed with `-MgmtGroupId`, replace the tenant ID in the scope with that Management Group's ID.
-
-> **NOTE:** New role assignments can take several minutes to take effect.
+> **NOTE:** New role assignments can take several minutes to take effect. Once this one has, the `arm` check returned by `/api/health` reports `ok` (see [Confirm the Rotation](#confirm-the-rotation) for how to call it).

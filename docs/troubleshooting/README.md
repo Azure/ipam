@@ -140,9 +140,6 @@ Additionally this issue only applies to legacy deployments of Azure IPAM (prior 
 - Errors reported before the update continue to appear in the Application Log afterwards, unchanged
 - Repeating the update produces the same result
 
-<!-- SCREENSHOT PLACEHOLDER: Application Log showing an identical error before and after an update -->
-![Unchanged Application Log After Update](./images/stale_package_app_log.png)
-
 ### <u>Verify</u>
 
 This applies to internet-restricted cloud deployments, which run the application directly from a ZIP package instead of building it on the server. The `WEBSITE_RUN_FROM_PACKAGE` app setting is set to `1`, uploaded packages are stored in `/home/data/SitePackages`, and a file named `packagename.txt` records which one is mounted as `/home/site/wwwroot`.
@@ -154,14 +151,30 @@ Connect to the App Service over SSH and inspect the package directory:
 #### SSH
 
 ```bash
-cat /home/data/SitePackages/packagename.txt
+cat /home/data/SitePackages/packagename.txt; echo
 ls -la /home/data/SitePackages/
 ```
 
-<!-- SCREENSHOT PLACEHOLDER: SSH session showing packagename.txt alongside the SitePackages listing -->
-![Active Package And Stored Packages](./images/site_packages_listing.png)
+The output looks similar to this:
 
-Packages are named for the time they were uploaded, in the form `yyyyMMddHHmmss.zip`. If the name recorded in `packagename.txt` predates your most recent deployment, that deployment did not take effect.
+```text
+$ cat /home/data/SitePackages/packagename.txt
+20260918213614.zip
+$ ls -la /home/data/SitePackages/
+total 241149
+drwxrwxrwx 2 nobody nogroup     4096 Sep 18 21:36 .
+drwxrwxrwx 2 nobody nogroup        0 Aug  4 18:25 ..
+-rwxrwxrwx 1 nobody nogroup 52081184 Sep  7 20:33 20260907203226.zip
+-rwxrwxrwx 1 nobody nogroup 38584320 Sep  9 22:58 20260909225755.zip
+-rwxrwxrwx 1 nobody nogroup 52081184 Sep  9 23:08 20260909230755.zip
+-rwxrwxrwx 1 nobody nogroup 52081627 Sep 10 16:39 20260910163920.zip
+-rwxrwxrwx 1 nobody nogroup 52091397 Sep 18 21:36 20260918213614.zip
+-rwxrwxrwx 1 nobody nogroup       18 Sep 18 21:36 packagename.txt
+```
+
+Packages are named for the time they were uploaded, in the form `yyyyMMddHHmmss.zip`. If the name recorded in `packagename.txt` predates your most recent deployment, that deployment did not take effect. In the example above, `packagename.txt` names the most recent upload, so the latest deployment is the one running.
+
+If `/home/data/SitePackages` doesn't exist, the App Service doesn't run from a package and this issue doesn't apply. When it does, the SSH welcome banner shows `WEBSITE_RUN_FROM_PACKAGE : set`.
 
 Archives produced by Azure IPAM v4.0.0 and later carry a manifest at their root. Where one is present, it identifies the running build directly:
 
@@ -169,7 +182,27 @@ Archives produced by Azure IPAM v4.0.0 and later carry a manifest at their root.
 cat /home/site/wwwroot/build.json
 ```
 
-The `built` timestamp names the archive, which is useful in environments where deployment logs cannot be copied off the system. Archives produced before v4.0.0 do not contain this file &mdash; for those, compare the name recorded in `packagename.txt` against the time you uploaded the archive instead.
+For example (the `packages` list is shortened here):
+
+```text
+{
+  "built": "2026-09-18T21:31:19.4880092Z",
+  "app": "4.0.0",
+  "python": "3.12",
+  "pipPlatform": "manylinux2014_x86_64",
+  "glibcCeiling": "2.17",
+  "glibcObserved": "2.17",
+  "nativeModules": 24,
+  "manifestOnly": false,
+  "packages": {
+    "fastapi-0.141.1": "py3-none-any",
+    "azure_identity-1.25.3": "py3-none-any",
+    ...
+  }
+}
+```
+
+The `built` timestamp records when the archive was built, so it identifies the archive that is running, which is useful in environments where deployment logs cannot be copied off the system. Because the archive is uploaded after it is built, `built` is earlier than the package name in `packagename.txt`. Archives produced before v4.0.0 do not contain this file &mdash; for those, compare the name recorded in `packagename.txt` against the time you uploaded the archive instead.
 
 ### <u>Resolve</u>
 
@@ -343,7 +376,7 @@ The deployment configures the App Service or Function App to use the Azure IPAM 
 
 ### <u>Verify</u>
 
-Azure IPAM reads your Azure environment through the Engine's own **Reader** role assignment for administrators, and for its own work such as calculating utilization and checking for overlapping address space. Other users see Azure resources through their own permissions, which is why their views keep working. Check the Engine's role assignment by following [Restore Reader Access](/maintenance/README.md#restore-reader-access).
+Azure IPAM reads your Azure environment through the Engine's own **Reader** role assignment for administrators, and for its own work such as calculating utilization and checking for overlapping address space. Other users see Azure resources through their own permissions, which is why their views keep working. Check the Engine's role assignment by following [Check Reader Access](/maintenance/README.md#check-reader-access).
 
 ### <u>Resolve</u>
 
@@ -411,9 +444,6 @@ A [Conditional Access policy for workload identities](https://learn.microsoft.co
 
 Navigate to **Microsoft Entra ID** → **Monitoring** → **Sign-in logs** → **Service principal sign-ins**, and filter to the Engine application. Sign-ins are grouped by application, so expand a row with a failed sign-in, select one of the sign-ins listed under it, then select **Conditional Access** to see which policy blocked it.
 
-<!-- SCREENSHOT PLACEHOLDER: Service principal sign-in details showing the Conditional Access policy that blocked the Engine -->
-![Engine Sign-In Blocked By Conditional Access](./images/engine_signin_conditional_access.png)
-
 ### <u>Resolve</u>
 
 Ask whoever manages Conditional Access in your organization to do one of the following:
@@ -464,7 +494,7 @@ If either is missing, look for it under **Microsoft Entra ID** → **App registr
 
 Deleted applications can be restored for 30 days. Select the Engine application under **Deleted applications** and select **Restore app registration**. Restoring the app registration from the Microsoft Entra admin center also restores its service principal. If only the enterprise application was deleted, restore it from **Enterprise applications** → **Deleted applications** instead.
 
-After restoring, confirm the Engine still has its Azure access by following [Restore Reader Access](/maintenance/README.md#restore-reader-access).
+After restoring, confirm the Engine still has its Azure access by following [Check Reader Access](/maintenance/README.md#check-reader-access).
 
 If the application no longer appears under **Deleted applications**, it has been permanently deleted and the app registrations must be recreated with the [Azure Identities (Only) Deployment](/deployment/README.md#azure-identities-only-deployment). The new registrations have different IDs, so the `ENGINE-ID`, `UI-ID` and `ENGINE-SECRET` secrets in Key Vault, and the UI app registration's redirect URI, must then be updated to match. [Open an issue](https://github.com/Azure/ipam/issues/new?template=bug_report.yml) if you need help.
 
@@ -564,8 +594,12 @@ Removing the old secret is the last step of a rotation for this reason. Wait unt
 - Errors in the Application Log for the App Service stating *Azure IPAM can't reach Azure as itself*, and *Azure authentication failed*, followed by `AADSTS7000222` and *The provided client secret keys for app '...' are expired*
 - The `arm` check returned by `/api/health` is not `ok`, reporting the same error
 
-<!-- SCREENSHOT PLACEHOLDER: Application Log showing an AADSTS7000222 error -->
-![AADSTS7000222 In Application Log](./images/aadsts7000222_app_log.png)
+In the Application Log, the first line below is written once when the problem starts, and the second each time a request to Azure fails:
+
+```text
+2026-11-16 18:12:04.512 | ERROR    | app.engine_access:_report_change:218 - Azure IPAM can't reach Azure as itself: Azure IPAM's client secret has expired (AADSTS7000222). An administrator needs to rotate it.
+2026-11-16 18:12:04.519 | ERROR    | app.routers.common.helper:arg_query_helper:558 - Azure authentication failed (app_only=True): Microsoft Entra ID error '(invalid_client) AADSTS7000222: The provided client secret keys for app '<engine-app-id>' are expired. Visit the Azure portal to create new keys for your app: https://aka.ms/NewClientSecret, or consider using certificate credentials for added security: https://aka.ms/certCreds. Trace ID: <trace-id> Correlation ID: <correlation-id> Timestamp: 2026-11-17 02:12:04Z'
+```
 
 ### <u>Verify</u>
 

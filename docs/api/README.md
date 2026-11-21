@@ -45,20 +45,21 @@ The API documentation at `/api/docs` is interactive. You can call any endpoint d
 
 2. Click the **Authorize** button near the top right of the page.
 
-   <!-- TODO: screenshot of the /api/docs page highlighting the Authorize button -->
    ![IPAM Swagger Authorize button](./images/swagger_authorize_button.png)
 
 3. Paste your token into the **Value** field and click **Authorize**. Enter the raw token value only, the `Bearer` prefix is added for you.
 
-   <!-- TODO: screenshot of the Authorize dialog with a token entered -->
    ![IPAM Swagger Authorize dialog](./images/swagger_authorize_dialog.png)
 
 4. Click **Close** to dismiss the dialog. The padlock icons next to each endpoint now appear locked, confirming your token will be attached to outgoing requests.
 
-   <!-- TODO: screenshot showing locked padlock icons on the endpoint list -->
    ![IPAM Swagger authorized endpoints](./images/swagger_authorized_endpoints.png)
 
 5. Expand any endpoint, click **Try it out**, complete the required parameters, then click **Execute**.
+
+   ![IPAM Swagger Try it Out](./images/swagger_try_it_out.png)
+   ![IPAM Swagger Execute](./images/swagger_try_it_out_execute.png)
+   ![IPAM Swagger Response](./images/swagger_try_it_out_response.png)
 
 The **Curl** box shown with each response contains the full equivalent command, including the `Authorization` header, which is handy for reproducing a call outside the browser.
 
