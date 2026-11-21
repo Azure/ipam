@@ -255,7 +255,7 @@ By default, the script automatically creates a temporary directory for downloadi
 | `-Force`             | Switch | No       | Skip confirmation prompts and force a redeploy even if already up to date **<sup>4</sup>** |
 | `-Debug`             | Switch | No       | Write verbose Azure deployment logs to `logs/debug_[timestamp].log`                        |
 
-> **NOTE 1:** Only applicable for native (non-container) deployments. These parameters are ignored for container deployments, which are automatically built from the latest repository code.
+> **NOTE 1:** Only applicable for native (non-container) deployments. Container deployments ignore these parameters: public registry deployments pull the latest published image, and private ACR deployments build from your local copy of the repository.
 
 > **NOTE 2:** Script creates a temporary directory automatically if not specified.
 
@@ -624,7 +624,7 @@ If you encounter issues not covered in this guide:
 
 1. Review the update logs for detailed error information
 2. Check the [Troubleshooting Guide](/troubleshooting/README.md)
-3. Open an issue on the [Azure IPAM GitHub repository](https://github.com/Azure/ipam/issues)
+3. Open an issue on the [Azure IPAM GitHub repository](https://github.com/Azure/ipam/issues/new?template=bug_report.yml)
 4. Include relevant log files and error messages in your issue report
 
 ## Update Best Practices

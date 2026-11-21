@@ -87,7 +87,7 @@ Verify recent backup history (both automatic and custom backups will appear here
 
 ![Recent Backups](./images/check_recent_backups.png)
 
-> **Note**: App Services automatically perform backups that cannot be disabled. With automatic backups configured, you cannot perform on-demand backups. You should verify that a recent backup was successfully completed before proceeding with migration.
+> **Note**: App Service automatically backs up apps on supported pricing tiers every hour, and these backups can't be disabled. Verify that a recent backup completed successfully before proceeding with migration.
 
 ### Configure Custom Backups (Optional)
 
@@ -121,7 +121,7 @@ If you want to run an on-demand backup, you must first configure **Custom Backup
 
 > **Important**:
 >
-> - If automatic backups are enabled, the "Backup Now" option is not available
+> - **Backup Now** is only available once custom backups are configured (see above)
 > - Ensure you have at least one successful backup before proceeding with migration
 > - If backup creation fails, resolve the issue before continuing with migration
 
@@ -251,7 +251,7 @@ The migration script will automatically:
 
 ### Step 1: Create Override Configuration File
 
-Create a JSON(C) file specifying your exact resource details:
+Create a JSON(C) file specifying your exact resource details. The repository includes a template, `migrate/overrides.jsonc`, that you can copy and edit:
 
 ```jsonc
 [
@@ -418,7 +418,7 @@ If you encounter issues during migration:
 1. **Review Migration Logs**: Check PowerShell output and log folder for detailed error messages
 2. **Validate Prerequisites**: Ensure all [required permissions](#prerequisites) are in place
 3. **Check Azure Status**: Verify Azure services are operational ([Azure Status](https://azure.status.microsoft/status))
-4. **Contact Support**: Create an [issue](https://github.com/Azure/ipam/issues/new?template=bug_report.yml) in the Azure IPAM GitHub repository
+4. **Report an Issue**: Create an [issue](https://github.com/Azure/ipam/issues/new?template=bug_report.yml) in the Azure IPAM GitHub repository
 
 ## Rollback Procedures
 
@@ -468,4 +468,4 @@ Expected downtime: 10-15 minutes
 
 - Use the JSON override method
 - Review script output carefully
-- Contact support for assistance
+- Open an [issue](https://github.com/Azure/ipam/issues/new?template=bug_report.yml) describing your configuration

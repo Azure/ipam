@@ -152,6 +152,10 @@ Restart-AzWebAppSlot -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-app>"
 $function = Get-AzFunctionApp -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-function>"
 (Invoke-AzRestMethod -Method POST -Path "$($function.Id)/config/configreferences/appsettings/refresh?api-version=2022-03-01").StatusCode
 Restart-AzFunctionApp -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-function>" -Force
+
+# Function App staging slot (only if it is running)
+(Invoke-AzRestMethod -Method POST -Path "$($function.Id)/slots/staging/config/configreferences/appsettings/refresh?api-version=2022-03-01").StatusCode
+Restart-AzWebAppSlot -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-function>" -Slot "staging"
 ```
 
 Once you have [confirmed the rotation](#confirm-the-rotation), remove the old secret:
@@ -202,6 +206,10 @@ az webapp restart --resource-group "<your-ipam-rg>" --name "<your-ipam-app>" --s
 functionResourceId=$(az functionapp show --resource-group "<your-ipam-rg>" --name "<your-ipam-function>" --query id --output tsv)
 az rest --method post --url "$functionResourceId/config/configreferences/appsettings/refresh?api-version=2022-03-01"
 az functionapp restart --resource-group "<your-ipam-rg>" --name "<your-ipam-function>"
+
+# Function App staging slot (only if it is running)
+az rest --method post --url "$functionResourceId/slots/staging/config/configreferences/appsettings/refresh?api-version=2022-03-01"
+az functionapp restart --resource-group "<your-ipam-rg>" --name "<your-ipam-function>" --slot staging
 ```
 
 Once you have [confirmed the rotation](#confirm-the-rotation), remove the old secret:

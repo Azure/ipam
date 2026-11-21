@@ -466,7 +466,7 @@ Deleted applications can be restored for 30 days. Select the Engine application 
 
 After restoring, confirm the Engine still has its Azure access by following [Restore Reader Access](/maintenance/README.md#restore-reader-access).
 
-If the application no longer appears under **Deleted applications**, it has been permanently deleted and the app registrations must be recreated with the [Azure Identities (Only) Deployment](/deployment/README.md#azure-identities-only-deployment). The new registrations have different IDs, so the `ENGINE-ID`, `UI-ID` and `ENGINE-SECRET` secrets in Key Vault, and the UI app registration's redirect URI, must then be updated to match. [Open an issue](https://github.com/Azure/ipam/issues) if you need help.
+If the application no longer appears under **Deleted applications**, it has been permanently deleted and the app registrations must be recreated with the [Azure Identities (Only) Deployment](/deployment/README.md#azure-identities-only-deployment). The new registrations have different IDs, so the `ENGINE-ID`, `UI-ID` and `ENGINE-SECRET` secrets in Key Vault, and the UI app registration's redirect URI, must then be updated to match. [Open an issue](https://github.com/Azure/ipam/issues/new?template=bug_report.yml) if you need help.
 
 ### <u>Notes</u>
 
