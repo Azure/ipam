@@ -45,7 +45,7 @@ You can read more about the requirements for deploying Azure IPAM in the [Prereq
 
 During the deployment of Azure IPAM, you see an error similar to the following:
 
-![New-AzRoleAssignment Failure](./images/new_mg_oauth2_permission_grant_error.png)
+![New-MgOauth2PermissionGrant Failure](./images/new_mg_oauth2_permission_grant_error.png)
 
 When authenticating to Azure IPAM for the first time, you are presented with a *Permissions Requested* screen.
 
@@ -53,19 +53,19 @@ When authenticating to Azure IPAM for the first time, you are presented with a *
 
 ### <u>Verify</u>
 
-The role of [Global Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#global-administrator) is required to deploy the Azure IPAM solution. This role is needed to [grant admin consent](https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent?pivots=portal) for the API permissions used by the Azure IPAM [App Registrations](https://learn.microsoft.com/entra/identity-platform/app-objects-and-service-principals#application-registration).
+Creating the Azure IPAM App Registrations and granting their admin consent requires one of the Microsoft Entra roles listed in the deployment [Prerequisites](/deployment/README.md#prerequisites): Cloud Application Administrator, Application Administrator or Global Administrator. These roles are needed to [grant admin consent](https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent?pivots=portal) for the API permissions used by the Azure IPAM [App Registrations](https://learn.microsoft.com/entra/identity-platform/app-objects-and-service-principals#application-registration).
 
 Navigate to your user in Microsoft Entra ID and check your current [Role Assignments](https://learn.microsoft.com/entra/identity/role-based-access-control/manage-roles-portal).
 
 ![Global Admin Missing](./images/global_admin_role_missing.png)
 
-You can see from the image above that the [Global Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#global-administrator) role is not present.
+In the image above, none of those roles is assigned.
 
 ### <u>Resolve</u>
 
-Contact your Microsoft Entra ID Administrator (or equivalent) to request the [Global Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#global-administrator) role.
+Contact your Microsoft Entra ID administrator (or equivalent) to request one of those roles.
 
-Alternatively, if your organization (like many) has separate groups who manage Microsoft Entra ID permissions and Azure infrastructure, you can leverage the two-step deployment method for Azure IPAM where a member of the [Global Administrators](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#global-administrator) can deploy the required [App Registrations](https://learn.microsoft.com/entra/identity-platform/app-objects-and-service-principals#application-registration), then pass the generated [Parameters](https://learn.microsoft.com/azure/azure-resource-manager/templates/parameter-files) file to the Azure Infrastructure team to complete the deployment.
+Alternatively, if your organization (like many) has separate groups who manage Microsoft Entra ID permissions and Azure infrastructure, you can leverage the two-step deployment method for Azure IPAM where someone who holds one of those roles can deploy the required [App Registrations](https://learn.microsoft.com/entra/identity-platform/app-objects-and-service-principals#application-registration), then pass the generated [Parameters](https://learn.microsoft.com/azure/azure-resource-manager/templates/parameter-files) file to the Azure Infrastructure team to complete the deployment.
 
 Here are the steps from the [Deployment](/deployment/README.md) section:
 
