@@ -7,7 +7,7 @@
 Azure IPAM leverages the [Microsoft Authentication Library (MSAL)](https://learn.microsoft.com/entra/identity-platform/msal-overview) to authenticate users with your existing Microsoft Entra ID credentials. What you can do once signed in depends on whether you are an **IPAM Administrator**:
 
 - **Administrators** set up and maintain the address plan. They create and update [Spaces](#spaces), [Blocks](#blocks) and [External Networks](#external-networks), manage [Virtual Network Associations](#virtual-network-associations) and [subscription exclusions](#subscription-exclusioninclusion), and control who else is an admin. They view Azure resources through the Engine Service Principal, which by default has [Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/general#reader) at the [Tenant Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) (unless overridden during deployment).
-- **Non-administrators** work within the address plan. They can view every Space and Block, find available address space, and create and cancel their own [Reservations](#reservations). Azure resources that aren't associated with a Block are shown to them only as their own Azure RBAC permissions allow. Every section of the menu except **Admin** is available to them, and the **Configure** pages are read-only apart from **Reservations**.
+- **Non-administrators** work within the address plan. They can view every Space and Block, find available address space, and create and cancel their own [Reservations](#reservations). They see the networks associated with each Block as part of the address plan, but the **Discover** pages and other Azure resources only show them what their own Azure RBAC permissions allow.
 
 For the full picture of what each role can see and do, see [Roles & Permissions](/roles-permissions/README.md).
 
@@ -123,7 +123,7 @@ Blocks are managed from the **Configure → Basics** page. Select a Space in the
 
 **Editing a Block** — Select a Block and choose **Edit Block** from the action menu. You can update the name or CIDR range. When changing the CIDR, the new range must still contain all currently associated virtual networks, reservations, and external networks.
 
-**Deleting a Block** — Select a Block and choose **Delete Block** from the action menu. If the Block contains any virtual network associations or active reservations, you will need to enable **Force Delete** to proceed.
+**Deleting a Block** — Select a Block and choose **Delete Block** from the action menu. If the Block contains any virtual network associations or reservations, including fulfilled and canceled ones, you will need to enable **Force Delete** to proceed. External Networks don't prevent deletion, and are deleted along with the Block.
 
 Block names follow the same naming rules as Spaces (1–64 characters, alphanumerics, underscores, hyphens, and periods).
 
@@ -157,7 +157,7 @@ The **Subnets** tab shows all subnets across your visible virtual networks. The 
 
 ### Virtual Hubs
 
-The **vHubs** tab shows Azure Virtual WAN hubs that have been associated with a Block. Virtual Hubs are a component of [Azure Virtual WAN](https://learn.microsoft.com/azure/virtual-wan/virtual-wan-about) and serve as the central networking point for branch, site-to-site, and point-to-site connectivity.
+The **vHubs** tab shows the Azure Virtual WAN hubs you can see in Azure, whether or not they're associated with a Block. Virtual Hubs are a component of [Azure Virtual WAN](https://learn.microsoft.com/azure/virtual-wan/virtual-wan-about) and serve as the central networking point for branch, site-to-site, and point-to-site connectivity.
 
 The grid displays the **Name** (with a drill-down arrow to Endpoints), parent **Virtual WAN** name, parent **Block** (if associated), **Prefixes**, and **Resource Group**. Additional columns for Subscription Name and Subscription ID are hidden by default.
 
@@ -198,7 +198,7 @@ Associations serve several important purposes:
 
 - **Utilization tracking** — Associated virtual networks are counted toward a Block's used address space, giving you an accurate picture of how much of the Block is consumed
 - **Overlap prevention** — When creating new CIDR Reservations, External Networks, or additional associations, Azure IPAM checks against all currently associated virtual networks to prevent address collisions
-- **Network visibility** — Once associated, a virtual network's subnets and endpoints become visible under their parent Block in the **Discover** section of Azure IPAM
+- **Shared visibility** — Once associated, a virtual network becomes part of the address plan, so every user can see it on the Block's **Associations** page. In the **Discover** section it's linked to its Space and Block, though each user still only sees the networks their own Azure permissions allow
 
 > **Note:** Virtual Network Association management is an **IPAM Administrator** function. Only users designated as Azure IPAM admins can create or modify associations. However, all users with access to Azure IPAM can view the current associations for a Block in a read-only capacity.
 
@@ -312,9 +312,7 @@ To clean up stale associations, un-check the stale entries and click **Save** to
 
 #### Admin vs. Non-Admin View
 
-Non-admin users can navigate to the Associations page and view the current associations for any Block. However, the grid is displayed in **read-only mode** — checkboxes are not shown and the Save button is never visible. This allows everyone to see which virtual networks are associated with a Block without being able to modify the associations. To associate a virtual network they own, non-admin users can use a Reservation instead, as described in [Associating an Existing Virtual Network](#associating-an-existing-virtual-network).
-
-> **Important:** Administrators see networks across the entire tenant. Non-admin users only see networks in subscriptions they have Azure RBAC read access to, so their available network list may be smaller.
+Non-admin users can navigate to the Associations page and view the current associations for any Block. However, the grid is displayed in **read-only mode** — checkboxes are not shown and the Save button is never visible. Every network associated with the Block is listed, including networks the user can't see in Azure, because associated networks are part of the address plan. To associate a virtual network they own, non-admin users can use a Reservation instead, as described in [Associating an Existing Virtual Network](#associating-an-existing-virtual-network).
 
 ### Automatic Association via Reservations
 

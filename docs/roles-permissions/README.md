@@ -39,8 +39,6 @@ The table below lists common tasks and who can perform them.
 | Manage administrators and subscription exclusions                 | Yes            | No                                                                                            |
 | [Act on notifications](/how-to/README.md#acting-on-a-notification), such as switching container registries | Yes | No |
 
-In the UI, users can open every section of the menu except **Admin**. The **Configure** pages are read-only for them, apart from **Reservations**.
-
 ## What Each Role Sees
 
 | What                                                   | Administrators                         | Users                                                               |
