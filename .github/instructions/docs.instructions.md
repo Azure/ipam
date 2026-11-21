@@ -87,7 +87,7 @@ For footnotes on a parameter table, mark the cell with `**<sup>1</sup>**` and ad
 
 - Put UI labels in bold, spelled and capitalized exactly as they appear: **Save**, **Force Delete**, **Configure**.
 - Write navigation paths with `→` between bold items: **Configure** → **Basics**.
-- Describe an icon by its tooltip in bold, then the symbol in parentheses if helpful: the **Actions** menu (⋮).
+- Refer to an icon button by its name in bold, such as the **Actions** menu, using its tooltip or, if it has none, its accessible name. Don't use symbols or describe the icon's shape. If the button has no visible label, say where it is the first time it comes up.
 - Use "select" for every UI interaction.
 - Put error messages and notification text in italics, quoted exactly as the product or Azure shows them.
 
