@@ -21,7 +21,7 @@ To manage Azure IPAM administrators, expand the **Admin** section of the menu bl
 
 The page displays a table of current administrators along with a search bar at the top. Azure IPAM supports two types of administrators:
 
-- **Users** — Microsoft Entra ID user accounts, searchable by display name.
+- **Users** — Microsoft Entra ID user accounts, searchable by display name or user principal name.
 - **Principals** — Microsoft Entra ID Service Principals (application identities), searchable by display name.
 
 Click the toggle button to the left of the search bar to switch between **User** and **Principal** search.
@@ -34,7 +34,7 @@ Type a name into the search bar to find matching entries via Microsoft Graph, th
 
 ![Azure IPAM Admin Search Results](./images/ipam_admin_search_results.png)
 
-To remove an administrator, click the **delete** icon on its row. The **save** icon in the upper-right corner appears only when you have unsaved changes. Click it to commit the updated admin list.
+To remove an administrator, select its row, then select the **Delete** icon that appears on it. The **Save** icon in the upper-right corner appears only when you have unsaved changes. Select it to commit the updated admin list.
 
 ![Azure IPAM Admins Config](./images/ipam_admin_user_delete.png)
 
@@ -48,7 +48,7 @@ To manage exclusions, expand the **Admin** section of the menu blade and select 
 
 The subscription list displays all subscriptions visible to IPAM, along with their type and management group. Click a subscription row to toggle it between included and excluded. Excluded subscriptions are highlighted in **red**. Click the same row again to re-include it.
 
-The **save** icon in the upper-right corner appears only when you have unsaved changes. Click it to commit your selections. You can also use the action menu to toggle between viewing all subscriptions or only the currently excluded ones.
+The **Save** icon in the upper-right corner appears only when you have unsaved changes. Select it to commit your selections. You can also use the **Actions** menu, at the right end of the table's header row, to switch between viewing all subscriptions and only the excluded ones.
 
 ![IPAM Admin Subscriptions Config](./images/ipam_admin_subscriptions_config.png)
 
@@ -63,7 +63,7 @@ Several interaction patterns are shared across all Discover tabs:
 - **Utilization bars** — Where applicable, a color-coded utilization bar shows how much of the address space is consumed. The bar displays <span style="color: green">**green**</span> at 70% or below, <span style="color: goldenrod">**yellow**</span> between 71–89%, and <span style="color: red">**red**</span> at 90% or above.
 - **Details panel** — Click the expand chevron (❭) on any row to slide open a details panel on the right side. The panel shows additional information about the selected resource, a utilization gauge (where applicable), and a **VIEW IN PORTAL** button that opens the resource directly in the Azure Portal.
 - **Drill-down navigation** — Some columns display an arrow icon (⤷) next to the value. Clicking the arrow navigates to a related tab, pre-filtered to show only child or associated resources. For example, clicking the arrow on a Space name takes you to the Blocks tab filtered to that Space.
-- **Hidden columns** — Some columns (such as Subscription ID) are hidden by default to keep the grid readable. You can reveal them through the column menu.
+- **Hidden columns** — Some columns (such as Subscription ID) are hidden by default to keep the grid readable. You can reveal them with **Manage Columns** in the table's **Actions** menu.
 
 > **Tip:** The Discover section reflects what you have access to. Non-admin users see resources based on their Azure RBAC permissions, while IPAM administrators see resources across the entire tenant.
 
@@ -73,7 +73,7 @@ A **Space** represents a logical grouping of *unique* IP address space. Spaces c
 
 ### Viewing Spaces
 
-Navigate to **Discover → Spaces** to see all Spaces. The grid shows each Space's **Name** (with a drill-down arrow to its Blocks), **Description**, **Utilization** bar, total **Size**, and **Used** address count.
+Navigate to **Discover → Spaces** to see all Spaces. The grid shows each Space's **Space Name** (with a drill-down arrow to its Blocks), **Utilization** bar, **Description**, **Total IP's**, and **Allocated IP's**.
 
 ![IPAM Spaces](./images/discover_spaces.png)
 
@@ -83,15 +83,15 @@ Spaces are managed from the **Configure → Basics** page. The upper portion of 
 
 > **Note:** Space management (creating, editing, and deleting) is an **IPAM Administrator** function.
 
-**Adding a Space** — Click the action menu (down chevron) and select **Add Space**. Provide a name and description, then click **Create**.
+**Adding a Space** — Open the **Actions** menu and select **Add Space**. Provide a name and description, then select **Create**.
 
 ![IPAM Add Space](./images/add_space.png)
 
 ![IPAM Add Space Details](./images/add_space_details.png)
 
-**Editing a Space** — Select a Space in the grid, then choose **Edit Space** from the action menu. You can update the name or description.
+**Editing a Space** — Select a Space in the grid, then choose **Edit Space** from the **Actions** menu. You can update the name or description.
 
-**Deleting a Space** — Select a Space and choose **Delete Space** from the action menu. If the Space contains Blocks, you will need to enable **Force Delete** to confirm the deletion. Force-deleting a Space removes all of its Blocks and their associated data (virtual network associations, reservations, and external networks).
+**Deleting a Space** — Select a Space and choose **Delete** from the **Actions** menu. If the Space contains Blocks, you will need to enable **Force Delete**, then select **Delete** a second time to confirm. Force-deleting a Space removes all of its Blocks and their associated data (virtual network associations, reservations, and external networks).
 
 Space names must be 1–64 characters and can contain alphanumeric characters, underscores, hyphens, and periods. They cannot start or end with a period, underscore, or hyphen.
 
@@ -105,7 +105,7 @@ A **Block** represents an IPv4 CIDR range within a Space. It can contain Azure v
 
 ### Viewing Blocks
 
-Navigate to **Discover → Blocks** to see all Blocks. The grid shows each Block's **Name** (with a drill-down arrow to its vNets and vHubs), parent **Space**, **CIDR** range, **Utilization** bar, total **Size**, and **Used** address count.
+Navigate to **Discover → Blocks** to see all Blocks. The grid shows each Block's **Block Name** (with a drill-down arrow to its vNets and vHubs), **Utilization** bar, parent **Space**, **Total IP's**, **Allocated IP's**, and **CIDR Block**.
 
 ![IPAM Blocks](./images/discover_blocks.png)
 
@@ -115,19 +115,19 @@ Blocks are managed from the **Configure → Basics** page. Select a Space in the
 
 > **Note:** Block management (creating, editing, and deleting) is an **IPAM Administrator** function.
 
-**Adding a Block** — Click the action menu (down chevron) on the Block grid and select **Add Block**. Provide a name and a valid IPv4 CIDR range, then click **Create**.
+**Adding a Block** — Open the **Actions** menu on the Block grid and select **Add Block**. Provide a name and a valid IPv4 CIDR range, then select **Create**.
 
 ![IPAM Add Block](./images/add_block.png)
 
 ![IPAM Add Block Details](./images/add_block_details.png)
 
-**Editing a Block** — Select a Block and choose **Edit Block** from the action menu. You can update the name or CIDR range. When changing the CIDR, the new range must still contain all currently associated virtual networks, reservations, and external networks.
+**Editing a Block** — Select a Block and choose **Edit Block** from the **Actions** menu. You can update the name or CIDR range. When changing the CIDR, the new range must still contain all currently associated virtual networks, reservations, and external networks.
 
-**Deleting a Block** — Select a Block and choose **Delete Block** from the action menu. If the Block contains any virtual network associations or reservations, including fulfilled and canceled ones, you will need to enable **Force Delete** to proceed. External Networks don't prevent deletion, and are deleted along with the Block.
+**Deleting a Block** — Select a Block and choose **Delete** from the **Actions** menu. If the Block contains any virtual network associations or reservations, including fulfilled and canceled ones, you will need to enable **Force Delete**, then select **Delete** a second time to confirm. External Networks don't prevent deletion, and are deleted along with the Block.
 
 Block names follow the same naming rules as Spaces (1–64 characters, alphanumerics, underscores, hyphens, and periods).
 
-> **Shortcut:** The Block action menu also provides quick links to **Block Networks** (Associations), **Reservations**, and **External Networks**. Selecting one of these navigates to the corresponding Configure tab with the Space and Block pre-selected.
+> **TIP:** The Block's **Actions** menu also provides quick links to **Block Networks** (Associations), **Reservations**, and **External Networks**. Selecting one of these navigates to the corresponding Configure tab with the Space and Block pre-selected.
 
 ### Managing Blocks via the API
 
@@ -141,7 +141,7 @@ As an Azure IPAM user, you can view IP address utilization information and detai
 
 ### Virtual Networks
 
-The **vNets** tab shows all Azure virtual networks visible to you. The table displays the **Name** (with a drill-down arrow to Subnets), parent **Block** (if associated), **Utilization** bar, total **Size**, **Used** address count, and **Prefixes** (address spaces). Additional columns such as **Resource Group**, **Subscription Name**, and **Subscription ID** are available but hidden by default.
+The **vNets** tab shows all Azure virtual networks visible to you. The table displays the **vNet Name** (with a drill-down arrow to Subnets), **Utilization** bar, the **Space** and **Block** it's associated with (if any), **Total IP's**, **Allocated IP's**, and **Address Space**. Columns for **Resource Group**, **Subscription Name**, and **Subscription ID** are hidden by default.
 
 ![IPAM vNETs](./images/discover_vnets.png)
 
@@ -149,7 +149,7 @@ The **vNets** tab shows all Azure virtual networks visible to you. The table dis
 
 ### Subnets
 
-The **Subnets** tab shows all subnets across your visible virtual networks. The grid shows the **Name** (with a drill-down arrow to Endpoints), parent **vNet**, **Utilization** bar, **Size**, **Used** count, and **Prefix**. Additional columns for Resource Group, Subscription Name, and Subscription ID are hidden by default.
+The **Subnets** tab shows all subnets across your visible virtual networks. The grid shows the **Subnet Name** (with a drill-down arrow to Endpoints), **Utilization** bar, **Parent vNet**, **Total IP's**, **Assigned IP's**, and **Address Space**. Columns for Resource Group, Subscription Name, and Subscription ID are hidden by default.
 
 ![IPAM Subnets](./images/discover_subnets.png)
 
@@ -159,7 +159,7 @@ The **Subnets** tab shows all subnets across your visible virtual networks. The 
 
 The **vHubs** tab shows the Azure Virtual WAN hubs you can see in Azure, whether or not they're associated with a Block. Virtual Hubs are a component of [Azure Virtual WAN](https://learn.microsoft.com/azure/virtual-wan/virtual-wan-about) and serve as the central networking point for branch, site-to-site, and point-to-site connectivity.
 
-The grid displays the **Name** (with a drill-down arrow to Endpoints), parent **Virtual WAN** name, parent **Block** (if associated), **Prefixes**, and **Resource Group**. Additional columns for Subscription Name and Subscription ID are hidden by default.
+The grid displays the **vHub Name** (with a drill-down arrow to Endpoints), **Parent vWAN**, the **Space** and **Block** it's associated with (if any), **Resource Group**, and **Address Space**. Columns for Subscription Name and Subscription ID are hidden by default.
 
 <!-- TODO: Screenshot needed -->
 ![IPAM vHubs](./images/discover_vhubs.png)
@@ -170,7 +170,7 @@ The grid displays the **Name** (with a drill-down arrow to Endpoints), parent **
 
 ### Endpoints
 
-The **Endpoints** tab shows individual network endpoints (NICs and private endpoints) across your visible virtual networks. The grid shows the **Name**, parent **vNet** and **Subnet**, **Resource Group**, and **Private IP**. Additional columns for Subscription Name and Subscription ID are hidden by default.
+The **Endpoints** tab shows the resources that hold IP addresses in your visible virtual networks: virtual machines and scale sets, private endpoints, Azure Firewalls, Bastion hosts, virtual network gateways, application gateways, API Management instances, load balancers, virtual hub endpoints, and network interfaces that aren't attached to anything. The grid shows the **Endpoint Name**, **Parent Network**, **Parent Subnet**, **Resource Group**, and **Private IP**. Columns for Subscription Name and Subscription ID are hidden by default.
 
 ![IPAM Endpoints](./images/discover_endpoints.png)
 
@@ -180,7 +180,7 @@ The **Endpoints** tab shows individual network endpoints (NICs and private endpo
 
 #### Private Endpoints
 
-A private endpoint row describes the service it connects to. Its **Name**, **Resource Group**, and **Subscription** are the service's, while its **vNet**, **Subnet**, and **Private IP** are the private endpoint's own. The details panel adds the **Private Endpoint Name** and the **Connection Status**, along with the **Connection Alias** for private endpoints connected by alias.
+A private endpoint row describes the service it connects to. Its **Name**, **Resource Group**, and **Subscription** are the service's, while its **Parent Network**, **Parent Subnet**, and **Private IP** are the private endpoint's own. The details panel adds the **Private Endpoint Name** and the **Connection Status**, along with the **Connection Alias** for private endpoints connected by alias.
 
 A private endpoint is **orphaned** when its connection to the service it was created for has been removed, because the service was deleted or soft-deleted, or because its owner removed the connection, while the private endpoint itself still exists. Azure reports this by setting the connection status to **Disconnected**. Recovering a soft-deleted service doesn't restore the connection, so the private endpoint needs to be recreated. A connection that is **Pending** or **Rejected** isn't orphaned, since the private endpoint was never connected, and its status is shown instead.
 
@@ -240,7 +240,7 @@ Virtual Network Associations are managed from the **Configure** section of the A
 
 **Option 1: Direct navigation** — Expand the **Configure** section of the menu blade and select **Associations**. This takes you to the Associations page where you can select a Space and Block.
 
-**Option 2: From the Block configuration** — Navigate to **Configure → Basics**, select a Space and Block, then open the action menu (⋮) and select **Block Networks**. This takes you to the Associations page with the Space and Block pre-selected.
+**Option 2: From the Block configuration** — Navigate to **Configure → Basics**, select a Space and Block, then open the **Actions** menu and select **Block Networks**. This takes you to the Associations page with the Space and Block pre-selected.
 
 ![IPAM Associate vNETs](./images/virtual_network_association.png)
 
@@ -279,7 +279,7 @@ To disassociate a virtual network from a Block, simply un-check it in the grid a
 
 A virtual network can be ineligible for a Block even though its address space falls inside the Block's CIDR range. This happens when one of its prefixes overlaps an **External Network** or an unsettled **CIDR Reservation**, and it disqualifies the entire network rather than the offending prefix alone.
 
-By default, the grid hides these networks, so the list shows only what can actually be associated. To view them, open the action menu and click **Showing Available** to toggle to **Showing All**. Click it again to switch back to the available-only view.
+By default, the grid hides these networks, so the list shows only what can actually be associated. To view them, open the **Actions** menu and select **Showing Available** to switch to **Showing All**. Select it again to switch back to the available-only view.
 
 ![Toggle Blocked Network Filter](./images/virtual_network_association_toggle_filter.png)
 
@@ -400,7 +400,7 @@ The Reservations page displays a table of all reservations for a given Block.
 
 You must select both a **Space** and a **Block** before you can view or manage reservations.
 
-> **Shortcut:** You can also navigate directly to Reservations from the **Configure → Basics** page. Select a Block, open the action menu (3 ellipses), and choose **Reservations**. This will take you to the Reservations tab with the Space and Block pre-selected.
+> **TIP:** You can also go directly to Reservations from the **Configure → Basics** page. Select a Block, open its **Actions** menu, and choose **Reservations**. This takes you to the Reservations tab with the Space and Block pre-selected.
 
 #### Viewing Reservations
 
@@ -418,13 +418,13 @@ For a Reservation created by another user, the description is left blank unless 
 
 #### Filtering Active vs. Settled Reservations
 
-By default, the table shows only **active** (unsettled) Reservations. To view all Reservations, including those that have been fulfilled or cancelled, open the action menu and click **Showing Active** to toggle to **Showing All**. Click it again to switch back to active-only view.
+By default, the table shows only **active** (unsettled) Reservations. To view all Reservations, including those that have been fulfilled or canceled, open the **Actions** menu and select **Showing Active** to switch to **Showing All**. Select it again to switch back to the active-only view.
 
 ![Toggle Reservation Filter](./images/resv_toggle_filter.png)
 
 #### Creating a Reservation
 
-To create a new Reservation, open the action menu (down chevron) and select **New Reservation**. You must have a **Space** and **Block** selected before this option becomes available.
+To create a new Reservation, open the **Actions** menu and select **New Reservation**. You must have a **Space** and **Block** selected before this option becomes available.
 
 ![New Reservation Menu](./images/resv_new_reservation_menu.png)
 
@@ -586,7 +586,7 @@ At the top of the page, you'll find selectors for **Space** and **Block**. You m
 
 #### Adding an External Network
 
-To add a new External Network, first select the target **Space** and **Block** using the dropdowns at the top. Then, open the action menu (down chevron) on the External Networks grid and select **Add Network**.
+To add a new External Network, first select the target **Space** and **Block** using the dropdowns at the top. Then, open the **Actions** menu on the External Networks grid and select **Add Network**.
 
 ![Add External Network Menu](./images/ext_add_network_menu.png)
 
@@ -595,7 +595,7 @@ You will be presented with a dialog to define the new External Network:
 - **Name**: A unique name for the External Network (up to 64 characters; alphanumerics, underscores, hyphens, and periods are allowed)
 - **Description**: A description of the External Network (up to 128 characters; alphanumerics, spaces, underscores, hyphens, slashes, and periods are allowed)
 - **CIDR**: Use the **Allocation Mode** toggle to specify the network size in one of two ways:
-  - **Auto**: Select a subnet mask size, and Azure IPAM will automatically assign the next available CIDR within the Block
+  - **Auto**: Choose a **Size**, and Azure IPAM will automatically assign the next available CIDR within the Block
   - **Manual**: Specify an exact CIDR range (must be within the parent Block and cannot overlap existing virtual networks, Reservations, or other External Networks)
 
 ![Add External Network Dialog](./images/ext_add_network_dialog.png)
@@ -604,7 +604,7 @@ Once created, the External Network will appear in the table, and its CIDR range 
 
 #### Editing an External Network
 
-To edit an existing External Network, select the network in the table, then open the action menu and select **Edit Network**.
+To edit an existing External Network, select the network in the table, then open the **Actions** menu and select **Edit Network**.
 
 ![Edit External Network Menu](./images/ext_edit_network_menu.png)
 
@@ -612,7 +612,7 @@ You can update the **Name**, **Description**, and **CIDR** of the External Netwo
 
 #### Deleting an External Network
 
-To delete an External Network, select it in the table, open the action menu, and select **Delete Network**.
+To delete an External Network, select it in the table, open the **Actions** menu, and select **Delete Network**.
 
 ![Delete External Network Menu](./images/ext_delete_network_menu.png)
 
@@ -632,7 +632,7 @@ When you select an External Network in the upper table, the lower table will pop
 
 #### Adding an External Subnet
 
-With an External Network selected, open the action menu on the Subnets table and select **Add Subnet**.
+With an External Network selected, open the **Actions** menu on the Subnets table and select **Add Subnet**.
 
 ![Add External Subnet Menu](./images/ext_add_subnet_menu.png)
 
@@ -646,13 +646,13 @@ Define the subnet with the following details:
 
 #### Editing an External Subnet
 
-Select a Subnet in the lower table, open the action menu, and select **Edit Subnet** to modify its name, description, or CIDR. The updated CIDR must remain within the parent External Network, cannot overlap other External Subnets, and must be large enough to contain all existing Endpoints within the subnet.
+Select a Subnet in the lower table, open the **Actions** menu, and select **Edit Subnet** to modify its name, description, or CIDR. The updated CIDR must remain within the parent External Network, cannot overlap other External Subnets, and must be large enough to contain all existing Endpoints within the subnet.
 
 ![Edit External Subnet Dialog](./images/ext_edit_subnet_dialog.png)
 
 #### Deleting an External Subnet
 
-Select a Subnet, open the action menu, and choose **Remove Subnet**. If the subnet contains endpoints, you will need to use the **Force Delete** option.
+Select a Subnet, open the **Actions** menu, and choose **Remove Subnet**. If the subnet contains endpoints, you will need to use the **Force Delete** option.
 
 ![Delete External Subnet Menu](./images/ext_delete_subnet_menu.png)
 
@@ -666,15 +666,15 @@ External Endpoints represent individual hosts or devices within an External Subn
 
 #### Opening the Manage Endpoints View
 
-Select a Subnet in the lower table, then open the action menu and select **Manage Endpoints**. This opens a dialog box for managing all endpoints within the selected subnet.
+Select a Subnet in the lower table, then open the **Actions** menu and select **Manage Endpoints**. This opens the **Manage External Subnet Endpoints** dialog, for managing all endpoints within the selected subnet.
 
 ![Manage Endpoints Menu](./images/ext_manage_endpoints_menu.png)
 
 #### The Manage Endpoints Dialog
 
-The Manage Endpoints dialog is divided into two sections:
+The dialog is divided into two sections:
 
-1. **Add/Edit Form** (top): Fields for **Name**, **Description**, and **IP Address** with an action button to add or update an endpoint
+1. **Add/Edit Form** (top): Fields for **Name**, **Description**, and **IP Address**, followed by an icon button to add or update an endpoint. The form is only shown to administrators
 2. **Existing Endpoints Table** (bottom): A table showing all current endpoints with their names, descriptions, and IP addresses
 
 ![Manage Endpoints Dialog](./images/ext_manage_endpoints_dialog.png)
@@ -687,11 +687,11 @@ Fill in the endpoint details in the form at the top of the dialog:
 - **Description**: A description of the endpoint (up to 128 characters)
 - **IP Address**: Select an available IP address from the dropdown, or choose **\<auto\>** to have Azure IPAM assign the next available IP within the subnet
 
-Click **Add** to stage the endpoint. You can add multiple endpoints before saving.
+Select the **Add Endpoint** icon at the end of the form to stage the endpoint. You can add multiple endpoints before applying your changes.
 
 ![Add Endpoint Dialog](./images/ext_add_endpoint_dialog.png)
 
-You can review all staged additional endpoints before clicking **Save** to commit them.
+You can review all staged additions before selecting **Apply** to commit them.
 
 ![Add Endpoint Dialog Save](./images/ext_add_endpoint_dialog_save.png)
 
@@ -699,27 +699,27 @@ You can review all staged additional endpoints before clicking **Save** to commi
 
 #### Editing an Endpoint
 
-Click on an existing endpoint row in the table to load it into the form at the top. Modify the desired fields, then click **Update** to stage the change. If updating the IP address, the new address must still fall within the parent subnet's CIDR and cannot duplicate another endpoint's IP in the same subnet.
+Select an existing endpoint row in the table to load it into the form at the top. Modify the desired fields, then select the **Update Endpoint** icon to stage the change. If updating the IP address, the new address must still fall within the parent subnet's CIDR and cannot duplicate another endpoint's IP in the same subnet.
 
 ![Update External Endpoint Dialog](./images/ext_update_endpoint_dialog.png)
 
-You can review all staged endpoints updates before clicking **Save** to commit them.
+You can review all staged endpoint updates before selecting **Apply** to commit them.
 
 ![Update External Endpoint Dialog Save](./images/ext_update_endpoint_dialog_save.png)
 
 #### Deleting Endpoints
 
-To delete an endpoint, first click the row in the table to select it. The delete icon will appear in that row once it is selected. Click the delete icon to stage the endpoint for deletion.
+To delete an endpoint, first select its row in the table. The **Delete** icon appears in that row once it's selected. Select it to stage the endpoint for deletion.
 
 ![Delete External Endpoint Dialog](./images/ext_delete_endpoint_dialog.png)
 
-You can review all staged endpoint deletions before clicking **Save** to commit them.
+You can review all staged endpoint deletions before selecting **Apply** to commit them.
 
 ![Delete External Endpoint Dialog Save](./images/ext_delete_endpoint_dialog_save.png)
 
 #### Saving Endpoint Changes
 
-All endpoint changes (additions, updates, and deletions) are staged locally in the dialog before being committed. This allows you to perform multiple operations in a single batch — for example, you can add new endpoints, update existing ones, and delete others all in the same dialog session. Once you are satisfied with all your changes, click **Save** to commit them all at once. This replaces the full endpoint list for the subnet in a single operation.
+All endpoint changes (additions, updates, and deletions) are staged locally in the dialog before being committed. This allows you to perform multiple operations in a single batch — for example, you can add new endpoints, update existing ones, and delete others all in the same dialog session. Once you're satisfied with all your changes, select **Apply** to commit them all at once. This replaces the full endpoint list for the subnet in a single operation.
 
 ### Managing External Networks via the API
 
