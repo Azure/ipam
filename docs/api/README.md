@@ -1190,7 +1190,7 @@ The API base path for the Notifications endpoints is:
 | `GET` | `/notifications` | List the notifications that currently apply |
 | `POST` | `/notifications/{notification_id}/resolve` | Fix the problem a notification describes, where it offers a fix |
 
-> **Note:** Every signed-in user can list notifications, but notifications meant for administrators are only returned to administrators. Resolving a notification requires an administrator. See the [Permissions Reference](/roles-permissions/permissions-reference.md#users-and-notifications) for details.
+> **Note:** Every signed-in user can list notifications, but notifications meant for administrators are only returned to administrators. Resolving a notification requires an administrator.
 
 ### The Notification Object
 
@@ -1368,7 +1368,7 @@ The API base paths for the Users and Roles endpoints are:
 
 | Field | Description |
 |-------|-------------|
-| `roles` | The IDs of the roles you hold. The IDs of the built-in roles are listed in the [Permissions Reference](/roles-permissions/permissions-reference.md) |
+| `roles` | The IDs of the roles you hold. `GET /roles` lists every role with its ID, name and description |
 | `isAdmin` | Whether you're an administrator |
 
 Each role in `GET /roles` has an `id`, a `name` and `description` for display, and `builtIn`, which is `true` for the roles defined by Azure IPAM itself.

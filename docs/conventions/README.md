@@ -44,7 +44,7 @@ Never check whether the caller is an administrator, and never hand-write an "adm
 
 Permissions live in `app/permissions.py`. Each `Permission` is a `resource/action` pair, such as `externals/update`, where the action matches the HTTP method: `read`, `create`, `update` or `delete`. The qualifier `/all` means "not just your own", as in `reservations/read/all`. Each `Role` defines a stable `id`, the `name` and `description` shown to people, and the permissions the role holds. `ROLES` lists every role by `id`, and `GET /roles` publishes the same definitions, so the API and the UI describe roles from one place.
 
-A permission exists only where the code makes a decision about it. Anything every signed-in user may do, such as reading Spaces or creating their own Reservations, needs no permission, so don't add one in anticipation of a future need.
+A permission exists for each decision the code makes about access, even when every current role holds it. `associations/read` and `externals/read` are held by both roles today, so no one is refused, but they let a future role be denied access without changing any routes. Don't add a permission for something the code doesn't decide, such as reading Spaces or creating your own Reservations.
 
 When a route requires a permission, declare it on the route:
 
@@ -92,7 +92,7 @@ To add a permission, add it to `Permission` with a one-line description in `DESC
 
 A role's `id` is part of the API: users report the roles they hold by `id`, and automation can rely on it. Change a role's `name` or `description` freely, but never its `id`.
 
-Marking is best effort and never fatal. If route introspection breaks, most likely after a FastAPI upgrade because it relies on `fastapi.routing.iter_route_contexts`, the engine still serves a valid schema and simply loses the annotations. Watch for this line at startup:
+Marking is best effort and never fatal. If route introspection breaks, most likely after a FastAPI upgrade because it relies on `fastapi.routing.iter_route_contexts`, the engine still serves a valid schema and simply loses the annotations. Watch for this line the first time the API schema is requested, by opening `/api/docs` or `/api/openapi.json` after the engine starts:
 
 ```text
 OpenAPI generated successfully (35 admin-marked operations)
