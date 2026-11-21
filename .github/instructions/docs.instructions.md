@@ -20,6 +20,8 @@ When something isn't covered here, follow the [Microsoft Writing Style Guide](ht
 - Be plain and direct. Avoid marketing language ("seamlessly", "powerful", "simply"), filler ("First things first", "It's worth noting that"), and dramatic phrasing ("quietly lied", "the hard way").
 - Don't use "please" in instructions. Use it only when asking the reader for something that's genuinely an imposition, such as including logs in a bug report.
 - Don't end a section with a sentence that only restates what the section already said.
+- Describe what the reader can do and why, not the current layout of the UI. Don't list menus, tabs or pages to describe what a role can access, since they change as the UI does.
+- Describe the design and what goes wrong when it isn't followed. Don't recount past bugs.
 - Use US English spelling: fulfill, canceled, labeled, honor. When quoting a UI label, an error message or an API value, copy it exactly as the product shows it.
 
 ## Terminology
