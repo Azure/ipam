@@ -8,13 +8,7 @@ During the deployment of Azure IPAM, you see an error similar to the following:
 
 ![New-AzRoleAssignment Failure](./images/new_az_role_assignment_error.png)
 
-HTTP 502 responses are visible for the "spaces/vnet/multi" calls in the Developer Tools networking view.
-
-![Data Fails To Load & HTTP 403 Responses](./images/fail_to_load_all_403.png)
-
-- An error in the Application Log for the App Service stating that the *Access is denied to the requested resource. The user might not have enough permission*.
-
-![Access Denied Errors](./images/access_denied_not_enough_permission.png)
+If the deployment finished without the Engine's **Reader** role assignment, Azure IPAM then shows the symptoms described in [Access Denied (Engine Reader Role)](#access-denied-engine-reader-role).
 
 ### <u>Verify</u>
 
@@ -38,6 +32,7 @@ This role could be one of the following:
 
 - [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner)
 - [User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#user-access-administrator)
+- [Role Based Access Control Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#role-based-access-control-administrator)
 - [Custom Role](https://learn.microsoft.com/azure/role-based-access-control/custom-roles) with *allow* permissions of `Microsoft.Authorization/roleAssignments/write`
 
 ### <u>Notes</u>
@@ -284,10 +279,11 @@ The commands above are maintained by each platform. Refer to the linked document
 One or more of the following, depending on which app setting can't be resolved:
 
 - **`ENGINE_APP_SECRET`:** a notification titled *Azure IPAM's client secret isn't configured* appears in the notification center, and actions that read from Azure fail with an error stating *Azure IPAM's client secret isn't configured. Its Key Vault reference couldn't be resolved.*
-- **`ENGINE_APP_ID`, `UI_APP_ID` or `TENANT_ID`:** signing in to Azure IPAM fails, or every request is rejected as unauthorized
+- **`ENGINE_APP_ID` or `TENANT_ID`:** signing in to Azure IPAM fails, or every request is rejected as unauthorized
+- **`UI_APP_ID`:** the Azure IPAM interface doesn't load, and its address returns `404 Not Found`, while the API at `/api/docs` still responds
 - **`MANAGED_IDENTITY_ID`:** Azure IPAM fails to start, because it can't authenticate to Cosmos DB, and errors appear in the Application Log during startup
 
-On the App Service or Function App's **Environment variables** page, an app setting whose source is **Key vault Reference** shows an error.
+On the App Service or Function App's **Environment variables** page, an app setting whose **Source** is **Key vault** shows an error.
 
 <!-- SCREENSHOT PLACEHOLDER: App Service Environment variables showing a Key vault Reference app setting with an error -->
 ![Key Vault Reference Error](./images/key_vault_reference_error.png)
@@ -326,9 +322,9 @@ Every reference should report a status of `Resolved`.
 | ------------------------ | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `AccessToKeyVaultDenied` | The managed identity has lost access, or the Key Vault firewall is blocking App Service          | Assign the Azure IPAM managed identity the **Key Vault Secrets User** role on the Key Vault, and review the Key Vault's **Networking** settings                 |
 | `SecretNotFound`         | The secret has been deleted or disabled                                                         | Recover the secret (soft delete keeps it for 90 days) or re-enable it. For `ENGINE-SECRET`, you can also [rotate the secret](/maintenance/README.md#rotate-the-secret) |
-| `VaultNotFound`          | The Key Vault has been deleted, or the `KEYVAULT_URL` app setting is wrong                      | Recover the Key Vault (soft delete keeps it for 90 days) or correct the app setting                                                                            |
+| `VaultNotFound`          | The Key Vault has been deleted or renamed                                                       | Recover the Key Vault (soft delete keeps it for 90 days). If it was recreated under a different name, the app settings' Key Vault references need to point to it |
 
-After fixing the cause, restart the App Service or Function App so the references are resolved again.
+After fixing the cause, select **Pull reference values** on the **Environment variables** page so the references are resolved again, then restart the App Service or Function App so Azure IPAM loads the values.
 
 ### <u>Notes</u>
 
