@@ -1,71 +1,71 @@
 # Azure IPAM REST API Overview
 
-You can interface with the full set of capabilities of Azure IPAM via a REST API. We use Swagger to define API documentation in OpenAPI v3 Specification format.
+Everything you can do in Azure IPAM is also available through its REST API, which is described in OpenAPI v3 format.
 
-API docs can be found at the `/api/docs` path of your Azure IPAM website. It's the complete reference for every endpoint, including its parameters, request body and responses, and you can call the endpoints directly from that page (see [Using the Swagger UI](#using-the-swagger-ui)). This guide covers how to authenticate and how to perform the most common operations.
+The API documentation is at the `/api/docs` path of your Azure IPAM site. It's the complete reference for every endpoint, including its parameters, request body and responses, and you can call the endpoints directly from that page (see [Using the Swagger UI](#using-the-swagger-ui)). This guide covers how to authenticate and how to perform the most common operations.
 
 ![IPAM OpenAPI specification](./images/openapispec.png)
 
 ## How to Call the API
 
-You can interface with the API like you would any other REST API. We'll be using [Postman](https://www.postman.com) and [Azure PowerShell](https://learn.microsoft.com/powershell/azure/what-is-azure-powershell) for our examples.
+You can call the API like any other REST API. The examples in this guide use [Postman](https://www.postman.com) and [Azure PowerShell](https://learn.microsoft.com/powershell/azure/what-is-azure-powershell).
 
-> **NOTE:** The Azure PowerShell examples use `Invoke-RestMethod -Authentication Bearer -Token`, which requires PowerShell 7 or later.
+> **NOTE:** The Azure PowerShell examples use `Invoke-RestMethod -Authentication Bearer -Token`, which needs PowerShell 7 or later. Replace `<your-ipam-host>` with the host name of your Azure IPAM site, such as `ipam.contoso.com`, and `<engine-app-id>` with the application (client) ID of the Engine app registration.
 
 <!-- Earlier versions of Azure IPAM link to this anchor from the Swagger UI, so keep it -->
 <span id="obtaining-an-azure-ad-token"></span>
 
 ## Obtaining an Access Token
 
-First things first, you'll need to obtain an access token for authentication purposes. You can retrieve one via the Azure IPAM UI at anytime by selecting **Token** from the menu presented when clicking on your user avatar in the upper righthand corner.
+Every API call needs an access token. To get one from the Azure IPAM UI, select your user avatar in the upper-right corner, then select **Token**.
 
 ![Azure IPAM Access Token](./images/token.png)
 
-You'll then be presented with a message notifying you that your token has been saved to your clipboard.
+A *Token copied to clipboard!* message confirms that the token is on your clipboard.
 
 ![Azure IPAM Access Token Clipboard](./images/token_clipboard.png)
 
 You can also copy your token from **Profile** in the same menu. Profile shows how long your current token has left, and links straight to the [Swagger UI](#using-the-swagger-ui) where you can use it. Either way, a copied token always has at least 10 minutes left, as Azure IPAM fetches a new one when the current token is about to expire.
 
-You can also retrieve an access token for Azure IPAM via Azure PowerShell by using the [Get-AzAccessToken](https://learn.microsoft.com/powershell/module/az.accounts/get-azaccesstoken) commandlet. The token is retrieved from the API exposed via the backend engine application registration. This is the **ResourceUrl** you will be making the access token call against via Azure PowerShell.
+You can also get an access token with the Azure PowerShell [Get-AzAccessToken](https://learn.microsoft.com/powershell/module/az.accounts/get-azaccesstoken) cmdlet. Request it for the API exposed by the Engine app registration, whose application ID URI is the **ResourceUrl**.
 
 ![IPAM API Resource URL](./images/ipam_api_resource_url.png)
 
 ```powershell
-$accessToken = (Get-AzAccessToken -ResourceUrl api://e3ff2k34-2271-58b5-9g2g-5004145608b3).Token
+$accessToken = (Get-AzAccessToken -ResourceUrl "api://<engine-app-id>").Token
 ```
 
-> **Note:** As of [Azure PowerShell v14](https://learn.microsoft.com/powershell/azure/release-notes-azureps#1400---may-2025), `Get-AzAccessToken` returns the `.Token` property as a `SecureString`, which is the expected type for `Invoke-RestMethod -Token`. If you are using an earlier version, wrap the result with `ConvertTo-SecureString ... -AsPlainText -Force`.
+> **NOTE:** As of [Azure PowerShell v14](https://learn.microsoft.com/powershell/azure/release-notes-azureps#1400---may-2025), `Get-AzAccessToken` returns the `.Token` property as a `SecureString`, which is the expected type for `Invoke-RestMethod -Token`. If you're using an earlier version, wrap the result with `ConvertTo-SecureString ... -AsPlainText -Force`.
 
 ## Using the Swagger UI
 
-The API documentation at `/api/docs` is interactive. You can call any endpoint directly from your browser via the **Try it out** button, without needing a separate REST client. Every endpoint requires authentication, so you'll need to supply a token first.
+The API documentation at `/api/docs` is interactive. You can call any endpoint from your browser with **Try it out**, without a separate REST client. Supply a token first, since every endpoint except `/api/status` needs one.
 
 1. Obtain a token using either of the methods described in [Obtaining an Access Token](#obtaining-an-access-token).
 
-2. Click the **Authorize** button near the top right of the page.
+2. Select **Authorize** near the upper right of the page.
 
    ![IPAM Swagger Authorize button](./images/swagger_authorize_button.png)
 
-3. Paste your token into the **Value** field and click **Authorize**. Enter the raw token value only, the `Bearer` prefix is added for you.
+3. Paste your token into the **Value** field and select **Authorize**. Enter only the token itself, since the `Bearer` prefix is added for you.
 
    ![IPAM Swagger Authorize dialog](./images/swagger_authorize_dialog.png)
 
-4. Click **Close** to dismiss the dialog. The padlock icons next to each endpoint now appear locked, confirming your token will be attached to outgoing requests.
+4. Select **Close**. The padlock next to each endpoint now shows as locked, meaning your token is sent with each request.
 
    ![IPAM Swagger authorized endpoints](./images/swagger_authorized_endpoints.png)
 
-5. Expand any endpoint, click **Try it out**, complete the required parameters, then click **Execute**.
+5. Expand any endpoint, select **Try it out**, fill in the required parameters, then select **Execute**.
 
    ![IPAM Swagger Try it Out](./images/swagger_try_it_out.png)
    ![IPAM Swagger Execute](./images/swagger_try_it_out_execute.png)
    ![IPAM Swagger Response](./images/swagger_try_it_out_response.png)
 
-The **Curl** box shown with each response contains the full equivalent command, including the `Authorization` header, which is handy for reproducing a call outside the browser.
+The **Curl** box shown with each response contains the full equivalent command, including the `Authorization` header, which is useful for repeating a call outside the browser.
 
-Your token is held only in the current browser session. Reloading the page clears it, and you can remove it at any time via **Authorize** > **Logout**.
+Your token is held only in the current browser session. Reloading the page clears it, and you can remove it at any time with **Authorize** → **Logout**.
 
-> **Note:** Access tokens are short lived. If requests that previously succeeded start returning `401`, your token has most likely expired, repeat the steps above with a freshly issued one.
+> **NOTE:** Access tokens are short-lived. If requests that worked before start returning `401`, your token has most likely expired. Repeat the steps above with a new one.
 
 ## Spaces
 
@@ -83,15 +83,15 @@ All Space management endpoints (create, update, delete) are restricted to Azure 
 | `PATCH` | `/spaces/{space}` | Update a Space (JSON Patch) |
 | `DELETE` | `/spaces/{space}` | Delete a Space |
 
-> **Note:** The `GET` endpoints accept optional `expand` (admin-only) and `utilization` query parameters. Setting `utilization=true` includes size and used address counts. Setting `expand=true` expands all nested network references.
+> **NOTE:** The `GET` endpoints accept optional `expand` (admin-only) and `utilization` query parameters. Setting `utilization=true` includes size and used address counts. Setting `expand=true` expands all nested network references.
 
 ### Example API Calls
 
 ```powershell
-$engineClientId = '<Engine App Registration Client ID>'
-$appName = 'ipamdev'
+$engineAppId = "<engine-app-id>"
+$ipamHost = "<your-ipam-host>"
 
-$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
+$accessToken = (Get-AzAccessToken -ResourceUrl "api://$engineAppId").Token
 
 $headers = @{
     'Accept'       = 'application/json'
@@ -102,18 +102,18 @@ $headers = @{
 #### List All Spaces
 
 ```powershell
-# Get all Spaces
+# Get All Spaces
 $spaces = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces" `
+    -Uri "https://$ipamHost/api/spaces" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
 
-# Get all Spaces with utilization data
+# Get All Spaces with Utilization Data
 $spacesUtil = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces?utilization=true" `
+    -Uri "https://$ipamHost/api/spaces?utilization=true" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -126,7 +126,7 @@ $space = 'TestSpace'
 
 $spaceDetails = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space" `
+    -Uri "https://$ipamHost/api/spaces/$space" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -144,7 +144,7 @@ $body = @{
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces" `
+    -Uri "https://$ipamHost/api/spaces" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -168,7 +168,7 @@ $body = @(
 
 $response = Invoke-RestMethod `
     -Method 'Patch' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space" `
+    -Uri "https://$ipamHost/api/spaces/$space" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -177,23 +177,23 @@ $response = Invoke-RestMethod `
 
 #### Delete a Space
 
-Deleting a Space will fail if it contains Blocks unless you pass the `force` query parameter.
+Deleting a Space fails if it contains Blocks, unless you pass the `force` query parameter.
 
 ```powershell
 $space = 'ProductionSpace'
 
-# Delete (will fail if Blocks exist)
+# Delete (Fails If Blocks Exist)
 Invoke-RestMethod `
     -Method 'Delete' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space" `
+    -Uri "https://$ipamHost/api/spaces/$space" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
 
-# Force delete (removes the Space and all its Blocks)
+# Force Delete (Removes the Space and All Its Blocks)
 Invoke-RestMethod `
     -Method 'Delete' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space`?force=true" `
+    -Uri "https://$ipamHost/api/spaces/$space`?force=true" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -216,16 +216,16 @@ All Block management endpoints (create, update, delete) are restricted to Azure 
 | `DELETE` | `/spaces/{space}/blocks/{block}` | Delete a Block |
 | `GET` | `/spaces/{space}/blocks/{block}/available` | List virtual networks eligible for association |
 
-> **Note:** The `GET` endpoints accept optional `expand` (admin-only) and `utilization` query parameters. Setting `utilization=true` includes size and used address counts. Setting `expand=true` expands virtual network references to full network objects. Non-admin users see every pending reservation, but those created by other users have their `id` and `desc` set to `null`, and settled reservations are only included if the caller created them.
+> **NOTE:** The `GET` endpoints accept optional `expand` (admin-only) and `utilization` query parameters. Setting `utilization=true` includes size and used address counts. Setting `expand=true` expands virtual network references to full network objects. Non-admin users see every pending reservation, but those created by other users have their `id` and `desc` set to `null`, and settled reservations are only included if the caller created them.
 
 ### Example API Calls
 
 ```powershell
-$engineClientId = '<Engine App Registration Client ID>'
-$appName = 'ipamdev'
+$engineAppId = "<engine-app-id>"
+$ipamHost = "<your-ipam-host>"
 $space = 'TestSpace'
 
-$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
+$accessToken = (Get-AzAccessToken -ResourceUrl "api://$engineAppId").Token
 
 $headers = @{
     'Accept'       = 'application/json'
@@ -236,18 +236,18 @@ $headers = @{
 #### List All Blocks in a Space
 
 ```powershell
-# Get all Blocks
+# Get All Blocks
 $blocks = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
 
-# Get all Blocks with utilization data
+# Get All Blocks with Utilization Data
 $blocksUtil = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks?utilization=true" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks?utilization=true" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -260,7 +260,7 @@ $block = 'TestBlock'
 
 $blockDetails = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -268,7 +268,7 @@ $blockDetails = Invoke-RestMethod `
 
 #### Create a Block
 
-Creating a Block requires a name and a valid IPv4 CIDR range. The CIDR cannot overlap with existing Blocks in the same Space.
+Creating a Block requires a name and a valid IPv4 CIDR range. The CIDR range can't overlap existing Blocks in the same Space.
 
 ```powershell
 $block = @{
@@ -278,7 +278,7 @@ $block = @{
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -302,7 +302,7 @@ $body = @(
 
 $response = Invoke-RestMethod `
     -Method 'Patch' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -311,23 +311,23 @@ $response = Invoke-RestMethod `
 
 #### Delete a Block
 
-Deleting a Block will fail if it contains virtual network associations or any reservations, including fulfilled and cancelled ones, unless you pass the `force` query parameter.
+Deleting a Block fails if it contains virtual network associations or any Reservations, including fulfilled and canceled ones, unless you pass the `force` query parameter.
 
 ```powershell
 $block = 'ProductionBlock'
 
-# Delete (will fail if associations or reservations exist)
+# Delete (Fails If Associations or Reservations Exist)
 Invoke-RestMethod `
     -Method 'Delete' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
 
-# Force delete (removes the Block and all its data)
+# Force Delete (Removes the Block and Everything in It)
 Invoke-RestMethod `
     -Method 'Delete' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block`?force=true" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block`?force=true" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -340,10 +340,10 @@ Query which virtual networks are eligible for association with a given Block. Th
 ```powershell
 $block = 'ProductionBlock'
 
-# Get available networks with full details
+# Get Available Networks with Full Details
 $available = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/available?expand=true" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/available?expand=true" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -353,7 +353,7 @@ $available = Invoke-RestMethod `
 
 Virtual Network Associations map Azure virtual networks (and virtual hubs) to Blocks within Azure IPAM. Associating a network tells Azure IPAM that its address space is allocated from the Block's CIDR range, which drives utilization tracking and overlap prevention. Any signed-in user can list a Block's associations, but adding, replacing and removing them is restricted to Azure IPAM administrators.
 
-For more information on what Virtual Network Associations are, how eligibility rules work, and how to manage them via the UI, please see the [Virtual Network Associations](/how-to/README.md#virtual-network-associations) section of the How-To documentation.
+For more information on what Virtual Network Associations are, how eligibility rules work, and how to manage them in the UI, see the [Virtual Network Associations](/how-to/README.md#virtual-network-associations) section of the How-To documentation.
 
 The API base path for Virtual Network Association operations is:
 
@@ -371,7 +371,7 @@ The API base path for Virtual Network Association operations is:
 | `PUT` | `/spaces/{space}/blocks/{block}/networks` | Replace all associations (full replacement) |
 | `DELETE` | `/spaces/{space}/blocks/{block}/networks` | Remove one or more associations |
 
-> **Note:** The `GET /available` and `GET /networks` endpoints are accessible to all authenticated users. The other association endpoints (`POST`, `PUT`, `DELETE`) are restricted to Azure IPAM administrators and will return `403 Forbidden` for non-admin users.
+> **NOTE:** Every signed-in user can call `GET /available` and `GET /networks`. The other association endpoints (`POST`, `PUT` and `DELETE`) are restricted to Azure IPAM administrators, and return `403 Forbidden` to anyone else.
 >
 > When an administrator calls `GET /available`, the Azure Resource Graph query runs with the application's service principal credentials, returning networks across the entire tenant. When a non-admin user calls the same endpoint, the query runs on behalf of the user (OBO), so only networks in Azure subscriptions the user has RBAC read access to are returned. `GET /networks` only ever returns networks already associated with the Block, which are shared with every user, so with `expand=true` it returns full details for all of them, whoever calls it.
 
@@ -379,7 +379,7 @@ The API base path for Virtual Network Association operations is:
 
 The `GET /available` and `GET /networks` endpoints accept an optional `expand` query parameter (default: `false`). When set to `true`, the response includes full network details (name, resource group, subscription, prefixes) rather than just resource IDs.
 
-`GET /available` accepts an additional optional `include_blocked` query parameter (default: `false`). When set to `true`, the response also contains the networks which *cannot* be associated to the Block, each carrying a `blocked_by` array naming the External Network or unfulfilled Reservation which overlaps each of its prefixes:
+`GET /available` accepts an additional optional `include_blocked` query parameter (default: `false`). When set to `true`, the response also contains the networks that *can't* be associated with the Block, each with a `blocked_by` array naming the External Network or unsettled Reservation that overlaps each of its prefixes:
 
 ```text
 blocked_by : {@{type=external; name=DataCenterA; cidr=10.1.4.0/24; prefix=10.1.4.0/24}}
@@ -392,12 +392,12 @@ Networks which can be associated are returned with an empty `blocked_by` array. 
 The following examples demonstrate common Virtual Network Association operations using Azure PowerShell. As with the other examples, you'll need to obtain an access token and set up your common variables first.
 
 ```powershell
-$engineClientId = '<Engine App Registration Client ID>'
-$appName = 'ipamdev'
+$engineAppId = "<engine-app-id>"
+$ipamHost = "<your-ipam-host>"
 $space = 'TestSpace'
 $block = 'TestBlock'
 
-$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
+$accessToken = (Get-AzAccessToken -ResourceUrl "api://$engineAppId").Token
 
 $headers = @{
     'Accept'       = 'application/json'
@@ -410,18 +410,18 @@ $headers = @{
 Before associating virtual networks, you can query which networks are eligible for a given Block. This returns only networks whose address space falls within the Block's CIDR range and does not overlap unfulfilled Reservations or External Networks. For non-admin users, the results are further scoped to networks in Azure subscriptions the caller has RBAC read access to (see note above).
 
 ```powershell
-# Get available networks (IDs only)
+# Get Available Networks (IDs Only)
 $available = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/available" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/available" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
 
-# Get available networks with full details
+# Get Available Networks with Full Details
 $availableExpanded = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/available?expand=true" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/available?expand=true" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -445,18 +445,18 @@ tenant_id       : xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 Retrieve the virtual networks currently associated with a Block.
 
 ```powershell
-# Get current associations (IDs and active status)
+# Get Current Associations (IDs and Active Status)
 $networks = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/networks" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
 
-# Get current associations with full details
+# Get Current Associations with Full Details
 $networksExpanded = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks?expand=true" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/networks?expand=true" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -473,7 +473,7 @@ $body = @{
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/networks" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -484,7 +484,7 @@ The virtual network must meet all eligibility requirements: its address space mu
 
 #### Replace All Associations
 
-This is the same operation the UI performs when you click **Save**. It replaces the Block's entire association list with the provided array of resource IDs. This is useful when you want to set the exact list of associated networks in a single call.
+This is what the UI does when you select **Save**. It replaces the Block's entire association list with the provided array of resource IDs. This is useful when you want to set the exact list of associated networks in a single call.
 
 ```powershell
 $body = @(
@@ -495,7 +495,7 @@ $body = @(
 
 $response = Invoke-RestMethod `
     -Method 'Put' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/networks" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -510,7 +510,7 @@ The following validations are enforced:
 - No CIDR overlap between networks in the list
 - No CIDR overlap with unsettled Reservations or External Networks in the Block
 
-> **Note:** This is a full replacement operation. Any previously associated virtual networks that are not included in the new list will be disassociated.
+> **NOTE:** This replaces the whole list. Any associated virtual network that isn't in the new list is disassociated.
 
 #### Remove Associations
 
@@ -523,20 +523,20 @@ $body = @(
 
 Invoke-RestMethod `
     -Method 'Delete' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/networks" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/networks" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
     -Body $body
 ```
 
-All IDs in the list must currently exist in the Block's association list. Attempting to remove an ID that is not associated will result in an error.
+All IDs in the list must currently exist in the Block's association list. Removing an ID that isn't associated returns an error.
 
 ## Reservations
 
-Reservations allow you to claim address space within a Block before creating an Azure virtual network. For more information on what reservations are, how the lifecycle works, and how to manage them via the UI, please see the [Reservations](/how-to/README.md#reservations) section of the How-To documentation.
+Reservations allow you to claim address space within a Block before creating an Azure virtual network. For more on what Reservations are, their lifecycle, and how to manage them in the UI, see the [Reservations](/how-to/README.md#reservations) section of the How-To documentation.
 
-The API supports creating reservations against a specific Block, or against a list of Blocks (IPAM will use the first Block with available space).
+You can create a Reservation in a specific Block, or from a list of Blocks, in which case Azure IPAM uses the first Block with enough space.
 
 ### Reservation Endpoints
 
@@ -550,7 +550,7 @@ The API supports creating reservations against a specific Block, or against a li
 | `DELETE` | `/spaces/{space}/blocks/{block}/reservations` | Delete (cancel) multiple reservations |
 | `DELETE` | `/spaces/{space}/blocks/{block}/reservations/{reservation}` | Delete (cancel) a single reservation |
 
-> **Note:** The `GET` endpoints accept a `settled` query parameter (default: `false`). Set it to `true` to include fulfilled and cancelled reservations in the results. Non-admin users see every pending reservation, but those created by other users have their `id`, `desc` and `tag` set to `null`, and settled reservations are only included if the caller created them. Getting another user's reservation by ID returns `403 Forbidden`.
+> **NOTE:** The `GET` endpoints accept a `settled` query parameter (default: `false`). Set it to `true` to include fulfilled and canceled Reservations in the results. Non-admin users see every pending reservation, but those created by other users have their `id`, `desc` and `tag` set to `null`, and settled reservations are only included if the caller created them. Getting another user's reservation by ID returns `403 Forbidden`.
 
 ### Example API Calls
 
@@ -562,37 +562,37 @@ You'll need to provide the following for each API call:
 - HTTP Headers
 - Request Body (POST/DELETE)
 
-Here is an example of how to create an IP address CIDR reservation in order to create a new vNET. We'll be performing a POST to the following request URL:
+This example creates a Reservation for a new virtual network, with a `POST` to the following request URL:
 
 ```text
-https://ipamdev.azurewebsites.net/api/spaces/TestSpace/blocks/TestBlock/reservations
+https://<your-ipam-host>/api/spaces/TestSpace/blocks/TestBlock/reservations
 ```
 
-The body contains a bit mask size of **/24**. Based on this, IPAM will provide the next available **/24** CIDR block available in the **TestBlock** found within our **TestSpace** (as denoted in our request URL).
+The body asks for a **/24**, so Azure IPAM reserves the next available **/24** in the **TestBlock** Block of the **TestSpace** Space, as named in the request URL.
 
 ![Postman CIDR Reservation](./images/postman_body.png)
 
-Be sure to provide the appropriate headers under the **Headers** tab.
+Add the headers on the **Headers** tab.
 
 ![Postman CIDR Reservation Headers](./images/postman_headers.png)
 
-Lastly, don't forget to provide your token information under the **Authorization** tab.
+Then add your token on the **Authorization** tab.
 
 ![Postman CIDR Reservation Authorization](./images/postman_authorization.png)
 
-Click **Send** and you will receive a response of type **201 Created** with key information regarding your CIDR block reservation request. Make note of the tag that is returned in the response. Tagging your newly created vNET with this key:value will automatically associate it with the **Block** the reservation was created from.
+Select **Send**. The response is **201 Created**, with the details of the new Reservation. Make a note of the tag it returns. When you tag your new virtual network with this key and value, Azure IPAM associates it with the **Block** the Reservation came from.
 
 ![Postman CIDR Reservation Response](./images/postman_response.png)
 
-Here is the same example performed via Azure PowerShell. First, set up the common variables and authentication:
+Here is the same example in Azure PowerShell. First, set up the common variables and authentication:
 
 ```powershell
-$engineClientId = '<Engine App Registration Client ID>'
-$appName = 'ipamdev'
+$engineAppId = "<engine-app-id>"
+$ipamHost = "<your-ipam-host>"
 $space = 'TestSpace'
 $block = 'TestBlock'
 
-$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
+$accessToken = (Get-AzAccessToken -ResourceUrl "api://$engineAppId").Token
 
 $headers = @{
     'Accept'       = 'application/json'
@@ -602,24 +602,24 @@ $headers = @{
 
 #### Create a Reservation by Size
 
-The simplest way to create a reservation is by specifying a mask size. IPAM will find the next available CIDR of that size within the Block.
+The simplest way to create a Reservation is to give a mask size. Azure IPAM finds the next available CIDR range of that size in the Block.
 
 ```powershell
 $body = @{
     size = 24
-    desc = 'Reservation for Project Alpha vNET'
+    desc = 'Reservation for Project Alpha virtual network'
 } | ConvertTo-Json
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/reservations" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
     -Body $body
 ```
 
-The call will return key information regarding your CIDR block reservation. Make note of the *tag* information in the response — you'll need to apply it to your virtual network.
+The response has the details of the new Reservation. Make a note of its `tag`, which you need to apply to your virtual network.
 
 ```text
 $response
@@ -628,7 +628,7 @@ id        : ABNsJjXXyTRDTRCdJEJThu
 space     : TestSpace
 block     : TestBlock
 cidr      : 10.1.5.0/24
-desc      : Reservation for Project Alpha vNET
+desc      : Reservation for Project Alpha virtual network
 createdOn : 1662514052.26623
 createdBy : user@contoso.com
 settledOn :
@@ -639,10 +639,10 @@ tag       : @{X-IPAM-RES-ID=ABNsJjXXyTRDTRCdJEJThu}
 
 `createdBy` is the caller's user principal name, or `spn:<object-id>` when a service principal created the Reservation.
 
-You can also control how IPAM selects the available range:
+You can also control how Azure IPAM chooses the range:
 
 ```powershell
-# Allocate from the end of the Block and use the smallest fitting range
+# Allocate from the End of the Block and Use the Smallest Fitting Range
 $body = @{
     size           = 24
     desc           = 'Reservation at end of block'
@@ -652,7 +652,7 @@ $body = @{
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/reservations" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -661,7 +661,7 @@ $response = Invoke-RestMethod `
 
 #### Create a Reservation by CIDR
 
-If you need a specific CIDR range, provide it directly instead of a size. The CIDR must be within the Block and cannot overlap existing allocations.
+If you need a specific CIDR range, provide it directly instead of a size. It must be within the Block and can't overlap existing allocations.
 
 ```powershell
 $body = @{
@@ -671,18 +671,18 @@ $body = @{
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/reservations" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
     -Body $body
 ```
 
-> **Note:** The `cidr` and `size` parameters cannot be used together. The `reverse_search` and `smallest_cidr` options are only available when using `size`.
+> **NOTE:** The `cidr` and `size` parameters can't be used together. The `reverse_search` and `smallest_cidr` options are only available when using `size`.
 
 #### Create a Reservation from Multiple Blocks
 
-If you're flexible about which Block the reservation comes from, you can provide a list of Block names. IPAM will evaluate them in order and create the reservation in the first Block with available space.
+If the Reservation can come from any of several Blocks, give a list of Block names. Azure IPAM tries them in order and creates the Reservation in the first one with enough space.
 
 ```powershell
 $body = @{
@@ -693,40 +693,40 @@ $body = @{
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/reservations" `
+    -Uri "https://$ipamHost/api/spaces/$space/reservations" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
     -Body $body
 ```
 
-Note the different request URL — this uses the Space-level endpoint (`/spaces/{space}/reservations`) rather than the Block-level endpoint.
+This uses the Space-level endpoint (`/spaces/{space}/reservations`) rather than the Block-level one.
 
 #### List Reservations
 
-You can retrieve all active reservations for a Block, or across all Blocks in a Space.
+You can list the active Reservations in a Block, or across all Blocks in a Space.
 
 ```powershell
-# Get active reservations for a specific Block
+# Get Active Reservations for a Specific Block
 $reservations = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/reservations" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
 
-# Include settled (fulfilled/cancelled) reservations
+# Include Settled (Fulfilled or Canceled) Reservations
 $allReservations = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations?settled=true" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/reservations?settled=true" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
 
-# Get reservations across all Blocks in a Space
+# Get Reservations Across All Blocks in a Space
 $spaceReservations = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/reservations" `
+    -Uri "https://$ipamHost/api/spaces/$space/reservations" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -734,18 +734,18 @@ $spaceReservations = Invoke-RestMethod `
 
 #### Cancel a Reservation
 
-Cancelling a reservation releases the held CIDR range so it can be used for other allocations. You can cancel a single reservation or multiple at once.
+Canceling a Reservation releases its CIDR range for other allocations. You can cancel one Reservation or several at once.
 
 ```powershell
-# Cancel a single reservation by ID
+# Cancel a Single Reservation by ID
 Invoke-RestMethod `
     -Method 'Delete' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations/ABNsJjXXyTRDTRCdJEJThu" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/reservations/ABNsJjXXyTRDTRCdJEJThu" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
 
-# Cancel multiple reservations at once
+# Cancel Several Reservations at Once
 $body = @(
     'ABNsJjXXyTRDTRCdJEJThu',
     'CDPtKkYYzUSEUSdKFKUViv'
@@ -753,22 +753,22 @@ $body = @(
 
 Invoke-RestMethod `
     -Method 'Delete' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/reservations" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/reservations" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
     -Body $body
 ```
 
-> **Note:** Cancelling a reservation does not hard-delete it. The reservation remains in the system with a status of `cancelledByUser` and is visible when querying with `settled=true`. Non-admin users can only cancel reservations they created.
+> **NOTE:** Canceling a Reservation doesn't delete it. It stays in Azure IPAM with a status of `cancelledByUser`, and is returned when you query with `settled=true`. Users who aren't administrators can only cancel Reservations they created.
 
-Take a look at our **Azure Landing Zone integration** example found under the `deploy` directory in the repository for a real work example of how to automate vNET creation by means of Bicep and leveraging the Azure IPAM API.
+For a real-world example of automating virtual network creation with Bicep and the Azure IPAM API, see the [Azure Landing Zone integration](https://github.com/Azure/ipam/tree/main/examples/azure-eslz) example in the repository.
 
 ## External Networks
 
-External Networks allow you to track IP address space that lives outside of Azure (such as on-premises datacenters, co-location facilities, or other cloud providers) directly within Azure IPAM. All External Network operations follow the existing Space/Block hierarchy. Any signed-in user can read External Networks, but creating, changing and deleting them is restricted to IPAM administrators.
+External Networks allow you to track IP address space that lives outside of Azure (such as on-premises datacenters, co-location facilities, or other cloud providers) in Azure IPAM. External Networks sit within the Space and Block hierarchy. Any signed-in user can read them, but creating, changing and deleting them is restricted to Azure IPAM administrators.
 
-For more information on what External Networks are, how they fit into the IPAM hierarchy, and how to manage them via the UI, please see the [External Networks](/how-to/README.md#external-networks) section of the How-To documentation.
+For more on what External Networks are, how they fit into the Azure IPAM hierarchy, and how to manage them in the UI, see the [External Networks](/how-to/README.md#external-networks) section of the How-To documentation.
 
 The API base path for External Networks is:
 
@@ -810,15 +810,15 @@ The API base path for External Networks is:
 
 ### Example API Calls
 
-The following examples demonstrate common External Network operations using Azure PowerShell. As with the CIDR Reservation examples above, you'll need to obtain an access token and set up your common variables first.
+The following examples show common External Network operations in Azure PowerShell. As with the Reservation examples, get an access token and set up the common variables first.
 
 ```powershell
-$engineClientId = '<Engine App Registration Client ID>'
-$appName = 'ipamdev'
+$engineAppId = "<engine-app-id>"
+$ipamHost = "<your-ipam-host>"
 $space = 'MySpace'
 $block = 'MyBlock'
 
-$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
+$accessToken = (Get-AzAccessToken -ResourceUrl "api://$engineAppId").Token
 
 $headers = @{
     'Accept'       = 'application/json'
@@ -828,10 +828,10 @@ $headers = @{
 
 #### Create an External Network
 
-Here we'll create an External Network with a specific CIDR range. We'll be performing a POST to the following request URL:
+This example creates an External Network with a specific CIDR range, with a `POST` to the following request URL:
 
 ```text
-https://ipamdev.azurewebsites.net/api/spaces/MySpace/blocks/MyBlock/externals
+https://<your-ipam-host>/api/spaces/MySpace/blocks/MyBlock/externals
 ```
 
 ```powershell
@@ -843,14 +843,14 @@ $body = @{
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/externals" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/externals" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
     -Body $body
 ```
 
-If you don't have a specific CIDR in mind, you can request a network by size and IPAM will allocate the next available range within the Block:
+If you don't need a specific CIDR range, request a size instead, and Azure IPAM allocates the next available range in the Block:
 
 ```powershell
 $body = @{
@@ -861,7 +861,7 @@ $body = @{
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/externals" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/externals" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -870,7 +870,7 @@ $response = Invoke-RestMethod `
 
 #### Create an External Subnet
 
-Once you have an External Network, you can add Subnets to it. The CIDR for the Subnet must fall within the parent External Network's CIDR range.
+Once you have an External Network, you can add subnets to it. A subnet's CIDR range must be within the External Network's range.
 
 ```powershell
 $external = 'OnPrem-DC1'
@@ -883,7 +883,7 @@ $body = @{
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/externals/$external/subnets" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/externals/$external/subnets" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -892,12 +892,12 @@ $response = Invoke-RestMethod `
 
 #### Create an External Endpoint
 
-With a Subnet in place, you can add individual Endpoints. You can provide a specific IP address, or pass `$null` to have IPAM automatically assign the next available IP within the Subnet.
+With a subnet in place, you can add individual endpoints. Give a specific IP address, or pass `$null` to have Azure IPAM assign the next available address in the subnet.
 
 ```powershell
 $subnet = 'ServerSubnet'
 
-# Create an endpoint with a specific IP
+# Create an Endpoint with a Specific IP Address
 $body = @{
     name = 'db-server-01'
     desc = 'Primary database server'
@@ -906,13 +906,13 @@ $body = @{
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/externals/$external/subnets/$subnet/endpoints" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/externals/$external/subnets/$subnet/endpoints" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
     -Body $body
 
-# Create an endpoint with an auto-assigned IP
+# Create an Endpoint with an Automatically Assigned IP Address
 $body = @{
     name = 'app-server-01'
     desc = 'Application server'
@@ -921,7 +921,7 @@ $body = @{
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/externals/$external/subnets/$subnet/endpoints" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/externals/$external/subnets/$subnet/endpoints" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -945,7 +945,7 @@ $body = @(
 
 $response = Invoke-RestMethod `
     -Method 'Patch' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/externals/$external" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/externals/$external" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -977,7 +977,7 @@ $body = @(
 
 $response = Invoke-RestMethod `
     -Method 'Put' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/externals/$external/subnets/$subnet/endpoints" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/externals/$external/subnets/$subnet/endpoints" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -996,7 +996,7 @@ $body = @(
 
 $response = Invoke-RestMethod `
     -Method 'Delete' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/externals/$external/subnets/$subnet/endpoints" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/externals/$external/subnets/$subnet/endpoints" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -1005,21 +1005,21 @@ $response = Invoke-RestMethod `
 
 #### Delete an External Network
 
-Deleting an External Network will fail if it contains Subnets unless you pass the `force` query parameter.
+Deleting an External Network fails if it contains subnets, unless you pass the `force` query parameter.
 
 ```powershell
-# Delete (will fail if subnets exist)
+# Delete (Fails If Subnets Exist)
 Invoke-RestMethod `
     -Method 'Delete' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/externals/$external" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/externals/$external" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
 
-# Force delete (removes the network even if subnets exist)
+# Force Delete (Removes the Network Even If Subnets Exist)
 Invoke-RestMethod `
     -Method 'Delete' `
-    -Uri "https://$appName.azurewebsites.net/api/spaces/$space/blocks/$block/externals/$external`?force=true" `
+    -Uri "https://$ipamHost/api/spaces/$space/blocks/$block/externals/$external`?force=true" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -1043,7 +1043,7 @@ The API base path for the Tools endpoints is:
 | `POST` | `/tools/nextAvailableSubnet` | Find the next available CIDR for a subnet within a virtual network |
 | `POST` | `/tools/cidrCheck` | List the Azure virtual networks and virtual hubs that overlap a CIDR range |
 
-> **Note:** `nextAvailableVNet` finds address space but doesn't hold it, so the same CIDR can be returned to more than one caller until something occupies it. To hold address space within a Block, create a [Reservation](#reservations) instead, which accepts the same search options.
+> **NOTE:** `nextAvailableVNet` finds address space but doesn't hold it, so the same CIDR can be returned to more than one caller until something occupies it. To hold address space within a Block, create a [Reservation](#reservations) instead, which accepts the same search options.
 
 ### What Each Caller Receives
 
@@ -1054,15 +1054,15 @@ What differs is how much a caller who isn't an administrator is told about netwo
 - `cidrCheck` returns such a network with its `name`, `id`, `resource_group`, `subscription_id` and `tenant_id` set to `null`. The overlapping `prefixes` are still returned, so you know the range is in use.
 - `nextAvailableSubnet` accepts such a virtual network only if you can read it in Azure. Otherwise it returns `400 Bad Request` with `Virtual Network not found.`, exactly as it does for a virtual network that doesn't exist. A service principal that isn't an administrator can only target virtual networks associated with a Block, as explained in [Roles & Permissions](/roles-permissions/README.md#service-principals-and-automation).
 
-> **Note:** `cidrCheck` reports existing Azure networks only. It doesn't check Reservations or External Networks, so use `nextAvailableVNet` or a Reservation to find space that is free within a Block.
+> **NOTE:** `cidrCheck` reports existing Azure networks only. It doesn't check Reservations or External Networks, so use `nextAvailableVNet` or a Reservation to find space that is free within a Block.
 
 ### Example API Calls
 
 ```powershell
-$engineClientId = '<Engine App Registration Client ID>'
-$appName = 'ipamdev'
+$engineAppId = "<engine-app-id>"
+$ipamHost = "<your-ipam-host>"
 
-$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
+$accessToken = (Get-AzAccessToken -ResourceUrl "api://$engineAppId").Token
 
 $headers = @{
     'Accept'       = 'application/json'
@@ -1083,7 +1083,7 @@ $body = @{
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/tools/nextAvailableVNet" `
+    -Uri "https://$ipamHost/api/tools/nextAvailableVNet" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -1114,7 +1114,7 @@ $body = @{
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/tools/nextAvailableSubnet" `
+    -Uri "https://$ipamHost/api/tools/nextAvailableSubnet" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -1143,7 +1143,7 @@ $body = @{
 
 $response = Invoke-RestMethod `
     -Method 'Post' `
-    -Uri "https://$appName.azurewebsites.net/api/tools/cidrCheck" `
+    -Uri "https://$ipamHost/api/tools/cidrCheck" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
@@ -1174,7 +1174,7 @@ containers      : {}
 
 ## Notifications
 
-Notifications let you know when something about your Azure IPAM deployment needs attention, such as a newer version being available or a problem with Azure IPAM's own access to Azure. For how notifications appear in the UI, please see the [Notifications](/how-to/README.md#notifications) section of the How-To documentation.
+Notifications let you know when something about your Azure IPAM deployment needs attention, such as a newer version being available or a problem with Azure IPAM's own access to Azure. For how notifications appear in the UI, see the [Notifications](/how-to/README.md#notifications) section of the How-To documentation.
 
 Every notification describes itself completely: how severe it is, what it means, and what you can do about it. New kinds of notification are added over time, and because each one carries everything needed to understand and act on it, your automation can handle them without knowing about them in advance.
 
@@ -1191,15 +1191,15 @@ The API base path for the Notifications endpoints is:
 | `GET` | `/notifications` | List the notifications that currently apply |
 | `POST` | `/notifications/{notification_id}/resolve` | Fix the problem a notification describes, where it offers a fix |
 
-> **Note:** Every signed-in user can list notifications, but notifications meant for administrators are only returned to administrators. Resolving a notification requires an administrator.
+> **NOTE:** Every signed-in user can list notifications, but notifications meant for administrators are only returned to administrators. Resolving a notification requires an administrator.
 
 ### The Notification Object
 
 `GET /notifications` returns the notifications that currently apply, along with `checkedOn`, the Unix time at which the oldest of them was last checked. `checkedOn` is `null` until Azure IPAM has finished checking for the first time after it starts.
 
-```json
+```jsonc
 {
-  "notifications": [ ... ],
+  "notifications": [ /* Notification objects, described below */ ],
   "checkedOn": 1794268800.418276
 }
 ```
@@ -1234,7 +1234,7 @@ Azure IPAM reuses the result of each check for a short time, which varies from o
 
 To check everything again right away, add `refresh=true`. A check that has only just run isn't repeated, so the response may still include some results from moments earlier.
 
-> **Note:** If Azure IPAM runs on more than one instance, each one checks independently, so consecutive calls can return slightly different values for `checkedOn`.
+> **NOTE:** If Azure IPAM runs on more than one instance, each one checks independently, so consecutive calls can return slightly different values for `checkedOn`.
 
 ### Resolving a Notification
 
@@ -1261,10 +1261,10 @@ Notifications are a convenient way to monitor an Azure IPAM deployment, for exam
 ### Example API Calls
 
 ```powershell
-$engineClientId = '<Engine App Registration Client ID>'
-$appName = 'ipamdev'
+$engineAppId = "<engine-app-id>"
+$ipamHost = "<your-ipam-host>"
 
-$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
+$accessToken = (Get-AzAccessToken -ResourceUrl "api://$engineAppId").Token
 
 $headers = @{
     'Accept'       = 'application/json'
@@ -1277,7 +1277,7 @@ $headers = @{
 ```powershell
 $response = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/notifications" `
+    -Uri "https://$ipamHost/api/notifications" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -1296,7 +1296,7 @@ $response.notifications | Select-Object severity, title, id
 ```powershell
 $response = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/notifications?refresh=true" `
+    -Uri "https://$ipamHost/api/notifications?refresh=true" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -1330,7 +1330,7 @@ $action = $notification.actions | Where-Object kind -eq 'resolve'
 
 $result = Invoke-RestMethod `
     -Method $action.method `
-    -Uri "https://$appName.azurewebsites.net$($action.href)" `
+    -Uri "https://$ipamHost$($action.href)" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -1392,10 +1392,10 @@ Until at least one administrator is designated, every signed-in user is an admin
 ### Example API Calls
 
 ```powershell
-$engineClientId = '<Engine App Registration Client ID>'
-$appName = 'ipamdev'
+$engineAppId = "<engine-app-id>"
+$ipamHost = "<your-ipam-host>"
 
-$accessToken = (Get-AzAccessToken -ResourceUrl api://$engineClientId).Token
+$accessToken = (Get-AzAccessToken -ResourceUrl "api://$engineAppId").Token
 
 $headers = @{
     'Accept'       = 'application/json'
@@ -1408,14 +1408,14 @@ $headers = @{
 ```powershell
 $me = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/users/me" `
+    -Uri "https://$ipamHost/api/users/me" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
 
 $roles = Invoke-RestMethod `
     -Method 'Get' `
-    -Uri "https://$appName.azurewebsites.net/api/roles" `
+    -Uri "https://$ipamHost/api/roles" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers
@@ -1432,7 +1432,7 @@ $body = @(
 
 Invoke-RestMethod `
     -Method 'Patch' `
-    -Uri "https://$appName.azurewebsites.net/api/users/me" `
+    -Uri "https://$ipamHost/api/users/me" `
     -Authentication 'Bearer' `
     -Token $accessToken `
     -Headers $headers `
