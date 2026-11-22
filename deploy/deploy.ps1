@@ -485,7 +485,9 @@ process {
       [Parameter(Mandatory = $false)]
       [int]$BaseDelaySeconds = 2,
       [Parameter(Mandatory = $false)]
-      [int]$MaxDelaySeconds = 30
+      [int]$MaxDelaySeconds = 30,
+      [Parameter(Mandatory = $false)]
+      [string]$RetryOnPattern
     )
 
     # Azure AD/Microsoft Graph is eventually consistent: a freshly created object may not yet be
@@ -493,6 +495,8 @@ process {
     # not these post-create reference errors, so we retry any thrown error here, backing off
     # exponentially with jitter (capped at MaxDelaySeconds) to absorb propagation delay without
     # stampeding the endpoint. Retries are silent; an exhausted retry re-throws the last error.
+    # When RetryOnPattern is set, only errors whose message matches it are retried, so that
+    # failures retrying can't fix (such as authorization errors) surface immediately.
     $attempt = 0
 
     do {
@@ -503,6 +507,10 @@ process {
       }
       catch {
         if ($attempt -ge $MaxAttempts) {
+          throw $_
+        }
+
+        if ($RetryOnPattern -and ($_.Exception.Message -notmatch $RetryOnPattern)) {
           throw $_
         }
 
@@ -709,15 +717,40 @@ process {
 
     Write-Host "INFO: Creating Azure IPAM Engine Service Principal" -ForegroundColor Green
 
-    # Create IPAM Engine Service Principal
-    Invoke-WithGraphRetry -ScriptBlock {
-      $engineSpnExists = [bool](Get-AzADServicePrincipal -ApplicationId $engineApp.AppId -ErrorAction SilentlyContinue)
+    # Create IPAM Engine Service Principal. The Reader role is assigned separately below: if
+    # New-AzADServicePrincipal -Role were used here, a failed role assignment would be caught by
+    # the retry, and the next attempt would find the service principal and skip it, leaving the
+    # Engine without Reader while the deployment reported success.
+    $engineSpn = Invoke-WithGraphRetry -ScriptBlock {
+      $existingSpn = Get-AzADServicePrincipal -ApplicationId $engineApp.AppId -ErrorAction SilentlyContinue
 
-      if (-not $engineSpnExists) {
-        New-AzADServicePrincipal -ApplicationObject $engineObject `
-          -Role "Reader" `
+      if ($existingSpn) {
+        return $existingSpn
+      }
+
+      New-AzADServicePrincipal -ApplicationObject $engineObject
+    }
+
+    Write-Host "INFO: Assigning Azure IPAM Engine Service Principal the Reader role" -ForegroundColor Green
+
+    # Assign the Engine the Reader role. Setting ObjectType lets Azure Resource Manager accept a
+    # service principal that hasn't replicated yet; PrincipalNotFound is still retried in case it
+    # hasn't. Any other error, such as missing roleAssignments/write permission, stops the deployment.
+    Invoke-WithGraphRetry -RetryOnPattern 'PrincipalNotFound|does not exist in the directory' -ScriptBlock {
+      try {
+        New-AzRoleAssignment `
+          -ObjectId $engineSpn.Id `
+          -ObjectType 'ServicePrincipal' `
+          -RoleDefinitionName 'Reader' `
           -Scope $scope `
+          -ErrorAction Stop `
         | Out-Null
+      }
+      catch {
+        # A rerun, or an earlier attempt whose response was lost, may already have created it
+        if ($_.Exception.Message -notmatch 'RoleAssignmentExists|role assignment already exists') {
+          throw
+        }
       }
     }
 
