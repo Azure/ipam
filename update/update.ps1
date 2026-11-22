@@ -1513,7 +1513,7 @@ try {
     Write-Host " ❌ Not found" -ForegroundColor Red
     Write-Host "  ❌ Application not found in current subscription!" -ForegroundColor Red
     Write-Host
-    exit
+    exit 1
   } else {
     $appKind = $existingApp.Kind
     $appType = $($appKind.Split(",") -contains 'functionapp') ? 'Function' : 'App'
@@ -1546,7 +1546,7 @@ try {
     Write-Host "To migrate to the current single-container deployment, follow the migration guide:" -ForegroundColor Yellow
     Write-Host "  https://azure.github.io/ipam/#/migration/README" -ForegroundColor Cyan
     Write-Host
-    exit
+    exit 1
   }
 
   if ($isStopped) {
@@ -1733,7 +1733,7 @@ try {
           Write-Host "⚠️  The repository version (v$ipamVersion) is older than the running version (v$runningVersion)" -ForegroundColor Yellow
           Write-Host "ℹ️  No image was built; re-run with -Force to build the older version anyway" -ForegroundColor Cyan
           Write-Host
-          exit
+          exit 1
         }
         else {
           Write-Host " ℹ️  Unable to determine; proceeding with build" -ForegroundColor Cyan
@@ -1767,7 +1767,7 @@ try {
         Write-Host "then restart the $appNoun to load it. For build instructions, see:" -ForegroundColor Yellow
         Write-Host "  https://azure.github.io/ipam/#/update/README?id=container-build-failures" -ForegroundColor Cyan
         Write-Host
-        exit
+        exit 1
       }
 
       $acrName = $acrDetails.Name
@@ -1780,7 +1780,7 @@ try {
       if($azureCliVer -lt $MIN_AZ_CLI_VER) {
         Write-Host " ❌ Outdated" -ForegroundColor Red
         Write-Host "  ❌ Azure CLI must be version $MIN_AZ_CLI_VER or greater!" -ForegroundColor Red
-        exit
+        exit 1
       }
       Write-Host " ✅ OK ($azureCliVer)" -ForegroundColor Green
 
@@ -1791,7 +1791,7 @@ try {
       if(-not $azureCliContext) {
         Write-Host " ❌ Not logged in" -ForegroundColor Red
         Write-Host "  ❌ Azure CLI not logged in or no subscription has been selected!" -ForegroundColor Red
-        exit
+        exit 1
       }
 
       $azureCliSub = $azureCliContext.id
@@ -1800,7 +1800,7 @@ try {
       if($azurePowerShellSub -ne $azureCliSub) {
         Write-Host " ❌ Mismatch" -ForegroundColor Red
         Write-Host "  ❌ Azure PowerShell and Azure CLI must be set to the same context!" -ForegroundColor Red
-        exit
+        exit 1
       }
       Write-Host " ✅ Match" -ForegroundColor Green
 
@@ -1852,7 +1852,7 @@ try {
 
           Write-LogFile -Message "Container distro could not be resolved and no -ContainerType override was supplied." -Level "ERROR"
 
-          exit
+          exit 1
         }
 
         Write-Host "🔍 Container distro: " -ForegroundColor Cyan -NoNewline

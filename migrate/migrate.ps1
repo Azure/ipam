@@ -766,7 +766,7 @@ function Get-WebAppDetail {
     Write-Host "If this app is already a single-container deployment, use update.ps1 instead:" -ForegroundColor Yellow
     Write-Host "  https://azure.github.io/ipam/#/update/README" -ForegroundColor Cyan
     Write-Host
-    exit
+    exit 1
   }
 
   try {
@@ -815,7 +815,7 @@ function Get-WebAppDetail {
     Write-Host "resource details explicitly. For guidance, see:" -ForegroundColor Yellow
     Write-Host "  https://azure.github.io/ipam/#/migration/README" -ForegroundColor Cyan
     Write-Host
-    exit
+    exit 1
   }
 
   Write-Host "=====================================================" -ForegroundColor Blue
@@ -1649,7 +1649,7 @@ try {
 
       Write-LogFile -Message "Container distro could not be resolved and no -ContainerType override was supplied." -Level "ERROR"
 
-      exit
+      exit 1
     }
 
     Write-Host "ℹ️  Container distro: $effectiveContainerType" -ForegroundColor Cyan

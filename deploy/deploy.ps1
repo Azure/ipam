@@ -1273,7 +1273,7 @@ process {
 
       if ($azureCliVer -lt $MIN_AZ_CLI_VER) {
         Write-Host "ERROR: Azure CLI must be version $MIN_AZ_CLI_VER or greater!" -ForegroundColor Red
-        exit
+        exit 1
       }
 
       Write-Host "INFO: PrivateACR flag set, verifying Azure PowerShell and Azure CLI contexts match" -ForegroundColor Green
@@ -1283,7 +1283,7 @@ process {
 
       if (-not $azureCliContext) {
         Write-Host "ERROR: Azure CLI not logged in or no subscription has been selected!" -ForegroundColor Red
-        exit
+        exit 1
       }
 
       $azureCliSub = $azureCliContext.id
@@ -1291,7 +1291,7 @@ process {
 
       if ($azurePowerShellSub -ne $azureCliSub) {
         Write-Host "ERROR: Azure PowerShell and Azure CLI must be set to the same context!" -ForegroundColor Red
-        exit
+        exit 1
       }
     }
 
@@ -1316,7 +1316,7 @@ process {
         Write-Host
         Write-Host "Azure Cloud type: " -ForegroundColor Yellow -NoNewline
         Write-Host (Get-AzContext).Environment.Name -ForegroundColor Cyan
-        exit
+        exit 1
       }
     }
 
@@ -1332,7 +1332,7 @@ process {
         Write-Host
         Write-Host "Azure Region: " -ForegroundColor Yellow -NoNewline
         Write-Host $Location -ForegroundColor Cyan
-        exit
+        exit 1
       }
     }
 
