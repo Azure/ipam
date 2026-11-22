@@ -254,7 +254,7 @@ The migration script:
 
 ### Step 1: Create Override Configuration File
 
-Create a JSON or JSONC file that lists your resources. Start from the template in the repository, `migrate/overrides.jsonc`, which looks like this once filled in:
+Copy `migrate/overrides.jsonc` to a new file in the `migrate` folder, for example `resources.jsonc`. Then replace the placeholders in each entry with that resource's name, resource group and subscription. The resource groups can differ from one entry to the next, but every resource must be in the same subscription.
 
 ```jsonc
 [
@@ -299,18 +299,21 @@ Create a JSON or JSONC file that lists your resources. Start from the template i
     "ResourceName": "<your-ipam-kv>",
     "ResourceGroup": "<your-ipam-rg>",
     "Subscription": "<subscription-id>"
-  },
-  {
-    // Container Registry Resource Details (Optional, Only for a Private ACR)
-    "ResourceType": "Microsoft.ContainerRegistry/registries",
-    "ResourceName": "<your-ipam-acr>",
-    "ResourceGroup": "<your-ipam-rg>",
-    "Subscription": "<subscription-id>"
   }
 ]
 ```
 
-Save the file in the `migrate` folder, for example as `resources.jsonc`.
+If your private ACR is in a different resource group from the App Service, also add the following entry inside the list, after the last entry, with a comma after the entry before it. You don't need it otherwise, since the script finds a public registry, or a private ACR in the App Service's resource group, by itself.
+
+```jsonc
+{
+  // Container Registry Resource Details
+  "ResourceType": "Microsoft.ContainerRegistry/registries",
+  "ResourceName": "<your-ipam-acr>",
+  "ResourceGroup": "<your-ipam-acr-rg>",
+  "Subscription": "<subscription-id>"
+}
+```
 
 ### Step 2: Run Manual Override Migration
 
@@ -319,6 +322,8 @@ Run the migration script with your resource file:
 ```powershell
 ./migrate.ps1 -AppName "<your-ipam-app>" -ResourceGroupName "<your-ipam-rg>" -JsonFile "./resources.jsonc"
 ```
+
+`-AppName` and `-ResourceGroupName` are still required, but with `-JsonFile` the script uses the Web App entry in the file. Give the same App Service name and resource group in both.
 
 For the optional parameters, see [Migration Script Parameters](#migration-script-parameters).
 

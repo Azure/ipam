@@ -1,44 +1,47 @@
+// Resource file for migrate.ps1 -JsonFile. Copy this file, replace each
+// <placeholder>, and see the migration guide for details:
+// https://azure.github.io/ipam/#/migration/README
 [
   {
     // Web App Resource Details
     "ResourceType": "Microsoft.Web/sites",
-    "ResourceName": "ipam-app-name",
-    "ResourceGroup": "ipam-rg-name",
-    "Subscription": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    "ResourceName": "<your-ipam-app>",
+    "ResourceGroup": "<your-ipam-rg>",
+    "Subscription": "<subscription-id>"
   },
   {
     // App Service Plan Resource Details
     "ResourceType": "Microsoft.Web/serverfarms",
-    "ResourceName": "ipam-asp-name",
-    "ResourceGroup": "ipam-rg-name",
-    "Subscription": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    "ResourceName": "<your-ipam-plan>",
+    "ResourceGroup": "<your-ipam-rg>",
+    "Subscription": "<subscription-id>"
   },
   {
     // Managed Identity Resource Details
     "ResourceType": "Microsoft.ManagedIdentity/userAssignedIdentities",
-    "ResourceName": "ipam-identity-name",
-    "ResourceGroup": "ipam-rg-name",
-    "Subscription": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    "ResourceName": "<your-ipam-identity>",
+    "ResourceGroup": "<your-ipam-rg>",
+    "Subscription": "<subscription-id>"
   },
   {
     // Log Analytics Workspace Resource Details
     "ResourceType": "Microsoft.OperationalInsights/workspaces",
-    "ResourceName": "ipam-workspace-name",
-    "ResourceGroup": "ipam-rg-name",
-    "Subscription": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    "ResourceName": "<your-ipam-workspace>",
+    "ResourceGroup": "<your-ipam-rg>",
+    "Subscription": "<subscription-id>"
   },
   {
     // Cosmos DB Account Resource Details
     "ResourceType": "Microsoft.DocumentDB/databaseAccounts",
-    "ResourceName": "ipam-cosmosdb-name",
-    "ResourceGroup": "ipam-rg-name",
-    "Subscription": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    "ResourceName": "<your-ipam-cosmos>",
+    "ResourceGroup": "<your-ipam-rg>",
+    "Subscription": "<subscription-id>"
   },
   {
     // Key Vault Resource Details
     "ResourceType": "Microsoft.KeyVault/vaults",
-    "ResourceName": "ipam-keyvault-name",
-    "ResourceGroup": "ipam-rg-name",
-    "Subscription": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    "ResourceName": "<your-ipam-kv>",
+    "ResourceGroup": "<your-ipam-rg>",
+    "Subscription": "<subscription-id>"
   }
 ]
