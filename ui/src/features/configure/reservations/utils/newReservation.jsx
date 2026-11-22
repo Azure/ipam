@@ -183,10 +183,10 @@ export default function NewReservation(props) {
               <>
                 - Optional
                 <br />- Max of 128 characters
-                <br />- Can contain alphnumerics
+                <br />- Can contain alphanumerics
                 <br />- Can contain spaces
-                <br />- Can contain underscore, hypen, slash and period
-                <br />- Cannot start/end with underscore, hypen, slash or period
+                <br />- Can contain underscore, hyphen, slash and period
+                <br />- Cannot start/end with underscore, hyphen, slash or period
               </>
             }
           >

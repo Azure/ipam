@@ -14,7 +14,7 @@ Each entry covers three things:
 
 For setting up an environment to work in, see the [Development](/development/README.md) documentation. For the process of getting a change accepted, see the [Contributing](/contributing/README.md) documentation.
 
-> **NOTE:** Adding a new pattern to this page? Keep the same shape — the rule, the reason, and the failure mode. A convention nobody understands is a convention that gets reverted.
+> **NOTE:** Adding a new pattern to this page? Keep the same shape — the rule, the reason and the failure mode. A convention nobody understands is a convention that gets reverted.
 
 ## Deciding What a Caller Can See
 

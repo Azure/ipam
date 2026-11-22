@@ -858,9 +858,9 @@ export default function ManageExtEndpoints(props) {
                       <>
                         - Endpoint name must be unique
                         <br />- Max of 64 characters
-                        <br />- Can contain alphnumerics
-                        <br />- Can contain underscore, hypen, and period
-                        <br />- Cannot start/end with underscore, hypen, or period
+                        <br />- Can contain alphanumerics
+                        <br />- Can contain underscore, hyphen and period
+                        <br />- Cannot start/end with underscore, hyphen or period
                       </>
                     }
                   >
@@ -919,10 +919,10 @@ export default function ManageExtEndpoints(props) {
                     title={
                       <>
                         - Max of 128 characters
-                        <br />- Can contain alphnumerics
+                        <br />- Can contain alphanumerics
                         <br />- Can contain spaces
-                        <br />- Can contain underscore, hypen, slash, and period
-                        <br />- Cannot start/end with underscore, hypen, slash, or period
+                        <br />- Can contain underscore, hyphen, slash and period
+                        <br />- Cannot start/end with underscore, hyphen, slash or period
                       </>
                     }
                   >

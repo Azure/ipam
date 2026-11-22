@@ -41,7 +41,7 @@ Azure IPAM uses the following components:
     - Managed identity ID
     - Azure tenant ID
 - **Log Analytics workspace**
-  - Collects diagnostic logs from Key Vault, Cosmos DB, and the App Service or Function App
+  - Collects diagnostic logs from Key Vault, Cosmos DB and the App Service or Function App
 - **User-assigned managed identity**
   - Assigned to the App Service or Function App, which uses it to read secrets from Key Vault and to access Cosmos DB
 - **Container registry** *(optional)*

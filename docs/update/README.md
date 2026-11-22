@@ -85,7 +85,7 @@ The update script handles version compatibility for you:
 
 ### Stopped or Unreachable Applications
 
-The update script can run against an App Service or Function App that is stopped, or that is running but whose container failed to start. Configuration changes, image builds, and ZIP deployments are all control-plane operations and work normally, and **a stopped application is left stopped** when the update finishes.
+The update script can run against an App Service or Function App that is stopped, or that is running but whose container failed to start. Configuration changes, image builds and ZIP deployments are all control-plane operations and work normally, and **a stopped application is left stopped** when the update finishes.
 
 Two details are read from the application's `/api/status` endpoint, so they can't be determined when it isn't serving requests:
 

@@ -134,7 +134,7 @@ $spaceDetails = Invoke-RestMethod `
 
 #### Create a Space
 
-Creating a Space requires a name and description. The name must be 1–64 characters and can contain alphanumerics, underscores, hyphens, and periods.
+Creating a Space requires a name and description. The name must be 1–64 characters and can contain alphanumerics, underscores, hyphens and periods.
 
 ```powershell
 $body = @{
@@ -201,7 +201,7 @@ Invoke-RestMethod `
 
 ## Blocks
 
-Blocks represent IPv4 CIDR ranges within a Space. Each Block can contain virtual network associations, CIDR reservations, and external networks. For more on what Blocks are and how to manage them via the UI, see the [Blocks](/how-to/README.md#blocks) section of the How-To documentation.
+Blocks represent IPv4 CIDR ranges within a Space. Each Block can contain virtual network associations, CIDR reservations and external networks. For more on what Blocks are and how to manage them via the UI, see the [Blocks](/how-to/README.md#blocks) section of the How-To documentation.
 
 All Block management endpoints (create, update, delete) are restricted to Azure IPAM administrators.
 
@@ -287,7 +287,7 @@ $response = Invoke-RestMethod `
 
 #### Update a Block
 
-You can update a Block's name or CIDR using a JSON Patch. Only the `replace` operation is supported, and allowed paths are `/name` and `/cidr`. When updating the CIDR, the new range must still contain all currently associated virtual networks, reservations, and external networks.
+You can update a Block's name or CIDR using a JSON Patch. Only the `replace` operation is supported, and allowed paths are `/name` and `/cidr`. When updating the CIDR, the new range must still contain all currently associated virtual networks, reservations and external networks.
 
 ```powershell
 $block = 'ProductionBlock'
@@ -534,7 +534,7 @@ All IDs in the list must currently exist in the Block's association list. Removi
 
 ## Reservations
 
-Reservations allow you to claim address space within a Block before creating an Azure virtual network. For more on what Reservations are, their lifecycle, and how to manage them in the UI, see the [Reservations](/how-to/README.md#reservations) section of the How-To documentation.
+Reservations allow you to claim address space within a Block before creating an Azure virtual network. For more on what Reservations are, their lifecycle and how to manage them in the UI, see the [Reservations](/how-to/README.md#reservations) section of the How-To documentation.
 
 You can create a Reservation in a specific Block, or from a list of Blocks, in which case Azure IPAM uses the first Block with enough space.
 

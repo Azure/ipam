@@ -174,13 +174,13 @@ async def scrub_space_patch(patch, space_name, tenant_id):
             "op": "replace",
             "path": "/name",
             "valid": valid_space_name_update,
-            "error": "Space name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods."
+            "error": "Space name can be a maximum of 64 characters and may contain alphanumerics, underscores, hyphens and periods."
         },
         {
             "op": "replace",
             "path": "/desc",
             "valid": SPACE_DESC_REGEX,
-            "error": "Space description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods."
+            "error": "Space description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hyphens, slashes and periods."
         }
     ]
 
@@ -274,7 +274,7 @@ async def scrub_block_patch(patch, space_name, block_name, tenant_id):
             "op": "replace",
             "path": "/name",
             "valid": valid_block_name_update,
-            "error": "Block name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods."
+            "error": "Block name can be a maximum of 64 characters and may contain alphanumerics, underscores, hyphens and periods."
         },
         {
             "op": "replace",
@@ -378,13 +378,13 @@ async def scrub_ext_network_patch(patch, space_name, block_name, external_name, 
             "op": "replace",
             "path": "/name",
             "valid": valid_ext_network_name_update,
-            "error": "External Network name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods."
+            "error": "External Network name can be a maximum of 64 characters and may contain alphanumerics, underscores, hyphens and periods."
         },
         {
             "op": "replace",
             "path": "/desc",
             "valid": EXTERNAL_DESC_REGEX,
-            "error": "External Network description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods."
+            "error": "External Network description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hyphens, slashes and periods."
         },
         {
             "op": "replace",
@@ -476,13 +476,13 @@ async def scrub_ext_subnet_patch(patch, space_name, block_name, external_name, s
             "op": "replace",
             "path": "/name",
             "valid": valid_ext_subnet_name_update,
-            "error": "External Subnet name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods."
+            "error": "External Subnet name can be a maximum of 64 characters and may contain alphanumerics, underscores, hyphens and periods."
         },
         {
             "op": "replace",
             "path": "/desc",
             "valid": EXTSUBNET_DESC_REGEX,
-            "error": "External Subnet description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods."
+            "error": "External Subnet description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hyphens, slashes and periods."
         },
         {
             "op": "replace",
@@ -563,13 +563,13 @@ async def scrub_ext_endpoint_patch(patch, space_name, block_name, external_name,
             "op": "replace",
             "path": "/name",
             "valid": valid_ext_endpoint_name_update,
-            "error": "External Endpoint name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods."
+            "error": "External Endpoint name can be a maximum of 64 characters and may contain alphanumerics, underscores, hyphens and periods."
         },
         {
             "op": "replace",
             "path": "/desc",
             "valid": EXTENDPOINT_DESC_REGEX,
-            "error": "External Endpoint description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods."
+            "error": "External Endpoint description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hyphens, slashes and periods."
         },
         {
             "op": "replace",
@@ -682,10 +682,10 @@ async def create_space(
     """
 
     if not re.match(SPACE_NAME_REGEX, space.name, re.IGNORECASE):
-        raise HTTPException(status_code=400, detail="Space name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods.")
+        raise HTTPException(status_code=400, detail="Space name can be a maximum of 64 characters and may contain alphanumerics, underscores, hyphens and periods.")
 
     if not re.match(SPACE_DESC_REGEX, space.desc, re.IGNORECASE):
-        raise HTTPException(status_code=400, detail="Space description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
+        raise HTTPException(status_code=400, detail="Space description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hyphens, slashes and periods.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space'", tenant_id)
 
@@ -1106,7 +1106,7 @@ async def create_block(
         raise HTTPException(status_code=400, detail="Invalid space name.")
 
     if not re.match(BLOCK_NAME_REGEX, block.name, re.IGNORECASE):
-        raise HTTPException(status_code=400, detail="Block name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods.")
+        raise HTTPException(status_code=400, detail="Block name can be a maximum of 64 characters and may contain alphanumerics, underscores, hyphens and periods.")
 
     try:
         block_network = IPNetwork(str(block.cidr))
@@ -1782,10 +1782,10 @@ async def create_external_network(
     """
 
     if not re.match(EXTERNAL_NAME_REGEX, req.name, re.IGNORECASE):
-        raise HTTPException(status_code=400, detail="External network name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods.")
+        raise HTTPException(status_code=400, detail="External network name can be a maximum of 64 characters and may contain alphanumerics, underscores, hyphens and periods.")
 
     if not re.match(EXTERNAL_DESC_REGEX, req.desc, re.IGNORECASE):
-        raise HTTPException(status_code=400, detail="External network description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
+        raise HTTPException(status_code=400, detail="External network description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hyphens, slashes and periods.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
@@ -2078,10 +2078,10 @@ async def create_external_subnet(
     """
 
     if not re.match(EXTSUBNET_NAME_REGEX, req.name, re.IGNORECASE):
-        raise HTTPException(status_code=400, detail="External subnet name can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods.")
+        raise HTTPException(status_code=400, detail="External subnet name can be a maximum of 64 characters and may contain alphanumerics, underscores, hyphens and periods.")
 
     if not re.match(EXTSUBNET_DESC_REGEX, req.desc, re.IGNORECASE):
-        raise HTTPException(status_code=400, detail="External subnet description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
+        raise HTTPException(status_code=400, detail="External subnet description can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hyphens, slashes and periods.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 
@@ -2415,10 +2415,10 @@ async def create_external_subnet_endpoint(
         raise HTTPException(status_code=400, detail="Target endpoint name overlaps existing endpoint name.")
 
     if not re.match(EXTENDPOINT_NAME_REGEX, endpoint.name, re.IGNORECASE):
-        raise HTTPException(status_code=400, detail="Endpoint names can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods.")
+        raise HTTPException(status_code=400, detail="Endpoint names can be a maximum of 64 characters and may contain alphanumerics, underscores, hyphens and periods.")
 
     if not re.match(EXTENDPOINT_DESC_REGEX, endpoint.desc, re.IGNORECASE):
-        raise HTTPException(status_code=400, detail="Endpoint descriptions can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
+        raise HTTPException(status_code=400, detail="Endpoint descriptions can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hyphens, slashes and periods.")
 
     subnet_network = IPNetwork(target_ext_subnet['cidr'])
     subnet_hosts_count = len(list(subnet_network.iter_hosts()))
@@ -2499,10 +2499,10 @@ async def update_external_subnet_enpoints(
             invalid_descs.append(endpoint['desc'])
 
     if invalid_names:
-        raise HTTPException(status_code=400, detail="Endpoint names can be a maximum of 64 characters and may contain alphanumerics, underscores, hypens, and periods.")
+        raise HTTPException(status_code=400, detail="Endpoint names can be a maximum of 64 characters and may contain alphanumerics, underscores, hyphens and periods.")
 
     if invalid_descs:
-        raise HTTPException(status_code=400, detail="Endpoint descriptions can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hypens, slashes, and periods.")
+        raise HTTPException(status_code=400, detail="Endpoint descriptions can be a maximum of 128 characters and may contain alphanumerics, spaces, underscores, hyphens, slashes and periods.")
 
     space_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'space' AND LOWER(c.name) = LOWER(@space)", tenant_id, [{"name": "@space", "value": space}])
 

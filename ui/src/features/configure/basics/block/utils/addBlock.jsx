@@ -130,9 +130,9 @@ export default function AddBlock(props) {
                 <>
                   - Block name must be unique
                   <br />- Max of 64 characters
-                  <br />- Can contain alphnumerics
-                  <br />- Can contain underscore, hypen and period
-                  <br />- Cannot start/end with underscore, hypen or period
+                  <br />- Can contain alphanumerics
+                  <br />- Can contain underscore, hyphen and period
+                  <br />- Cannot start/end with underscore, hyphen or period
                 </>
               }
             >
