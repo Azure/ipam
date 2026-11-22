@@ -26,7 +26,7 @@ ipam_security = HTTPBearer(
         "Azure IPAM access token.<br><br>"
         "Retrieve one from the Azure IPAM UI by selecting **Token** in the user avatar menu, "
         "or see the [API documentation]"
-        "(https://azure.github.io/ipam/#/api/README?id=obtaining-an-azure-ad-token).<br><br>"
+        "(https://azure.github.io/ipam/#/api/README?id=obtaining-an-access-token).<br><br>"
         "Paste the raw token value below, the 'Bearer' prefix is added for you.<br><br>"
     ),
     auto_error = False
