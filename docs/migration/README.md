@@ -129,7 +129,7 @@ For detailed information about App Service backups, including limitations and re
 
 ## Authenticate to Azure PowerShell
 
-Before executing the Azure IPAM migration script, you'll need to authenticate to [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell) and set the context to the subscription containing your Azure IPAM deployment.
+Before you run `migrate.ps1`, sign in to [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell) and select the subscription for your Azure IPAM deployment.
 
 ### Connect to Azure PowerShell
 
@@ -141,13 +141,13 @@ Connect-AzAccount
 Connect-AzAccount -UseDeviceAuthentication
 ```
 
-> **NOTE:** If you're connecting to an Azure Cloud besides Azure Public (such as Gov, China, etc.), you may need to specify the `-Environment` flag as described in the [Azure PowerShell](https://learn.microsoft.com/powershell/module/az.accounts/connect-azaccount#-environment) documentation when using `Connect-AzAccount`
+> **NOTE:** To sign in to a cloud other than the Azure public cloud, such as Azure Government, add the [`-Environment`](https://learn.microsoft.com/powershell/module/az.accounts/connect-azaccount#-environment) parameter to `Connect-AzAccount`.
 
 ### Set the Active Subscription for Azure PowerShell
 
 ```powershell
 # Set Azure PowerShell Context
-Set-AzContext -Subscription "<Target Subscription Name/GUID>"
+Set-AzContext -Subscription "<subscription-name-or-id>"
 
 # Example with Subscription ID
 Set-AzContext -Subscription "28b502e2-323f-4e57-98db-743459176557"
@@ -156,11 +156,11 @@ Set-AzContext -Subscription "28b502e2-323f-4e57-98db-743459176557"
 Set-AzContext -Subscription "Contoso IPAM Subscription"
 ```
 
-For additional information on authenticating with Azure PowerShell, refer to the [Azure PowerShell](https://learn.microsoft.com/powershell/azure/authenticate-azureps) documentation.
+For other ways to sign in, see [Sign in to Azure from Azure PowerShell](https://learn.microsoft.com/powershell/azure/authenticate-azureps).
 
-## Authenticate to Azure CLI (Optional)
+## Authenticate to Azure CLI
 
-If your Azure IPAM deployment uses a private Azure Container Registry, you will need to be authenticated to the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) *in addition to* Azure PowerShell. This is because the migration script will use the `az acr build` feature to build updated application containers and push them into your private Azure Container Registry.
+If Azure IPAM uses a private Azure Container Registry, which it does when deployed with `-PrivateACR`, also sign in to [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli). The script uses `az acr build` to build the container image in that registry. Otherwise, you can skip this section.
 
 ### Connect to Azure CLI
 
@@ -172,28 +172,36 @@ az login
 az login --use-device-code
 ```
 
+> **NOTE:** To sign in to a cloud other than the Azure public cloud, run [`az cloud set`](https://learn.microsoft.com/cli/azure/manage-clouds-azure-cli) before `az login`.
+
 ### Set the Active Subscription for Azure CLI
 
 ```bash
 # Set Azure CLI Active Subscription
-az account set --subscription "<Target Subscription Name/GUID>"
+az account set --subscription "<subscription-name-or-id>"
+
+# Example with Subscription ID
+az account set --subscription "28b502e2-323f-4e57-98db-743459176557"
+
+# Example with Subscription Name
+az account set --subscription "Contoso IPAM Subscription"
 ```
 
-> **Important**: Ensure both Azure PowerShell and Azure CLI are authenticated to the **same subscription**. Mismatched subscription contexts can cause deployment failures during the migration process.
+> **IMPORTANT:** Set Azure CLI to the same subscription as Azure PowerShell. The script checks this when it starts.
+
+For other ways to sign in, see [Sign in with Azure CLI](https://learn.microsoft.com/cli/azure/authenticate-azure-cli).
 
 ## Clone the GitHub Repo
 
 ```powershell
-# Example using PowerShell for Windows
-PS C:\> git clone https://github.com/Azure/ipam.git
-PS C:\> cd .\ipam\migrate
-PS C:\ipam\migrate> .\migrate.ps1 <OPTIONS>
+# Clone the Repository
+git clone https://github.com/Azure/ipam.git
 
-# Example using PowerShell for Linux
-PS /> git clone https://github.com/Azure/ipam.git
-PS /> cd /ipam/migrate
-PS /ipam/migrate> .\migrate.ps1 <OPTIONS>
+# Change to the Migrate Folder
+cd ./ipam/migrate
 ```
+
+Run `migrate.ps1` from this folder, as shown in the following sections.
 
 ## Migration Methods
 
