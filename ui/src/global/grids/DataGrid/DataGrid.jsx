@@ -194,6 +194,7 @@ const HeaderMenuPlaceholder = React.memo(() => {
       }}
       role="button"
       tabIndex={0}
+      aria-label="Actions"
       aria-haspopup="menu"
       aria-expanded={menuOpen ? 'true' : 'false'}
       aria-controls="table-state-menu"

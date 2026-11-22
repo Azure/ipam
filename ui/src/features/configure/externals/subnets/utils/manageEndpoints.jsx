@@ -254,6 +254,7 @@ function HeaderMenu(props) {
         <React.Fragment>
           <IconButton
             id="table-state-menu"
+            aria-label="Actions"
             onClick={onClick}
           >
             <ExpandCircleDownOutlined />

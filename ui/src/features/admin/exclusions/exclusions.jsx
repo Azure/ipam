@@ -253,7 +253,7 @@ export default function ManageExclusions() {
               <Tooltip title="Save" >
                 <IconButton
                   color="primary"
-                  aria-label="upload picture"
+                  aria-label="Save"
                   component="span"
                   style={{
                     visibility: (unchanged || !loadedExclusions) ? 'hidden' : 'visible'

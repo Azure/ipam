@@ -617,7 +617,7 @@ const Reservations = () => {
               <span>
                 <IconButton
                   color="error"
-                  aria-label="save associations"
+                  aria-label="Remove"
                   component="span"
                   disabled={sending}
                   onClick={onSubmit}

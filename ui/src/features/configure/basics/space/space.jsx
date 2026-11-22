@@ -172,7 +172,7 @@ export default function SpaceDataGrid(props) {
           <React.Fragment>
             <Tooltip title="Actions">
               <IconButton
-                aria-label="spaces menu"
+                aria-label="Actions"
                 component="span"
                 onClick={handleMenuClick}
                 sx={{ mr: 1.5 }}

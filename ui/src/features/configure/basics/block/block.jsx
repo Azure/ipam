@@ -213,7 +213,7 @@ export default function BlockDataGrid(props) {
           <React.Fragment>
             <Tooltip title="Actions">
               <IconButton
-                aria-label="upload picture"
+                aria-label="Actions"
                 component="span"
                 onClick={handleMenuClick}
                 sx={{ mr: 1.5 }}

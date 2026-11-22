@@ -140,7 +140,7 @@ export default function AdminSettings() {
               <Tooltip title="Save" >
                 <IconButton
                   color="primary"
-                  aria-label="upload picture"
+                  aria-label="Save"
                   component="span"
                   style={{
                     visibility: (unchanged || loading) ? 'hidden' : 'visible'
