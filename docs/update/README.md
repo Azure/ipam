@@ -2,89 +2,86 @@
 
 ## Overview
 
-This guide provides comprehensive instructions for updating existing Azure IPAM deployments to the latest version. The update process preserves your existing data and configuration while updating your deployment with the latest features, security patches, and bug fixes from the Azure IPAM project.
+This guide covers updating an existing Azure IPAM deployment to the latest version. The update keeps your data and configuration, and brings in the latest features, security fixes and bug fixes.
 
-The Azure IPAM update script (`update.ps1`) supports multiple deployment architectures and automatically detects your current configuration to perform the appropriate update method.
+The update script, `update.ps1`, works with every current deployment type. It detects how Azure IPAM is deployed and updates it in the matching way.
 
-> **Important**: If your deployment uses **Docker Compose** (legacy deployment method), you cannot use this update script. Docker Compose deployments must use the [Migration Guide](/migration/README.md) to upgrade to modern deployment architecture. The update script will automatically detect Docker Compose deployments and redirect you to the migration guide.
+> **IMPORTANT:** If your deployment uses **Docker Compose**, the legacy deployment method, you can't use the update script. Follow the [Azure IPAM Legacy Migration Guide](/migration/README.md) instead to move to the current deployment architecture. The update script detects Docker Compose deployments and points you to the migration guide.
 
 ## Prerequisites
 
-To successfully update your Azure IPAM deployment, ensure the following prerequisites are met:
+You need the following to update Azure IPAM:
 
-- An Azure Subscription containing your existing Azure IPAM deployment
-- The following Azure RBAC Roles:
-  - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner) at the Resource Group scope containing your Azure IPAM resources
-  - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner) at the **Subscription** scope, required only to create the [staging slot](#staging-slots) — its additive deployment is evaluated at subscription scope. If you cannot grant subscription-scope access, run the update with `-SkipInfraUpdate` to bypass this step.
-- [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
-  - Required to clone the Azure IPAM GitHub repository
-- [PowerShell](https://learn.microsoft.com/powershell/scripting/install/install-powershell) version 7.2.0 or later installed
-- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell) version 11.4.0 or later installed
-- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) version 2.35.0 or later installed (required only for Private ACR deployments)
+- The Azure subscription containing your Azure IPAM deployment
+- The following Azure roles:
+  - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner) on the resource group containing your Azure IPAM resources
+  - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner) on the **subscription**, needed only to create the [staging slot](#staging-slots), because that deployment is evaluated at subscription scope. If you can't get access at subscription scope, run the update with `-SkipInfraUpdate` to skip this step.
+- [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), to clone the Azure IPAM repository
+- [PowerShell](https://learn.microsoft.com/powershell/scripting/install/install-powershell) 7.2.0 or later
+- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell) 11.4.0 or later
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.35.0 or later (only for private Azure Container Registry deployments)
 
-> **NOTE:** The update script requires access to your existing Azure IPAM resources. Ensure you have the necessary permissions to both read the current configuration and restart/redeploy the App Service.
+> **NOTE:** The update script reads your current configuration, and restarts or redeploys the App Service or Function App, so you need permission to do both.
 
 ## Update Methods by Deployment Type
 
-The update process varies depending on your current Azure IPAM deployment architecture:
+How Azure IPAM is updated depends on how it's deployed:
 
-### 1. Public Azure Container Registry (ACR) Deployments
+### Public Azure Container Registry (ACR) Deployments
 
-#### Most Common Deployment Type
+This is the most common deployment type. For deployments that use the public Azure IPAM registry (`registry.azureipam.com`, or the legacy `azureipam.azurecr.io`), the update restarts your App Service or Function App so it pulls the latest container image.
 
-For deployments using the publicly hosted Azure Container Registry (`registry.azureipam.com`, or the legacy `azureipam.azurecr.io`), updates are handled by simply restarting your Azure App Service or Function App to pull the latest container images.
+- **Update method:** container restart
+- **Downtime:** a few minutes, while the application restarts
+- **Additional requirements:** none
 
-- **Update Method**: Container restart
-- **Downtime**: Minimal (during restart only)
-- **Additional Requirements**: None (fully automated)
+### Private Azure Container Registry (ACR) Deployments
 
-### 2. Private Azure Container Registry (ACR) Deployments
+For deployments that use your own Azure Container Registry, the update builds a new container image from the latest code and pushes it to your registry.
 
-For deployments using a self-hosted Azure Container Registry within your subscription, the update process includes building new container images with the latest code and pushing them to your private registry.
+- **Update method:** container build and restart
+- **Downtime:** a few minutes, while the application restarts after the build
+- **Additional requirements:**
+  - Sign in to Azure CLI, as described in [Authenticate to Azure CLI](#authenticate-to-azure-cli)
+  - For an automated build, the registry must be in the App Service's resource group. Otherwise, the script describes how to update the image yourself.
 
-- **Update Method**: Container build and deployment
-- **Downtime**: During container build and restart
-- **Additional Requirements**:
-  - Azure CLI authentication (as noted in Prerequisites above)
-  - The registry must reside in the App Service's resource group for automated builds (otherwise the script provides manual image-update guidance)
+### Native ZIP Deploy Deployments
 
-### 3. Native ZIP Deploy Deployments
+For native deployments, which use ZIP Deploy to deploy the Python code to an App Service or Function App without containers.
 
-For "native" deployments that use ZIP Deploy functionality to deploy Python code directly to Azure App Services or Function Apps without containers.
-
-- **Update Method**: ZIP Deploy (downloads from GitHub releases by default)
-- **Downtime**: During ZIP deployment process (~5 minutes)
-- **Additional Requirements**: None (downloads automatically from GitHub releases, or you can provide a local ZIP file path)
+- **Update method:** ZIP Deploy, downloading the latest GitHub release by default
+- **Downtime:** about 5 minutes, while the package deploys
+- **Additional requirements:** none, since the script downloads the release itself, or you can give it a local ZIP file
 
 ## Pre-Update Considerations
 
 ### Backup Recommendation
 
-Before performing any update, it is strongly recommended to verify that your Azure App Service has recent backups available. While the update process is designed to preserve your existing data and configuration, having a backup ensures you can restore your service if any issues occur.
+Before any update, check that your App Service or Function App has recent backups. The update is designed to keep your data and configuration, but a backup means you can restore Azure IPAM if something goes wrong.
 
-To check your backup status:
+To check your backups:
 
-1. Navigate to your Azure IPAM App Service in the Azure Portal
-2. Go to **Settings** → **Backups**
-3. Verify that recent automatic or custom backups are available and show "Succeeded" status
+1. In the Azure portal, open your Azure IPAM App Service or Function App.
+2. Select **Settings** → **Backups**.
+3. Check that there are recent automatic or custom backups with a status of *Succeeded*.
 
-> **Note**: If your deployment uses Azure Functions on Consumption or Elastic Premium plans, automatic backups are not supported. See [Azure Functions backup documentation](https://learn.microsoft.com/azure/app-service/manage-backup?tabs=portal#does-azure-functions-support-automatic-backups) for details on supported tiers.
+> **NOTE:** Function Apps on the Consumption or Elastic Premium plans don't support automatic backups. See [Does Azure Functions support automatic backups?](https://learn.microsoft.com/azure/app-service/manage-backup?tabs=portal#does-azure-functions-support-automatic-backups) for the supported plans.
 
-For detailed backup instructions, refer to the [Migration Guide backup section](/migration/README.md#pre-migration-backup).
+For detailed backup steps, see [Pre-Migration Backup](/migration/README.md#pre-migration-backup) in the migration guide.
 
-### Version Updates & Compatibility
+### Version Updates and Compatibility
 
-The update script automatically handles version compatibility, including:
+The update script handles version compatibility for you:
 
-- **Python Version Updates**: If the target Azure IPAM version uses a different Python version, the script will automatically update your App Service configuration
-- **Version Comparison**: The script compares the currently running version (via the `/api/status` endpoint) against the target version using semantic versioning, and skips the update when already up to date (override with `-Force`)
-  - Native deployments compare against the latest GitHub release
-  - Private ACR container deployments compare against the repository and skip the image build when they match
-  - Public registry container deployments compare against the image's version label
-- **Downgrade Protection**: If the target version is *older* than the version currently running, the update stops rather than rolling you back. Re-run with `-Force` to apply the older version deliberately
-  - Images built without a version stamp report `0.0.0`; these are treated as an unknown version rather than a downgrade, and the update proceeds normally
-- **Health Check Configuration**: Missing health check configurations will be automatically added during the update
-- **Legacy Detection**: Docker Compose deployments (deprecated) will be detected and the script will redirect you to the migration guide
+- **Python version updates:** If the new version of Azure IPAM uses a different Python version, the script updates your App Service or Function App configuration.
+- **Version comparison:** The script compares the currently running version (via the `/api/status` endpoint) against the target version using semantic versioning, and skips the update when you're already up to date. Use `-Force` to update anyway.
+  - Native deployments compare against the latest GitHub release.
+  - Private ACR container deployments compare against the repository, and skip the image build when they match.
+  - Public registry container deployments compare against the image's version label.
+- **Downgrade protection:** If the new version is *older* than the one running, the update stops rather than rolling you back. Run it again with `-Force` to apply the older version on purpose.
+  - Images built without a version stamp report `0.0.0`. These are treated as an unknown version rather than a downgrade, and the update goes ahead.
+- **Health check configuration:** A missing health check is added during the update.
+- **Legacy detection:** The script detects Docker Compose deployments, which are deprecated, and points you to the migration guide.
 
 ### Stopped or Unreachable Applications
 
@@ -95,11 +92,11 @@ Two details are read from the application's `/api/status` endpoint, so they can'
 | Detail           | Effect when unavailable                                                                                      |
 |------------------|--------------------------------------------------------------------------------------------------------------|
 | Running version  | The "already up to date" check is skipped and the update proceeds regardless                                 |
-| Container distro | Private ACR image builds can't select a Dockerfile — supply `-ContainerType Debian` or `-ContainerType RHEL` |
+| Container distro | Private ACR image builds can't choose a Dockerfile, so supply `-ContainerType Debian` or `-ContainerType RHEL` |
 
-Everything else — deployment type, container vs native, registry, and the full configuration drift comparison — is read from Azure Resource Manager and is unaffected.
+Everything else, including the deployment type, the registry and the full configuration drift comparison, is read from Azure Resource Manager and isn't affected.
 
-> **NOTE:** Probes against a stopped application are skipped outright, and probes against an unreachable one are bounded to 30 seconds, so a hung container cannot stall the update.
+> **NOTE:** Probes against a stopped application are skipped outright, and probes against an unreachable one are bounded to 30 seconds, so a hung container can't stall the update.
 
 > **NOTE:** For public registry container deployments, no restart is performed while the application is stopped, since a stopped application never pulls the image. Start the application to pick up the latest image.
 
@@ -183,66 +180,65 @@ Run `update.ps1` from this folder, as shown in the following sections.
 
 ### Scenario 1: Standard Update (Public ACR or Native ZIP Deploy)
 
-For most deployments using the public Azure Container Registry or native ZIP deploy, a simple restart or deployment is sufficient:
+For most deployments, which use the public registry or native ZIP Deploy, run the script with just the required parameters:
 
 ```powershell
-# Basic update with required parameters
-.\update.ps1 -AppName "your-ipam-app" -ResourceGroupName "your-ipam-rg"
+# Update with the Required Parameters
+./update.ps1 -AppName "<your-ipam-app>" -ResourceGroupName "<your-ipam-rg>"
 ```
 
 ### Scenario 2: Private ACR Update
 
-For deployments using a private Azure Container Registry, the script will automatically detect this and build new containers:
+For deployments that use a private Azure Container Registry, the script detects the registry and builds a new container image:
 
 ```powershell
-# Private ACR deployments (automatically detected)
-.\update.ps1 -AppName "your-ipam-app" -ResourceGroupName "your-ipam-rg"
+# Update a Private ACR Deployment (Detected Automatically)
+./update.ps1 -AppName "<your-ipam-app>" -ResourceGroupName "<your-ipam-rg>"
 ```
 
 ### Scenario 3: ZIP Deploy from Custom Source
 
-To update from a specific GitHub repository or user (potentially with custom ZIP filename):
+To update from a different GitHub user or repository, such as your own fork, optionally with a different ZIP file name:
 
 ```powershell
-# Update from custom GitHub source
-.\update.ps1 `
-  -AppName "your-ipam-app" `
-  -ResourceGroupName "your-ipam-rg" `
-  -GitHubUserName "your-corp" `
+# Update from a Fork
+./update.ps1 `
+  -AppName "<your-ipam-app>" `
+  -ResourceGroupName "<your-ipam-rg>" `
+  -GitHubUserName "contoso" `
   -GitHubRepoName "ipam-fork"
 
-# Update from custom GitHub source with different ZIP file name
-.\update.ps1 `
-  -AppName "your-ipam-app" `
-  -ResourceGroupName "your-ipam-rg" `
-  -GitHubUserName "your-corp" `
+# Update from a Fork with a Different ZIP File Name
+./update.ps1 `
+  -AppName "<your-ipam-app>" `
+  -ResourceGroupName "<your-ipam-rg>" `
+  -GitHubUserName "contoso" `
   -GitHubRepoName "ipam-fork" `
   -ZipFileName "ipam-custom.zip"
 ```
 
 ### Scenario 4: ZIP Deploy from Local File
 
-To update using a local ZIP file (for testing or custom builds):
+To update from a local ZIP file, for testing or a custom build:
 
 ```powershell
-# Update from local ZIP file
-.\update.ps1 `
-  -AppName "your-ipam-app" `
-  -ResourceGroupName "your-ipam-rg" `
-  -ZipFilePath "C:\temp\ipam-custom.zip"
+# Update from a Local ZIP File
+./update.ps1 `
+  -AppName "<your-ipam-app>" `
+  -ResourceGroupName "<your-ipam-rg>" `
+  -ZipFilePath "./ipam-custom.zip"
 ```
 
-### Scenario 5: ZIP Deploy to Custom Directory (Optional)
+### Scenario 5: ZIP Deploy with a Custom Download Folder (Optional)
 
-By default, the script automatically creates a temporary directory for downloading ZIP files. You only need to specify a custom directory if you want to control the download location or preserve the ZIP file after the update:
+By default, the script downloads the ZIP file to a temporary folder. Give it a folder of your own only if you want to choose where it's downloaded, or keep the file after the update:
 
 ```powershell
-# Update with custom asset folder (folder must already exist)
-# Useful for debugging or when you want to keep the downloaded ZIP file
-.\update.ps1 `
-  -AppName "your-ipam-app" `
-  -ResourceGroupName "your-ipam-rg" `
-  -AssetFolder "C:\ipam\assets"
+# Update with a Custom Download Folder (the Folder Must Already Exist)
+./update.ps1 `
+  -AppName "<your-ipam-app>" `
+  -ResourceGroupName "<your-ipam-rg>" `
+  -AssetFolder "./assets"
 ```
 
 ## Update Script Parameters
@@ -250,28 +246,28 @@ By default, the script automatically creates a temporary directory for downloadi
 | Parameter            | Type   | Required | Description                                                                                |
 |----------------------|--------|----------|--------------------------------------------------------------------------------------------|
 | `-AppName`           | String | Yes      | Name of your existing Azure IPAM App Service or Function App                               |
-| `-ResourceGroupName` | String | Yes      | Resource group containing your App Service                                                 |
-| `-GitHubUserName`    | String | No       | GitHub user/organization name for custom repository **<sup>1</sup>**                       |
-| `-GitHubRepoName`    | String | No       | GitHub repository name for custom repository **<sup>1</sup>**                              |
+| `-ResourceGroupName` | String | Yes      | Resource group containing your App Service or Function App                                 |
+| `-GitHubUserName`    | String | No       | GitHub user or organization to download the release from **<sup>1</sup>**                 |
+| `-GitHubRepoName`    | String | No       | GitHub repository to download the release from **<sup>1</sup>**                           |
 | `-ZipFileName`       | String | No       | ZIP file name to download from GitHub **<sup>1</sup>**                                     |
 | `-ZipFilePath`       | String | No       | Path to local ZIP file for deployment **<sup>1</sup>**                                     |
-| `-AssetFolder`       | String | No       | Directory to store downloaded ZIP file **<sup>2</sup>**                                    |
+| `-AssetFolder`       | String | No       | Folder to download the ZIP file to **<sup>2</sup>**                                        |
 | `-ContainerType`     | String | No       | Container distro (`Debian` or `RHEL`) to build. Overrides auto-detection **<sup>3</sup>**  |
-| `-SkipInfraUpdate`   | Switch | No       | Skip creation of the `staging` deployment slot                                             |
-| `-Force`             | Switch | No       | Skip confirmation prompts and force a redeploy even if already up to date **<sup>4</sup>** |
-| `-Debug`             | Switch | No       | Write verbose Azure deployment logs to `logs/debug_[timestamp].log`                        |
+| `-SkipInfraUpdate`   | Switch | No       | Skips creating the `staging` deployment slot                                               |
+| `-Force`             | Switch | No       | Skips confirmation prompts and redeploys even if already up to date **<sup>4</sup>**       |
+| `-Debug`             | Switch | No       | Writes verbose Azure deployment logs to `logs/debug_[timestamp].log`                       |
 
-> **NOTE 1:** Only applicable for native (non-container) deployments. Container deployments ignore these parameters: public registry deployments pull the latest published image, and private ACR deployments build from your local copy of the repository.
+> **NOTE 1:** Only for native (non-container) deployments. Container deployments ignore these parameters: public registry deployments pull the latest published image, and private ACR deployments build from your local copy of the repository.
 
-> **NOTE 2:** Script creates a temporary directory automatically if not specified.
+> **NOTE 2:** If you don't specify a folder, the script uses a temporary one.
 
-> **NOTE 3:** Only applies to private ACR deployments, which rebuild the container image. When omitted, the distro is auto-detected by probing the application's status API (`/api/status`). Specify it explicitly to skip that probe — for example when the application is stopped or otherwise unreachable, or when auto-detection returns the wrong distro.
+> **NOTE 3:** Only applies to private ACR deployments, which rebuild the container image. When omitted, the distro is auto-detected by probing the application's status API (`/api/status`). Specify it to skip that probe, for example when the application is stopped or unreachable, or when auto-detection returns the wrong distro.
 
-> **NOTE 4:** `-Force` applies **every** detected configuration change without prompting, including changes to your production site that recycle the application. It also bypasses the version comparison entirely, so it will deploy a version older than the one currently running. Review a normal (non-forced) run first if you want to see the change plan before committing to it.
+> **NOTE 4:** `-Force` applies **every** detected configuration change without prompting, including changes to your production site that recycle the application. It also bypasses the version comparison entirely, so it deploys a version older than the one running. Review a normal (non-forced) run first if you want to see the change plan before committing to it.
 
 ## Update Process Flow
 
-The update script follows this automated process and will automatically determine the appropriate update method based on your deployment configuration:
+The update script works through the following stages, choosing the update method that matches your deployment:
 
 ### Application Discovery and Validation
 
@@ -301,15 +297,15 @@ Drift that may be detected and remediated:
 Key behaviors:
 
 - **Nothing is changed without your approval.** The full list of changes is displayed first, then you are prompted to continue. Use `-Force` to apply without prompting.
-- **Your customizations are preserved.** Existing values are *never* overwritten — only entirely missing settings are added. Settings you have added yourself are never modified or removed.
-- **Removal is tightly scoped.** Only settings that Azure IPAM owns *and* that no longer apply to your deployment type can be removed (for example, `SCM_DO_BUILD_DURING_DEPLOYMENT` on an internet-restricted cloud deployment that now uses `WEBSITE_RUN_FROM_PACKAGE`). Instance-specific settings — storage connection strings, content share, and Application Insights keys — are never touched.
-- **Platform-managed settings are left alone.** The `DOCKER_REGISTRY_SERVER_*` settings are only required for registries that use stored credentials. Azure IPAM pulls its images anonymously (public registry) or with a managed identity (private ACR), so App Service adds and removes these settings on its own and the update script does not manage them.
+- **Your customizations are preserved.** Existing values are *never* overwritten. Only settings that are missing entirely are added. Settings you have added yourself are never modified or removed.
+- **Removal is tightly scoped.** Only settings that Azure IPAM owns *and* that no longer apply to your deployment type can be removed (for example, `SCM_DO_BUILD_DURING_DEPLOYMENT` on an internet-restricted cloud deployment that now uses `WEBSITE_RUN_FROM_PACKAGE`). Instance-specific settings, such as storage connection strings, the content share and Application Insights keys, are never touched.
+- **Platform-managed settings are left alone.** The `DOCKER_REGISTRY_SERVER_*` settings are only required for registries that use stored credentials. Azure IPAM pulls its images anonymously (public registry) or with a managed identity (private ACR), so App Service adds and removes these settings on its own, and the update script doesn't manage them.
 - **Production and the staging slot are kept in sync.** When a staging slot exists, the same configuration is applied to both, so a future slot swap can never regress your production site.
 - **Safe to re-run.** A converged deployment reports *"Configuration is up to date, no changes required"* and moves straight to the code update.
 
 > **NOTE:** Applying configuration changes recycles the application, so expect a brief interruption. Production is converged **before** the staging slot, so a newly created slot inherits the corrected configuration rather than the old one.
 
-Use `-SkipInfraUpdate` to skip creating the staging slot. Legacy Docker Compose deployments are not handled here — they are redirected to the [migration guide](/migration/README.md).
+Use `-SkipInfraUpdate` to skip creating the staging slot. Legacy Docker Compose deployments aren't handled here. The script points them to the [migration guide](/migration/README.md).
 
 ### Deployment Type Detection and Processing
 
@@ -319,7 +315,7 @@ Use `-SkipInfraUpdate` to skip creating the staging slot. Legacy Docker Compose 
 - Compares the running version against the version label on the registry image and **skips the restart when already up to date** (override with `-Force`)
 - Restarts the application to pull the latest container image from the registry
 - If the registry was repointed during drift remediation, the application is already recycling and pulling the new image, so no additional restart is performed
-- **Process exits here** - no building or ZIP deployment needed
+- Nothing is built or deployed, so the update ends here
 
 #### For Private ACR Container Deployments
 
@@ -330,7 +326,7 @@ Use `-SkipInfraUpdate` to skip creating the staging slot. Legacy Docker Compose 
 - Ensures Azure PowerShell and Azure CLI contexts match
 - Resolves the container distribution type (Debian/RHEL), either from `-ContainerType` or by probing the application's `/api/status` endpoint
   - App Service containers only; Function containers use a fixed Dockerfile
-  - If it cannot be resolved, the script explains why and exits with the `-ContainerType` values to choose from
+  - If it can't be resolved, the script explains why and exits, listing the `-ContainerType` values to choose from
 - Builds new container images using `az acr build` with appropriate Dockerfile
 - Tags images with both the current version and `latest` (`ipam:<version>` + `ipam:latest`, or `ipamfunc:<version>` + `ipamfunc:latest`) and pushes them to the private registry
 - Restarts the application, unless it was already stopped
@@ -341,9 +337,9 @@ Use `-SkipInfraUpdate` to skip creating the staging slot. Legacy Docker Compose 
 - Compares the currently running version (via the `/api/status` endpoint) against the latest GitHub release and **skips the deployment if already up to date**
   - Use `-Force` to redeploy anyway
   - This check is also skipped when a local `-ZipFilePath` is supplied
-- Downloads latest release ZIP from GitHub (using GitHubUserName/GitHubRepoName parameters)
-- Alternatively uses provided local ZIP file if ZipFilePath is specified
-- Creates temporary directory for ZIP file if AssetFolder not provided
+- Downloads the latest release's ZIP file from GitHub, from the repository set by `-GitHubUserName` and `-GitHubRepoName`
+- Uses the local ZIP file instead if `-ZipFilePath` is specified
+- Downloads to a temporary folder if `-AssetFolder` isn't specified
 - Performs ZIP Deploy to App Service using PowerShell cmdlets
 - Falls back to Kudu API if standard ZIP Deploy using Azure PowerShell fails
 - Handles retry logic for deployment failures (3 attempts)
@@ -372,15 +368,15 @@ When you run `update.ps1` against an older deployment that predates slots, the s
 
 ### vNet Integration on the Staging Slot
 
-If your production App Service or Function App uses **regional vNet integration**, the update replicates that integration onto the new slot automatically. If it cannot be applied automatically (for example, due to subnet capacity, delegation, or permissions), the slot is still created **without** vNet integration and the script reports the production subnet details (writing the full subnet resource ID to the log) for manual remediation.
+If your production App Service or Function App uses **regional virtual network integration**, the update adds the same integration to the new slot. If it can't, for example because of subnet capacity, delegation or permissions, the slot is still created **without** virtual network integration, and the script reports the production subnet's details, with its full resource ID in the log, so you can add it yourself.
 
-To add vNet integration to the `staging` slot manually:
+To add virtual network integration to the `staging` slot yourself:
 
 #### Azure Portal
 
-1. Navigate to your App Service / Function App → **Deployment slots** → select the **staging** slot
-2. Go to **Networking** → **vNet integration** → **Add vNet integration**
-3. Select the **same vNet and subnet** used by the production site, then **Connect**
+1. Open your App Service or Function App, select **Deployment slots**, then select the **staging** slot.
+2. Select **Networking**, then add virtual network integration.
+3. Select the **same virtual network and subnet** as the production site, then select **Connect**.
 
 #### Azure CLI
 
@@ -389,15 +385,15 @@ az webapp vnet-integration add \
   --resource-group "<your-ipam-rg>" \
   --name "<your-ipam-app>" \
   --slot staging \
-  --vnet "/subscriptions/<sub-id>/resourceGroups/<vnet-rg>/providers/Microsoft.Network/virtualNetworks/<vnet-name>" \
+  --vnet "/subscriptions/<subscription-id>/resourceGroups/<vnet-rg>/providers/Microsoft.Network/virtualNetworks/<vnet-name>" \
   --subnet "<subnet-name>"
 ```
 
 #### Azure PowerShell
 
 ```powershell
-# Full resource ID of the subnet used by the production site
-$subnetId = "/subscriptions/<sub-id>/resourceGroups/<vnet-rg>/providers/Microsoft.Network/virtualNetworks/<vnet-name>/subnets/<subnet-name>"
+# Full Resource ID of the Production Site's Subnet
+$subnetId = "/subscriptions/<subscription-id>/resourceGroups/<vnet-rg>/providers/Microsoft.Network/virtualNetworks/<vnet-name>/subnets/<subnet-name>"
 
 $slot = Get-AzResource `
   -ResourceGroupName "<your-ipam-rg>" `
@@ -409,11 +405,11 @@ $slot.Properties | Add-Member -NotePropertyName "virtualNetworkSubnetId" -NotePr
 $slot | Set-AzResource -Force
 ```
 
-> **NOTE:** The subnet must be delegated to **`Microsoft.Web/serverFarms`**. The Azure CLI command adds this delegation automatically; with the Azure Portal or Azure PowerShell, ensure the delegation is in place first.
+> **NOTE:** The subnet must be delegated to **`Microsoft.Web/serverFarms`**. The Azure CLI command adds the delegation for you. With the Azure portal or Azure PowerShell, make sure the delegation is in place first.
 
-> **NOTE:** If your production site routes all outbound traffic through the vNet (the `vnetRouteAllEnabled` site property, shown in the portal under **Networking** → **Outbound traffic configuration**), apply the same setting to the `staging` slot. Otherwise, outbound connectivity that depends on the vNet — for example, reaching private-endpoint-only Cosmos DB or Key Vault — could break after a slot swap.
+> **NOTE:** If your production site routes all outbound traffic through the virtual network (the `vnetRouteAllEnabled` site property, shown in the portal under **Networking** → **Outbound traffic configuration**), apply the same setting to the `staging` slot. Otherwise, outbound connections that depend on the virtual network, such as to a Cosmos DB account or Key Vault reachable only through private endpoints, could break after a slot swap.
 
-> **NOTE:** Regional vNet integration is configured **per slot**. The slot stays disabled until you explicitly start and swap it, so this can be completed at any time before your first slot-based upgrade.
+> **NOTE:** Regional virtual network integration is configured **per slot**. The slot stays disabled until you explicitly start and swap it, so this can be completed at any time before your first slot-based upgrade.
 
 ## Changes Not Made Automatically
 
@@ -421,98 +417,98 @@ Some differences between older and current deployments are deliberately left alo
 
 ### The Legacy `COSMOS-KEY` Secret
 
-Deployments originally created with older Azure IPAM versions (v3.0.0 and earlier) have a `COSMOS-KEY` secret in Key Vault, created by the deployment templates of the day. It was **never wired to the application** — Azure IPAM has always authenticated to Cosmos DB with its managed identity — so it sits unused.
+Deployments originally created with older Azure IPAM versions (v3.0.0 and earlier) have a `COSMOS-KEY` secret in Key Vault, created by the deployment templates of the day. It was **never used by the application**, since Azure IPAM has always authenticated to Cosmos DB with its managed identity.
 
-Removing a secret is a Key Vault **data-plane** operation. Azure IPAM's Key Vault uses Azure RBAC, and the deployment grants a data-plane role (**Key Vault Secrets User**) *only to the Azure IPAM managed identity*. Nobody else — including the person who deployed Azure IPAM — has data-plane access by default. Cleaning this up therefore means granting yourself **Key Vault Secrets Officer** first, which is a deliberate, auditable decision rather than something an update script should do on your behalf.
+Removing a secret is a Key Vault **data-plane** operation. Azure IPAM's Key Vault uses Azure RBAC, and the deployment grants a data-plane role (**Key Vault Secrets User**) *only to the Azure IPAM managed identity*. Nobody else has data-plane access by default, including the person who deployed Azure IPAM. Removing the secret therefore means granting yourself **Key Vault Secrets Officer** first, which is a deliberate, auditable decision rather than something an update script should do on your behalf.
 
 If you want to remove it:
 
-1. Assign yourself the [Key Vault Secrets Officer](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/security#key-vault-secrets-officer) role on the Azure IPAM Key Vault
-2. Confirm nothing references the secret (no `COSMOS_KEY` app setting, no custom automation)
+1. Assign yourself the [Key Vault Secrets Officer](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/security#key-vault-secrets-officer) role on the Azure IPAM Key Vault.
+2. Confirm nothing uses the secret, such as a `COSMOS_KEY` app setting or your own automation.
 3. Remove it:
 
    ```powershell
    Remove-AzKeyVaultSecret -VaultName "<your-ipam-kv>" -Name "COSMOS-KEY"
    ```
 
-4. Remove the role assignment you granted yourself in step 1
+4. Remove the role assignment you gave yourself in step 1.
 
 > **NOTE:** Azure IPAM Key Vaults have soft delete and purge protection enabled, so the secret is recoverable for 90 days with `Undo-AzKeyVaultSecretRemoval`.
 
-> **IMPORTANT:** Removing the secret deletes a *stored copy* of the key — it does **not** revoke it. The Cosmos DB account key itself remains valid. If the value may have been exposed, [rotate the Cosmos DB key](https://learn.microsoft.com/azure/cosmos-db/how-to-rotate-keys) as well.
+> **IMPORTANT:** Removing the secret deletes a *stored copy* of the key, but does **not** revoke it. The Cosmos DB account key itself remains valid. If the value may have been exposed, [rotate the Cosmos DB key](https://learn.microsoft.com/azure/cosmos-db/how-to-rotate-keys) as well.
 
 ### Microsoft Entra Implicit Grant Flow
 
 UI application registrations created by older Azure IPAM versions have the implicit grant flow enabled (**Access tokens** and **ID tokens**). Current deployments no longer set these.
 
-This is **inert** in Azure IPAM's configuration: the flags apply to the *Web* platform, while Azure IPAM only registers a *Single-page application* redirect URI, and authentication uses the authorization code flow with PKCE. No action is required — but security tooling may flag it, and it can be cleared manually:
+This has **no effect** in Azure IPAM's configuration. These settings apply to the *Web* platform, while Azure IPAM only registers a *Single-page application* redirect URI and signs in with the authorization code flow with PKCE. You don't need to do anything, but security tools may flag it. To clear it:
 
-1. Navigate to **Microsoft Entra ID** → **App registrations** → your Azure IPAM **UI** application
-2. Select **Authentication**
-3. Under **Implicit grant and hybrid flows**, clear both **Access tokens** and **ID tokens**
-4. Select **Save**
+1. Select **Microsoft Entra ID** → **App registrations** → your Azure IPAM **UI** application.
+2. Select **Authentication**.
+3. Under **Implicit grant and hybrid flows**, clear both **Access tokens** and **ID tokens**.
+4. Select **Save**.
 
-> **NOTE:** The update script does not change Microsoft Entra objects. Doing so would require application-registration permissions that infrastructure operators frequently do not have.
+> **NOTE:** The update script doesn't change Microsoft Entra objects, because that needs app registration permissions that infrastructure operators often don't have.
 
 ## Monitoring the Update Process
 
 ### Update Logs
 
-The update script generates detailed logs in the `logs` directory:
+The update script writes detailed logs to the `logs` folder:
 
-- **Update Log**: `logs/update_[timestamp].log` - Complete console transcript of the update process
-- **Detail Log**: `logs/detail_[timestamp].log` - Structured, detailed log including error information if issues occur
-- **Debug Log**: `logs/debug_[timestamp].log` - Verbose Azure deployment logs (only written when `-Debug` is specified)
+- **Update log:** `logs/update_[timestamp].log`, a full transcript of the console output
+- **Detail log:** `logs/detail_[timestamp].log`, a structured log with error details if something goes wrong
+- **Debug log:** `logs/debug_[timestamp].log`, verbose Azure deployment logs, written only with `-Debug`
 
 ### Container Build Monitoring (Private ACR)
 
-For private ACR deployments, monitor the container build process:
+For private ACR deployments, the container build works like this:
 
-1. **Build Initiation**: Script uses `az acr build` with `--no-logs` flag and reports build queue status
-2. **Build Progress**: Monitor in Azure Portal → Container Registry → Tasks
-3. **Error Handling**: If build fails, script extracts Build ID from output and fetches detailed error logs via REST API
+1. **Build start:** The script runs `az acr build` with the `--no-logs` parameter and reports that the build is queued.
+2. **Build progress:** You can follow the build in the Azure portal, in the container registry's task runs.
+3. **Errors:** If the build fails, the script gets the build ID from the output and fetches the detailed error logs through the REST API.
 
 ### ZIP Deploy Monitoring (Native Deployments)
 
 For native deployments:
 
-1. **GitHub Download**: Script calls GitHub API to get latest release asset download URL
-2. **ZIP Upload**: First attempts standard `Publish-AzWebApp`, falls back to Kudu API if needed
-3. **Completion**: Allow ~5 minutes for ZIP Deploy process to complete (shown as note in script output)
+1. **Download:** The script calls the GitHub API to get the latest release's download URL.
+2. **Upload:** The script first tries `Publish-AzWebApp`, and falls back to the Kudu API if that fails.
+3. **Completion:** Allow about 5 minutes for ZIP Deploy to finish, as the script's output notes.
 
 ## Post-Update Verification
 
-After the update completes, verify your Azure IPAM deployment:
+After the update, check your Azure IPAM deployment.
 
-### 1. Application Health Check
+### Application Health Check
 
-Verify the application is running and healthy:
+Check that the application is running and healthy:
 
 ![Check App Service Health](./images/app_service_health.png)
 
-### 2. Version Verification
+### Version Verification
 
-Check that the update was successful by querying the status API:
+Check that the update worked by calling the status API:
 
 ```powershell
-# Check version information via status API
-$appUrl = "https://your-ipam-app.azurewebsites.net"
-$status = Invoke-RestMethod -Uri "$appUrl/api/status" -Method Get
+# Check the Version with the Status API
+$ipamHost = "<your-ipam-host>"
+$status = Invoke-RestMethod -Uri "https://$ipamHost/api/status" -Method Get
 Write-Host "Current Version: $($status.version)"
 ```
 
-**Example Output:**
+Example output:
 
 ```text
-Current Version: 3.5.0
+Current Version: 4.0.0
 ```
 
-**Full API Response Body (Example):**
+Example of the full response body:
 
 ```json
 {
   "status": "OK",
-  "version": "3.5.0",
+  "version": "4.0.0",
   "stack": "AppContainer",
   "environment": "AZURE_PUBLIC",
   "start_time": "2026-03-13T16:54:15Z",
@@ -528,16 +524,16 @@ Current Version: 3.5.0
 
 `start_time` is when the engine started (UTC), so a new value confirms the application restarted. `mode` is `production` when the engine is serving normally, `staging` on a deployment slot that hasn't been swapped into production yet, or `incompatible` when this build is too old for the data in the database.
 
-Verify the version matches the expected updated version from the [Azure IPAM releases page](https://github.com/Azure/ipam/releases).
+Check that the version matches the latest release on the [Azure IPAM releases page](https://github.com/Azure/ipam/releases).
 
-### 3. Functionality Testing
+### Functionality Testing
 
-Perform basic functionality tests:
+Run some basic checks:
 
-- Log into the application
-- Verify pre-existing IP address Spaces & Blocks are visible
-- Test basic IPAM operations (view networks, reservations, etc.)
-- Confirm API endpoints respond as expected
+- Sign in to Azure IPAM
+- Check that your existing Spaces and Blocks are there
+- Try some basic tasks, such as viewing networks and Reservations
+- Check that the API responds as expected
 
 ## Troubleshooting
 
@@ -545,65 +541,65 @@ Perform basic functionality tests:
 
 #### Authentication Errors
 
-**Issue**: PowerShell authentication failures
+**Issue:** Azure PowerShell isn't signed in
 
 ```text
 ERROR: Azure PowerShell not logged in or no subscription has been selected!
 ```
 
-**Solution**:
+**Solution:**
 
 ```powershell
 Connect-AzAccount
-Set-AzContext -Subscription "your-subscription-id"
+Set-AzContext -Subscription "<subscription-id>"
 ```
 
 #### Private ACR Context Mismatch
 
-**Issue**: Azure CLI and PowerShell context mismatch
+**Issue:** Azure CLI and Azure PowerShell are set to different subscriptions
 
 ```text
 ERROR: Azure PowerShell and Azure CLI must be set to the same context!
 ```
 
-**Solution**:
+**Solution:**
 
 ```powershell
-# PowerShell
-Set-AzContext -Subscription "your-subscription-id"
+# Azure PowerShell
+Set-AzContext -Subscription "<subscription-id>"
 
-# CLI
-az account set --subscription "your-subscription-id"
+# Azure CLI
+az account set --subscription "<subscription-id>"
 ```
 
 #### Container Build Failures
 
-**Issue**: Private ACR container build fails, or the registry is located outside the App Service's resource group
+**Issue:** The private ACR container build fails, or the registry is outside the App Service's resource group
 
-**Solution**:
+**Solution:**
 
-1. Check build logs in `logs/detail_[timestamp].log` (script automatically captures detailed logs)
-2. Verify ACR permissions and storage capacity
-3. Review Azure Container Registry task logs in Azure Portal
-4. Ensure the application's `/api/status` endpoint is accessible for container type detection
-5. For manual container build instructions, see the [Development Guide](/development/README.md#building-and-updating-production-container-images-using-a-private-acr)
+1. Check the build logs in `logs/detail_[timestamp].log`, which the script captures for you.
+2. Check your permissions on the registry, and its storage capacity.
+3. Review the registry's task logs in the Azure portal.
+4. Make sure the application's `/api/status` endpoint responds, since the script uses it to detect the container type.
+5. To build the image yourself, see the [Development Guide](/development/README.md#building-and-updating-production-container-images-using-a-private-acr)
 
-> **NOTE:** The update script will only attempt an automated build when the private ACR resides in the **same resource group** as the App Service. If your registry is in a different resource group, the script skips the build and directs you here — build and push a new image manually using the Development Guide instructions above, then restart the App Service or Function App to pull the new image.
+> **NOTE:** The update script only builds the image automatically when the private ACR is in the **same resource group** as the App Service. If it's in a different resource group, the script skips the build and points you here. Build and push a new image yourself, as described in the Development Guide, then restart the App Service or Function App so it pulls the new image.
 
 #### ZIP Deploy Failures
 
-**Issue**: ZIP Deploy upload failures for native deployments
+**Issue:** ZIP Deploy uploads fail for a native deployment
 
-**Solution**:
+**Solution:**
 
-1. Script automatically retries with Kudu API if standard `Publish-AzWebApp` fails
-2. Check App Service deployment logs in Azure Portal
-3. Verify sufficient storage space in App Service plan
-4. Ensure GitHub release contains the specified ZIP file name (default: `ipam.zip`)
+1. The script retries with the Kudu API if `Publish-AzWebApp` fails.
+2. Check the App Service deployment logs in the Azure portal.
+3. Check that the App Service plan has enough storage space.
+4. Make sure the GitHub release contains the ZIP file name you specified (`ipam.zip` by default).
 
 #### Legacy Docker Compose Detection
 
-**Issue**: Script detects Docker Compose deployment
+**Issue:** The script detects a Docker Compose deployment
 
 ```text
 Manual Migration Required
@@ -614,50 +610,49 @@ To migrate to the current single-container deployment, follow the migration guid
   https://azure.github.io/ipam/#/migration/README
 ```
 
-**Solution**: Use the [Migration Guide](/migration/README.md) instead of the update script
+**Solution:** Follow the [Azure IPAM Legacy Migration Guide](/migration/README.md) instead of using the update script.
 
 ### Health Check Issues
 
-If health check configuration fails:
+If configuring the health check fails:
 
-1. Verify App Service permissions
-2. Check that `/api/status` endpoint is responding
-3. Manually configure health check in Azure Portal if needed
+1. Check your permissions on the App Service or Function App.
+2. Check that the `/api/status` endpoint responds.
+3. If needed, configure the health check yourself in the Azure portal.
 
 ### Getting Help
 
 If you encounter issues not covered in this guide:
 
-1. Review the update logs for detailed error information
-2. Check the [Troubleshooting Guide](/troubleshooting/README.md)
-3. Open an issue on the [Azure IPAM GitHub repository](https://github.com/Azure/ipam/issues/new?template=bug_report.yml)
-4. Include relevant log files and error messages in your issue report
+1. Review the update logs for error details.
+2. Check the [Troubleshooting](/troubleshooting/README.md) guide.
+3. [Report an issue](https://github.com/Azure/ipam/issues/new?template=bug_report.yml) on GitHub, and please include the relevant log files and error messages.
 
 ## Update Best Practices
 
 ### Maintenance Windows
 
-- Schedule updates during maintenance windows to minimize impact
-- For container deployments, expect 2-5 minutes of downtime during restart
-- For ZIP deployments, allow up to 10 minutes for the complete process
+- Schedule updates during maintenance windows to reduce the impact
+- For container deployments, expect a few minutes of downtime while the application restarts
+- For ZIP deployments, allow up to 10 minutes for the whole update, including about 5 minutes of downtime while the package deploys
 
 ### Testing Updates
 
-- Test updates in a development or staging environment first
-- Verify application functionality before updating production deployments
-- Create a snapshot backup before updating critical production environments
+- Test updates in a development or test environment first
+- Check that everything works there before updating production
+- Take a backup before updating critical production environments
 
 ### Frequency Recommendations
 
-- Review and apply updates monthly or as code/security patches are released
+- Review and apply updates monthly, or as security fixes are released
 - Watch the [Azure IPAM repository](https://github.com/Azure/ipam) for release notifications
   - See [GitHub's guide on configuring repository watch settings](https://docs.github.com/en/account-and-profile/managing-subscriptions-and-notifications-on-github/setting-up-notifications/configuring-notifications#configuring-your-watch-settings-for-an-individual-repository) to set up custom notifications for releases only
 
 ### Rollback Planning
 
-- Ensure recent backups are available before updating
-- Understand your App Service backup and restore procedures
-- Consider creating a manual backup before major version updates
+- Make sure recent backups are available before updating
+- Know how to back up and restore your App Service or Function App
+- Consider taking a manual backup before major version updates
 
 ---
 
