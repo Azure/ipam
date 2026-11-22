@@ -9,10 +9,60 @@
         <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
         <link 
           rel="stylesheet"
-          href="//cdn.jsdelivr.net/npm/docsify-darklight-theme@latest/dist/style.min.css"
+          href="//cdn.jsdelivr.net/npm/docsify-darklight-theme@3.2.0/dist/style.min.css"
           title="docsify-darklight-theme"
           type="text/css"
         />
+        <style>
+          /* Sidebar toggle: a header strip across the top of the open sidebar, or just the icon when the sidebar is closed, rather than a strip over the bottom of the navigation */
+          .sidebar-toggle,
+          body.close .sidebar-toggle {
+            top: 0;
+            bottom: auto;
+            padding: 12px;
+            background-color: var(--background);
+          }
+
+          /* Docsify's "close" class hides the sidebar on large screens, but shows it on small ones */
+          @media screen and (min-width: 769px) {
+            .sidebar-toggle {
+              width: 300px;
+              box-sizing: border-box;
+              border-right: 1px solid var(--borderColor);
+            }
+
+            body.close .sidebar-toggle {
+              width: auto;
+              border-right: 0;
+              border-bottom-right-radius: 4px;
+            }
+          }
+
+          @media screen and (max-width: 768px) {
+            .sidebar-toggle {
+              width: auto;
+              border-bottom-right-radius: 4px;
+            }
+
+            body.close .sidebar-toggle {
+              width: 300px;
+              box-sizing: border-box;
+              border-right: 1px solid var(--borderColor);
+              border-bottom-right-radius: 0;
+            }
+
+            /* The theme puts its light/dark switch in the top-left corner on small screens, where the toggle now sits */
+            #docsify-darklight-theme {
+              left: auto;
+              right: 10px;
+            }
+
+            /* Keep the page heading clear of the toggle */
+            .content {
+              padding-top: 48px;
+            }
+          }
+        </style>
     </head>
     <body>
         <div id="app"></div>
@@ -32,7 +82,7 @@
         <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
         <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-powershell.min.js"></script>
         <script 
-          src="//cdn.jsdelivr.net/npm/docsify-darklight-theme@latest/dist/index.min.js"
+          src="//cdn.jsdelivr.net/npm/docsify-darklight-theme@3.2.0/dist/index.min.js"
           type="text/javascript">
         </script>
     </body>
