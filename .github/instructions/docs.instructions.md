@@ -97,7 +97,8 @@ For footnotes on a parameter table, mark the cell with `**<sup>1</sup>**` and ad
 - Don't include prompts (`PS C:\>`, `$`) in commands the reader might copy. To show where the reader is, use a comment above the command (`# Change to the Deploy Folder`). If you need to show output, put it in a separate `text` block.
 - Write one PowerShell example that works on both Windows and Linux, using `/` in paths (`./deploy.ps1`, `cd ./ipam/deploy`), rather than separate examples for each.
 - Label the parts of a longer example with a comment above each command, in Title Case: `# Sign in Interactively`.
-- Comments that explain something, rather than label a step, are full sentences in sentence case: `# Key Vault only accepts whole seconds, so drop any fraction of a second`.
+- Comments that explain something, rather than label a step, are full sentences in sentence case: `# Key Vault only accepts whole seconds, so drop any fraction of a second`. Put each sentence on its own comment line.
+- Don't end a code comment with a period.
 - Don't use fake values that look real but are invalid, such as a GUID containing `k` or `g`.
 - PowerShell examples must run on PowerShell 7.2 or later with the Azure PowerShell version listed in the deployment prerequisites. If an example needs something newer, say so above it.
 - For Azure CLI tokens, use `--scope "<scope>/.default"`, not `--resource`.

@@ -128,7 +128,6 @@ $engineAppId = "<engine-app-id>"
 $vaultName = "<your-ipam-kv>"
 
 # Create a New Secret Alongside the Existing One
-
 # Choose a lifetime your organization's policies allow
 $newSecret = New-AzADAppCredential -ApplicationId $engineAppId -EndDate (Get-Date).AddYears(2)
 
@@ -182,12 +181,11 @@ appId="<engine-app-id>"
 vaultName="<your-ipam-kv>"
 
 # Create a New Secret Alongside the Existing One
-
 # Choose a lifetime your organization's policies allow
 secret=$(az ad app credential reset --id "$appId" --append --years 2 --query password --output tsv)
 
-# Look up the new secret's expiration date by its first three characters.
-# Key Vault only accepts whole seconds, so drop any fraction of a second.
+# Look up the new secret's expiration date by its first three characters
+# Key Vault only accepts whole seconds, so drop any fraction of a second
 expires=$(az ad app credential list --id "$appId" --query "[?hint=='${secret:0:3}'].endDateTime | [0]" --output tsv | sed -E 's/\.[0-9]+Z$/Z/')
 
 # Store It in Key Vault with the Same Expiration Date
@@ -386,7 +384,8 @@ Checking the assignment requires permission to read role assignments at the Mana
 ```powershell
 $engineAppId = "<engine-app-id>"
 
-# The Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
+# The Root Management Group shares its ID with the tenant
+# If you deployed with -MgmtGroupId, use that Management Group's ID instead
 $mgmtGroupId = (Get-AzContext).Tenant.Id
 $scope = "/providers/Microsoft.Management/managementGroups/$mgmtGroupId"
 
@@ -399,7 +398,8 @@ Get-AzRoleAssignment -ServicePrincipalName $engineAppId -RoleDefinitionName "Rea
 ```bash
 appId="<engine-app-id>"
 
-# The Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
+# The Root Management Group shares its ID with the tenant
+# If you deployed with -MgmtGroupId, use that Management Group's ID instead
 mgmtGroupId=$(az account show --query tenantId --output tsv)
 scope="/providers/Microsoft.Management/managementGroups/$mgmtGroupId"
 
@@ -440,7 +440,8 @@ Assigning a role at the Management Group scope requires `Microsoft.Authorization
 ```powershell
 $engineAppId = "<engine-app-id>"
 
-# The Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
+# The Root Management Group shares its ID with the tenant
+# If you deployed with -MgmtGroupId, use that Management Group's ID instead
 $mgmtGroupId = (Get-AzContext).Tenant.Id
 $scope = "/providers/Microsoft.Management/managementGroups/$mgmtGroupId"
 
@@ -452,7 +453,8 @@ New-AzRoleAssignment -ApplicationId $engineAppId -RoleDefinitionName "Reader" -S
 ```bash
 appId="<engine-app-id>"
 
-# The Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
+# The Root Management Group shares its ID with the tenant
+# If you deployed with -MgmtGroupId, use that Management Group's ID instead
 mgmtGroupId=$(az account show --query tenantId --output tsv)
 scope="/providers/Microsoft.Management/managementGroups/$mgmtGroupId"
 
