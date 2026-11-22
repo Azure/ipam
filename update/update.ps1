@@ -1212,7 +1212,7 @@ function Get-IpamDriftPlan {
   $engineVersionFile = Join-Path -Path $ROOT_DIR -ChildPath 'engine' -AdditionalChildPath 'app', 'version.json'
   $pythonVersion = $(Get-Content -Path $engineVersionFile | ConvertFrom-Json).python
 
-  # A supplied archive was built against its own Python version; honouring it lets drift
+  # A supplied archive was built against its own Python version; honoring it lets drift
   # retarget LinuxFxVersion so the runtime and the bundled wheels agree.
   if ($ZipFilePath) {
     $zipPythonVersion = Get-IpamZipPythonVersion -ZipFilePath $ZipFilePath

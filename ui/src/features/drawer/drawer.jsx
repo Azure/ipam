@@ -321,14 +321,14 @@ export default function NavDrawer() {
       return;
     }
 
-    let cancelled = false;
+    let canceled = false;
 
     (async () => {
       try {
         const graphResponse = await callMsGraph();
         const photoResponse = await callMsGraphPhoto();
 
-        if (cancelled) {
+        if (canceled) {
           return;
         }
 
@@ -345,7 +345,7 @@ export default function NavDrawer() {
     })();
 
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, [graphData, inProgress, dispatch]);
 

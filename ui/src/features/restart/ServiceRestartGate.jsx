@@ -68,14 +68,14 @@ function ServiceRestartGate() {
       return undefined;
     }
 
-    let cancelled = false;
+    let canceled = false;
     let sawDown = false;
 
     const poll = async () => {
       try {
         const status = await fetchStatus();
 
-        if (cancelled) {
+        if (canceled) {
           return;
         }
 
@@ -113,7 +113,7 @@ function ServiceRestartGate() {
         // Unreachable window = the service is cycling; note it and keep waiting.
         sawDown = true;
 
-        if (!cancelled) {
+        if (!canceled) {
           setPhase('restarting');
         }
       }
@@ -123,7 +123,7 @@ function ServiceRestartGate() {
     const poller = setInterval(poll, POLL_INTERVAL_MS);
 
     return () => {
-      cancelled = true;
+      canceled = true;
       clearInterval(poller);
     };
   }, [active, verify]);

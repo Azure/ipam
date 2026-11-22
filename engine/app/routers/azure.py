@@ -957,7 +957,7 @@ async def match_resv_to_vnets():
 
                             # Every range the network has in the Block must be clear, as when a network is
                             # associated directly. It can't conflict with itself, nor with the Reservations
-                            # its tag says it fulfils.
+                            # its tag says it fulfills.
                             net_resv_ids = str_to_list(net['resv'])
 
                             occupied_cidrs = [x['cidr'] for x in block['externals']]

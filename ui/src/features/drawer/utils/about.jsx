@@ -73,14 +73,14 @@ export default function About(props) {
       return undefined;
     }
 
-    let cancelled = false;
+    let canceled = false;
 
     setStatus(null);
     setLoadError(false);
 
     fetchStatus()
       .then((data) => {
-        if (!cancelled) {
+        if (!canceled) {
           setStatus(data);
         }
       })
@@ -88,13 +88,13 @@ export default function About(props) {
         console.log("ERROR FETCHING STATUS");
         console.log(e);
 
-        if (!cancelled) {
+        if (!canceled) {
           setLoadError(true);
         }
       });
 
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, [open]);
 

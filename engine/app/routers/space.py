@@ -92,7 +92,7 @@ def visible_reservations(reservations, grants, user_name):
     """Reservations as the caller may see them.
 
     A pending Reservation holds address space, so everyone sees it, but another user's ID and
-    description are withheld: tagging a network with the ID and a matching CIDR would fulfil it.
+    description are withheld: tagging a network with the ID and a matching CIDR would fulfill it.
     A settled Reservation no longer holds anything, so only its creator still sees it.
     """
 

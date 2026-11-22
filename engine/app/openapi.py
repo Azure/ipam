@@ -4,7 +4,7 @@ OpenAPI document generation for Azure IPAM.
 Builds the schema and then annotates it from the permissions each route declares
 with ``app.permissions``. The declarations are the single source of truth: an
 operation is marked because it actually enforces the restriction, so the published
-contract cannot drift away from the runtime behaviour.
+contract cannot drift away from the runtime behavior.
 
 This module reads FastAPI's route structures, including
 ``fastapi.routing.iter_route_contexts``, which is not part of the documented

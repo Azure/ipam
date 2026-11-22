@@ -183,14 +183,14 @@ export default function Profile(props) {
       return undefined;
     }
 
-    let cancelled = false;
+    let canceled = false;
 
     setRoleDefinitions(null);
     setRolesError(false);
 
     fetchRoles()
       .then((data) => {
-        if (!cancelled) {
+        if (!canceled) {
           setRoleDefinitions(data);
         }
       })
@@ -198,13 +198,13 @@ export default function Profile(props) {
         console.log("ERROR FETCHING ROLES");
         console.log(e);
 
-        if (!cancelled) {
+        if (!canceled) {
           setRolesError(true);
         }
       });
 
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, [open]);
 
@@ -213,7 +213,7 @@ export default function Profile(props) {
       return undefined;
     }
 
-    let cancelled = false;
+    let canceled = false;
 
     setTokenExpiresOn(null);
     setTokenError(false);
@@ -221,7 +221,7 @@ export default function Profile(props) {
 
     getApiTokenDetails()
       .then(({ expiresOn }) => {
-        if (!cancelled) {
+        if (!canceled) {
           setTokenExpiresOn(expiresOn);
         }
       })
@@ -229,7 +229,7 @@ export default function Profile(props) {
         console.log("ERROR READING TOKEN EXPIRY");
         console.log(e);
 
-        if (!cancelled) {
+        if (!canceled) {
           setTokenError(true);
         }
       });
@@ -237,7 +237,7 @@ export default function Profile(props) {
     const timer = setInterval(() => setNow(Date.now()), 15000);
 
     return () => {
-      cancelled = true;
+      canceled = true;
       clearInterval(timer);
     };
   }, [open]);

@@ -36,7 +36,7 @@ class ArgRetryPolicy(AsyncRetryPolicy):
     ARG throttles a POST and states the wait as ``x-ms-user-quota-resets-after`` rather than
     ``Retry-After``. Stock azure-core therefore never retries it: POST sits outside the method
     allowlist, and the ``Retry-After`` short circuit that would override that never fires. Supplying
-    the header on both counts restores the SDK's own retry behaviour and lets it wait exactly as
+    the header on both counts restores the SDK's own retry behavior and lets it wait exactly as
     long as ARG asked instead of backing off blindly.
     """
 

@@ -44,7 +44,7 @@ const closedStyle = {
 
 /**
  * Maps an IPAM filter operator to its AG Grid text filter type.
- * Anything unrecognised falls back to a substring match.
+ * Anything unrecognized falls back to a substring match.
  */
 const TEXT_FILTER_TYPES = {
   equals: 'equals',
