@@ -17,6 +17,9 @@ graph.interceptors.request.use(
     return Promise.reject(error);
 });
 
+// OData string literals are single-quoted, so a quote in the value must be doubled (O'Brien -> 'O''Brien')
+const odataString = (value) => `'${String(value).replace(/'/g, "''")}'`;
+
 export function callMsGraph() {
   var url = new URL(graphConfig.graphMeEndpoint);
 
@@ -48,7 +51,7 @@ export function callMsGraphUsersFilter(nameFilter = "") {
   var urlParams = url.searchParams;
 
   if(nameFilter !== "") {
-    urlParams.append('$filter', `startsWith(userPrincipalName,'${nameFilter}') OR startsWith(displayName, '${nameFilter}')`);
+    urlParams.append('$filter', `startsWith(userPrincipalName,${odataString(nameFilter)}) OR startsWith(displayName, ${odataString(nameFilter)})`);
   }
 
   urlParams.append('$orderby', 'displayName');
@@ -73,7 +76,7 @@ export function callMsGraphPrincipalsFilter(nameFilter = "") {
   var urlParams = url.searchParams;
 
   if(nameFilter !== "") {
-    urlParams.append('$filter', `startsWith(displayName,'${nameFilter}')`);
+    urlParams.append('$filter', `startsWith(displayName,${odataString(nameFilter)})`);
   }
 
   urlParams.append('$orderby', 'displayName');
