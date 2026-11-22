@@ -182,7 +182,7 @@ module functionApp './modules/functionApp.bicep' = if (deployAsFunc) {
     location: location
     azureCloud: azureCloud
     functionAppName: resourceNames.functionName
-    functionPlanName: resourceNames.appServicePlanName
+    functionPlanName: resourceNames.functionPlanName
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     databaseName: resourceNames.cosmosDatabaseName
