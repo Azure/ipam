@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useRef, useMemo, useCallback, useEffect, useId } from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
@@ -154,7 +154,7 @@ ColumnVisibilityMenu.displayName = 'ColumnVisibilityMenu';
 // Header Menu Placeholder Component (renders icon in grid header)
 // ============================================================================
 const HeaderMenuPlaceholder = React.memo(() => {
-  const { saving, sendResults, menuOpen, setMenuOpen, setMenuAnchor } = React.use(DataGridContext);
+  const { saving, sendResults, menuOpen, setMenuOpen, setMenuAnchor, menuId } = React.use(DataGridContext);
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -197,7 +197,7 @@ const HeaderMenuPlaceholder = React.memo(() => {
       aria-label="Actions"
       aria-haspopup="menu"
       aria-expanded={menuOpen ? 'true' : 'false'}
-      aria-controls="table-state-menu"
+      aria-controls={menuId}
     >
       {saving && <CircularProgress size={20} />}
       {sendResults !== null && !saving && (
@@ -222,7 +222,8 @@ const StandaloneHeaderMenu = React.memo(({ viewSettingKey = DEFAULT_VIEW_SETTING
     menuOpen,
     setMenuOpen,
     menuAnchor,
-    viewSetting
+    viewSetting,
+    menuId
   } = React.use(DataGridContext);
 
   const [columnMenuOpen, setColumnMenuOpen] = useState(false);
@@ -273,7 +274,7 @@ const StandaloneHeaderMenu = React.memo(({ viewSettingKey = DEFAULT_VIEW_SETTING
   return (
     <>
       <Menu
-        id="table-state-menu"
+        id={menuId}
         anchorEl={menuAnchor}
         open={menuOpen}
         onClose={handleMenuToggle}
@@ -567,6 +568,8 @@ const DataGrid = ({
   const [sendResults, setSendResults] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null);
+  // Every grid has its own Actions menu, so its id must be unique on the page
+  const menuId = useId();
   const gridRef = useRef(null);
   const initialSelectionAppliedRef = useRef(false);
 
@@ -773,6 +776,7 @@ const DataGrid = ({
     menuAnchor,
     setMenuAnchor,
     viewSetting,
+    menuId,
   }), [
     saving,
     sendResults,
@@ -785,6 +789,7 @@ const DataGrid = ({
     menuOpen,
     menuAnchor,
     viewSetting,
+    menuId,
   ]);
 
   // ============================================================================

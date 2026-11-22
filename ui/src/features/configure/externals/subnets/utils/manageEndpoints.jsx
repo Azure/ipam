@@ -203,6 +203,7 @@ function HeaderMenu(props) {
   const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.use(EndpointContext);
 
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const menuId = React.useId();
 
   const menuRef = React.useRef(null);
 
@@ -253,14 +254,16 @@ function HeaderMenu(props) {
         </React.Fragment> :
         <React.Fragment>
           <IconButton
-            id="table-state-menu"
             aria-label="Actions"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen ? 'true' : 'false'}
+            aria-controls={menuId}
             onClick={onClick}
           >
             <ExpandCircleDownOutlined />
           </IconButton>
           <Menu
-            id="table-state-menu"
+            id={menuId}
             // eslint-disable-next-line react-hooks/refs
             anchorEl={menuRef.current}
             open={menuOpen}
