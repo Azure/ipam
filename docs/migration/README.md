@@ -209,21 +209,23 @@ The migration script can find your Azure IPAM resources in two ways. Choose the 
 
 ## Migration Script Parameters
 
-| Parameter            | Type   | Required | Description                                                                                 |
-|----------------------|--------|----------|---------------------------------------------------------------------------------------------|
-| `-AppName`           | String | Yes      | Name of your existing Azure IPAM App Service                                                |
-| `-ResourceGroupName` | String | Yes      | Resource group containing your App Service                                                  |
-| `-JsonFile`          | String | No       | Path to your JSON resource file, for [manual resource specification](#migration-process-method-2-manual-resource-specification) |
-| `-ContainerType`     | String | No       | Container distro (`Debian` or `RHEL`) to build for private ACR deployments **<sup>3</sup>** |
-| `-NoVerify`          | Switch | No       | Skips checking that the resources exist **<sup>1</sup>**                                    |
-| `-Force`             | Switch | No       | Skips confirmation prompts **<sup>2</sup>**                                                 |
-| `-Debug`             | Switch | No       | Writes verbose Azure deployment logs to `logs/debug_[timestamp].log`                        |
+| Parameter            | Type   | Required             | Description                                                                                                                     |
+|----------------------|--------|----------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| `-AppName`           | String | Yes **<sup>4</sup>** | Name of your existing Azure IPAM App Service                                                                                    |
+| `-ResourceGroupName` | String | Yes **<sup>4</sup>** | Resource group containing your App Service                                                                                      |
+| `-JsonFile`          | String | No                   | Path to your JSON resource file, for [manual resource specification](#migration-process-method-2-manual-resource-specification) |
+| `-ContainerType`     | String | No                   | Container distro (`Debian` or `RHEL`) to build for private ACR deployments **<sup>3</sup>**                                     |
+| `-NoVerify`          | Switch | No                   | Skips checking that the resources exist **<sup>1</sup>**                                                                        |
+| `-Force`             | Switch | No                   | Skips confirmation prompts **<sup>2</sup>**                                                                                     |
+| `-Debug`             | Switch | No                   | Writes verbose Azure deployment logs to `logs/debug_[timestamp].log`                                                            |
 
 > **NOTE 1:** Use with caution, since this skips safety checks.
 
 > **NOTE 2:** Recommended for automated deployments only.
 
 > **NOTE 3:** Only applies to private ACR deployments, which rebuild the container image. When omitted, the distro is detected by probing the source application's status API (`/api/status`). Specify it to skip that probe, for example when the application is stopped or unreachable, or when detection returns the wrong distro.
+
+> **NOTE 4:** Not needed with `-JsonFile`, which names the App Service in its Web App entry. If you give them anyway, they must match that entry.
 
 ## Migration Process (Method 1: Auto-Discovery)
 
@@ -320,10 +322,10 @@ If your private ACR is in a different resource group from the App Service, also 
 Run the migration script with your resource file:
 
 ```powershell
-./migrate.ps1 -AppName "<your-ipam-app>" -ResourceGroupName "<your-ipam-rg>" -JsonFile "./resources.jsonc"
+./migrate.ps1 -JsonFile "./resources.jsonc"
 ```
 
-`-AppName` and `-ResourceGroupName` are still required, but with `-JsonFile` the script uses the Web App entry in the file. Give the same App Service name and resource group in both.
+The script migrates the App Service named in the file's Web App entry, so `-AppName` and `-ResourceGroupName` aren't needed. If you give them anyway, they must match that entry, or the script stops before making any changes.
 
 For the optional parameters, see [Migration Script Parameters](#migration-script-parameters).
 

@@ -18,17 +18,19 @@
 #Requires -Modules @{ ModuleName="Az.ContainerRegistry"; ModuleVersion="4.1.3" }
 
 # Intake and set global parameters
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = 'Discover')]
 param(
-  [Parameter(Mandatory = $true)]
+  [Parameter(Mandatory = $true, ParameterSetName = 'Discover')]
+  [Parameter(Mandatory = $false, ParameterSetName = 'JsonFile')]
   [string]
   $AppName,
 
-  [Parameter(Mandatory = $true)]
+  [Parameter(Mandatory = $true, ParameterSetName = 'Discover')]
+  [Parameter(Mandatory = $false, ParameterSetName = 'JsonFile')]
   [string]
   $ResourceGroupName,
 
-  [Parameter(Mandatory = $false)]
+  [Parameter(Mandatory = $true, ParameterSetName = 'JsonFile')]
   [ValidateScript({
     if (-not ($_ | Test-Path) ) {
       throw [System.ArgumentException]::New("The specified 'JsonFile' path does not exist.")
@@ -1595,6 +1597,22 @@ try {
     # Establish registry context from the live App Service and the customer-declared resources.
     # We trust the declared structure/location but still resolve (and later verify) the registry.
     $overrideWebAppInfo = Get-ResourceDetailsFromId -ResourceId $details.WebAppResourceId
+
+    # -AppName and -ResourceGroupName are optional with -JsonFile, but if given they must name the Web App in the file
+    $mismatches = @()
+
+    if ($AppName -and ($AppName -ne $overrideWebAppInfo.ResourceName)) {
+      $mismatches += "-AppName '$AppName' doesn't match the Web App name '$($overrideWebAppInfo.ResourceName)'"
+    }
+
+    if ($ResourceGroupName -and ($ResourceGroupName -ne $overrideWebAppInfo.ResourceGroupName)) {
+      $mismatches += "-ResourceGroupName '$ResourceGroupName' doesn't match the Web App resource group '$($overrideWebAppInfo.ResourceGroupName)'"
+    }
+
+    if ($mismatches) {
+      throw [System.ArgumentException]::New("The JSON file '$($jsonFilePath.Name)' describes a different Web App. $($mismatches -join '. '). Correct the values, or leave out -AppName and -ResourceGroupName to use the Web App in the file.")
+    }
+
     $overrideWebApp = Get-AzWebApp -ResourceGroupName $overrideWebAppInfo.ResourceGroupName -Name $overrideWebAppInfo.ResourceName -ErrorAction Stop
 
     $registryHost = Get-RegistryHost -LinuxFxVersion $overrideWebApp.SiteConfig.LinuxFxVersion
