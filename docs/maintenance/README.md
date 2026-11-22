@@ -45,10 +45,10 @@ Reading a secret value from Key Vault requires a Key Vault data-plane role. Azur
 $engineAppId = "<engine-app-id>"
 $vaultName = "<your-ipam-kv>"
 
-# The secret Azure IPAM is currently using
+# The Secret Azure IPAM Is Currently Using
 $hint = (Get-AzKeyVaultSecret -VaultName $vaultName -Name "ENGINE-SECRET" -AsPlainText).Substring(0, 3)
 
-# All client secrets on the Engine app registration
+# All Client Secrets on the Engine App Registration
 Get-AzADAppCredential -ApplicationId $engineAppId |
   Select-Object Hint, KeyId, StartDateTime, EndDateTime, @{ Name = "InUse"; Expression = { $_.Hint -eq $hint } }
 ```
@@ -59,10 +59,10 @@ Get-AzADAppCredential -ApplicationId $engineAppId |
 appId="<engine-app-id>"
 vaultName="<your-ipam-kv>"
 
-# The secret Azure IPAM is currently using
+# The Secret Azure IPAM Is Currently Using
 hint=$(az keyvault secret show --vault-name "$vaultName" --name "ENGINE-SECRET" --query value --output tsv | cut -c1-3)
 
-# All client secrets on the Engine app registration
+# All Client Secrets on the Engine App Registration
 az ad app credential list --id "$appId" \
   --query "[].{hint: hint, keyId: keyId, start: startDateTime, end: endDateTime, inUse: hint=='$hint'}" \
   --output table
@@ -127,17 +127,19 @@ The steps are:
 $engineAppId = "<engine-app-id>"
 $vaultName = "<your-ipam-kv>"
 
-# Create a new secret alongside the existing one, with a lifetime your organization's policies allow
+# Create a New Secret Alongside the Existing One
+
+# Choose a lifetime your organization's policies allow
 $newSecret = New-AzADAppCredential -ApplicationId $engineAppId -EndDate (Get-Date).AddYears(2)
 
-# Store it in Key Vault with the same expiration date
+# Store It in Key Vault with the Same Expiration Date
 Set-AzKeyVaultSecret `
   -VaultName $vaultName `
   -Name "ENGINE-SECRET" `
   -SecretValue (ConvertTo-SecureString $newSecret.SecretText -AsPlainText -Force) `
   -Expires $newSecret.EndDateTime | Out-Null
 
-# Note the new secret's details, without its value
+# Note the New Secret's Details, Without Its Value
 $newSecret | Select-Object Hint, KeyId, EndDateTime
 
 Remove-Variable newSecret
@@ -151,7 +153,7 @@ $app = Get-AzWebApp -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-app>"
 (Invoke-AzRestMethod -Method POST -Path "$($app.Id)/config/configreferences/appsettings/refresh?api-version=2022-03-01").StatusCode
 Restart-AzWebApp -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-app>"
 
-# App Service staging slot (only if it is running)
+# App Service Staging Slot (Only If It's Running)
 (Invoke-AzRestMethod -Method POST -Path "$($app.Id)/slots/staging/config/configreferences/appsettings/refresh?api-version=2022-03-01").StatusCode
 Restart-AzWebAppSlot -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-app>" -Slot "staging"
 
@@ -160,7 +162,7 @@ $function = Get-AzFunctionApp -ResourceGroupName "<your-ipam-rg>" -Name "<your-i
 (Invoke-AzRestMethod -Method POST -Path "$($function.Id)/config/configreferences/appsettings/refresh?api-version=2022-03-01").StatusCode
 Restart-AzFunctionApp -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-function>" -Force
 
-# Function App staging slot (only if it is running)
+# Function App Staging Slot (Only If It's Running)
 (Invoke-AzRestMethod -Method POST -Path "$($function.Id)/slots/staging/config/configreferences/appsettings/refresh?api-version=2022-03-01").StatusCode
 Restart-AzWebAppSlot -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-function>" -Slot "staging"
 ```
@@ -179,17 +181,19 @@ Remove-AzADAppCredential -ApplicationId $engineAppId -KeyId "<old-key-id>"
 appId="<engine-app-id>"
 vaultName="<your-ipam-kv>"
 
-# Create a new secret alongside the existing one, with a lifetime your organization's policies allow
+# Create a New Secret Alongside the Existing One
+
+# Choose a lifetime your organization's policies allow
 secret=$(az ad app credential reset --id "$appId" --append --years 2 --query password --output tsv)
 
 # Look up the new secret's expiration date by its first three characters.
 # Key Vault only accepts whole seconds, so drop any fraction of a second.
 expires=$(az ad app credential list --id "$appId" --query "[?hint=='${secret:0:3}'].endDateTime | [0]" --output tsv | sed -E 's/\.[0-9]+Z$/Z/')
 
-# Store it in Key Vault with the same expiration date
+# Store It in Key Vault with the Same Expiration Date
 az keyvault secret set --vault-name "$vaultName" --name "ENGINE-SECRET" --value "$secret" --expires "$expires" --output none
 
-# Note the new secret's details, without its value
+# Note the New Secret's Details, Without Its Value
 az ad app credential list --id "$appId" --query "[?hint=='${secret:0:3}'].{hint: hint, keyId: keyId, end: endDateTime}" --output table
 
 unset secret
@@ -205,7 +209,7 @@ appResourceId=$(az webapp show --resource-group "<your-ipam-rg>" --name "<your-i
 az rest --method post --url "$appResourceId/config/configreferences/appsettings/refresh?api-version=2022-03-01"
 az webapp restart --resource-group "<your-ipam-rg>" --name "<your-ipam-app>"
 
-# App Service staging slot (only if it is running)
+# App Service Staging Slot (Only If It's Running)
 az rest --method post --url "$appResourceId/slots/staging/config/configreferences/appsettings/refresh?api-version=2022-03-01"
 az webapp restart --resource-group "<your-ipam-rg>" --name "<your-ipam-app>" --slot staging
 
@@ -214,7 +218,7 @@ functionResourceId=$(az functionapp show --resource-group "<your-ipam-rg>" --nam
 az rest --method post --url "$functionResourceId/config/configreferences/appsettings/refresh?api-version=2022-03-01"
 az functionapp restart --resource-group "<your-ipam-rg>" --name "<your-ipam-function>"
 
-# Function App staging slot (only if it is running)
+# Function App Staging Slot (Only If It's Running)
 az rest --method post --url "$functionResourceId/slots/staging/config/configreferences/appsettings/refresh?api-version=2022-03-01"
 az functionapp restart --resource-group "<your-ipam-rg>" --name "<your-ipam-function>" --slot staging
 ```
@@ -234,18 +238,20 @@ Confirm the rotation before removing the old secret.
 The health endpoint signs in to Azure as the Engine, so it confirms that Azure IPAM can reach Azure. Look for `ok` set to `true` on the `arm` check.
 
 ```powershell
-$accessToken = (Get-AzAccessToken -ResourceUrl api://<engine-app-id>).Token
+$ipamHost = "<your-ipam-host>"
+
+$accessToken = (Get-AzAccessToken -ResourceUrl "api://<engine-app-id>").Token
 
 $health = Invoke-RestMethod `
   -Method Get `
-  -Uri "https://<your-ipam-app>.azurewebsites.net/api/health" `
+  -Uri "https://$ipamHost/api/health" `
   -Authentication Bearer `
   -Token $accessToken
 
 $health.checks.arm
 ```
 
-You can also call `GET /api/health` from the interactive API documentation at `https://<your-ipam-app>.azurewebsites.net/api/docs`, as described in the [API](/api/README.md) guide.
+You can also call `GET /api/health` from the interactive API documentation at `https://<your-ipam-host>/api/docs`, as described in [Using the Swagger UI](/api/README.md#using-the-swagger-ui).
 
 Both secrets stay valid until you remove the old one, so the health check passes whichever one Azure IPAM has loaded. If you can view sign-in logs in Microsoft Entra ID, for example with the [Reports Reader](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#reports-reader) or [Security Reader](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#security-reader) role, also confirm that it's using the new secret:
 
@@ -352,7 +358,7 @@ Microsoft's [Key Vault and Event Grid tutorial](https://learn.microsoft.com/azur
 
 ## Engine Azure Access
 
-The Engine app registration is assigned the [Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/general#reader) role at the [Tenant Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory), or at the Management Group specified with `-MgmtGroupId` during deployment. Azure IPAM uses this access to show administrators your Azure resources, to calculate utilization, to check new address space against existing virtual networks, and to fulfil Reservations.
+The Engine app registration is assigned the [Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/general#reader) role on the [Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory), or on the Management Group specified with `-MgmtGroupId` during deployment. Azure IPAM uses this access to show administrators your Azure resources, to calculate utilization, to check new address space against existing virtual networks, and to fulfill Reservations.
 
 If the assignment is removed, Azure IPAM keeps running but can no longer read your Azure environment on its own behalf (see [Access Denied (Engine Reader Role)](/troubleshooting/README.md#access-denied-engine-reader-role)).
 
@@ -380,7 +386,7 @@ Checking the assignment requires permission to read role assignments at the Mana
 ```powershell
 $engineAppId = "<engine-app-id>"
 
-# The Tenant Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
+# The Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
 $mgmtGroupId = (Get-AzContext).Tenant.Id
 $scope = "/providers/Microsoft.Management/managementGroups/$mgmtGroupId"
 
@@ -393,7 +399,7 @@ Get-AzRoleAssignment -ServicePrincipalName $engineAppId -RoleDefinitionName "Rea
 ```bash
 appId="<engine-app-id>"
 
-# The Tenant Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
+# The Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
 mgmtGroupId=$(az account show --query tenantId --output tsv)
 scope="/providers/Microsoft.Management/managementGroups/$mgmtGroupId"
 
@@ -434,7 +440,7 @@ Assigning a role at the Management Group scope requires `Microsoft.Authorization
 ```powershell
 $engineAppId = "<engine-app-id>"
 
-# The Tenant Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
+# The Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
 $mgmtGroupId = (Get-AzContext).Tenant.Id
 $scope = "/providers/Microsoft.Management/managementGroups/$mgmtGroupId"
 
@@ -446,7 +452,7 @@ New-AzRoleAssignment -ApplicationId $engineAppId -RoleDefinitionName "Reader" -S
 ```bash
 appId="<engine-app-id>"
 
-# The Tenant Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
+# The Root Management Group shares its ID with the tenant. If you deployed with -MgmtGroupId, use that Management Group's ID instead
 mgmtGroupId=$(az account show --query tenantId --output tsv)
 scope="/providers/Microsoft.Management/managementGroups/$mgmtGroupId"
 
