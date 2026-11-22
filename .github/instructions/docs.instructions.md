@@ -42,7 +42,7 @@ Use the term in the left column. Match labels shown in the UI exactly, even when
 | Engine, UI | engine app, ui app | Capitalize when referring to the two app registrations |
 | Space, Block, External Network, Reservation | space, block | Capitalize Azure IPAM resource types |
 | fulfill, fulfilled | fulfil, fulfils | |
-| canceled, canceling | cancelled, cancelling | API values such as `cancelledByUser` stay as the code spells them |
+| canceled, canceling | cancelled, cancelling | |
 | select | click, click on | For any UI element |
 | sign in | log in, login (verb) | "Signed-in user", not "logged in user" |
 | for example | e.g., eg | |

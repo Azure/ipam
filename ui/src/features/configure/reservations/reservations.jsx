@@ -90,13 +90,21 @@ const MESSAGE_MAP = {
     icon: ErrorOutlined,
     color: "error"
   },
-  "cancelledByUser": {
-    msg: "Reservation cancelled by user.",
+  "canceledByUser": {
+    msg: "Reservation canceled by user.",
     icon: BlockOutlined,
     color: "error"
   },
-  "cancelledByTimeout": {
-    msg: "Reservation cancelled due to expiration.",
+  // The spelling used before v4.0.0. Schema convergence renames stored values, but a staging slot
+  // runs this build against data that hasn't been converged yet.
+  "cancelledByUser": {
+    msg: "Reservation canceled by user.",
+    icon: BlockOutlined,
+    color: "error"
+  },
+  // Placeholder for planned Reservation expiry; the engine doesn't set this status yet.
+  "canceledByTimeout": {
+    msg: "Reservation canceled due to expiration.",
     icon: TimerOffOutlined,
     color: "error"
   }
@@ -214,7 +222,7 @@ function ReservationId(props) {
   );
 }
 
-// Reservations created by other users arrive without an ID, and can't be cancelled by the caller.
+// Reservations created by other users arrive without an ID, and can't be canceled by the caller.
 // Only pending Reservations are hidden this way, and a Block can't hold two pending Reservations
 // for overlapping CIDRs, so the CIDR identifies those rows.
 const reservationKey = (resv) => resv.id ?? `pending:${resv.cidr}`;

@@ -833,7 +833,7 @@ export const ipamSlice = createSlice({
             if(resvList.includes(resv.id)) {
               resv.settledOn = (Date.now() / 1000);
               resv.settledBy = state.userId;
-              resv.status = "cancelledByUser";
+              resv.status = "canceledByUser";
             }
 
             return resv;

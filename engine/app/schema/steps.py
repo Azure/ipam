@@ -277,6 +277,25 @@ async def _baseline_v4():
     else:
         logger.info("No duplicate network associations to clean up...")
 
+    # Rename the "cancelledByUser" Reservation status to "canceledByUser", the US spelling
+    # the API uses from v4.
+    resv_query = await cosmos_query("SELECT DISTINCT VALUE c FROM c JOIN block IN c.blocks JOIN resv IN block.resv WHERE (c.type = 'space' AND resv.status = 'cancelledByUser')", tenant_id)
+
+    for space in resv_query:
+        space_data = copy.deepcopy(space)
+
+        for block in space_data['blocks']:
+            for resv in block['resv']:
+                if resv.get('status') == 'cancelledByUser':
+                    resv['status'] = 'canceledByUser'
+
+        await cosmos_replace(space, space_data)
+
+    if resv_query:
+        logger.warning('Canceled Reservation status rename complete!')
+    else:
+        logger.info("No canceled Reservation statuses to rename...")
+
 
 # Ordered list of convergence steps. Append new steps with the next version
 # number; never renumber or mutate an already-released step. Keep the highest

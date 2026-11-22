@@ -760,7 +760,7 @@ Invoke-RestMethod `
     -Body $body
 ```
 
-> **NOTE:** Canceling a Reservation doesn't delete it. It stays in Azure IPAM with a status of `cancelledByUser`, and is returned when you query with `settled=true`. Users who aren't administrators can only cancel Reservations they created.
+> **NOTE:** Canceling a Reservation doesn't delete it. It stays in Azure IPAM with a status of `canceledByUser`, and is returned when you query with `settled=true`. Users who aren't administrators can only cancel Reservations they created.
 
 For a real-world example of automating virtual network creation with Bicep and the Azure IPAM API, see the [Azure Landing Zone integration](https://github.com/Azure/ipam/tree/main/examples/azure-eslz) example in the repository.
 

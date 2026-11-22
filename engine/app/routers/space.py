@@ -3066,7 +3066,7 @@ async def delete_block_reservations(
         # del target_block['resv'][index]
         target_block['resv'][index]['settledOn'] = time.time()
         target_block['resv'][index]['settledBy'] = user_name
-        target_block['resv'][index]['status'] = "cancelledByUser"
+        target_block['resv'][index]['status'] = "canceledByUser"
 
     await cosmos_replace(space_query[0], target_space)
 
@@ -3168,7 +3168,7 @@ async def delete_block_reservation(
     if not target_reservation['settledOn']:
         target_reservation['settledOn'] = time.time()
         target_reservation['settledBy'] = user_name
-        target_reservation['status'] = "cancelledByUser"
+        target_reservation['status'] = "canceledByUser"
 
         await cosmos_replace(space_query[0], target_space)
 

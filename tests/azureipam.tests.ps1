@@ -1985,7 +1985,7 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
 
       $targetReservation | Should -Not -BeNullOrEmpty
 
-      $targetReservation.Status | Should -Be 'cancelledByUser'
+      $targetReservation.Status | Should -Be 'canceledByUser'
       $targetReservation.SettledOn | Should -Not -Be $null
     }
 
@@ -2294,17 +2294,17 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
       $reservations.Count | Should -Be 3
 
       $reservationAFulfilled = $reservations | Where-Object { $_.Id -eq $script:reservationA.Id } | Select-Object -First 1
-      $reservationBCancelled = $reservations | Where-Object { $_.Id -eq $script:reservationB.Id } | Select-Object -First 1
+      $reservationBCanceled = $reservations | Where-Object { $_.Id -eq $script:reservationB.Id } | Select-Object -First 1
       $reservationCWaiting = $reservations | Where-Object { $_.Id -eq $script:reservationC.Id } | Select-Object -First 1
 
       $reservationAFulfilled | Should -Not -BeNullOrEmpty
-      $reservationBCancelled | Should -Not -BeNullOrEmpty
+      $reservationBCanceled | Should -Not -BeNullOrEmpty
       $reservationCWaiting | Should -Not -BeNullOrEmpty
 
       $reservationAFulfilled.SettledOn | Should -Not -Be $null
       $reservationAFulfilled.Status | Should -Be "fulfilled"
-      $reservationBCancelled.SettledOn | Should -Not -Be $null
-      $reservationBCancelled.Status | Should -Be "cancelledByUser"
+      $reservationBCanceled.SettledOn | Should -Not -Be $null
+      $reservationBCanceled.Status | Should -Be "canceledByUser"
       $reservationCWaiting.SettledOn | Should -Be $null
       $reservationCWaiting.Status | Should -Be "wait"
     }
@@ -2337,19 +2337,19 @@ Describe 'Azure IPAM API Integration Tests' -Tag @('Integration') {
       $reservations.Count | Should -Be 3
 
       $reservationAFulfilled = $reservations | Where-Object { $_.Id -eq $script:reservationA.Id } | Select-Object -First 1
-      $reservationBCancelled = $reservations | Where-Object { $_.Id -eq $script:reservationB.Id } | Select-Object -First 1
-      $reservationCCancelled = $reservations | Where-Object { $_.Id -eq $script:reservationC.Id } | Select-Object -First 1
+      $reservationBCanceled = $reservations | Where-Object { $_.Id -eq $script:reservationB.Id } | Select-Object -First 1
+      $reservationCCanceled = $reservations | Where-Object { $_.Id -eq $script:reservationC.Id } | Select-Object -First 1
 
       $reservationAFulfilled | Should -Not -BeNullOrEmpty
-      $reservationBCancelled | Should -Not -BeNullOrEmpty
-      $reservationCCancelled | Should -Not -BeNullOrEmpty
+      $reservationBCanceled | Should -Not -BeNullOrEmpty
+      $reservationCCanceled | Should -Not -BeNullOrEmpty
 
       $reservationAFulfilled.SettledOn | Should -Not -Be $null
       $reservationAFulfilled.Status | Should -Be "fulfilled"
-      $reservationBCancelled.SettledOn | Should -Not -Be $null
-      $reservationBCancelled.Status | Should -Be "cancelledByUser"
-      $reservationCCancelled.SettledOn | Should -Not -Be $null
-      $reservationCCancelled.Status | Should -Be "cancelledByUser"
+      $reservationBCanceled.SettledOn | Should -Not -Be $null
+      $reservationBCanceled.Status | Should -Be "canceledByUser"
+      $reservationCCanceled.SettledOn | Should -Not -Be $null
+      $reservationCCanceled.Status | Should -Be "canceledByUser"
     }
   }
 

@@ -373,7 +373,7 @@ When you create a Reservation, Azure IPAM finds the next available CIDR range of
 
 - **Waiting** (`wait`): The Reservation holds the CIDR, and Azure IPAM is watching for a virtual network tagged with its ID.
 - **Fulfilled** (`fulfilled`): A virtual network with the Reservation's `X-IPAM-RES-ID` tag was found, its address space matches the reserved CIDR, and it has been associated with the Block.
-- **Canceled** (`cancelledByUser`): An administrator or the user who created the Reservation canceled it.
+- **Canceled** (`canceledByUser`): An administrator or the user who created the Reservation canceled it.
 - **CIDR mismatch** (`warnCIDRMismatch`): A virtual network with the Reservation's tag was found, but its address space doesn't match the reserved CIDR.
 - **CIDR overlap** (`errCIDROverlap`): One of the virtual network's address ranges in this Block overlaps an existing network, External Network or Reservation.
 
@@ -462,7 +462,7 @@ To cancel one or more Reservations, select their check boxes, then select **Remo
 
 ![Cancel Reservations](./images/resv_cancel_selected.png)
 
-Canceled Reservations aren't deleted. Their status changes to canceled (`cancelledByUser`), and they stay visible when you show all Reservations, as an audit trail.
+Canceled Reservations aren't deleted. Their status changes to canceled (`canceledByUser`), and they stay visible when you show all Reservations, as an audit trail.
 
 ### Using the Reservation Tag
 
