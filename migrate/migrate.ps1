@@ -1444,22 +1444,29 @@ function Build-ContainerImage {
     Write-Host ")..." -ForegroundColor Cyan -NoNewline
 
     # Log build parameters for troubleshooting
+    # The image is tagged and labeled with the repository version, as update.ps1 and the release workflow do
+    $engineVersionFile = Join-Path -Path $ROOT_DIR -ChildPath 'engine' -AdditionalChildPath 'app', 'version.json'
+    $ipamVersion = $(Get-Content -Path $engineVersionFile | ConvertFrom-Json).app
+
     $buildArgs = @{
       Port = $containerMap[$containerType].Port
       BuildImage = $containerMap[$containerType].Images.Build
       ServeImage = $containerMap[$containerType].Images.Serve
+      IpamVersion = $ipamVersion
     }
     Write-LogFile -Message "ACR build parameters: $(ConvertTo-Json $buildArgs -Compress)" -Level "INFO"
-    Write-LogFile -Message "Build command: az acr build -r $targetAcrName -t ipam:latest -f $dockerFilePath $ROOT_DIR --build-arg PORT=$($buildArgs.Port) --build-arg BUILD_IMAGE=$($buildArgs.BuildImage) --build-arg SERVE_IMAGE=$($buildArgs.ServeImage) --no-logs" -Level "INFO"
+    Write-LogFile -Message "Build command: az acr build -r $targetAcrName -t ipam:$ipamVersion -t ipam:latest -f $dockerFilePath $ROOT_DIR --build-arg PORT=$($buildArgs.Port) --build-arg BUILD_IMAGE=$($buildArgs.BuildImage) --build-arg SERVE_IMAGE=$($buildArgs.ServeImage) --build-arg IPAM_VERSION=$ipamVersion --no-logs" -Level "INFO"
 
     # Execute ACR build command
     $appBuildOutput = $(
       az acr build -r $targetAcrName `
+        -t ipam:$ipamVersion `
         -t ipam:latest `
         -f $dockerFilePath $ROOT_DIR `
         --build-arg PORT=$($containerMap[$containerType].Port) `
         --build-arg BUILD_IMAGE=$($containerMap[$containerType].Images.Build) `
         --build-arg SERVE_IMAGE=$($containerMap[$containerType].Images.Serve) `
+        --build-arg IPAM_VERSION=$ipamVersion `
         --no-logs
     ) *>&1
 

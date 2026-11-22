@@ -1464,13 +1464,19 @@ process {
       $dockerFilePath = Join-Path -Path $ROOT_DIR -ChildPath $dockerFile
       $dockerFileFunc = Join-Path -Path $ROOT_DIR -ChildPath 'Dockerfile.func'
 
+      # Tag and label the image with the version being deployed, as update.ps1 and the release workflow do
+      $engineVersionFile = Join-Path -Path $ROOT_DIR -ChildPath 'engine' -AdditionalChildPath 'app', 'version.json'
+      $ipamVersion = $(Get-Content -Path $engineVersionFile | ConvertFrom-Json).app
+
       if ($Function) {
         Write-Host "INFO: Building Function container..." -ForegroundColor Green
 
         $funcBuildOutput = $(
           az acr build -r $deployment.Outputs["acrName"].Value `
+            -t ipamfunc:$ipamVersion `
             -t ipamfunc:latest `
             -f $dockerFileFunc $ROOT_DIR `
+            --build-arg IPAM_VERSION=$ipamVersion `
             --no-logs
         ) *>&1
 
@@ -1505,11 +1511,13 @@ process {
 
         $appBuildOutput = $(
           az acr build -r $deployment.Outputs["acrName"].Value `
+            -t ipam:$ipamVersion `
             -t ipam:latest `
             -f $dockerFilePath $ROOT_DIR `
             --build-arg PORT=$($containerMap[$ContainerType].Port) `
             --build-arg BUILD_IMAGE=$($containerMap[$ContainerType].Images.Build) `
             --build-arg SERVE_IMAGE=$($containerMap[$ContainerType].Images.Serve) `
+            --build-arg IPAM_VERSION=$ipamVersion `
             --no-logs
         ) *>&1
 
