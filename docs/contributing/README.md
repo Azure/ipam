@@ -14,10 +14,10 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 
 ## How to Contribute
 
-1. Fork the repository and clone your fork locally
-2. Create a feature or fix branch from `main` (e.g. `feature/my-change` or `fix/issue-123`)
-3. Make your changes and test them locally using the [development environment](/development/README.md)
-4. Commit your changes and push the branch to your fork
-5. Open a Pull Request against the `main` branch of the upstream repository
+1. Fork the repository and clone your fork.
+2. Create a feature or fix branch from `main`, for example `feature/my-change` or `fix/issue-123`.
+3. Make your changes and test them locally in the [development environment](/development/README.md).
+4. Commit your changes and push the branch to your fork.
+5. Open a pull request against the `main` branch of the upstream repository.
 
-Before changing the code, please read [Conventions](/conventions/README.md). It records the places where the obvious approach is the wrong one, such as how Azure IPAM decides what a caller can see, how permissions are declared, and why the API token is not a header parameter.
+Before changing the code, read [Conventions](/conventions/README.md). It records the places where the obvious approach is the wrong one, such as how Azure IPAM decides what a caller can see, how permissions are declared, and why the API token isn't a header parameter.

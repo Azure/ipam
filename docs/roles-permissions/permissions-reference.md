@@ -17,7 +17,7 @@ The User role holds only two permissions, but that doesn't make it read-only. Ev
 
 Roles can't be changed or assigned yet. Assignable roles are planned for v5.0.0, when these permissions will become the building blocks of custom roles.
 
-> **Note:** Upon initial deployment, no administrators are defined and every signed-in user is treated as an administrator, holding every permission. Once at least one administrator is designated, everyone else holds the User role.
+> **NOTE:** Upon initial deployment, no administrators are defined and every signed-in user is treated as an administrator, holding every permission. Once at least one administrator is designated, everyone else holds the User role.
 
 ## Naming
 
@@ -80,7 +80,7 @@ Each of these permissions covers External Networks and their subnets and endpoin
 
 ### Reservations
 
-Creating Reservations, viewing and cancelling your own, and seeing other users' pending Reservations without their ID or description, needs no permission. These permissions extend those actions to Reservations created by other users.
+Creating Reservations, viewing and canceling your own, and seeing other users' pending Reservations without their ID or description, needs no permission. These permissions extend those actions to Reservations created by other users.
 
 | Permission                | Allows                                                 | Routes and Decisions                                                                                                                                                                                                                                                         | Held By       |
 |---------------------------|--------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|

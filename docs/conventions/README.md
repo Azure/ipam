@@ -14,7 +14,7 @@ Each entry covers three things:
 
 For setting up an environment to work in, see the [Development](/development/README.md) documentation. For the process of getting a change accepted, see the [Contributing](/contributing/README.md) documentation.
 
-> **Note:** Adding a new pattern to this page? Keep the same shape — the rule, the reason, and the failure mode. A convention nobody understands is a convention that gets reverted.
+> **NOTE:** Adding a new pattern to this page? Keep the same shape — the rule, the reason, and the failure mode. A convention nobody understands is a convention that gets reverted.
 
 ## Deciding What a Caller Can See
 
@@ -82,7 +82,7 @@ The OpenAPI generator in `app/openapi.py` walks each route's dependency tree and
 - **A route gate** for a permission the User role doesn't hold appends `(Admin Only)` to the operation summary and attaches a documented `403`.
 - **A parameter gate** marks only the parameter it guards, because the endpoint itself is not restricted.
 
-You can see the result in the [API](/api/README.md) documentation, where admin restricted operations are labelled in the endpoint list.
+You can see the result in the [API](/api/README.md) documentation, where admin-restricted operations are labeled in the endpoint list.
 
 Decisions made with `grants.can(...)` inside an open route aren't annotated, because the route itself isn't restricted. Describe what each caller receives in the route's docstring instead, as `cidrCheck` does.
 
@@ -100,13 +100,13 @@ OpenAPI generated successfully (35 admin-marked operations)
 
 A count of `0`, or a `WARNING` that the markings could not be applied, means the generator needs attention. Enforcement is unaffected either way, because the gates are ordinary dependencies.
 
-> **Note:** Ownership decisions, such as refusing to cancel another user's Reservation, are made with `grants.can(...)` inside routes that everyone may call. They aren't marked as admin restrictions in the API documentation, because the route itself isn't restricted.
+> **NOTE:** Ownership decisions, such as refusing to cancel another user's Reservation, are made with `grants.can(...)` inside routes that everyone may call. They aren't marked as admin restrictions in the API documentation, because the route itself isn't restricted.
 
 ## Authenticating API Endpoints
 
 Never declare `authorization` as a `Header(...)` parameter. Use `Depends(get_token_auth_header)` when a route needs the caller's token.
 
-The OpenAPI specification requires that a header parameter named `Authorization` be ignored. Swagger UI honours that literally, rendering the input box and then silently dropping whatever you type into it when the request is built. The interactive documentation was unusable for this reason, and every **Try it out** call returned a `401` even with a valid token pasted in.
+The OpenAPI specification requires that a header parameter named `Authorization` be ignored. Swagger UI honors that literally, rendering the input box and then silently dropping whatever you type into it when the request is built. The interactive documentation was unusable for this reason, and every **Try it out** call returned a `401` even with a valid token pasted in.
 
 The token is advertised as an `HTTPBearer` security scheme instead, which is what makes the **Authorize** button work. That scheme is declared as a sub-dependency of `validate_token` rather than as a separate router dependency:
 
