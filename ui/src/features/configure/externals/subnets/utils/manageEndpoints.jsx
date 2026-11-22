@@ -856,8 +856,8 @@ export default function ManageExtEndpoints(props) {
                     placement="top"
                     title={
                       <>
-                        - External network name must be unique
-                        <br />- Max of 32 characters
+                        - Endpoint name must be unique
+                        <br />- Max of 64 characters
                         <br />- Can contain alphnumerics
                         <br />- Can contain underscore, hypen, and period
                         <br />- Cannot start/end with underscore, hypen, or period
@@ -918,7 +918,7 @@ export default function ManageExtEndpoints(props) {
                     placement="top"
                     title={
                       <>
-                        - Max of 64 characters
+                        - Max of 128 characters
                         <br />- Can contain alphnumerics
                         <br />- Can contain spaces
                         <br />- Can contain underscore, hypen, slash, and period
@@ -1012,7 +1012,7 @@ export default function ManageExtEndpoints(props) {
               <Tooltip
                 arrow
                 placement="top"
-                title={ selectedRow ? "Update Network" : "Add Network" }
+                title={ selectedRow ? "Update Endpoint" : "Add Endpoint" }
               >
                 <span>
                   <IconButton
