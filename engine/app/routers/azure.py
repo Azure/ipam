@@ -821,7 +821,7 @@ async def lb(
 
 @router.get(
     "/vhub_ep",
-    summary = "Get All Load Balancers"
+    summary = "Get All Virtual Hub Endpoints"
 )
 async def vhub_ep(
     token: str = Depends(get_token_auth_header),
