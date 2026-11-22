@@ -391,6 +391,7 @@ process {
 
   $containerBuildError = $false
   $deploymentSuccess = $false
+  $uiRedirectPending = $false
 
   $GitHubUserName = 'Azure'
   $GitHubRepoName = 'ipam'
@@ -1370,9 +1371,24 @@ process {
     }
 
     if (($PSCmdlet.ParameterSetName -notin 'AppsOnly') -and (-not $DisableUI)) {
-      Update-UIApplication `
-        -UIAppId $appDetails.UIAppId `
-        -Endpoint $deployment.Outputs["appServiceHostName"].Value
+      try {
+        Update-UIApplication `
+          -UIAppId $appDetails.UIAppId `
+          -Endpoint $deployment.Outputs["appServiceHostName"].Value
+      }
+      catch {
+        # An infrastructure-only run is often made by someone who can't change the UI app registration,
+        # and the infrastructure is already deployed by now, so finish the deployment and leave the
+        # redirect URI as a post-deployment task rather than failing.
+        if (-not $ParameterFile) {
+          throw
+        }
+
+        $_ | Out-File -FilePath $errorLog -Append
+        Write-Host "WARNING: Unable to update the UI app registration's redirect URI, see the post deployment tasks below" -ForegroundColor Yellow
+
+        $uiRedirectPending = $true
+      }
     }
 
     if ($PSCmdlet.ParameterSetName -in ('App', 'Function')) {
@@ -1528,16 +1544,16 @@ process {
       Write-Host "Error Log: $errorLog" -ForegroundColor Yellow
     }
 
-    if ($($PSCmdlet.ParameterSetName -notin 'AppsOnly') -and (-not $DisableUI) -and $ParameterFile) {
+    if ($uiRedirectPending) {
       $updateUrl = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/$($appDetails.UIAppId)"
       $updateAddr = "https://$($deployment.Outputs["appServiceHostName"].Value)"
 
       Write-Host
       Write-Host "POST DEPLOYMENT TASKS:" -ForegroundColor Yellow
       Write-Host "##############################################" -ForegroundColor Yellow
-      Write-Host "Navigate In Browser To:" -ForegroundColor Cyan
+      Write-Host "Ask someone who manages the UI app registration to open:" -ForegroundColor Cyan
       Write-Host $updateUrl -ForegroundColor White
-      Write-Host "Change 'Redirect URI' To:" -ForegroundColor Cyan
+      Write-Host "And add this Single-page application Redirect URI:" -ForegroundColor Cyan
       Write-Host $updateAddr -ForegroundColor White
       Write-Host "##############################################" -ForegroundColor Yellow
     }
