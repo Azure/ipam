@@ -115,7 +115,9 @@ USER_ROLE = Role(
     name="User",
     description="Reserve address space and work within the plan that administrators create.",
     # Associations and External Networks are already part of every Space and Block response, so their
-    # dedicated routes are open to everyone as well.
+    # dedicated routes are open to everyone as well. They're still separate permissions, held by both
+    # roles, so a future role can be denied them without changing any routes, as the assignable roles
+    # planned for v5.0.0 will need.
     permissions=frozenset({
         Permission.ASSOCIATIONS_READ,
         Permission.EXTERNALS_READ,
