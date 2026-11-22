@@ -440,7 +440,7 @@ Azure IPAM finds the next available CIDR range of the requested size. Choose a *
 
 **Manual:**
 
-Enter a CIDR range in standard notation, for example `10.1.5.0/24`. It must be within the Block's range and can't overlap virtual networks already associated with the Block, unsettled Reservations, or External Networks.
+Enter a CIDR range in standard notation, using its network address, for example `10.1.5.0/24` rather than `10.1.5.1/24`. It must be within the Block's range and can't overlap virtual networks already associated with the Block, unsettled Reservations, or External Networks.
 
 ![Create Reservation Manual](./images/resv_create_by_cidr.png)
 

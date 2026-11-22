@@ -661,7 +661,7 @@ $response = Invoke-RestMethod `
 
 #### Create a Reservation by CIDR
 
-If you need a specific CIDR range, provide it directly instead of a size. It must be within the Block and can't overlap existing allocations.
+If you need a specific CIDR range, provide it directly instead of a size. It must be a network address within the Block and can't overlap existing allocations, so `10.1.10.0/24` is accepted but `10.1.10.1/24` returns `400 Bad Request`.
 
 ```powershell
 $body = @{

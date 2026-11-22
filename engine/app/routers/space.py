@@ -2878,7 +2878,7 @@ async def create_block_reservation(
     Create a CIDR Reservation for the target Block with the following information:
 
     - **size**: Network mask bits
-    - **cidr**: Specific CIDR to reserve (alternative to 'size')
+    - **cidr**: Specific CIDR to reserve (alternative to 'size'), which must be a network address (e.g. 10.1.0.0/24, not 10.1.0.1/24)
     - **desc**: Description (optional)
     - **reverse_search**:
         - **true**: New networks will be created as close to the <u>end</u> of the block as possible
@@ -2971,6 +2971,9 @@ async def create_block_reservation(
             next_cidr = IPNetwork(req.cidr)
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid network CIDR format.")
+
+        if str(next_cidr.cidr) != req.cidr:
+            raise HTTPException(status_code=400, detail=f"Reservation CIDR invalid, should be {next_cidr.cidr}")
 
         if IPNetwork(req.cidr) not in available_set:
             raise HTTPException(status_code=409, detail="Requested CIDR overlaps existing network(s).")

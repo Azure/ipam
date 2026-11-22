@@ -943,7 +943,9 @@ async def match_resv_to_vnets():
                         stale_resv.remove(resv['id'])
                         resv['status'] = "wait"
 
-                        cidr_match = resv['cidr'] in net['prefixes']
+                        # Azure writes address prefixes as network addresses, but a Reservation saved before
+                        # its CIDR was validated may not be one, so they're compared as networks.
+                        cidr_match = IPNetwork(resv['cidr']).cidr in [IPNetwork(x).cidr for x in net['prefixes']]
 
                         if not cidr_match:
                             # print("Reservation ID assigned to vNET which does not have an address space that matches the reservation.")
