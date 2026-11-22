@@ -2,130 +2,127 @@
 
 ## Overview
 
-This guide provides comprehensive instructions for migrating existing Azure IPAM deployments from Docker Compose-based App Services to modern Azure infrastructure. The migration process preserves your existing data and configuration while updating your deployment to use current Azure best practices.
+This guide covers migrating an Azure IPAM deployment that runs on App Service with Docker Compose to the current single-container deployment. The migration keeps your data and configuration.
 
-**Migration is required immediately** due to Microsoft's announcement of the deprecation and eventual removal of Docker Compose support for Azure App Service. Docker Compose support is deprecated and will be removed in future App Service versions, making migration essential for continued operation and security updates. The retirement date for Docker Compose capability is **March 31, 2027**. For additional details, refer to the [Docker Compose Migration announcement](https://azure.github.io/AppService/2025/04/01/Docker-compose-migration.html).
+**Migrate now.** Microsoft has deprecated Docker Compose support in App Service and retires it on **March 31, 2027**, so Azure IPAM deployments that use it will stop working and can't receive updates. For details, see the [Docker Compose migration announcement](https://azure.github.io/AppService/2025/04/01/Docker-compose-migration.html).
 
 ## Who Should Migrate?
 
-All Azure IPAM users currently running Docker Compose-based deployments should migrate ***as soon as possible***.
+Every Azure IPAM deployment that uses Docker Compose should migrate ***as soon as possible***.
 
 ### Check If You Need to Migrate
 
-To determine if your deployment requires migration, check your App Service configuration:
+To check whether your deployment needs to migrate:
 
-1. Navigate to your Azure IPAM App Service in the Azure Portal
-2. Go to **Deployment** → **Deployment Center**
-3. Look for the **Container Type** field
-4. If it shows **Docker Compose (Preview)**, you need to migrate
+1. In the Azure portal, open your Azure IPAM App Service.
+2. Select **Deployment** → **Deployment Center**.
+3. Find the **Container Type** field.
+4. If it shows **Docker Compose (Preview)**, you need to migrate.
 
 ![Docker Compose (Preview)](./images/verify_docker_compose.png)
 
-Alternatively, you can check via PowerShell:
+You can also check with Azure PowerShell:
 
 ```powershell
-$webApp = Get-AzWebApp -ResourceGroupName "your-resource-group" -Name "your-app-name"
+$webApp = Get-AzWebApp -ResourceGroupName "<your-ipam-rg>" -Name "<your-ipam-app>"
 $webApp.SiteConfig.LinuxFxVersion
 ```
 
-If this returns a value containing `COMPOSE|` followed by Base64 content, you need to migrate.
+If the value starts with `COMPOSE|` followed by Base64 content, you need to migrate.
 
 ## Prerequisites
 
-To successfully migrate your Azure IPAM deployment, the following prerequisites must be met:
+You need the following to migrate Azure IPAM:
 
-- An Azure Subscription containing your existing Azure IPAM deployment
-- The following Azure RBAC Roles:
-  - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner) at the Subscription scope (needed to discover your Azure IPAM resources and run the subscription-level deployment)
-  - One of the following roles on the Azure IPAM Key Vault, or a scope above it (needed to re-apply the Managed Identity's access to the Key Vault):
+- The Azure subscription containing your Azure IPAM deployment
+- The following Azure roles:
+  - [Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#contributor) or [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner) on the subscription, to discover your Azure IPAM resources and run the subscription-level deployment
+  - One of the following roles on the Azure IPAM Key Vault, or a scope above it, to reapply the managed identity's access to the Key Vault:
     - [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner)
     - [User Access Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#user-access-administrator)
     - [Role Based Access Control Administrator](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#role-based-access-control-administrator)
-    - [Custom Role](https://learn.microsoft.com/azure/role-based-access-control/custom-roles) with *allow* permissions of `Microsoft.Authorization/roleAssignments/write`
-- [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
-  - Required to clone the Azure IPAM GitHub repository
-- [PowerShell](https://learn.microsoft.com/powershell/scripting/install/install-powershell) version 7.2.0 or later installed
-- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell) version 11.4.0 or later installed
-- [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install) version 0.21.1 or later installed
-- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) version 2.35.0 or later installed (optional)
-  - Required only if your deployment uses a private Azure Container Registry (Private ACR)
+    - A [custom role](https://learn.microsoft.com/azure/role-based-access-control/custom-roles) that allows `Microsoft.Authorization/roleAssignments/write`
+- [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), to clone the Azure IPAM repository
+- [PowerShell](https://learn.microsoft.com/powershell/scripting/install/install-powershell) 7.2.0 or later
+- [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-azure-powershell) 11.4.0 or later
+- [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install) 0.21.1 or later
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.35.0 or later (optional)
+  - Needed only if your deployment uses a private Azure Container Registry
 
-> **NOTE:** [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner) at the Subscription scope covers both of the roles above.
-
-> **NOTE:** The migration script requires access to your existing Azure IPAM resources. Ensure you have the necessary permissions to both read the current configuration and modify the App Service deployment.
+> **NOTE:** [Owner](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#owner) on the subscription covers both of the roles above.
 
 ## Pre-Migration Backup
 
-**Before proceeding with the migration, it is strongly recommended to back up your Azure IPAM App Service.** While the migration process is designed to preserve your existing data and configuration, having a backup ensures you can restore your App Service if any issues occur during migration.
+**Back up your Azure IPAM App Service before you migrate.** The migration is designed to keep your data and configuration, but a backup means you can restore the App Service if something goes wrong.
 
-> **Important**: App Service backups are only available in **Basic, Standard, Premium, and Isolated** pricing tiers. If your App Service is running on a Free or Shared tier, you cannot create backups and should consider upgrading your pricing tier before migration.
+> **IMPORTANT:** App Service backups are only available in the **Basic, Standard, Premium and Isolated** pricing tiers. If your App Service is on the Free or Shared tier, you can't create backups, so consider moving to a higher tier before you migrate.
 
 ### Check App Service Backup Status
 
-First, verify the backup configuration for your App Service:
+First, check your App Service's backup configuration:
 
-1. **Navigate to your App Service** in the Azure Portal
-2. Go to **Settings** → **Backups**
+1. In the Azure portal, open your App Service.
+2. Select **Settings** → **Backups**.
 3. Check the backup status:
-   - **Automatic backups** are always enabled for supported pricing tiers and cannot be disabled
-   - If **custom backups** are configured, you'll see backup configuration details including frequency and retention
-   - If **custom backups** are not configured, you'll see "Backups are not configured for this app"
-   - If your App Service is on an unsupported tier, you'll see "Backups are not available for this pricing tier"
+   - **Automatic backups** are always on for supported pricing tiers, and can't be turned off
+   - If **custom backups** are configured, you see their details, including frequency and retention
+   - If **custom backups** aren't configured, you see *Backups are not configured for this app*
+   - If your App Service is on an unsupported tier, you see *Backups are not available for this pricing tier*
 
 ![Backup Status](./images/check_backup_status.png)
 
 ### Check Recent Backups
 
-Verify recent backup history (both automatic and custom backups will appear here):
+Check the recent backup history, which includes both automatic and custom backups:
 
-1. In the **Backups** section, scroll down to view **Backup History**
-2. Review recent backups and verify:
-   - **Status**: Ensure recent backups show "Succeeded"
-   - **Date**: Confirm backups are recent
-   - **Size**: Note the backup file sizes
-   - **Type**: Distinguish between automatic backups and custom backups (if configured)
+1. On the **Backups** page, scroll down to **Backup History**.
+2. Review the recent backups:
+   - **Status:** recent backups show *Succeeded*
+   - **Date:** the backups are recent
+   - **Size:** note the size of each backup
+   - **Type:** whether each backup is automatic or custom
 
 ![Recent Backups](./images/check_recent_backups.png)
 
-> **Note**: App Service automatically backs up apps on supported pricing tiers every hour, and these backups can't be disabled. Verify that a recent backup completed successfully before proceeding with migration.
+> **NOTE:** App Service backs up apps on supported pricing tiers every hour, and these backups can't be turned off. Check that a recent backup succeeded before you migrate.
 
 ### Configure Custom Backups (Optional)
 
-If you want to configure custom backups with your own storage account and schedule, you can set them up before migration:
+To use your own storage account and schedule, set up custom backups before you migrate:
 
-1. **Navigate to your App Service** in the Azure Portal
-2. Go to **Settings** → **Backups**
-3. Click **Configure Custom Backups** to set up custom backup settings
-4. **Configure custom backup settings**:
-   - **Storage Account**: Select or create a storage account (required)
-   - **Container**: Select or create a container (e.g., "app-backups")
-5. Optionally you can setup a custom back schedule by selecting the **Set Schedule** checkbox
-   - **Repeats Every**: Set frequency (at least Daily recommended)
-   - **Start Time**: Start time of the backup schedule
-   - **Time Zone**: UTC or local (portal) time zone
-   - **Retention**: Set retention period (at least 30 days recommended)
-6. Click **Configure** to enable custom backups
+1. In the Azure portal, open your App Service.
+2. Select **Settings** → **Backups**.
+3. Select **Configure Custom Backups**.
+4. Enter the custom backup settings:
+   - **Storage Account:** select or create a storage account (required)
+   - **Container:** select or create a container, for example `app-backups`
+5. To back up on a schedule, select the **Set Schedule** check box:
+   - **Repeats Every:** how often to back up (at least daily is recommended)
+   - **Start Time:** when the schedule starts
+   - **Time Zone:** UTC or your local time zone
+   - **Retention:** how long to keep backups (at least 30 days is recommended)
+6. Select **Configure** to turn on custom backups.
 
 ![Configure Custom Backups](./images/configure_custom_backups.png)
 
 ### Create an On-Demand Backup
 
-If you want to run an on-demand backup, you must first configure **Custom Backups** (see above) then proceed as follows:
+To run an on-demand backup, first [configure custom backups](#configure-custom-backups-optional), then:
 
-1. **Navigate to your App Service** in the Azure Portal
-2. Go to **Settings** → **Backups**
-3. Click **Backup Now** to start the backup process
-4. Monitor the backup status until it shows **Succeeded**
+1. In the Azure portal, open your App Service.
+2. Select **Settings** → **Backups**.
+3. Select **Backup Now** to start the backup.
+4. Wait until the backup's status shows *Succeeded*.
 
 ![Create On-Demand Backup](./images/create_on_demand_backup.png)
 
-> **Important**:
+> **IMPORTANT:**
 >
-> - **Backup Now** is only available once custom backups are configured (see above)
-> - Ensure you have at least one successful backup before proceeding with migration
-> - If backup creation fails, resolve the issue before continuing with migration
+> - **Backup Now** is only available once custom backups are configured
+> - Make sure you have at least one successful backup before you migrate
+> - If a backup fails, fix the problem before you continue with the migration
 
-For detailed information about App Service backups, including limitations and requirements, see the [Azure App Service backup documentation](https://learn.microsoft.com/azure/app-service/manage-backup).
+For more about App Service backups, including their limits and requirements, see [Back up and restore your app in Azure App Service](https://learn.microsoft.com/azure/app-service/manage-backup).
 
 ## Authenticate to Azure PowerShell
 
@@ -205,275 +202,241 @@ Run `migrate.ps1` from this folder, as shown in the following sections.
 
 ## Migration Methods
 
-The migration script supports two methods for resource discovery, choose the method that best fits your scenario:
+The migration script can find your Azure IPAM resources in two ways. Choose the one that fits your deployment:
 
-1. Auto-Discovery (Recommended)
+- **Auto-discovery (recommended):** The script finds your Azure IPAM resources from the existing App Service's configuration. This is the simplest method for most deployments.
+- **Manual resource specification:** You list the resources in a JSON file. Use this when your Azure IPAM resources are spread across several resource groups, or when auto-discovery fails. All of the resources must be in the same subscription.
 
-    The script automatically discovers your Azure IPAM resources by analyzing the existing App Service configuration. This is the simplest approach for most deployments.
-
-2. Manual Resource Specification
-
-    Use a JSON configuration file to specify exact resource details. This method is useful when your Azure IPAM resources are spread across multiple resource groups, or when auto-discovery fails. All of the resources must be in the same subscription.
-
-## Migration Process (Method 1: Auto-Discovery)
-
-### Step 1: Run Auto-Discovery Migration
-
-Execute the migration script with auto-discovery:
-
-```powershell
-.\migrate.ps1 -AppName "your-ipam-app-name" -ResourceGroupName "your-resource-group"
-```
-
-#### Parameters
+## Migration Script Parameters
 
 | Parameter            | Type   | Required | Description                                                                                 |
 |----------------------|--------|----------|---------------------------------------------------------------------------------------------|
 | `-AppName`           | String | Yes      | Name of your existing Azure IPAM App Service                                                |
 | `-ResourceGroupName` | String | Yes      | Resource group containing your App Service                                                  |
+| `-JsonFile`          | String | No       | Path to your JSON resource file, for [manual resource specification](#migration-process-method-2-manual-resource-specification) |
 | `-ContainerType`     | String | No       | Container distro (`Debian` or `RHEL`) to build for private ACR deployments **<sup>3</sup>** |
-| `-NoVerify`          | Switch | No       | Skip resource existence verification **<sup>1</sup>**                                       |
-| `-Force`             | Switch | No       | Skip user confirmation prompts **<sup>2</sup>**                                             |
-| `-Debug`             | Switch | No       | Write verbose Azure deployment logs to `logs/debug_[timestamp].log`                         |
+| `-NoVerify`          | Switch | No       | Skips checking that the resources exist **<sup>1</sup>**                                    |
+| `-Force`             | Switch | No       | Skips confirmation prompts **<sup>2</sup>**                                                 |
+| `-Debug`             | Switch | No       | Writes verbose Azure deployment logs to `logs/debug_[timestamp].log`                        |
 
-> **NOTE 1:** Use with caution as this bypasses safety checks.
+> **NOTE 1:** Use with caution, since this skips safety checks.
 
 > **NOTE 2:** Recommended for automated deployments only.
 
-> **NOTE 3:** Only applies to private ACR deployments, which rebuild the container image. When omitted, the distro is auto-detected by probing the source application's status API (`/api/status`). Specify it explicitly to skip that probe — for example when the application is stopped or otherwise unreachable, or when auto-detection returns the wrong distro.
+> **NOTE 3:** Only applies to private ACR deployments, which rebuild the container image. When omitted, the distro is detected by probing the source application's status API (`/api/status`). Specify it to skip that probe, for example when the application is stopped or unreachable, or when detection returns the wrong distro.
+
+## Migration Process (Method 1: Auto-Discovery)
+
+### Step 1: Run Auto-Discovery Migration
+
+Run the migration script with auto-discovery:
+
+```powershell
+./migrate.ps1 -AppName "<your-ipam-app>" -ResourceGroupName "<your-ipam-rg>"
+```
+
+For the optional parameters, see [Migration Script Parameters](#migration-script-parameters).
 
 ### Step 2: Monitor Migration Progress
 
-The migration script will automatically:
+The migration script:
 
-1. **Discover Resources**: Analyze your App Service to infer all Azure IPAM components
-2. **Verify Resources**: Confirm all resources exist and are accessible
-3. **Probe Status API**: Determine current container configuration and application health
-4. **Deploy Updates**: Update infrastructure using Bicep templates
-5. **Build Container** (Private ACR only): Build and push updated container images
-6. **Restart App Service**: Apply new configuration
+1. **Discovers resources:** finds all of the Azure IPAM resources from your App Service's configuration
+2. **Verifies resources:** checks that every resource exists and is accessible
+3. **Probes the status API:** finds the current container configuration and application health
+4. **Deploys updates:** updates the infrastructure with the Bicep templates
+5. **Builds the container** (private ACR only): builds and pushes a new container image
+6. **Restarts the App Service:** applies the new configuration
 
-> **NOTE:** It may take up to 5 minutes for the Azure IPAM services to become available as the new container is downloaded and started by Azure App Services
+> **NOTE:** Azure IPAM can take up to 5 minutes to become available, while App Service downloads and starts the new container.
 
 ## Migration Process (Method 2: Manual Resource Specification)
 
 ### Step 1: Create Override Configuration File
 
-Create a JSON(C) file specifying your exact resource details. The repository includes a template, `migrate/overrides.jsonc`, that you can copy and edit:
+Create a JSON or JSONC file that lists your resources. Start from the template in the repository, `migrate/overrides.jsonc`, which looks like this once filled in:
 
 ```jsonc
 [
   {
     // Web App Resource Details
     "ResourceType": "Microsoft.Web/sites",
-    "ResourceName": "your-app-service-name",
-    "ResourceGroup": "your-resource-group",
-    "Subscription": "your-subscription-id"
+    "ResourceName": "<your-ipam-app>",
+    "ResourceGroup": "<your-ipam-rg>",
+    "Subscription": "<subscription-id>"
   },
   {
     // App Service Plan Resource Details
     "ResourceType": "Microsoft.Web/serverfarms",
-    "ResourceName": "your-app-service-plan-name",
-    "ResourceGroup": "your-resource-group",
-    "Subscription": "your-subscription-id"
+    "ResourceName": "<your-ipam-plan>",
+    "ResourceGroup": "<your-ipam-rg>",
+    "Subscription": "<subscription-id>"
   },
   {
     // Managed Identity Resource Details
     "ResourceType": "Microsoft.ManagedIdentity/userAssignedIdentities",
-    "ResourceName": "your-managed-identity-name",
-    "ResourceGroup": "your-resource-group",
-    "Subscription": "your-subscription-id"
+    "ResourceName": "<your-ipam-identity>",
+    "ResourceGroup": "<your-ipam-rg>",
+    "Subscription": "<subscription-id>"
   },
   {
     // Log Analytics Workspace Resource Details
     "ResourceType": "Microsoft.OperationalInsights/workspaces",
-    "ResourceName": "your-log-analytics-workspace-name",
-    "ResourceGroup": "your-resource-group",
-    "Subscription": "your-subscription-id"
+    "ResourceName": "<your-ipam-workspace>",
+    "ResourceGroup": "<your-ipam-rg>",
+    "Subscription": "<subscription-id>"
   },
   {
     // Cosmos DB Account Resource Details
     "ResourceType": "Microsoft.DocumentDB/databaseAccounts",
-    "ResourceName": "your-cosmos-db-account-name",
-    "ResourceGroup": "your-resource-group",
-    "Subscription": "your-subscription-id"
+    "ResourceName": "<your-ipam-cosmos>",
+    "ResourceGroup": "<your-ipam-rg>",
+    "Subscription": "<subscription-id>"
   },
   {
     // Key Vault Resource Details
     "ResourceType": "Microsoft.KeyVault/vaults",
-    "ResourceName": "your-key-vault-name",
-    "ResourceGroup": "your-resource-group",
-    "Subscription": "your-subscription-id"
+    "ResourceName": "<your-ipam-kv>",
+    "ResourceGroup": "<your-ipam-rg>",
+    "Subscription": "<subscription-id>"
   },
   {
-    // Container Registry Resource Details (Optional - only if using private ACR)
+    // Container Registry Resource Details (Optional, Only for a Private ACR)
     "ResourceType": "Microsoft.ContainerRegistry/registries",
-    "ResourceName": "your-container-registry-name",
-    "ResourceGroup": "your-resource-group",
-    "Subscription": "your-subscription-id"
+    "ResourceName": "<your-ipam-acr>",
+    "ResourceGroup": "<your-ipam-rg>",
+    "Subscription": "<subscription-id>"
   }
 ]
 ```
 
-Save this file as `resources.jsonc` in the same directory as the migration script.
+Save the file in the `migrate` folder, for example as `resources.jsonc`.
 
 ### Step 2: Run Manual Override Migration
 
-Execute the migration script with your resource JSON file specified:
+Run the migration script with your resource file:
 
 ```powershell
-.\migrate.ps1 -AppName "your-ipam-app-name" -ResourceGroupName "your-resource-group" -JsonFile "resources.jsonc"
+./migrate.ps1 -AppName "<your-ipam-app>" -ResourceGroupName "<your-ipam-rg>" -JsonFile "./resources.jsonc"
 ```
 
-#### Manual Override Parameters
-
-| Parameter            | Type   | Required | Description                                                                                 |
-|----------------------|--------|----------|---------------------------------------------------------------------------------------------|
-| `-AppName`           | String | Yes      | Name of your existing Azure IPAM App Service                                                |
-| `-ResourceGroupName` | String | Yes      | Resource group containing your App Service                                                  |
-| `-JsonFile`          | String | Yes      | Path to your JSON override file                                                             |
-| `-ContainerType`     | String | No       | Container distro (`Debian` or `RHEL`) to build for private ACR deployments **<sup>3</sup>** |
-| `-NoVerify`          | Switch | No       | Skip resource existence verification **<sup>1</sup>**                                       |
-| `-Force`             | Switch | No       | Skip user confirmation prompts **<sup>2</sup>**                                             |
-| `-Debug`             | Switch | No       | Write verbose Azure deployment logs to `logs/debug_[timestamp].log`                         |
-
-> **NOTE 1:** Use with caution as this bypasses safety checks.
-
-> **NOTE 2:** Recommended for automated deployments only.
-
-> **NOTE 3:** Only applies to private ACR deployments, which rebuild the container image. When omitted, the distro is auto-detected by probing the source application's status API (`/api/status`). Specify it explicitly to skip that probe — for example when the application is stopped or otherwise unreachable, or when auto-detection returns the wrong distro.
+For the optional parameters, see [Migration Script Parameters](#migration-script-parameters).
 
 ### Step 3: Monitor Migration Progress
 
-The migration script will:
+The migration script:
 
-1. **Load Override Configuration**: Read your specified resource details
-2. **Verify Resources**: Confirm all specified resources exist and are accessible
-3. **Probe Status API**: Determine current container configuration and application health
-4. **Deploy Updates**: Update infrastructure using Bicep templates
-5. **Build Container** (Private ACR only): Build and push updated container images
-6. **Restart App Service**: Apply new configuration
+1. **Loads your resource file:** reads the resources you listed
+2. **Verifies resources:** checks that every resource exists and is accessible
+3. **Probes the status API:** finds the current container configuration and application health
+4. **Deploys updates:** updates the infrastructure with the Bicep templates
+5. **Builds the container** (private ACR only): builds and pushes a new container image
+6. **Restarts the App Service:** applies the new configuration
 
-> **NOTE:** It may take up to 5 minutes for the Azure IPAM services to become available as the new container is downloaded and started by Azure App Services
+> **NOTE:** Azure IPAM can take up to 5 minutes to become available, while App Service downloads and starts the new container.
 
 ## Migration Validation
 
 ### Post-Migration Verification
 
-After migration completes, verify your Azure IPAM deployment:
+After the migration, check your Azure IPAM deployment:
 
-1. **Check Application Health**:
-   - Verify the App Service is healthy
-   - ![Check App Service Health](./images/app_service_health.png)
+1. **Check application health:** Check that the App Service is healthy.
 
-2. **Check Container Configuration**:
-   - Verify the App Service is no longer using Docker Compose
-   - Confirm single container model
-   - ![App Service Container Model](./images/app_service_container_model.png)
+   ![Check App Service Health](./images/app_service_health.png)
 
-3. **Verify Application Accessibility**:
-   - Navigate to your Azure IPAM URL
-   - Confirm the application loads successfully
-   - Test basic functionality (viewing IP spaces, blocks, etc.)
+2. **Check the container configuration:** Check that the App Service no longer uses Docker Compose, and runs a single container.
+
+   ![App Service Container Model](./images/app_service_container_model.png)
+
+3. **Check that Azure IPAM works:** Open Azure IPAM, check that it loads, and try some basic tasks, such as viewing Spaces and Blocks.
 
 ## Troubleshooting
 
 ### Common Issues and Solutions
 
-#### Issue: Azure CLI authentication mismatches
+#### Azure PowerShell and Azure CLI Use Different Subscriptions
 
-**Solution**: Ensure Azure PowerShell and Azure CLI contexts match
+The script switches Azure CLI to the subscription Azure PowerShell uses. If that fails, check both and set them to the same subscription, as described in [Authenticate to Azure CLI](#authenticate-to-azure-cli):
 
 ```powershell
-# Check PowerShell context
+# Check the Azure PowerShell Context
 Get-AzContext
 ```
 
 ```bash
-# Check Azure CLI context
+# Check the Azure CLI Context
 az account show
 ```
 
-#### Issue: Container build failures (Private ACR)
+#### Container Build Fails (Private ACR)
 
-**Solution**:
+1. Check that the account you signed in to Azure CLI with can push to the registry.
+2. Check that the registry is available.
+3. Review the build logs in the script's output.
+4. Build and push the image yourself, as described in [Building and Updating Production Container Images Using a Private ACR](/development/README.md#building-and-updating-production-container-images-using-a-private-acr).
 
-1. Verify Azure CLI user has ACR push permissions
-2. Check ACR resource availability
-3. Review build logs in the script output
-4. Manually build & push new containers to ACR
+#### App Service Fails to Start After Migration
 
-```shell
-# App Container (Debian-based)
-az acr build -r <ACR Name> -t ipam:latest -f ./Dockerfile.deb .
-
-# App Container (RHEL-based)
-az acr build -r <ACR Name> -t ipam:latest -f ./Dockerfile.rhel .
-```
-
-#### Issue: App Service fails to start after migration
-
-**Solution**:
-
-1. Verify that there were no errors during the Migration process
-2. Check migration logs and the Deployment logs in the Azure Portal
-3. Check App Service logs in Azure Portal
+1. Check that the migration finished without errors.
+2. Check the migration logs, and the deployment logs in the Azure portal.
+3. Check the App Service logs in the Azure portal.
 
 ### Getting Help
 
 If you encounter issues during migration:
 
-1. **Review Migration Logs**: Check PowerShell output and log folder for detailed error messages
-2. **Validate Prerequisites**: Ensure all [required permissions](#prerequisites) are in place
-3. **Check Azure Status**: Verify Azure services are operational ([Azure Status](https://azure.status.microsoft/status))
-4. **Report an Issue**: Create an [issue](https://github.com/Azure/ipam/issues/new?template=bug_report.yml) in the Azure IPAM GitHub repository
+1. **Review the migration logs:** Check the script's output and the `logs` folder for error details.
+2. **Check the prerequisites:** Make sure you have all of the [required permissions](#prerequisites).
+3. **Check Azure status:** Check that Azure services are working on the [Azure status](https://azure.status.microsoft/status) page.
+4. **Report an issue:** [Report an issue](https://github.com/Azure/ipam/issues/new?template=bug_report.yml) on GitHub.
 
 ## Rollback Procedures
 
-In the event a migration issue should occur, you can rollback to your previous configuration:
+If something goes wrong with the migration, you can roll back to your previous configuration:
 
-1. **Navigate to your App Service** in the Azure Portal
-2. Go to **Settings** → **Backups**
-3. Locate a backup from **before** the Migration script was run
-4. Click **Restore** icon associated with the target backup timestamp
-5. Make sure to select the **existing** deployment slot, and select **Restore Site Configuration**
-6. The restoration process can take *up to 30 minutes*, and will stop/start the App Service during that time
+1. In the Azure portal, open your App Service.
+2. Select **Settings** → **Backups**.
+3. Find a backup from **before** you ran the migration script.
+4. Select **Restore** for that backup.
+5. Select the **existing** deployment slot, and select **Restore Site Configuration**.
+6. The restore can take *up to 30 minutes*, and stops and starts the App Service while it runs.
 
 ![Restore From Backup](./images/restore_from_backup.png)
 
 ## FAQ
 
-### Q: How long does migration take?
+### How Long Does the Migration Take?
 
-**A**: Typical migrations complete in 10-15 minutes, depending on:
+Most migrations take 10 to 15 minutes, depending on:
 
 - Number of resources to migrate
 - Container build time (for private ACR)
 - Network connectivity
 
-### Q: Will there be downtime during migration?
+### Will There Be Downtime During the Migration?
 
-**A**: Yes, brief downtime occurs during:
+Yes. Azure IPAM is unavailable while:
 
-- App Service configuration updates
-- Container image replacement
-- App Service restart
+- The App Service configuration is updated
+- The container image is replaced
+- The App Service restarts
 
-Expected downtime: 10-15 minutes
+Expect 10 to 15 minutes of downtime.
 
-### Q: What happens to my existing data?
+### What Happens to My Existing Data?
 
-**A**: All existing data is preserved:
+All of your existing data is kept:
 
 - Cosmos DB data remains unchanged
 - Key Vault secrets are maintained
 - App settings are migrated
 - User configurations are preserved
 
-### Q: What if my deployment uses custom configurations?
+### What If My Deployment Uses a Custom Configuration?
 
-**A**: The script handles most custom configurations automatically, however, for complex setups:
+The script handles most custom configurations. For more complex ones:
 
-- Use the JSON override method
-- Review script output carefully
-- Open an [issue](https://github.com/Azure/ipam/issues/new?template=bug_report.yml) describing your configuration
+- Use [manual resource specification](#migration-process-method-2-manual-resource-specification)
+- Review the script's output carefully
+- [Report an issue](https://github.com/Azure/ipam/issues/new?template=bug_report.yml) describing your configuration
