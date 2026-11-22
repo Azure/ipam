@@ -1322,6 +1322,8 @@ async def available_block_nets(
     Get a list of Azure networks which can be associated to the target Block.
     This list is a combination on Virtual Networks and vWAN Virtual Hubs.
 
+    Networks you can read in Azure are listed, along with every network already associated to the Block, which is part of the address plan and visible to every user.
+
     A network is excluded in full if any of its prefixes within the Block overlaps an External Network or an unfulfilled Reservation, as a Block cannot contain overlapping CIDR ranges.
 
     - **expand**:
@@ -1356,6 +1358,20 @@ async def available_block_nets(
     # can actually see and associate, so this stays scoped to the caller. NetworkExpand carries only
     # the fields this query already returns, so it serves the expanded response as well.
     net_list = await fetch_network_prefixes(token, scope=scope)
+
+    # Networks already associated with the Block are part of the address plan, which every user can
+    # see, so they're resolved with the full view even when the rest of the list is the caller's own.
+    # Otherwise a network the caller can't read in Azure would be missing here and look stale.
+    if scope != AzureScope.TENANT and target_block['vnets']:
+        associated_ids = {x['id'].lower() for x in target_block['vnets']}
+        listed_ids = {x['id'].lower() for x in net_list}
+
+        tenant_list = await fetch_network_prefixes(token, scope=AzureScope.TENANT)
+
+        net_list += [
+            x for x in tenant_list
+            if x['id'].lower() in associated_ids and x['id'].lower() not in listed_ids
+        ]
 
     # Occupants are kept individually as well as merged, so a blocked Network can be reported
     # against the specific External Network or Reservation standing in its way. A Reservation is

@@ -373,7 +373,7 @@ The API base path for Virtual Network Association operations is:
 
 > **NOTE:** Every signed-in user can call `GET /available` and `GET /networks`. The other association endpoints (`POST`, `PUT` and `DELETE`) are restricted to Azure IPAM administrators, and return `403 Forbidden` to anyone else.
 >
-> When an administrator calls `GET /available`, the Azure Resource Graph query runs with the application's service principal credentials, returning networks across the entire tenant. When a non-admin user calls the same endpoint, the query runs on behalf of the user (OBO), so only networks in Azure subscriptions the user has RBAC read access to are returned. `GET /networks` only ever returns networks already associated with the Block, which are shared with every user, so with `expand=true` it returns full details for all of them, whoever calls it.
+> When an administrator calls `GET /available`, the Azure Resource Graph query runs with the application's service principal credentials, returning networks across the entire tenant. When a non-admin user calls the same endpoint, the query runs on behalf of the user (OBO), so only networks in Azure subscriptions the user has RBAC read access to are returned, along with every network already associated with the Block, which is part of the address plan. `GET /networks` only ever returns networks already associated with the Block, which are shared with every user, so with `expand=true` it returns full details for all of them, whoever calls it.
 
 ### Query Parameters
 
