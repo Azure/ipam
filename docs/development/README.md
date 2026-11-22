@@ -1,86 +1,96 @@
 # Development
 
-This section covers working on Azure IPAM itself: running a local development
+This page covers working on Azure IPAM itself: running a local development
 environment and building the container images. For the patterns to follow while
 changing the code, see [Conventions](/conventions/README.md). For the process of
 getting a change accepted, see [Contributing](/contributing/README.md).
 
 ## Running an Azure IPAM Development Environment with Docker Compose
 
-We have included a Docker Compose file in the root directory of the project (`docker-compose.yml`), to quickly build a fully functional Azure IPAM development environment. The Docker Compose file is also dependent on an `.env` file to correctly pass all of the required environment variables into the containers. You can use the `.env.example` file, also found at the root directory of the project, as a template to create your own `.env` file.
+The root of the repository has a Docker Compose file, `docker-compose.yml`, that builds a complete Azure IPAM development environment. It reads the environment variables the containers need from a `.env` file. To create yours, copy `.env.example`, also in the root of the repository, to `.env` and fill in the values.
 
-To start a development environment of the Azure IPAM solution via Docker Compose, run the following commands from the root directory of the project:
+To start the development environment, run the following from the root of the repository:
 
-```shell
+```bash
 # Build the Container Images
 docker compose build --no-cache
 
-# Start IPAM Development Environment
+# Start the Development Environment
 docker compose up --force-recreate
 
-# Stop & Remove Containers when Finished
+# Stop and Remove the Containers When Finished
 docker compose rm -s -v -f
 ```
 
-## Building Production Containers Images and Pushing them to DockerHub
+## Building Production Container Images and Pushing Them to Docker Hub
 
-We use Dockerfiles to build the containers for the Azure IPAM solution and have three located in the root directory of the project. One is designed for use when running inside a solution such as Azure App Services (as well as other containerized environments), one specifically designed for running inside Azure Functions, and one for RHEL-based deployments. If you choose, you can build these containers yourself and host them in DockerHub.
+The root of the repository has three Dockerfiles:
 
-To do so, run the following Docker commands from the root directory of the project:
+- **`Dockerfile.deb`:** the Debian-based image for App Service and other container platforms
+- **`Dockerfile.rhel`:** the Red Hat Enterprise Linux (RHEL) based image for the same platforms
+- **`Dockerfile.func`:** the image for Azure Functions
 
-```shell
-# App Services Container (Debian)
-docker build --rm --no-cache -t <Repository Name>/ipam:latest -f ./Dockerfile.deb .
-docker push <Repository Name>/ipam:latest
+To build these images yourself and host them on Docker Hub, run the following from the root of the repository:
 
-# App Services Container (RHEL)
-docker build --rm --no-cache -t <Repository Name>/ipam:latest -f ./Dockerfile.rhel .
-docker push <Repository Name>/ipam:latest
+```bash
+# App Service Container (Debian)
+docker build --rm --no-cache -t "<docker-hub-namespace>/ipam:latest" -f ./Dockerfile.deb .
+docker push "<docker-hub-namespace>/ipam:latest"
+
+# App Service Container (RHEL)
+docker build --rm --no-cache -t "<docker-hub-namespace>/ipam:latest" -f ./Dockerfile.rhel .
+docker push "<docker-hub-namespace>/ipam:latest"
 
 # Function Container
-docker build --rm --no-cache -t <Repository Name>/ipamfunc:latest -f ./Dockerfile.func .
-docker push <Repository Name>/ipamfunc:latest
+docker build --rm --no-cache -t "<docker-hub-namespace>/ipamfunc:latest" -f ./Dockerfile.func .
+docker push "<docker-hub-namespace>/ipamfunc:latest"
 ```
 
 ## Building and Updating Production Container Images Using a Private ACR
 
-In addition to the DockerHub option (above), alternatively you may choose to leverage an Azure Container Registry to host your Azure IPAM containers. Also, you may have selected the `-PrivateACR` flag during the deployment of your Azure IPAM environment, and from time to time you will need to update your containers as new code is released.
+You can also host the Azure IPAM images in your own Azure Container Registry. If you deployed Azure IPAM with `-PrivateACR`, its images are already there, and you need to rebuild them when a new version is released.
 
-Before running the update commands, you'll need to authenticate to the Azure CLI
+The [update script](/update/README.md) rebuilds them for you when the registry is in the same resource group as the App Service or Function App. Use the following commands when it isn't, or when you want to build the images yourself.
 
-```shell
-# Authenticate to Azure CLI
+First, sign in to Azure CLI:
+
+```bash
+# Sign in to Azure CLI
 az login
 
-# Set Target Azure Subscription
-az account set --subscription "<Target Subscription Name/GUID>"
+# Set the Target Subscription
+az account set --subscription "<subscription-name-or-id>"
 ```
 
-Next, use the following commands to update the Azure IPAM containers within your private Azure Container Registry
+Then run the following from the root of the repository to build the images in your registry:
 
-```shell
-# App Services Container (Debian)
-az acr build -r <ACR Name> -t ipam:latest -f ./Dockerfile.deb .
+```bash
+# App Service Container (Debian)
+az acr build -r "<your-ipam-acr>" -t ipam:latest -f ./Dockerfile.deb .
 
-# App Services Container (RHEL)
-az acr build -r <ACR Name> -t ipam:latest -f ./Dockerfile.rhel .
+# App Service Container (RHEL)
+az acr build -r "<your-ipam-acr>" -t ipam:latest -f ./Dockerfile.rhel .
 
 # Function Container
-az acr build -r <ACR Name> -t ipamfunc:latest -f ./Dockerfile.func .
+az acr build -r "<your-ipam-acr>" -t ipamfunc:latest -f ./Dockerfile.func .
 ```
 
-If you're using the legacy Azure IPAM multi-container deployment (prior to v3.0.0), please use the following commands to update your containers instead
+Restart the App Service or Function App afterwards, so it pulls the new image.
 
-```shell
+If you're using the legacy multi-container deployment from before v3.0.0, use the following commands to update its images instead:
+
+```bash
 # Engine Container
-az acr build -r <ACR Name> -t ipam-engine:latest -f ./engine/Dockerfile.deb ./engine
+az acr build -r "<your-ipam-acr>" -t ipam-engine:latest -f ./engine/Dockerfile.deb ./engine
 
 # Function Container
-az acr build -r <ACR Name> -t ipam-func:latest -f ./engine/Dockerfile.func ./engine
+az acr build -r "<your-ipam-acr>" -t ipam-func:latest -f ./engine/Dockerfile.func ./engine
 
 # UI Container
-az acr build -r <ACR Name> -t ipam-ui:latest -f ./ui/Dockerfile.deb ./ui
+az acr build -r "<your-ipam-acr>" -t ipam-ui:latest -f ./ui/Dockerfile.deb ./ui
 
 # Load Balancer Container
-az acr build -r <ACR Name> -t ipam-lb:latest -f ./lb/Dockerfile ./lb
+az acr build -r "<your-ipam-acr>" -t ipam-lb:latest -f ./lb/Dockerfile ./lb
 ```
+
+> **IMPORTANT:** The legacy multi-container deployment runs on Docker Compose, which App Service retires on March 31, 2027. Move to the current deployment by following the [Azure IPAM Legacy Migration Guide](/migration/README.md).
