@@ -1259,6 +1259,12 @@ process {
   Write-Host "NOTE: IPAM Deployment Type: $($PSCmdlet.ParameterSetName)" -ForegroundColor Magenta
 
   try {
+    # Only private ACR deployments build an image, and the public registry publishes Debian only
+    if (($ContainerType -eq 'RHEL') -and (-not $PrivateAcr)) {
+      Write-Host "ERROR: -ContainerType RHEL requires -PrivateACR, as the public Azure IPAM registry only provides Debian images!" -ForegroundColor Red
+      exit 1
+    }
+
     if ($PrivateAcr) {
       Write-Host "INFO: PrivateACR flag set, verifying minimum Azure CLI version" -ForegroundColor Green
 
