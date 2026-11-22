@@ -191,7 +191,7 @@ export default function EditBlock(props) {
               title={
                 <>
                   - Must be in valid CIDR notation format
-                  <br />- Example: 1.2.3.4/5
+                  <br />- Example: 10.1.0.0/16
                 </>
               }
             >

@@ -314,7 +314,7 @@ export default function EditExtNetwork(props) {
               title={
                 <>
                   - Must be in valid CIDR notation format
-                  <br />&nbsp;&nbsp;&nbsp;&nbsp;- Example: 1.2.3.4/5
+                  <br />&nbsp;&nbsp;&nbsp;&nbsp;- Example: 10.1.5.0/24
                   <br />- Cannot overlap existing subnets
                 </>
               }
