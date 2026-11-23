@@ -42,7 +42,7 @@ For the principles behind these rules, see the [Roles & Permissions](/roles-perm
 
 Never check whether the caller is an administrator, and never hand-write an "admin only" note or a `403` response. Declare the permission a route or decision needs, and let both enforcement and the documentation come from that declaration.
 
-Permissions live in `app/permissions.py`. Each `Permission` is a `resource/action` pair, such as `externals/update`, where the action matches the HTTP method: `read`, `create`, `update` or `delete`. The qualifier `/all` means "not just your own", as in `reservations/read/all`. Each `Role` defines a stable `id`, the `name` and `description` shown to people, and the permissions the role holds. `ROLES` lists every role by `id`, and `GET /roles` publishes the same definitions, so the API and the UI describe roles from one place.
+Permissions live in `engine/app/permissions.py`. Each `Permission` is a `resource/action` pair, such as `externals/update`, where the action matches the HTTP method: `read`, `create`, `update` or `delete`. A permission that guards a parameter rather than a method is named for the parameter instead, as `spaces/expand` guards `expand`. The qualifier `/all` means "not just your own", as in `reservations/read/all`. Each `Role` defines a stable `id`, the `name` and `description` shown to people, and the permissions the role holds. `ROLES` lists every role by `id`, and `GET /roles` publishes the same definitions, so the API and the UI describe roles from one place.
 
 A permission exists for each decision the code makes about access, even when every current role holds it. `associations/read` and `externals/read` are held by both roles today, so no one is refused, but they let a future role be denied access without changing any routes. Don't add a permission for something the code doesn't decide, such as reading Spaces or creating your own Reservations.
 
@@ -72,15 +72,15 @@ async def get_spaces(
 When a route is open to everyone but what it returns depends on the caller, ask the caller's grants:
 
 ```python
-async def get_block_reservations(..., grants: Grants = Depends(get_grants)):
+async def get_block_reservation(..., grants: Grants = Depends(get_grants)):
     if not grants.can(Permission.RESERVATIONS_READ_ALL):
         ...
 ```
 
-The OpenAPI generator in `app/openapi.py` walks each route's dependency tree and annotates what it finds:
+The OpenAPI generator in `engine/app/openapi.py` walks each route's dependency tree and annotates what it finds:
 
-- **A route gate** for a permission the User role doesn't hold appends `(Admin Only)` to the operation summary and attaches a documented `403`.
-- **A parameter gate** marks only the parameter it guards, because the endpoint itself is not restricted.
+- **A route gate** for a permission the User role doesn't hold appends `(Admin Only)` to the operation summary, notes the requirement at the top of its description and attaches a documented `403`.
+- **A parameter gate** appends `(Admin Only)` to the parameter it guards rather than the summary, because the endpoint itself is not restricted. It still notes at the top of the description that some parameters require an administrator, and attaches the `403`.
 
 You can see the result in the [API](/api/README.md) documentation, where admin-restricted operations are labeled in the endpoint list.
 
@@ -127,7 +127,7 @@ For guidance on obtaining a token and calling the API, see the [API](/api/README
 
 Use `aiohttp` for outbound HTTP requests. Both `requests` and `httpx` are banned, and ruff enforces the ban.
 
-Synchronous clients validate TLS against the bundled `certifi` roots and cannot see the sovereign cloud roots injected through `WEBSITES_INCLUDE_CLOUD_CERTS`. Code that uses them passes every commercial cloud test and then fails in secret clouds, where the failure is expensive to diagnose.
+`requests` and `httpx` validate TLS against the `certifi` roots bundled with them, so they can't see the sovereign cloud roots that `WEBSITES_INCLUDE_CLOUD_CERTS` adds to the system certificate store, which `aiohttp` uses. Code that uses them passes every commercial cloud test and then fails in secret clouds, where the failure is expensive to diagnose.
 
 The ban lives in `engine/pyproject.toml` under `flake8-tidy-imports.banned-api`, so you will catch it at lint time rather than at deployment time.
 
@@ -155,31 +155,35 @@ The notification framework keeps each detector's last successful result and reus
 
 That is exactly what used to happen. The registry and update detectors both caught their own errors, so a brief Azure Resource Manager or GitHub failure hid their notifications until the next successful check, including the critical one for deployments still pulling from the legacy registry.
 
-When an upstream service asks you to wait, as GitHub does after a rate limit, raise `RetryAfter` from `app/notifications/errors.py` with the number of seconds it asked for. The detector won't run again until that time has passed, even when someone selects **Refresh**.
+When an upstream service asks you to wait, as GitHub does after a rate limit, raise `RetryAfter` from `engine/app/notifications/errors.py` with the number of seconds it asked for. The detector won't run again until that time has passed, even when someone selects **Refresh**.
 
-Register each detector in `app/notifications/detectors/__init__.py` with a maximum age and a minimum interval that suit what it calls. A detector that only reads local state can use `0` for both and run on every request. One that calls an external service should keep well clear of that service's limits, remembering that every engine instance runs its detectors independently.
+A condition that retrying won't change is an answer, not a failure. When Key Vault reports that the client secret is missing or disabled, or denies access to it, the `secret_expiry` detector logs a warning once and returns an empty list, because a deployment that doesn't keep its secret in Key Vault has no expiration date to warn about. Any other error from Key Vault still raises.
 
-When a change made through Azure IPAM itself alters what a detector reports, call `recheck` from `app/notifications` with the detector's name once the change is saved, as the admin endpoints do for the `setup` detector. The notification then reflects the change on the next request rather than after the detector's maximum age, which only has to bound how long another engine instance can lag behind.
+Register each detector in `engine/app/notifications/detectors/__init__.py` with a maximum age and a minimum interval that suit what it calls. A detector that only reads local state can use `0` for both and run on every request. One that calls an external service should keep well clear of that service's limits, remembering that every engine instance runs its detectors independently.
+
+When a change made through Azure IPAM itself alters what a detector reports, call `recheck` from `engine/app/notifications` with the detector's name once the change is saved, as the admin endpoints do for the `setup` detector. The notification then reflects the change on the next request rather than after the detector's maximum age, which only has to bound how long another engine instance can lag behind.
 
 Write every notification `message` as a triple-quoted string, however short, wrapped wherever reads best (an f-string if it includes values). Write every `title` as an ordinary single-line string, and keep shared sentences that are inserted into messages, such as `REASON`, as ordinary strings too. Don't split text into adjacent string literals. That style makes every author decide where to break the text, and a missing space at the end of one piece silently runs two words together. The `Notification` model normalizes the text for you: the title is collapsed onto one line, and each paragraph of the message is joined into one, so line breaks and indentation in the source never reach the reader. Separate paragraphs with a blank line. The interface displays them as separate paragraphs.
 
 ## Engine Credentials
 
-Create every Azure credential for the Engine app registration with `get_client_credentials()` or `get_obo_credentials()` in `app/routers/common/helper.py`. Never construct a `ClientSecretCredential` or `OnBehalfOfCredential` yourself.
+Create every Azure credential for the Engine app registration with `get_client_credentials()` or `get_obo_credentials()` in `engine/app/routers/common/helper.py`. Never construct a `ClientSecretCredential` or `OnBehalfOfCredential` yourself.
 
-Those two functions return credentials that classify each sign-in and record its outcome in `app/engine_access.py`. That record is how Azure IPAM tells everyone its client secret has expired, or that Conditional Access is blocking it, without making a single call of its own to find out. It's also how an error response knows whose fault a failure is. A sign-in that bypasses them is invisible to both, and a request made on a user's behalf goes back to telling them *your credentials may be expired or invalid* when the problem is Azure IPAM's own secret, sending them off to fix something that isn't broken.
+Those two functions return credentials that classify each sign-in and record its outcome in `engine/app/engine_access.py`. That record is how Azure IPAM tells everyone its client secret has expired, or that Conditional Access is blocking it, without making a single call of its own to find out. It's also how an error response knows whose fault a failure is. A sign-in that bypasses them is invisible to both, and a request made on a user's behalf goes back to telling them *your credentials may be expired or invalid* when the problem is Azure IPAM's own secret, sending them off to fix something that isn't broken.
 
-Resource Graph queries follow the same rule. Run them through `arg_query()` or `arg_query_helper()`, and pass `app_only=True` whenever the query runs as Azure IPAM itself. A successful query as the engine is what proves its Reader role is intact, and a denied one is what reports it missing. Without `app_only`, a missing role is mistaken for a user who simply can't see the resource.
+Resource Graph queries follow the same rule. Run them through `arg_query()` or `arg_query_helper()`. `arg_query()` takes a `scope`, and any scope other than `AzureScope.CALLER` runs the query as Azure IPAM itself. `arg_query_helper()` takes the credentials directly, so pass `app_only=True` whenever they're Azure IPAM's own. A successful query as the engine is what proves its Reader role is intact, and a denied one is what reports it missing. Without `app_only`, a missing role is mistaken for a user who simply can't see the resource.
 
-Ruff enforces the first half of this through `banned-api` in `engine/pyproject.toml`, which rejects importing either credential class anywhere except `app/engine_access.py`. Managed identity credentials, used for Cosmos DB and the App Service configuration, belong to a separate identity and aren't affected.
+Ruff enforces the first half of this through `banned-api` in `engine/pyproject.toml`, which rejects importing either credential class anywhere except `engine/app/engine_access.py`. Managed identity credentials, used for Cosmos DB, Key Vault and the App Service configuration, belong to a separate identity and aren't affected.
 
 ## Container Base Images
 
-Pin each base image to a Python version and an operating system release, and nothing finer. `python:3.12-slim-trixie` is the pattern to follow: Python 3.12 on Debian 13, with whatever patch release and security fixes are current when the image is built.
+Pin each Python base image to a Python version and an operating system release, and nothing finer. `python:3.12-slim-trixie` is the pattern to follow: Python 3.12 on Debian 13, with whatever patch release and security fixes are current when the image is built.
 
 Each of the alternatives fails in its own way. A tag such as `python:3.11-slim` follows whichever Debian release is current, so when Debian 13 came out, Azure IPAM's App Service images quietly moved onto it at their next build without anything in this repository changing. Pin a patch release or an image digest instead, and security fixes stop arriving at all until someone remembers the pin is there. Pinning to the Python version and operating system release sits between the two: routine updates arrive on their own, and the big changes only happen when someone decides they should.
 
 The Function App image is the one exception. Microsoft doesn't publish an operating system variant of `azure-functions/python:4-python3.12-appservice`, so it runs on whichever release Microsoft chooses, Debian 12 at the moment. It's worth checking which one whenever you revisit the images.
+
+The Node image only builds the interface. Its output is copied into the Python image, so it's pinned to a Node version alone. The legacy `ipam-ui` and `ipam-lb` images, still published for Docker Compose deployments, run on `node:22-slim` and `nginx:alpine` and aren't covered by this rule.
 
 Each tag lives in more than one place, and they all need to change together:
 
