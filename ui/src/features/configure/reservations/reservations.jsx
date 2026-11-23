@@ -1,4 +1,4 @@
-import * as React from "react";
+import { createContext, Fragment, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useLocation } from "react-router";
 
@@ -110,7 +110,7 @@ const MESSAGE_MAP = {
   }
 };
 
-const ReservationContext = React.createContext({});
+const ReservationContext = createContext({});
 
 function ReservationStatus(props) {
   const { value } = props;
@@ -160,7 +160,7 @@ function ReservationStatus(props) {
 
 function ReservationId(props) {
   const { value } = props;
-  const { copied, setCopied } = React.use(ReservationContext);
+  const { copied, setCopied } = use(ReservationContext);
 
   const contentCopied = (value.id !== null && copied === value.id);
   const hidden = (value.id === null);
@@ -234,29 +234,29 @@ const Reservations = () => {
 
   const location = useLocation();
 
-  const [spaceInput, setSpaceInput] = React.useState('');
-  const [blockInput, setBlockInput] = React.useState('');
+  const [spaceInput, setSpaceInput] = useState('');
+  const [blockInput, setBlockInput] = useState('');
 
-  const [selectedSpace, setSelectedSpace] = React.useState(location.state?.space || null);
-  const [selectedBlock, setSelectedBlock] = React.useState(location.state?.block || null);
+  const [selectedSpace, setSelectedSpace] = useState(location.state?.space || null);
+  const [selectedBlock, setSelectedBlock] = useState(location.state?.block || null);
 
-  const [refreshing, setRefreshing] = React.useState(false);
-  const [filterActive, setFilterActive] = React.useState(true);
-  const [reservations, setReservations] = React.useState([]);
-  const [selectedRows, setSelectedRows] = React.useState([]);
-  const [copied, setCopied] = React.useState("");
-  const [sending, setSending] = React.useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [filterActive, setFilterActive] = useState(true);
+  const [reservations, setReservations] = useState([]);
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [copied, setCopied] = useState("");
+  const [sending, setSending] = useState(false);
 
-  const [newResvOpen, setNewResvOpen] = React.useState(location.state?.cidr ? true : false);
+  const [newResvOpen, setNewResvOpen] = useState(location.state?.cidr ? true : false);
 
   const spaces = useSelector(selectSpaces);
   const blocks = useSelector(selectBlocks);
 
-  const msgTimerRef = React.useRef(null);
+  const msgTimerRef = useRef(null);
 
   const dispatch = useDispatch();
 
-  const columns = React.useMemo(() => [
+  const columns = useMemo(() => [
     { field: "cidr", headerName: "CIDR", flex: 0.5 },
     { field: "createdBy", headerName: "Created By", flex: 1 },
     { field: "desc", headerName: "Description", flex: 1.5 },
@@ -310,11 +310,11 @@ const Reservations = () => {
     }
   ], []);
 
-  const actionsCellRenderer = React.useCallback((params) => {
+  const actionsCellRenderer = useCallback((params) => {
     return <ReservationId value={params.data} />;
   }, []);
 
-  const extraMenuItems = React.useMemo(() => [
+  const extraMenuItems = useMemo(() => [
     {
       icon: filterActive ? VisibilityOffOutlined : VisibilityOutlined,
       label: filterActive ? 'Showing Active' : 'Showing All',
@@ -328,19 +328,19 @@ const Reservations = () => {
     }
   ], [filterActive, selectedSpace, selectedBlock]);
 
-  const onRowSelectionChanged = React.useCallback((rows) => {
+  const onRowSelectionChanged = useCallback((rows) => {
     setSelectedRows(rows);
   }, []);
 
   // Derive filtered grid data synchronously to prevent a flash of
   // the no-rows overlay when reservations or filter state changes.
-  const gridData = React.useMemo(() => {
+  const gridData = useMemo(() => {
     const visible = filterActive ? reservations.filter(x => x.settledOn === null) : reservations;
 
     return visible.map(x => ({ ...x, rowKey: reservationKey(x) }));
   }, [reservations, filterActive]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(copied !== "") {
       clearTimeout(msgTimerRef.current);
 
@@ -352,7 +352,7 @@ const Reservations = () => {
     }
   }, [msgTimerRef, copied]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (spaces) {
       if (selectedSpace) {
         const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
@@ -373,7 +373,7 @@ const Reservations = () => {
     }
   }, [spaces, selectedSpace]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (blocks) {
       if (selectedBlock) {
         const blockIndex = blocks.findIndex((x) => x.id === selectedBlock.id);
@@ -397,7 +397,7 @@ const Reservations = () => {
     }
   }, [blocks, selectedBlock]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedSpace && selectedBlock) {
       if (selectedBlock.parent_space !== selectedSpace.name) {
         setSelectedBlock(null);
@@ -405,7 +405,7 @@ const Reservations = () => {
     }
   }, [selectedSpace, selectedBlock]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isEmpty(reservations)) {
       setSelectedRows((prev) => {
         return prev.filter(row => reservations.find(x => x.id === row.id));
@@ -415,7 +415,7 @@ const Reservations = () => {
     }
   }, [reservations]);
 
-  const refresh = React.useCallback(() => {
+  const refresh = useCallback(() => {
     (async() => {
       try {
         setRefreshing(true);
@@ -451,9 +451,9 @@ const Reservations = () => {
     })();
   }
 
-  const noRowsOverlay = React.useMemo(() => {
+  const noRowsOverlay = useMemo(() => {
     return (
-      <React.Fragment>
+      <Fragment>
         { selectedBlock
           ? <Typography
               variant="overline"
@@ -476,7 +476,7 @@ const Reservations = () => {
               Please Select a Space & Block
             </Typography>
         }
-      </React.Fragment>
+      </Fragment>
     );
   }, [selectedBlock, filterActive]);
 
@@ -522,10 +522,10 @@ const Reservations = () => {
                     input: {
                       ...params.slotProps.input,
                       endAdornment: (
-                        <React.Fragment>
+                        <Fragment>
                           {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
                           {params.slotProps.input.endAdornment}
-                        </React.Fragment>
+                        </Fragment>
                       ),
                     }
                   }}

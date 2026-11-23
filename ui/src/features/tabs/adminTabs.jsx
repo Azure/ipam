@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { Fragment } from 'react';
 import { Link, useLocation } from "react-router";
 
 import Tabs from '@mui/material/Tabs';
@@ -44,7 +44,7 @@ export default function AdminTabs() {
 
   return (
     <Box sx={{ width: '100%', height: 'calc(100vh - 64px)'}}>
-      <React.Fragment>
+      <Fragment>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={allTabs.indexOf(location.pathname)}>
             <Tab label="Admins" component={Link} to={allTabs[0]} {...a11yProps(0)} />
@@ -55,7 +55,7 @@ export default function AdminTabs() {
         <TabPanel value={allTabs.indexOf(location.pathname)} index={0}><Administration /></TabPanel>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={1}><ManageExclusions /></TabPanel>
         {/* <TabPanel value={allTabs.indexOf(location.pathname)} index={2}><AdminSettings /></TabPanel> */}
-      </React.Fragment>
+      </Fragment>
     </Box>
   );
 }

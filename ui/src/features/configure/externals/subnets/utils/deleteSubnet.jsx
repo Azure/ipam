@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { styled } from "@mui/material/styles";
 
@@ -33,9 +33,9 @@ export default function DeleteExtSubnet(props) {
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const [force, setForce] = React.useState(false);
-  const [verify, setVerify] = React.useState(false);
-  const [sending, setSending] = React.useState(false);
+  const [force, setForce] = useState(false);
+  const [verify, setVerify] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const dispatch = useDispatch();
 

@@ -1,4 +1,4 @@
-import * as React from "react";
+import { Fragment, use, useCallback, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 
 import { cloneDeep } from "lodash-es";
@@ -35,23 +35,23 @@ const Networks = (props) => {
     setExternals,
     setSelectedExternal
   } = props;
-  const { refreshing } = React.use(ExternalContext);
+  const { refreshing } = use(ExternalContext);
 
-  const [addExtOpen, setAddExtOpen] = React.useState(false);
-  const [editExtOpen, setEditExtOpen] = React.useState(false);
-  const [delExtOpen, setDelExtOpen] = React.useState(false);
+  const [addExtOpen, setAddExtOpen] = useState(false);
+  const [editExtOpen, setEditExtOpen] = useState(false);
+  const [delExtOpen, setDelExtOpen] = useState(false);
 
   const isAdmin = useSelector(getAdminStatus);
 
   // Column definitions for AG Grid
-  const columns = React.useMemo(() => [
+  const columns = useMemo(() => [
     { field: "name", headerName: "Name", flex: 0.5 },
     { field: "desc", headerName: "Description", flex: 1 },
     { field: "cidr", headerName: "CIDR", flex: 0.30 },
   ], []);
 
   // Extra menu items for Add/Edit/Delete actions
-  const extraMenuItems = React.useMemo(() => [
+  const extraMenuItems = useMemo(() => [
     {
       icon: AddOutlined,
       label: "Add Network",
@@ -73,13 +73,13 @@ const Networks = (props) => {
   ], [selectedSpace, selectedBlock, selectedExternal, isAdmin]);
 
   // Handle row selection change
-  const handleRowSelectionChanged = React.useCallback((row) => {
+  const handleRowSelectionChanged = useCallback((row) => {
     setSelectedExternal(row);
   }, [setSelectedExternal]);
 
   // Derive grid data synchronously from selectedBlock to prevent
   // a flash of the no-rows overlay between selection and data display.
-  const gridData = React.useMemo(() => {
+  const gridData = useMemo(() => {
     if (!selectedBlock) return [];
 
     const newExternals = cloneDeep(selectedBlock['externals']);
@@ -93,19 +93,19 @@ const Networks = (props) => {
   }, [selectedSpace, selectedBlock]);
 
   // Sync enriched externals data to parent state (for dialogs, selection tracking, etc.)
-  React.useEffect(() => {
+  useEffect(() => {
     setExternals(gridData);
   }, [gridData, setExternals]);
 
   // Clear selection when externals change
-  React.useEffect(() => {
+  useEffect(() => {
     if (!externals || externals.length === 0) {
       setSelectedExternal(null);
     }
   }, [externals, setSelectedExternal]);
 
   // No rows overlay component
-  const noRowsOverlay = React.useMemo(() => {
+  const noRowsOverlay = useMemo(() => {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
         <Typography
@@ -124,9 +124,9 @@ const Networks = (props) => {
   }, [selectedBlock]);
 
   return (
-    <React.Fragment>
+    <Fragment>
       {isAdmin &&
-        <React.Fragment>
+        <Fragment>
           <AddExtNetwork
             open={addExtOpen}
             handleClose={() => setAddExtOpen(false)}
@@ -149,7 +149,7 @@ const Networks = (props) => {
             block={selectedBlock ? selectedBlock.name : null}
             external={selectedExternal ? selectedExternal.name : null}
           />
-        </React.Fragment>
+        </Fragment>
       }
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
         <Box sx={{ display: 'flex', height: '35px', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(224, 224, 224, 1)', borderBottom: 'none' }}>
@@ -171,7 +171,7 @@ const Networks = (props) => {
           />
         </Box>
       </Box>
-    </React.Fragment>
+    </Fragment>
   );
 }
 

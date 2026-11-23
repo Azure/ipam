@@ -1,4 +1,4 @@
-import React from "react";
+import { useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router";
 
@@ -39,7 +39,7 @@ export default function DrillDownCellRenderer(props) {
 
   const navigate = useNavigate();
   const drillIndex = useSelector(selectDrillIndex);
-  const [menuAnchor, setMenuAnchor] = React.useState(null);
+  const [menuAnchor, setMenuAnchor] = useState(null);
 
   const activeTargets = targets.filter((target) => {
     const key = drillKey(data?.[target.keyFrom]);

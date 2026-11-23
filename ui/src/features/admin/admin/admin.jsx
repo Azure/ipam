@@ -1,4 +1,4 @@
-import * as React from "react";
+import { createContext, Fragment, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from 'react-redux';
 import { styled } from '@mui/material/styles';
 
@@ -44,7 +44,7 @@ import {
   callMsGraphPrincipalsFilter
 } from "../../../msal/graph";
 
-const AdminContext = React.createContext({});
+const AdminContext = createContext({});
 
 // Page Styles
 
@@ -97,7 +97,7 @@ const GridBody = styled("div")({
 
 function RenderDelete(props) {
   const { data } = props;
-  const { admins, setAdmins, selectedId } = React.use(AdminContext);
+  const { admins, setAdmins, selectedId } = use(AdminContext);
 
   const flexCenter = {
     display: "flex",
@@ -177,22 +177,22 @@ export default function Administration() {
   const { enqueueSnackbar } = useSnackbar();
   const dispatch = useDispatch();
 
-  const [admins, setAdmins] = React.useState(null);
-  const [loadedAdmins, setLoadedAdmins] = React.useState(null);
-  const [selectedId, setSelectedId] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
+  const [admins, setAdmins] = useState(null);
+  const [loadedAdmins, setLoadedAdmins] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const [open, setOpen] = React.useState(false);
-  const [options, setOptions] = React.useState(null);
-  const [input, setInput] = React.useState("");
-  const [selected, setSelected] = React.useState(null);
-  const [sending, setSending] = React.useState(false);
+  const [open, setOpen] = useState(false);
+  const [options, setOptions] = useState(null);
+  const [input, setInput] = useState("");
+  const [selected, setSelected] = useState(null);
+  const [sending, setSending] = useState(false);
 
-  const [appSearch, setAppSearch] = React.useState(false);
+  const [appSearch, setAppSearch] = useState(false);
 
-  const adminLoadedRef = React.useRef(false);
+  const adminLoadedRef = useRef(false);
 
-  const columns = React.useMemo(() => [
+  const columns = useMemo(() => [
     {
       field: "type",
       headerName: "",
@@ -214,14 +214,14 @@ export default function Administration() {
     { field: "id", headerName: "Object ID", flex: 0.75, filter: true }
   ], []);
 
-  const actionsCellRenderer = React.useCallback((params) => {
+  const actionsCellRenderer = useCallback((params) => {
     return <RenderDelete data={params.data} />;
   }, []);
 
   const usersLoading = open && !options;
   const unchanged = isEqual(admins, loadedAdmins);
 
-  const SearchUsers = React.useCallback((nameFilter) => {
+  const SearchUsers = useCallback((nameFilter) => {
     (async () => {
       try {
         setOptions(null);
@@ -237,9 +237,9 @@ export default function Administration() {
     })();
   }, [appSearch, enqueueSnackbar]);
 
-  const fetchUsers = React.useMemo(() => throttle((input) => SearchUsers(input), 500), [SearchUsers]);
+  const fetchUsers = useMemo(() => throttle((input) => SearchUsers(input), 500), [SearchUsers]);
 
-  const refreshData = React.useCallback(() => {
+  const refreshData = useCallback(() => {
     (async () => {
       try {
         const data = await getAdmins();
@@ -255,7 +255,7 @@ export default function Administration() {
     })();
   }, [enqueueSnackbar]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(!adminLoadedRef.current) {
       adminLoadedRef.current = true;
 
@@ -263,7 +263,7 @@ export default function Administration() {
     }
   }, [refreshData]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(open) {
       let active = true;
 
@@ -277,13 +277,13 @@ export default function Administration() {
     }
   }, [open, input, fetchUsers]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) {
       setOptions(null);
     }
   }, [input, open]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     admins && setLoading(false);
   }, [admins]);
 
@@ -331,14 +331,14 @@ export default function Administration() {
     setAppSearch((current) => !current);
   };
 
-  const handleRowClicked = React.useCallback((event) => {
+  const handleRowClicked = useCallback((event) => {
     const data = event.data;
     setSelectedId(prevId => prevId === data.id ? null : data.id);
   }, []);
 
-  const noRowsOverlay = React.useMemo(() => {
+  const noRowsOverlay = useMemo(() => {
     return (
-      <React.Fragment>
+      <Fragment>
         <Shrug />
         <Typography
           variant="overline"
@@ -348,7 +348,7 @@ export default function Administration() {
           }}>
           Nothing yet...
         </Typography>
-      </React.Fragment>
+      </Fragment>
     );
   }, []);
 
@@ -432,10 +432,10 @@ export default function Administration() {
                       input: {
                         ...params.slotProps.input,
                         endAdornment: (
-                          <React.Fragment>
+                          <Fragment>
                             {usersLoading ? <CircularProgress color="inherit" size={20} /> : null}
                             {params.slotProps.input.endAdornment}
-                          </React.Fragment>
+                          </Fragment>
                         ),
                         style: {
                           borderRadius: "0px 4px 4px 0px"

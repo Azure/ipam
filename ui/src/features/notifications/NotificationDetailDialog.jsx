@@ -1,4 +1,4 @@
-import React from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router';
 import { useSnackbar } from 'notistack';
@@ -36,11 +36,11 @@ function NotificationDetailDialog({ notification, open, onClose, onDismiss }) {
   const { enqueueSnackbar } = useSnackbar();
   const isAdmin = useSelector(getAdminStatus);
 
-  const [submitting, setSubmitting] = React.useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const id = notification?.id;
 
-  React.useEffect(() => {
+  useEffect(() => {
     setSubmitting(false);
   }, [id, open]);
 
@@ -105,7 +105,7 @@ function NotificationDetailDialog({ notification, open, onClose, onDismiss }) {
 
   if (notification.dismissible || primaryActions.length > 0) {
     footer = (
-      <React.Fragment>
+      <Fragment>
         {notification.dismissible && (
           <Button color="inherit" disabled={submitting} onClick={handleDismiss}>
             Dismiss
@@ -151,7 +151,7 @@ function NotificationDetailDialog({ notification, open, onClose, onDismiss }) {
             button
           );
         })}
-      </React.Fragment>
+      </Fragment>
     );
   } else {
     footer = null;

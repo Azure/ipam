@@ -1,14 +1,14 @@
-import * as React from "react";
+import { useCallback, useRef } from "react";
 import Paper from "@mui/material/Paper";
 
 const HANDLE_SELECTOR = "#draggable-dialog-title";
 const CANCEL_SELECTOR = '[class*="MuiDialogContent-root"]';
 
 export default function DraggablePaper(props) {
-  const paperRef = React.useRef(null);
-  const dragStateRef = React.useRef(null);
+  const paperRef = useRef(null);
+  const dragStateRef = useRef(null);
 
-  const handlePointerDown = React.useCallback((e) => {
+  const handlePointerDown = useCallback((e) => {
     const handle = paperRef.current?.querySelector(HANDLE_SELECTOR);
 
     // Only initiate drag if the pointer is on the handle element
@@ -34,7 +34,7 @@ export default function DraggablePaper(props) {
     e.target.setPointerCapture(e.pointerId);
   }, []);
 
-  const handlePointerMove = React.useCallback((e) => {
+  const handlePointerMove = useCallback((e) => {
     if (!dragStateRef.current || !paperRef.current) return;
 
     const { startX, startY, offsetX, offsetY, parentWidth, parentHeight, elWidth, elHeight } =
@@ -54,7 +54,7 @@ export default function DraggablePaper(props) {
     paperRef.current.style.left = "0";
   }, []);
 
-  const handlePointerUp = React.useCallback(() => {
+  const handlePointerUp = useCallback(() => {
     dragStateRef.current = null;
   }, []);
 

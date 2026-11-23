@@ -1,4 +1,4 @@
-import React from 'react';
+import { createElement } from 'react';
 
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
@@ -24,5 +24,5 @@ export function getSeverityColor(severity) {
 export function SeverityIcon({ severity, ...props }) {
   const icon = SEVERITY_ICON[getSeverityColor(severity)] ?? InfoOutlinedIcon;
 
-  return React.createElement(icon, props);
+  return createElement(icon, props);
 }

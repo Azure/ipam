@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { createContext, Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { styled } from '@mui/material/styles';
 
@@ -35,7 +35,7 @@ import {
   refreshAllAsync
 } from '../../ipam/ipamSlice';
 
-const ExclusionContext = React.createContext({});
+const ExclusionContext = createContext({});
 
 // Page Styles
 
@@ -94,22 +94,22 @@ const GridBody = styled("div")(({ theme }) => ({
 export default function ManageExclusions() {
   const { enqueueSnackbar } = useSnackbar();
 
-  const [loading, setLoading] = React.useState(true);
-  const [sending, setSending] = React.useState(false);
-  const [selected, setSelected] = React.useState({});
-  const [loadedExclusions, setLoadedExclusions] = React.useState(null);
-  const [showExcludedOnly, setShowExcludedOnly] = React.useState(false);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [selected, setSelected] = useState({});
+  const [loadedExclusions, setLoadedExclusions] = useState(null);
+  const [showExcludedOnly, setShowExcludedOnly] = useState(false);
 
   const subscriptions = useSelector(selectSubscriptions);
   const dispatch = useDispatch();
 
-  const dataLoadedRef = React.useRef(false);
+  const dataLoadedRef = useRef(false);
 
   const theme = useTheme();
 
   const unchanged = isEqual(selected, loadedExclusions);
 
-  const columns = React.useMemo(() => [
+  const columns = useMemo(() => [
     { field: "name", headerName: "Subscription Name", flex: 1 },
     { field: "subscription_id", headerName: "Subscription ID", flex: 1 },
     { field: "type", headerName: "Subscription Type", flex: 0.75 },
@@ -117,7 +117,7 @@ export default function ManageExclusions() {
     { field: "mg_id", headerName: "Management Group ID", flex: 0.75, hide: true }
   ], []);
 
-  const gridData = React.useMemo(() => {
+  const gridData = useMemo(() => {
     if (!subscriptions) return [];
     if (showExcludedOnly) {
       return subscriptions.filter(sub => selected[sub.id]);
@@ -125,7 +125,7 @@ export default function ManageExclusions() {
     return subscriptions;
   }, [subscriptions, selected, showExcludedOnly]);
 
-  const extraMenuItems = React.useMemo(() => [
+  const extraMenuItems = useMemo(() => [
     {
       icon: showExcludedOnly ? VisibilityOutlined : VisibilityOffOutlined,
       label: showExcludedOnly ? 'Show All' : 'Show Excluded Only',
@@ -134,15 +134,15 @@ export default function ManageExclusions() {
   ], [showExcludedOnly]);
 
   // Row class rules for highlighting excluded subscriptions
-  const rowClassRules = React.useMemo(() => ({
+  const rowClassRules = useMemo(() => ({
     'exclusion-row-selected': (params) => selected[params.data?.id]
   }), [selected]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     (subscriptions && selected) && setLoading(false);
   }, [subscriptions, selected]);
 
-  const loadData = React.useCallback(() => {
+  const loadData = useCallback(() => {
     (async () => {
       try {
         if(subscriptions) {
@@ -177,7 +177,7 @@ export default function ManageExclusions() {
     })();
   }, [subscriptions, enqueueSnackbar]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(!dataLoadedRef.current && subscriptions) {
       dataLoadedRef.current = true;
       loadData();
@@ -218,9 +218,9 @@ export default function ManageExclusions() {
     });
   }
 
-  const noRowsOverlay = React.useMemo(() => {
+  const noRowsOverlay = useMemo(() => {
     return (
-      <React.Fragment>
+      <Fragment>
         <Shrug />
         <Typography
           variant="overline"
@@ -230,7 +230,7 @@ export default function ManageExclusions() {
           }}>
           Nothing yet...
         </Typography>
-      </React.Fragment>
+      </Fragment>
     );
   }, []);
 

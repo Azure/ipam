@@ -1,4 +1,4 @@
-import * as React from "react";
+import { createContext, Fragment, memo, use, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { styled } from "@mui/material/styles";
 
@@ -71,7 +71,7 @@ import {
 
 import { ExternalContext } from "../../externalContext";
 
-const EndpointContext = React.createContext({});
+const EndpointContext = createContext({});
 
 const Spotlight = styled("span")(({ theme }) => ({
   fontWeight: 'bold',
@@ -89,10 +89,10 @@ const Update = styled("span")(({ theme }) => ({
 // ============================================================================
 
 // Context for passing reactive overlay config to CombinedOverlay.
-const OverlayContext = React.createContext(null);
+const OverlayContext = createContext(null);
 
-const CombinedOverlay = React.memo(({ overlayType }) => {
-  const overlayConfig = React.use(OverlayContext);
+const CombinedOverlay = memo(({ overlayType }) => {
+  const overlayConfig = use(OverlayContext);
   const loadingMessage = overlayConfig?.loadingMessage;
   const noRowsContent = overlayConfig?.noRowsOverlay;
   const theme = useTheme();
@@ -162,7 +162,7 @@ CombinedOverlay.displayName = 'CombinedOverlay';
 
 function DeleteCellRenderer(props) {
   const { data } = props;
-  const { setChanges, selectedRow } = React.use(EndpointContext);
+  const { setChanges, selectedRow } = use(EndpointContext);
 
   const flexCenter = {
     display: "flex",
@@ -200,12 +200,12 @@ function DeleteCellRenderer(props) {
 
 function HeaderMenu(props) {
   const { setting } = props;
-  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = React.use(EndpointContext);
+  const { saving, sendResults, saveConfig, loadConfig, resetConfig } = use(EndpointContext);
 
-  const [menuOpen, setMenuOpen] = React.useState(false);
-  const menuId = React.useId();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuId = useId();
 
-  const menuRef = React.useRef(null);
+  const menuRef = useRef(null);
 
   const viewSetting = useSelector(state => selectViewSetting(state, setting));
 
@@ -241,18 +241,18 @@ function HeaderMenu(props) {
     >
       {
         saving ?
-        <React.Fragment>
+        <Fragment>
           <CircularProgress size={24} />
-        </React.Fragment> :
+        </Fragment> :
         (sendResults !== null) ?
-        <React.Fragment>
+        <Fragment>
           {
             sendResults ?
             <TaskAltOutlined color="success"/> :
             <CancelOutlined color="error"/>
           }
-        </React.Fragment> :
-        <React.Fragment>
+        </Fragment> :
+        <Fragment>
           <IconButton
             aria-label="Actions"
             aria-haspopup="menu"
@@ -331,7 +331,7 @@ function HeaderMenu(props) {
               Reset Default View
             </MenuItem>
           </Menu>
-        </React.Fragment>
+        </Fragment>
       }
     </Box>
   );
@@ -346,32 +346,32 @@ export default function ManageExtEndpoints(props) {
     external,
     subnet
   } = props;
-  const { refreshing, refresh } = React.use(ExternalContext);
+  const { refreshing, refresh } = use(ExternalContext);
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const [saving, setSaving] = React.useState(false);
-  const [sendResults, setSendResults] = React.useState(null);
-  const [endpoints, setEndpoints] = React.useState(null);
-  const [addressOptions, setAddressOptions] = React.useState([]);
-  const [changes, setChanges] = React.useState([]);
+  const [saving, setSaving] = useState(false);
+  const [sendResults, setSendResults] = useState(null);
+  const [endpoints, setEndpoints] = useState(null);
+  const [addressOptions, setAddressOptions] = useState([]);
+  const [changes, setChanges] = useState([]);
 
-  const [sending, setSending] = React.useState(false);
-  const [selectedRow, setSelectedRow] = React.useState(null);
+  const [sending, setSending] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
 
-  const [endName, setEndName] = React.useState({ value: "", error: true });
-  const [endDesc, setEndDesc] = React.useState({ value: "", error: true });
+  const [endName, setEndName] = useState({ value: "", error: true });
+  const [endDesc, setEndDesc] = useState({ value: "", error: true });
 
-  const [endAddrInput, setEndAddrInput] = React.useState("");
-  const [endAddr, setEndAddr] = React.useState(null);
+  const [endAddrInput, setEndAddrInput] = useState("");
+  const [endAddr, setEndAddr] = useState(null);
 
   const isAdmin = useSelector(getAdminStatus);
   const viewSetting = useSelector(state => selectViewSetting(state, 'extendpoints'));
 
   const dispatch = useDispatch();
-  const gridRef = React.useRef(null);
+  const gridRef = useRef(null);
 
-  const saveTimerRef = React.useRef(null);
+  const saveTimerRef = useRef(null);
 
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -379,7 +379,7 @@ export default function ManageExtEndpoints(props) {
   const unchanged = (subnet && endpoints) ? isEqual(subnet['endpoints'], endpoints.map(({id, ...rest}) => rest)) : false;
 
   // AG Grid column definitions
-  const columns = React.useMemo(() => [
+  const columns = useMemo(() => [
     { field: "name", headerName: "Name", flex: 0.5 },
     { field: "desc", headerName: "Description", flex: 1 },
     { field: "ip", headerName: "IP Address", flex: 0.30 },
@@ -396,7 +396,7 @@ export default function ManageExtEndpoints(props) {
   ], []);
 
   // Grid theme with compactness
-  const gridTheme = React.useMemo(() => {
+  const gridTheme = useMemo(() => {
     const baseParams = {
       spacing: 7,  // default is 8, reduced for tighter layout
     };
@@ -407,12 +407,12 @@ export default function ManageExtEndpoints(props) {
   }, []);
 
   // Overlay context value for CombinedOverlay
-  const overlayContextValue = React.useMemo(() => ({
+  const overlayContextValue = useMemo(() => ({
     loadingMessage: sending ? 'Updating...' : 'Loading data...',
   }), [sending]);
 
   // Default column definitions
-  const defaultColDef = React.useMemo(() => ({
+  const defaultColDef = useMemo(() => ({
     resizable: true,
     sortable: true,
     filter: true,
@@ -420,7 +420,7 @@ export default function ManageExtEndpoints(props) {
   }), []);
 
   // Handle row selection
-  const onRowClicked = React.useCallback((event) => {
+  const onRowClicked = useCallback((event) => {
     if (!isAdmin) return;
 
     const data = event.data;
@@ -458,7 +458,7 @@ export default function ManageExtEndpoints(props) {
   }, [isAdmin, selectedRow, endpoints, subnet]);
 
   // Handle cell double click for copy
-  const onCellDoubleClicked = React.useCallback((event) => {
+  const onCellDoubleClicked = useCallback((event) => {
     const value = event.value;
     if (value !== undefined && value !== null) {
       navigator.clipboard.writeText(value);
@@ -466,7 +466,7 @@ export default function ManageExtEndpoints(props) {
     }
   }, [enqueueSnackbar]);
 
-  const saveConfig = React.useCallback(() => {
+  const saveConfig = useCallback(() => {
     const api = gridRef.current?.api;
     if (!api) return;
 
@@ -509,7 +509,7 @@ export default function ManageExtEndpoints(props) {
     })();
   }, [dispatch, enqueueSnackbar]);
 
-  const loadConfig = React.useCallback(() => {
+  const loadConfig = useCallback(() => {
     const api = gridRef.current?.api;
     if (!api || !viewSetting) return;
 
@@ -519,21 +519,21 @@ export default function ManageExtEndpoints(props) {
     }
   }, [viewSetting]);
 
-  const resetConfig = React.useCallback(() => {
+  const resetConfig = useCallback(() => {
     const api = gridRef.current?.api;
     if (!api) return;
     api.resetColumnState();
   }, []);
 
   // Handle grid ready
-  const onGridReady = React.useCallback(() => {
+  const onGridReady = useCallback(() => {
     // Auto-load saved view if available
     if (viewSetting?.columnState) {
       loadConfig();
     }
   }, [viewSetting, loadConfig]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(sendResults !== null) {
       clearTimeout(saveTimerRef.current);
 
@@ -627,7 +627,7 @@ export default function ManageExtEndpoints(props) {
     })();
   }
 
-  const onCancel = React.useCallback(() => {
+  const onCancel = useCallback(() => {
     if (open) {
       handleClose();
 
@@ -684,14 +684,14 @@ export default function ManageExtEndpoints(props) {
 
   // Manual memo retained; compiler bails on broader component (large stateful form)
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  const hasError = React.useMemo(() => {
+  const hasError = useMemo(() => {
     const errorCheck = (endName.error || endDesc.error);
     const emptyCheck = (endName.value.length === 0 || endDesc.value.length === 0 || endAddr === null);
 
     return (errorCheck || emptyCheck);
   }, [endName, endDesc, endAddr]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(subnet) {
       var newEndpoints = cloneDeep(subnet['endpoints']);
 
@@ -780,7 +780,7 @@ export default function ManageExtEndpoints(props) {
             Define the Endpoints below which should be associated with the Subnet <Spotlight>{`'${subnet && subnet.name}'`}</Spotlight>
           </DialogContentText>
           { isAdmin &&
-          <React.Fragment>
+          <Fragment>
           <Box
             sx={{
               mt: 4,
@@ -1054,7 +1054,7 @@ export default function ManageExtEndpoints(props) {
               </Tooltip>
             </Box>
           </Box>
-          </React.Fragment>
+          </Fragment>
           }
           <Box
             sx={{

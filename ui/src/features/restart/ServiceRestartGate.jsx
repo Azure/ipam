@@ -1,4 +1,4 @@
-import React from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
 import { useMsal } from '@azure/msal-react';
@@ -33,20 +33,20 @@ function ServiceRestartGate() {
   const { active, reason, verify } = useSelector(getRestart);
   const { inProgress } = useMsal();
 
-  const [phase, setPhase] = React.useState('restarting');
-  const [elapsed, setElapsed] = React.useState(0);
-  const [failureReason, setFailureReason] = React.useState(null);
-  const baselineRef = React.useRef(null);
-  const inProgressRef = React.useRef(InteractionStatus.None);
+  const [phase, setPhase] = useState('restarting');
+  const [elapsed, setElapsed] = useState(0);
+  const [failureReason, setFailureReason] = useState(null);
+  const baselineRef = useRef(null);
+  const inProgressRef = useRef(InteractionStatus.None);
 
   // Keep the latest MSAL interaction status readable inside the poll interval
   // without re-subscribing the poller when it changes.
-  React.useEffect(() => {
+  useEffect(() => {
     inProgressRef.current = inProgress;
   }, [inProgress]);
 
   // Reset + elapsed ticker whenever a restart begins.
-  React.useEffect(() => {
+  useEffect(() => {
     if (!active) {
       return undefined;
     }
@@ -63,7 +63,7 @@ function ServiceRestartGate() {
 
   // Recovery detection: poll /api/status and key off a changed start time
   // (restart confirmation) and, when requested, a changed version (update verify).
-  React.useEffect(() => {
+  useEffect(() => {
     if (!active) {
       return undefined;
     }

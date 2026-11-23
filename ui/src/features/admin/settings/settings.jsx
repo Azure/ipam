@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { createContext, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { styled } from '@mui/material/styles';
 
@@ -26,7 +26,7 @@ import {} from "../../ipam/ipamAPI";
 
 import {} from '../../ipam/ipamSlice';
 
-const ExclusionContext = React.createContext({});
+const ExclusionContext = createContext({});
 
 // Page Styles
 
@@ -90,10 +90,10 @@ const Item = styled(Paper)(({ theme }) => ({
 export default function AdminSettings() {
   const { enqueueSnackbar } = useSnackbar();
 
-  const [loading, setLoading] = React.useState(true);
-  const [sending, setSending] = React.useState(false);
-  const [selected, setSelected] = React.useState({});
-  const [loadedExclusions, setLoadedExclusions] = React.useState(null);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [selected, setSelected] = useState({});
+  const [loadedExclusions, setLoadedExclusions] = useState(null);
 
   const dispatch = useDispatch();
 

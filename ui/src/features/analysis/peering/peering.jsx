@@ -1,4 +1,4 @@
-import React from "react";
+import { Fragment, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useSelector } from 'react-redux';
 
 import ReactECharts from "echarts-for-react";
@@ -641,16 +641,16 @@ const Reset = (props) => {
 
 const Search = ({ ref, options, setDataFocus }) => {
 
-  const [value, setValue] = React.useState(null);
-  const [inputValue, setInputValue] = React.useState('');
-  const [searchOptions, setSearchOptions] = React.useState([]);
+  const [value, setValue] = useState(null);
+  const [inputValue, setInputValue] = useState('');
+  const [searchOptions, setSearchOptions] = useState([]);
 
   const theme = useTheme();
 
   const vNetPattern = "/Microsoft.Network/virtualNetworks/";
   const vHubPattern = "/Microsoft.Network/virtualHubs/";
 
-  React.useImperativeHandle(ref, () => ({
+  useImperativeHandle(ref, () => ({
     setValue(target) {
       setValue(target);
     },
@@ -663,7 +663,7 @@ const Search = ({ ref, options, setDataFocus }) => {
     }
   }));
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(isEmpty(options.series)) {
       setSearchOptions([])
     } else {
@@ -692,7 +692,7 @@ const Search = ({ ref, options, setDataFocus }) => {
     }
   }, [options]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     value ? setDataFocus(value.id) : setDataFocus(null);
   }, [value, setDataFocus])
 
@@ -792,10 +792,10 @@ function filterByVnet(options, target, previousTarget, currentMembers) {
 }
 
 const Peering = () => {
-  const [options, setOptions] = React.useState(opt);
-  const [eChartsRef, setEChartsRef] = React.useState(null);
+  const [options, setOptions] = useState(opt);
+  const [eChartsRef, setEChartsRef] = useState(null);
 
-  const searchRef = React.useRef(null);
+  const searchRef = useRef(null);
 
   const subscriptions = useSelector(selectSubscriptions);
   const networks = useSelector(selectNetworks);
@@ -805,13 +805,13 @@ const Peering = () => {
   const vNetPattern = "/Microsoft.Network/virtualNetworks/";
   const vHubPattern = "/Microsoft.Network/virtualHubs/";
 
-  const ref = React.useCallback(node => {
+  const ref = useCallback(node => {
     if (node !== null) {
       setEChartsRef(node);
     }
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(subscriptions && networks) {
       let vnetOptions = parseNets(networks, subscriptions);
 
@@ -821,14 +821,14 @@ const Peering = () => {
     }
   }, [subscriptions, networks, theme]);
 
-  const onEvents = React.useMemo(() => ({
+  const onEvents = useMemo(() => ({
     click: onClick
     // restore: onRestore
   }), []);
 
   // Manual memo retained; compiler bails due to mutation + mixed ref access below
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  const setDataFocus = React.useCallback((target) => {
+  const setDataFocus = useCallback((target) => {
     if(target) {
       let newOptions = cloneDeep(options);
 
@@ -900,7 +900,7 @@ const Peering = () => {
   }
 
   return (
-    <React.Fragment>
+    <Fragment>
       <Search
         options={options}
         setDataFocus={setDataFocus}
@@ -926,7 +926,7 @@ const Peering = () => {
           style={{ height: "100%", width: "100%" }}
         />
       </div>
-    </React.Fragment>
+    </Fragment>
   );
 };
 

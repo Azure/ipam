@@ -1,4 +1,4 @@
-import * as React from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useSelector, useDispatch } from 'react-redux';
 
 import { useMsal } from "@azure/msal-react";
@@ -137,18 +137,18 @@ export default function NavDrawer() {
   const { instance, inProgress } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
-  const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
-  const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = React.useState(null);
-  const [graphData, setGraphData] = React.useState(null);
-  const [graphPhoto, setGraphPhoto] = React.useState(null);
-  const [navChildOpen, setNavChildOpen] = React.useState({});
-  const [drawerState, setDrawerState] = React.useState(false);
-  const [profileOpen, setProfileOpen] = React.useState(false);
-  const [aboutOpen, setAboutOpen] = React.useState(false);
-  const [searchData, setSearchData] = React.useState([]);
-  const [dataLoaded, setDataLoaded] = React.useState(false);
-  const [searchInput, setSearchInput] = React.useState('');
-  const [searchValue, setSearchValue] = React.useState(null);
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+  const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = useState(null);
+  const [graphData, setGraphData] = useState(null);
+  const [graphPhoto, setGraphPhoto] = useState(null);
+  const [navChildOpen, setNavChildOpen] = useState({});
+  const [drawerState, setDrawerState] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [searchData, setSearchData] = useState([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchValue, setSearchValue] = useState(null);
 
   const navigate = useNavigate();
 
@@ -316,7 +316,7 @@ export default function NavDrawer() {
     ]
   ];
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (graphData || inProgress !== InteractionStatus.None) {
       return;
     }
@@ -349,7 +349,7 @@ export default function NavDrawer() {
     };
   }, [graphData, inProgress, dispatch]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     // Handler to call on window resize
     function handleResize() {
       setMenuAnchorEl(null);
@@ -374,7 +374,7 @@ export default function NavDrawer() {
     setDrawerState(open);
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     function getTitleCase(str) {
       const titleCase = str
         .toLowerCase()
@@ -506,12 +506,12 @@ export default function NavDrawer() {
     >
       {navItems.map((navItem, navIndex) => {
         return (
-          <React.Fragment key={`navItem-${navItem[0].title}`}>
+          <Fragment key={`navItem-${navItem[0].title}`}>
             <List>
               {navItem.map((item, itemIndex) => {
                 return item.hasOwnProperty('children')
                 ? ((item.admin && isAdmin) || !item.admin) &&
-                  <React.Fragment key={`item-${item.title}`}>
+                  <Fragment key={`item-${item.title}`}>
                     <ListItem
                       key={item.title}
                       component="div"
@@ -552,7 +552,7 @@ export default function NavDrawer() {
                       ))}
                     </List>
                     </Collapse>
-                  </React.Fragment>
+                  </Fragment>
                 : ((item.admin && isAdmin) || !item.admin) &&
                   <ListItemButton
                     key={item.title}
@@ -571,7 +571,7 @@ export default function NavDrawer() {
               })}
             </List>
             {(navIndex < (navItems.length - 1)) && <Divider />}
-          </React.Fragment>
+          </Fragment>
         )
       })}
     </Box>
@@ -794,7 +794,7 @@ export default function NavDrawer() {
   );
 
   return (
-    <React.Fragment>
+    <Fragment>
       <Backdrop
         sx={{ color: '#fff', backgroundColor: 'rgba(192, 200, 200, 1)', zIndex: (theme) => theme.zIndex.drawer + 1 }}
         transitionDuration={{ appear: 0, enter: 0, exit: 500 }}
@@ -976,6 +976,6 @@ export default function NavDrawer() {
         </Box> */}
       </Box>
       <ServiceRestartGate />
-    </React.Fragment>
+    </Fragment>
   );
 }

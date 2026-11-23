@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { useEffect, useRef } from 'react';
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 
@@ -7,9 +7,9 @@ import { loginRequest } from "../../msal/authConfig";
 const Login = () => {
   const { instance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
-  const loginAttemptedRef = React.useRef(false);
+  const loginAttemptedRef = useRef(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleAuthentication = async () => {
       // Only attempt login if:
       // 1. User is not authenticated
@@ -40,7 +40,7 @@ const Login = () => {
   }, [isAuthenticated, inProgress, instance]);
 
   // Reset login attempt flag when authentication state changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated) {
       loginAttemptedRef.current = false;
     }

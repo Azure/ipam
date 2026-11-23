@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useLocation } from "react-router";
 
@@ -42,20 +42,20 @@ export default function NewReservation(props) {
 
   const location = useLocation();
 
-  const [description, setDescription] = React.useState({ value: "", error: false });
-  const [mask, setMask] = React.useState(null);
-  const [cidr, setCidr] = React.useState(location.state?.cidr ? { value: location.state.cidr, error: false } : { value: "", error: true });
-  const [sending, setSending] = React.useState(false);
+  const [description, setDescription] = useState({ value: "", error: false });
+  const [mask, setMask] = useState(null);
+  const [cidr, setCidr] = useState(location.state?.cidr ? { value: location.state.cidr, error: false } : { value: "", error: true });
+  const [sending, setSending] = useState(false);
 
-  const [maskOptions, setMaskOptions] = React.useState(null);
-  const [maskInput, setMaskInput] = React.useState('');
+  const [maskOptions, setMaskOptions] = useState(null);
+  const [maskInput, setMaskInput] = useState('');
 
-  const [reverseSearch, setReverseSearch] = React.useState(false);
-  const [smallestCIDR, setSmallestCIDR] = React.useState(false);
+  const [reverseSearch, setReverseSearch] = useState(false);
+  const [smallestCIDR, setSmallestCIDR] = useState(false);
 
-  const [invalidForm, setInvalidForm] = React.useState(false);
+  const [invalidForm, setInvalidForm] = useState(false);
 
-  const [mode, setMode] = React.useState(location.state?.cidr ? "manual" : "auto");
+  const [mode, setMode] = useState(location.state?.cidr ? "manual" : "auto");
 
   const checked = mode === "auto";
 
@@ -135,7 +135,7 @@ export default function NewReservation(props) {
     return cidr ? !regex.test(cidr) : true;
   }
 
-  React.useEffect(() => {
+  useEffect(() => {
     const descError = description.error;
     const maskError = checked ? !mask : false;
     const cidrError = !checked ? cidr.error : false;
@@ -143,7 +143,7 @@ export default function NewReservation(props) {
     setInvalidForm(descError || maskError || cidrError);
   }, [checked, description, mask, cidr]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedBlock) {
       let prefixParts = selectedBlock.cidr.split("/");
       let currentMask = parseInt(prefixParts[1], 10);

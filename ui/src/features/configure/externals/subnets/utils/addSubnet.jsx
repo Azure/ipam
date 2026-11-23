@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 
 import { useSnackbar } from "notistack";
@@ -44,18 +44,18 @@ export default function AddExtSubnet(props) {
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const [mode, setMode] = React.useState("auto");
+  const [mode, setMode] = useState("auto");
   const addBySize = mode === "auto";
 
-  const [maskOptions, setMaskOptions] = React.useState(null);
-  const [maskInput, setMaskInput] = React.useState('');
-  const [selectedMask, setSelectedMask] = React.useState(null);
+  const [maskOptions, setMaskOptions] = useState(null);
+  const [maskInput, setMaskInput] = useState('');
+  const [selectedMask, setSelectedMask] = useState(null);
 
-  const [subName, setSubName] = React.useState({ value: "", error: false });
-  const [subDesc, setSubDesc] = React.useState({ value: "", error: false });
-  const [subCidr, setSubCidr] = React.useState({ value: "", error: false });
+  const [subName, setSubName] = useState({ value: "", error: false });
+  const [subDesc, setSubDesc] = useState({ value: "", error: false });
+  const [subCidr, setSubCidr] = useState({ value: "", error: false });
 
-  const [sending, setSending] = React.useState(false);
+  const [sending, setSending] = useState(false);
 
   const dispatch = useDispatch();
 
@@ -166,7 +166,7 @@ export default function AddExtSubnet(props) {
     });
   }
 
-  const hasError = React.useMemo(() => {
+  const hasError = useMemo(() => {
     let emptyCheck, errorCheck;
 
     if (addBySize) {
@@ -180,7 +180,7 @@ export default function AddExtSubnet(props) {
     return (errorCheck || emptyCheck);
   }, [addBySize, selectedMask, subName, subDesc, subCidr]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (external) {
       let prefixParts = external.cidr.split("/");
       let currentMask = parseInt(prefixParts[1], 10);

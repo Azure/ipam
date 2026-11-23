@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback, useEffect, useId } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect, useId, createContext, memo, use } from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
@@ -46,8 +46,8 @@ const SUCCESS_INDICATOR_TIMEOUT = 3000;
 // ============================================================================
 // Column Visibility Menu Component
 // ============================================================================
-const ColumnVisibilityMenu = React.memo(({ anchorEl, open, onClose }) => {
-  const { columnDefs, toggleColumnVisibility, getVisibleColumns, gridRef } = React.use(DataGridContext);
+const ColumnVisibilityMenu = memo(({ anchorEl, open, onClose }) => {
+  const { columnDefs, toggleColumnVisibility, getVisibleColumns, gridRef } = use(DataGridContext);
   const [visibleColumns, setVisibleColumns] = useState([]);
 
   // Update visible columns when menu opens
@@ -153,8 +153,8 @@ ColumnVisibilityMenu.displayName = 'ColumnVisibilityMenu';
 // ============================================================================
 // Header Menu Placeholder Component (renders icon in grid header)
 // ============================================================================
-const HeaderMenuPlaceholder = React.memo(() => {
-  const { saving, sendResults, menuOpen, setMenuOpen, setMenuAnchor, menuId } = React.use(DataGridContext);
+const HeaderMenuPlaceholder = memo(() => {
+  const { saving, sendResults, menuOpen, setMenuOpen, setMenuAnchor, menuId } = use(DataGridContext);
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -213,7 +213,7 @@ HeaderMenuPlaceholder.displayName = 'HeaderMenuPlaceholder';
 // ============================================================================
 // Standalone Header Menu Component (outside of AG Grid)
 // ============================================================================
-const StandaloneHeaderMenu = React.memo(({ viewSettingKey = DEFAULT_VIEW_SETTING_KEY, extraMenuItems = [] }) => {
+const StandaloneHeaderMenu = memo(({ viewSettingKey = DEFAULT_VIEW_SETTING_KEY, extraMenuItems = [] }) => {
   const {
     saveConfig,
     loadConfig,
@@ -224,7 +224,7 @@ const StandaloneHeaderMenu = React.memo(({ viewSettingKey = DEFAULT_VIEW_SETTING
     menuAnchor,
     viewSetting,
     menuId
-  } = React.use(DataGridContext);
+  } = use(DataGridContext);
 
   const [columnMenuOpen, setColumnMenuOpen] = useState(false);
   const [columnMenuAnchor, setColumnMenuAnchor] = useState(null);
@@ -396,7 +396,7 @@ StandaloneHeaderMenu.displayName = 'StandaloneHeaderMenu';
 // React context changes bypass React.memo, ensuring overlays re-render
 // when parent state changes — even when AG Grid itself doesn't propagate
 // updated overlayComponentParams to an already-visible overlay.
-const OverlayContext = React.createContext(null);
+const OverlayContext = createContext(null);
 
 /**
  * CombinedOverlay - Single overlay component for both loading and no-rows states.
@@ -408,8 +408,8 @@ const OverlayContext = React.createContext(null);
  * @param {Object} props - Props from AG Grid
  * @param {'loading'|'noRows'|'noMatchingRows'} props.overlayType - Overlay type determined by AG Grid
  */
-const CombinedOverlay = React.memo(({ overlayType }) => {
-  const overlayConfig = React.use(OverlayContext);
+const CombinedOverlay = memo(({ overlayType }) => {
+  const overlayConfig = use(OverlayContext);
   const noRowsContent = overlayConfig?.noRowsOverlay;
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';

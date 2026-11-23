@@ -1,4 +1,4 @@
-import * as React from "react";
+import { Fragment, use, useCallback, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { styled } from "@mui/material/styles";
 
@@ -58,20 +58,20 @@ const columns = [
 
 export default function SpaceDataGrid(props) {
   const { selectedSpace, setSelectedSpace, setSelectedBlock } = props;
-  const { spaces, refresh } = React.use(BasicContext);
+  const { spaces, refresh } = use(BasicContext);
 
-  const [addSpaceOpen, setAddSpaceOpen] = React.useState(false);
-  const [editSpaceOpen, setEditSpaceOpen] = React.useState(false);
-  const [deleteSpaceOpen, setDeleteSpaceOpen] = React.useState(false);
+  const [addSpaceOpen, setAddSpaceOpen] = useState(false);
+  const [editSpaceOpen, setEditSpaceOpen] = useState(false);
+  const [deleteSpaceOpen, setDeleteSpaceOpen] = useState(false);
 
-  const [anchorEl, setAnchorEl] = React.useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
 
   const isAdmin = useSelector(getAdminStatus);
 
   const menuOpen = Boolean(anchorEl);
 
   // Sync selection when spaces data changes
-  React.useEffect(() => {
+  useEffect(() => {
     if(spaces && selectedSpace) {
       const currentSpace = spaces.find(space => space.name === selectedSpace.name);
 
@@ -85,7 +85,7 @@ export default function SpaceDataGrid(props) {
   }, [spaces, selectedSpace, setSelectedSpace, setSelectedBlock]);
 
   // Handle row click from ConfigureGrid
-  const handleRowClick = React.useCallback((data) => {
+  const handleRowClick = useCallback((data) => {
     // Toggle selection: if clicking the same row, deselect; otherwise select new row
     if (selectedSpace && selectedSpace.name === data.name) {
       setSelectedBlock(null);
@@ -120,9 +120,9 @@ export default function SpaceDataGrid(props) {
   };
 
   // Custom no rows overlay component
-  const noRowsOverlay = React.useMemo(() => {
+  const noRowsOverlay = useMemo(() => {
     return (
-      <React.Fragment>
+      <Fragment>
         <Typography
           variant="overline"
           sx={{
@@ -131,14 +131,14 @@ export default function SpaceDataGrid(props) {
           }}>
           No Spaces Found, Create a Space to Begin
         </Typography>
-      </React.Fragment>
+      </Fragment>
     );
   }, []);
 
   return (
-    <React.Fragment>
+    <Fragment>
       { isAdmin &&
-        <React.Fragment>
+        <Fragment>
           <EditSpace
             open={editSpaceOpen}
             handleClose={() => setEditSpaceOpen(false)}
@@ -158,7 +158,7 @@ export default function SpaceDataGrid(props) {
             space={selectedSpace ? selectedSpace.name : null}
             refresh={refresh}
           />
-        </React.Fragment>
+        </Fragment>
       }
       <GridHeader
         style={{
@@ -169,7 +169,7 @@ export default function SpaceDataGrid(props) {
         <Box sx={{ width: "20%" }}></Box>
         <GridTitle>{selectedSpace ? `'${selectedSpace.name}' selected` : "Spaces"}</GridTitle>
         <Box sx={{ width: "20%", display: "flex", justifyContent: "flex-end" }}>
-          <React.Fragment>
+          <Fragment>
             <Tooltip title="Actions">
               <IconButton
                 aria-label="Actions"
@@ -258,7 +258,7 @@ export default function SpaceDataGrid(props) {
                 Delete
               </MenuItem>
             </Menu>
-          </React.Fragment>
+          </Fragment>
         </Box>
       </GridHeader>
       <GridBody>
@@ -272,6 +272,6 @@ export default function SpaceDataGrid(props) {
           isLoading={!spaces}
         />
       </GridBody>
-    </React.Fragment>
+    </Fragment>
   );
 }

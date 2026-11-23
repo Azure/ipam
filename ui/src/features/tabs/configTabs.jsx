@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { Fragment } from 'react';
 import { Link, useLocation } from "react-router";
 
 import Tabs from '@mui/material/Tabs';
@@ -44,7 +44,7 @@ export default function ConfigTabs() {
 
   return (
     <Box sx={{ width: '100%', height: 'calc(100vh - 137px)'}}>
-      <React.Fragment>
+      <Fragment>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={allTabs.indexOf(location.pathname)}>
             <Tab label="Basics" component={Link} to={allTabs[0]} {...a11yProps(0)} />
@@ -57,7 +57,7 @@ export default function ConfigTabs() {
         <TabPanel value={allTabs.indexOf(location.pathname)} index={1}><Associations /></TabPanel>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={2}><Reservations /></TabPanel>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={3}><Externals /></TabPanel>
-      </React.Fragment>
+      </Fragment>
     </Box>
   );
 }

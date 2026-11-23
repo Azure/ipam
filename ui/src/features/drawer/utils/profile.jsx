@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSelector, useDispatch } from 'react-redux';
 
 import { Link as RouterLink } from "react-router";
@@ -139,21 +139,21 @@ export default function Profile(props) {
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const [committedDarkMode, setCommittedDarkMode] = React.useState(false);
-  const [darkModeValue, setDarkModeValue] = React.useState(false);
-  const [sending, setSending] = React.useState(false);
+  const [committedDarkMode, setCommittedDarkMode] = useState(false);
+  const [darkModeValue, setDarkModeValue] = useState(false);
+  const [sending, setSending] = useState(false);
 
-  const [roleDefinitions, setRoleDefinitions] = React.useState(null);
-  const [rolesError, setRolesError] = React.useState(false);
+  const [roleDefinitions, setRoleDefinitions] = useState(null);
+  const [rolesError, setRolesError] = useState(false);
 
-  const [tokenExpiresOn, setTokenExpiresOn] = React.useState(null);
-  const [tokenError, setTokenError] = React.useState(false);
-  const [tokenCopied, setTokenCopied] = React.useState(false);
-  const [copyingToken, setCopyingToken] = React.useState(false);
-  const [now, setNow] = React.useState(() => Date.now());
+  const [tokenExpiresOn, setTokenExpiresOn] = useState(null);
+  const [tokenError, setTokenError] = useState(false);
+  const [tokenCopied, setTokenCopied] = useState(false);
+  const [copyingToken, setCopyingToken] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
-  const [confirmingClear, setConfirmingClear] = React.useState(false);
-  const [clearing, setClearing] = React.useState(false);
+  const [confirmingClear, setConfirmingClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const darkModeSetting = useSelector(getDarkMode);
   const roles = useSelector(getRoles);
@@ -163,10 +163,10 @@ export default function Profile(props) {
 
   const dispatch = useDispatch();
   const { inProgress } = useMsal();
-  const pendingRefreshRef = React.useRef(false);
+  const pendingRefreshRef = useRef(false);
 
   // Snapshot the committed setting on open, so Cancel can undo the live preview.
-  const [prevOpen, setPrevOpen] = React.useState(false);
+  const [prevOpen, setPrevOpen] = useState(false);
 
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -178,7 +178,7 @@ export default function Profile(props) {
     }
   }
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) {
       return undefined;
     }
@@ -208,7 +208,7 @@ export default function Profile(props) {
     };
   }, [open]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) {
       return undefined;
     }
@@ -242,7 +242,7 @@ export default function Profile(props) {
     };
   }, [open]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!tokenCopied) {
       return undefined;
     }
@@ -252,7 +252,7 @@ export default function Profile(props) {
     return () => clearTimeout(timer);
   }, [tokenCopied]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (pendingRefreshRef.current && inProgress === InteractionStatus.None) {
       pendingRefreshRef.current = false;
       dispatch(getMeAsync());

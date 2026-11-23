@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 
 import { useSnackbar } from "notistack";
@@ -28,9 +28,9 @@ export default function EditSpace(props) {
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const [spaceName, setSpaceName] = React.useState({ value: "", error: false });
-  const [description, setDescription] = React.useState({ value: "", error: false });
-  const [sending, setSending] = React.useState(false);
+  const [spaceName, setSpaceName] = useState({ value: "", error: false });
+  const [description, setDescription] = useState({ value: "", error: false });
+  const [sending, setSending] = useState(false);
 
   const dispatch = useDispatch();
 
@@ -44,7 +44,7 @@ export default function EditSpace(props) {
                     ? true : false
                     : true;
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(space) {
       setSpaceName({
         value: space.name,

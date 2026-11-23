@@ -1,4 +1,4 @@
-import * as React from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from 'react-redux';
 import { useLocation } from "react-router";
 
@@ -131,20 +131,20 @@ function showFilteredColumns(api, filterModel) {
 export default function DiscoverTable(props) {
   const { config, columns, detailsMap } = props.map;
 
-  const [loading, setLoading] = React.useState(true);
-  const [rowData, setRowData] = React.useState({});
-  const [menuExpand, setMenuExpand] = React.useState(false);
+  const [loading, setLoading] = useState(true);
+  const [rowData, setRowData] = useState({});
+  const [menuExpand, setMenuExpand] = useState(false);
 
   const stateData = useSelector(config.apiFunc);
 
-  const gridApiRef = React.useRef(null);
-  const filterAppliedRef = React.useRef(false);
+  const gridApiRef = useRef(null);
+  const filterAppliedRef = useRef(false);
 
   const location = useLocation();
   const theme = useTheme();
 
   // Handle grid ready - store API reference and apply URL-based filter
-  const handleGridReady = React.useCallback((params) => {
+  const handleGridReady = useCallback((params) => {
     gridApiRef.current = params.api;
 
     // Apply filter from URL state if present and not already applied
@@ -162,7 +162,7 @@ export default function DiscoverTable(props) {
   }, [location.state]);
 
   // Reset filter applied flag when location changes
-  React.useEffect(() => {
+  useEffect(() => {
     filterAppliedRef.current = false;
 
     // Apply new filter if grid is ready
@@ -177,14 +177,14 @@ export default function DiscoverTable(props) {
   }, [location.state]);
 
   // Set loading to false when data is available
-  React.useEffect(() => {
+  useEffect(() => {
     if (stateData) {
       setLoading(false);
     }
   }, [stateData]);
 
   // Render expand/details button for actions column
-  const actionsCellRenderer = React.useCallback((params) => {
+  const actionsCellRenderer = useCallback((params) => {
     const onClick = (e) => {
       e.stopPropagation();
       setRowData(params.data);
@@ -242,9 +242,9 @@ export default function DiscoverTable(props) {
   }
 
   // No rows overlay component
-  const noRowsOverlay = React.useMemo(() => {
+  const noRowsOverlay = useMemo(() => {
     return (
-      <React.Fragment>
+      <Fragment>
         <Shrug />
         <Typography
           variant="overline"
@@ -254,7 +254,7 @@ export default function DiscoverTable(props) {
           }}>
           Nothing yet...
         </Typography>
-      </React.Fragment>
+      </Fragment>
     );
   }, []);
 

@@ -1,4 +1,4 @@
-import React from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useMsal } from "@azure/msal-react";
 import { EventType, InteractionStatus, InteractionRequiredAuthError } from "@azure/msal-browser";
@@ -31,10 +31,10 @@ function isInteractionRequiredError(error) {
 
 function AuthHandler() {
   const { instance, inProgress } = useMsal();
-  const [pendingReauth, setPendingReauth] = React.useState(null);
-  const redirectPendingRef = React.useRef(false);
+  const [pendingReauth, setPendingReauth] = useState(null);
+  const redirectPendingRef = useRef(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const callbackId = instance.addEventCallback((event) => {
       if (
         event.eventType === EventType.ACQUIRE_TOKEN_SUCCESS ||
@@ -78,7 +78,7 @@ function AuthHandler() {
     };
   }, [instance]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!pendingReauth) {
       return;
     }

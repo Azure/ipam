@@ -1,5 +1,3 @@
-import * as React from "react"
-
 const Search = (props) => (
   <svg
     x={0}

@@ -1,4 +1,4 @@
-import * as React from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useLocation } from "react-router";
 import { useTheme } from "@mui/material/styles";
@@ -67,21 +67,21 @@ const Associations = () => {
 
   const location = useLocation();
 
-  const [spaceInput, setSpaceInput] = React.useState('');
-  const [blockInput, setBlockInput] = React.useState('');
+  const [spaceInput, setSpaceInput] = useState('');
+  const [blockInput, setBlockInput] = useState('');
 
-  const [selectedSpace, setSelectedSpace] = React.useState(location.state?.space || null);
-  const [selectedBlock, setSelectedBlock] = React.useState(location.state?.block || null);
+  const [selectedSpace, setSelectedSpace] = useState(location.state?.space || null);
+  const [selectedBlock, setSelectedBlock] = useState(location.state?.block || null);
 
-  const [prevBlock, setPrevBlock] = React.useState({});
-  const [vNets, setVNets] = React.useState(null);
-  const [initialSelection, setInitialSelection] = React.useState([]);
-  const [selectedRows, setSelectedRows] = React.useState([]);
-  const [sending, setSending] = React.useState(false);
-  const [refreshing, setRefreshing] = React.useState(false);
-  const [filterBlocked, setFilterBlocked] = React.useState(true);
+  const [prevBlock, setPrevBlock] = useState({});
+  const [vNets, setVNets] = useState(null);
+  const [initialSelection, setInitialSelection] = useState([]);
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [sending, setSending] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [filterBlocked, setFilterBlocked] = useState(true);
 
-  const [unchanged, setUnchanged] = React.useState(true);
+  const [unchanged, setUnchanged] = useState(true);
 
   const isAdmin = useSelector(getAdminStatus);
   const spaces = useSelector(selectSpaces);
@@ -93,14 +93,14 @@ const Associations = () => {
 
   // Shared by the grid row styling and the toolbar legend so the two cannot drift apart.
   // Selected mirrors AG Grid's own accentMix(0.12) over the grid background, not the toolbar's.
-  const rowColors = React.useMemo(() => ({
+  const rowColors = useMemo(() => ({
     selected: `color-mix(in srgb, #2196f3 12%, ${theme.palette.mode === 'dark' ? 'hsl(217, 0%, 17%)' : '#ffffff'})`,
     error: theme.palette.mode === 'dark' ? 'rgb(120, 40, 40)' : 'rgb(255, 210, 210)',
     blocked: theme.palette.mode === 'dark' ? 'rgb(120, 90, 30)' : 'rgb(255, 235, 200)'
   }), [theme]);
 
   // Attached to every column, so the reason is reachable wherever the pointer happens to land.
-  const refusalTooltip = React.useCallback((params) => {
+  const refusalTooltip = useCallback((params) => {
     if (params.data?.active === false) {
       return "Cannot be associated: this Network no longer exists in Azure, or no longer has address space within this Block";
     }
@@ -122,7 +122,7 @@ const Associations = () => {
   }, []);
 
   // Column definitions for AG Grid
-  const columns = React.useMemo(() => [
+  const columns = useMemo(() => [
     { field: "name", headerName: "Name", flex: 1, tooltipValueGetter: refusalTooltip },
     { field: "type", headerName: "Type", flex: 0.45, tooltipValueGetter: refusalTooltip },
     { field: "resource_group", headerName: "Resource Group", flex: 1, tooltipValueGetter: refusalTooltip },
@@ -145,13 +145,13 @@ const Associations = () => {
   ], [refusalTooltip]);
 
   // Row class rules for AG Grid (stale vs blocked vs normal rows)
-  const rowClassRules = React.useMemo(() => ({
+  const rowClassRules = useMemo(() => ({
     'ipam-block-vnet-stale': (params) => !params.data?.active,
     'ipam-block-vnet-blocked': (params) => params.data?.blocked_by?.length > 0,
     'ipam-block-vnet-normal': (params) => params.data?.active,
   }), []);
 
-  const associatedIds = React.useMemo(() => {
+  const associatedIds = useMemo(() => {
     const blockVnets = Array.isArray(selectedBlock?.vnets) ? selectedBlock.vnets : [];
 
     return new Set(blockVnets.map((vnet) => vnet.id.toLowerCase()));
@@ -159,11 +159,11 @@ const Associations = () => {
 
   // A Network can become blocked after it was associated, if its prefixes change in Azure. AG Grid
   // deselects rows it treats as unselectable, which would drop the association on the next save.
-  const isRowSelectable = React.useCallback((node) => (
+  const isRowSelectable = useCallback((node) => (
     !node.data?.blocked_by?.length || associatedIds.has(node.data.id.toLowerCase())
   ), [associatedIds]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (spaces) {
       if (selectedSpace) {
         const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
@@ -184,7 +184,7 @@ const Associations = () => {
     }
   }, [spaces, selectedSpace]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (blocks) {
       if (selectedBlock) {
         const blockIndex = blocks.findIndex((x) => x.id === selectedBlock.id);
@@ -204,7 +204,7 @@ const Associations = () => {
     }
   }, [blocks, selectedBlock]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedSpace && selectedBlock) {
       if (selectedBlock.parent_space !== selectedSpace.name) {
         setSelectedBlock(null);
@@ -213,7 +213,7 @@ const Associations = () => {
   }, [selectedSpace, selectedBlock]);
 
   // Check if selection has changed from original block vnets
-  React.useEffect(() => {
+  useEffect(() => {
     if(selectedBlock && vNets) {
       const blockVnets = Array.isArray(selectedBlock.vnets) ? selectedBlock.vnets : [];
       const blockVnetIds = blockVnets.map(vnet => vnet.id).sort();
@@ -224,7 +224,7 @@ const Associations = () => {
     }
   }, [vNets, selectedBlock, selectedRows]);
 
-  const mockVNet = React.useCallback((id) => {
+  const mockVNet = useCallback((id) => {
     const typeLookup = { virtualnetworks: 'vNET', virtualhubs: 'vHUB' };
 
     const segments = id.split('/').filter(Boolean);
@@ -255,7 +255,7 @@ const Associations = () => {
     return mockNet
   }, [subscriptions]);
 
-  const refreshData = React.useCallback((silent = false) => {
+  const refreshData = useCallback((silent = false) => {
     (async () => {
       if(selectedBlock) {
         try {
@@ -320,7 +320,7 @@ const Associations = () => {
     })();
   }
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(selectedBlock && subscriptions) {
       const newBlock = {
         identity: {
@@ -358,7 +358,7 @@ const Associations = () => {
 
   // Derive filtered grid data synchronously to prevent a flash of
   // the no-rows overlay when networks or filter state changes.
-  const gridData = React.useMemo(() => {
+  const gridData = useMemo(() => {
     if (!vNets || !filterBlocked) return vNets;
 
     // An associated Network is never hidden, as it is a state the user has to act on and a hidden
@@ -366,11 +366,11 @@ const Associations = () => {
     return vNets.filter((vnet) => !vnet.blocked_by?.length || associatedIds.has(vnet.id.toLowerCase()));
   }, [vNets, filterBlocked, associatedIds]);
 
-  const blockedCount = React.useMemo(() => (
+  const blockedCount = useMemo(() => (
     (vNets || []).filter((vnet) => vnet.blocked_by?.length).length
   ), [vNets]);
 
-  const errorCount = React.useMemo(() => (
+  const errorCount = useMemo(() => (
     (vNets || []).filter((vnet) => vnet.active === false).length
   ), [vNets]);
 
@@ -384,7 +384,7 @@ const Associations = () => {
       ? `Blocked: ${blockedCount} (Hidden)`
       : `Blocked: ${blockedCount} (${hiddenCount} Hidden)`;
 
-  const extraMenuItems = React.useMemo(() => [
+  const extraMenuItems = useMemo(() => [
     {
       icon: filterBlocked ? VisibilityOffOutlined : VisibilityOutlined,
       label: filterBlocked ? 'Showing Available' : 'Showing All',
@@ -394,21 +394,21 @@ const Associations = () => {
 
   // A blocked or unresolved Network anywhere in the selection fails the whole save, so it is called
   // out here rather than left to a refusal from the engine.
-  const refusedSelection = React.useMemo(() => (
+  const refusedSelection = useMemo(() => (
     selectedRows.filter((row) => row.blocked_by?.length || row.active === false)
   ), [selectedRows]);
 
   const countsPending = sending || !subscriptions || !spaces || !blocks || !vNets || refreshing;
 
   // Handle selection changes from the grid
-  const handleSelectionChanged = React.useCallback((rows) => {
+  const handleSelectionChanged = useCallback((rows) => {
     if (isAdmin) {
       setSelectedRows(rows);
     }
   }, [isAdmin]);
 
   // No rows overlay component
-  const noRowsOverlay = React.useMemo(() => {
+  const noRowsOverlay = useMemo(() => {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
         <Typography
@@ -464,10 +464,10 @@ const Associations = () => {
                   input: {
                     ...params.slotProps.input,
                     endAdornment: (
-                      <React.Fragment>
+                      <Fragment>
                         {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
                         {params.slotProps.input.endAdornment}
-                      </React.Fragment>
+                      </Fragment>
                     ),
                   }
                 }}

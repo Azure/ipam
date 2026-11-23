@@ -1,4 +1,4 @@
-import * as React from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { styled } from "@mui/material/styles";
 
@@ -101,27 +101,27 @@ const Separator = (props) => {
 };
 
 const Planner = () => {
-  const [vNetData, setVNetData] = React.useState(null);
-  const [subnetData, setSubnetData] = React.useState(null);
+  const [vNetData, setVNetData] = useState(null);
+  const [subnetData, setSubnetData] = useState(null);
 
-  const [vNetInput, setVNetInput] = React.useState('');
-  const [maskInput, setMaskInput] = React.useState('');
+  const [vNetInput, setVNetInput] = useState('');
+  const [maskInput, setMaskInput] = useState('');
 
-  const [selectedVNet, setSelectedVNet] = React.useState(null);
-  const [selectedPrefix, setSelectedPrefix] = React.useState('');
-  const [selectedMask, setSelectedMask] = React.useState(null);
-  const [exclusions, setExclusions] = React.useState([]);
+  const [selectedVNet, setSelectedVNet] = useState(null);
+  const [selectedPrefix, setSelectedPrefix] = useState('');
+  const [selectedMask, setSelectedMask] = useState(null);
+  const [exclusions, setExclusions] = useState([]);
 
-  const [vNetOptions, setVNetOptions] = React.useState([]);
-  const [prefixOptions, setPrefixOptions] = React.useState(null);
-  const [maskOptions, setMaskOptions] = React.useState([]);
+  const [vNetOptions, setVNetOptions] = useState([]);
+  const [prefixOptions, setPrefixOptions] = useState(null);
+  const [maskOptions, setMaskOptions] = useState([]);
 
-  const [showAll, setShowAll] = React.useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   const blocks = useSelector(selectBlocks);
   const vNets = useSelector(selectUpdatedVNets);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (vNets) {
       if (showAll) {
         setVNetData(vNets);
@@ -180,19 +180,19 @@ const Planner = () => {
     }
   }, [blocks, vNets, showAll]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(!find(vNetData, selectedVNet)) {
       setSelectedVNet(null);
       setVNetInput('');
     }
   }, [vNetData, selectedVNet]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setSelectedVNet(null);
     setVNetInput('');
   }, [showAll]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(vNetData) {
       showAll
       ? setVNetOptions(orderBy(vNetData, ['subscription_name', 'name'], ['asc', 'asc']))
@@ -202,7 +202,7 @@ const Planner = () => {
     }
   }, [showAll, vNetData]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedVNet) {
       let exclusions = selectedVNet.subnets.map((sub) => sub.prefix);
       let prefixParts = selectedVNet.prefixes[0].split("/");
@@ -224,7 +224,7 @@ const Planner = () => {
     }
   }, [selectedVNet]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedPrefix) {
       let prefixParts = selectedPrefix.split("/");
       let currentMask = parseInt(prefixParts[1], 10);
@@ -239,7 +239,7 @@ const Planner = () => {
     }
   }, [selectedPrefix]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedVNet && selectedPrefix && selectedMask) {
       let subnetsObj = availableSubnets(selectedPrefix, selectedMask.value, exclusions);
 
@@ -283,10 +283,10 @@ const Planner = () => {
                   input: {
                     ...params.slotProps.input,
                     endAdornment: (
-                      <React.Fragment>
+                      <Fragment>
                         {!vNetData ? <CircularProgress color="inherit" size={20} /> : null}
                         {params.slotProps.input.endAdornment}
-                      </React.Fragment>
+                      </Fragment>
                     ),
                   }
                 }}
@@ -397,7 +397,7 @@ const Planner = () => {
           subnetData &&
           [...new Set(subnetData.map((x) => x.mask))].map((mask) => {
           return (
-            <React.Fragment key={`fragment-${mask}`}>
+            <Fragment key={`fragment-${mask}`}>
               <Separator key={`sep-${mask}`} name={mask} total={subnetData.filter((x) => x.mask === mask).length} used={subnetData.filter((x) => x.mask === mask && x.overlap).length} />
               <TileGrid key={`grid-container-${mask}`}>
                 {
@@ -413,7 +413,7 @@ const Planner = () => {
                   })
                 }
               </TileGrid>
-            </React.Fragment>
+            </Fragment>
           );
         })}
       </Box>

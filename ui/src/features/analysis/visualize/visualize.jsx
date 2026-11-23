@@ -1,4 +1,4 @@
-import React from "react";
+import { Fragment, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useSelector } from 'react-redux';
 
 import { concat, cloneDeep, isEmpty } from 'lodash-es';
@@ -542,13 +542,13 @@ const Reset = (props) => {
 
 const Search = ({ ref, options, setDataFocus }) => {
 
-  const [value, setValue] = React.useState(null);
-  const [inputValue, setInputValue] = React.useState('');
-  const [searchOptions, setSearchOptions] = React.useState([]);
+  const [value, setValue] = useState(null);
+  const [inputValue, setInputValue] = useState('');
+  const [searchOptions, setSearchOptions] = useState([]);
 
   const theme = useTheme();
 
-  React.useImperativeHandle(ref, () => ({
+  useImperativeHandle(ref, () => ({
     getValue() {
       return value;
     },
@@ -564,11 +564,11 @@ const Search = ({ ref, options, setDataFocus }) => {
     }
   }));
 
-  React.useEffect(() => {
+  useEffect(() => {
     isEmpty(options) ? setSearchOptions([]) : setSearchOptions(options);
   }, [options]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     value ? setDataFocus(value) : setDataFocus(null);
   }, [value, setDataFocus])
 
@@ -620,11 +620,11 @@ const Search = ({ ref, options, setDataFocus }) => {
 };
 
 const Visualize = () => {
-  const [options, setOptions] = React.useState(opt);
-  const [searchOptions, setSearchOptions] = React.useState([]);
-  const [eChartsRef, setEChartsRef] = React.useState(null);
+  const [options, setOptions] = useState(opt);
+  const [searchOptions, setSearchOptions] = useState([]);
+  const [eChartsRef, setEChartsRef] = useState(null);
 
-  const searchRef = React.useRef(null);
+  const searchRef = useRef(null);
 
   const spaces = useSelector(selectSpaces);
   const vnets = useSelector(selectUpdatedVNets);
@@ -633,13 +633,13 @@ const Visualize = () => {
 
   const theme = useTheme();
 
-  const ref = React.useCallback(node => {
+  const ref = useCallback(node => {
     if (node !== null) {
       setEChartsRef(node);
     }
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(spaces && vnets && vhubs && endpoints) {
       var newOptions = cloneDeep(opt);
 
@@ -677,7 +677,7 @@ const Visualize = () => {
     }
   }, [spaces, vnets, vhubs, endpoints, theme]);
 
-  const setDataFocus = React.useCallback((target) => {
+  const setDataFocus = useCallback((target) => {
     if(eChartsRef && !isEmpty(options.series)) {
       let newOptions = cloneDeep(options);
 
@@ -715,7 +715,7 @@ const Visualize = () => {
   }
 
   return (
-    <React.Fragment>
+    <Fragment>
       <Search
         options={searchOptions}
         setDataFocus={setDataFocus}
@@ -740,7 +740,7 @@ const Visualize = () => {
           style={{ height: "100%", width: "100%" }}
         />
       </div>
-    </React.Fragment>
+    </Fragment>
   );
 };
 

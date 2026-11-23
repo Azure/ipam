@@ -1,4 +1,4 @@
-import * as React from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 
 import { useNavigate } from "react-router";
@@ -90,36 +90,36 @@ const MyPopper = function (props) {
 const Generator = () => {
   const { enqueueSnackbar } = useSnackbar();
 
-  const [blocks, setBlocks] = React.useState(null);
-  const [networks, setNetworks] = React.useState(null);
+  const [blocks, setBlocks] = useState(null);
+  const [networks, setNetworks] = useState(null);
 
-  const [spaceInput, setSpaceInput] = React.useState('');
-  const [blockInput, setBlockInput] = React.useState('');
+  const [spaceInput, setSpaceInput] = useState('');
+  const [blockInput, setBlockInput] = useState('');
 
-  const [subscriptionInput, setSubscriptionInput] = React.useState('');
-  const [networkInput, setNetworkInput] = React.useState('');
+  const [subscriptionInput, setSubscriptionInput] = useState('');
+  const [networkInput, setNetworkInput] = useState('');
 
-  const [maskInput, setMaskInput] = React.useState('');
+  const [maskInput, setMaskInput] = useState('');
 
-  const [selectedSpace, setSelectedSpace] = React.useState(null);
-  const [selectedBlock, setSelectedBlock] = React.useState(null);
+  const [selectedSpace, setSelectedSpace] = useState(null);
+  const [selectedBlock, setSelectedBlock] = useState(null);
 
-  const [selectedSubscription, setSelectedSubscription] = React.useState(null);
-  const [selectedNetwork, setSelectedNetwork] = React.useState(null);
+  const [selectedSubscription, setSelectedSubscription] = useState(null);
+  const [selectedNetwork, setSelectedNetwork] = useState(null);
 
-  const [selectedMask, setSelectedMask] = React.useState(null);
-  const [maskOptions, setMaskOptions] = React.useState(null);
+  const [selectedMask, setSelectedMask] = useState(null);
+  const [maskOptions, setMaskOptions] = useState(null);
 
-  const [reverseSearch, setReverseSearch] = React.useState(false);
-  const [smallestCIDR, setSmallestCIDR] = React.useState(false);
+  const [reverseSearch, setReverseSearch] = useState(false);
+  const [smallestCIDR, setSmallestCIDR] = useState(false);
 
-  const [nextAvailable, setNextAvailable] = React.useState(null);
+  const [nextAvailable, setNextAvailable] = useState(null);
 
-  const [showSubnets, setShowSubnets] = React.useState(false);
+  const [showSubnets, setShowSubnets] = useState(false);
 
-  const [sending, setSending] = React.useState(false);
+  const [sending, setSending] = useState(false);
 
-  const [anchorEl, setAnchorEl] = React.useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
 
   const subscriptions = useSelector(selectSubscriptions);
   const spaces = useSelector(selectSpaces);
@@ -129,7 +129,7 @@ const Generator = () => {
 
   const open = Boolean(anchorEl);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setSelectedSpace(null);
     setSelectedSubscription(null);
     setNextAvailable(null);
@@ -137,13 +137,13 @@ const Generator = () => {
     setSmallestCIDR(false);
   }, [showSubnets]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!spaces) {
       setSelectedSpace(null);
     }
   }, [spaces]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (spaces) {
       if (selectedSpace) {
         const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
@@ -164,7 +164,7 @@ const Generator = () => {
     }
   }, [spaces, selectedSpace]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (blocks) {
       if (selectedBlock) {
         const blockIndex = blocks.findIndex((x) => x.id === selectedBlock.id);
@@ -182,13 +182,13 @@ const Generator = () => {
     }
   }, [blocks, selectedBlock]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedSpace) {
       setBlocks(selectedSpace.blocks);
     }
   }, [selectedSpace]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedSpace && selectedBlock) {
       if (selectedBlock.parent_space !== selectedSpace.name) {
         setSelectedBlock(null);
@@ -196,7 +196,7 @@ const Generator = () => {
     }
   }, [selectedSpace, selectedBlock]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedBlock) {
       let prefixParts = selectedBlock.cidr.split("/");
       let currentMask = parseInt(prefixParts[1], 10);
@@ -211,13 +211,13 @@ const Generator = () => {
     }
   }, [selectedBlock]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!subscriptions) {
       setSelectedSubscription(null);
     }
   }, [subscriptions]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (subscriptions && selectedSubscription) {
       const subscriptionIndex = subscriptions.findIndex((x) => x.subscription_id === selectedSubscription.subscription_id);
 
@@ -234,7 +234,7 @@ const Generator = () => {
     }
   }, [subscriptions, selectedSubscription]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (networks && selectedNetwork) {
       const networkIndex = networks.findIndex((x) => x.id === selectedNetwork.id);
 
@@ -248,13 +248,13 @@ const Generator = () => {
     }
   }, [networks, selectedNetwork]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (vNets && selectedSubscription) {
       setNetworks(vNets.filter((x) => x.subscription_id === selectedSubscription.subscription_id));
     }
   }, [selectedSubscription, vNets]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedNetwork) {
       const maskList = selectedNetwork.prefixes.map((prefix) => {
         let prefixParts = prefix.split("/");
@@ -274,7 +274,7 @@ const Generator = () => {
     }
   }, [selectedNetwork]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setNextAvailable(null);
   }, [selectedMask, reverseSearch, smallestCIDR]);
 
@@ -362,10 +362,10 @@ const Generator = () => {
                   input: {
                     ...params.slotProps.input,
                     endAdornment: (
-                      <React.Fragment>
+                      <Fragment>
                         {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
                         {params.slotProps.input.endAdornment}
-                      </React.Fragment>
+                      </Fragment>
                     ),
                   }
                 }}
@@ -439,9 +439,9 @@ const Generator = () => {
                 <>
                   {
                     selectedNetwork.prefixes.map((prefix) => (
-                      <React.Fragment key={prefix}>
+                      <Fragment key={prefix}>
                         {prefix}<br />
-                      </React.Fragment>
+                      </Fragment>
                     ))
                   }
                 </> :

@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 
 import { useSnackbar } from "notistack";
@@ -38,11 +38,11 @@ export default function EditExtSubnet(props) {
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const [subName, setSubName] = React.useState({ value: "", error: false });
-  const [subDesc, setSubDesc] = React.useState({ value: "", error: false });
-  const [subCidr, setSubCidr] = React.useState({ value: "", error: false });
+  const [subName, setSubName] = useState({ value: "", error: false });
+  const [subDesc, setSubDesc] = useState({ value: "", error: false });
+  const [subCidr, setSubCidr] = useState({ value: "", error: false });
 
-  const [sending, setSending] = React.useState(false);
+  const [sending, setSending] = useState(false);
 
   const dispatch = useDispatch();
 
@@ -166,7 +166,7 @@ export default function EditExtSubnet(props) {
     });
   }
 
-  const unchanged = React.useMemo(() => {
+  const unchanged = useMemo(() => {
     if(selectedSubnet) {
       return (
         subName.value === selectedSubnet.name &&
@@ -178,14 +178,14 @@ export default function EditExtSubnet(props) {
     }
   }, [selectedSubnet, subName, subDesc, subCidr]);
 
-  const hasError = React.useMemo(() => {
+  const hasError = useMemo(() => {
     const errorCheck = (subName.error || subDesc.error || subCidr.error);
     const emptyCheck = (subName.value.length === 0 || subDesc.value.length === 0 || subCidr.value.length === 0);
 
     return (errorCheck || emptyCheck);
   }, [subName, subDesc, subCidr]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedSubnet) {
       setSubName({ value: selectedSubnet.name, error: false });
       setSubDesc({ value: selectedSubnet.desc, error: false });

@@ -1,4 +1,4 @@
-import React from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
 import { useMsal } from "@azure/msal-react";
@@ -15,16 +15,16 @@ import { fetchNotificationsAsync } from '../../notifications/notificationsSlice'
 import { getRestart } from '../../restart/restartSlice';
 
 function Refresh() {
-  const intervalAllRef = React.useRef(null);
-  const intervalMeRef = React.useRef(null);
-  const intervalNotificationsRef = React.useRef(null);
-  const refreshAllRef = React.useRef(null);
-  const refreshMeRef = React.useRef(null);
-  const refreshNotificationsRef = React.useRef(null);
-  const refreshLoadedRef = React.useRef(false);
-  const inProgressRef = React.useRef(InteractionStatus.None);
-  const restartActiveRef = React.useRef(false);
-  const loadErrorRef = React.useRef(null);
+  const intervalAllRef = useRef(null);
+  const intervalMeRef = useRef(null);
+  const intervalNotificationsRef = useRef(null);
+  const refreshAllRef = useRef(null);
+  const refreshMeRef = useRef(null);
+  const refreshNotificationsRef = useRef(null);
+  const refreshLoadedRef = useRef(false);
+  const inProgressRef = useRef(InteractionStatus.None);
+  const restartActiveRef = useRef(false);
+  const loadErrorRef = useRef(null);
 
   const refreshInterval = useSelector(getRefreshInterval);
   const restart = useSelector(getRestart);
@@ -33,17 +33,17 @@ function Refresh() {
   const { inProgress } = useMsal();
   const { enqueueSnackbar } = useSnackbar();
 
-  React.useEffect(() => {
+  useEffect(() => {
     inProgressRef.current = inProgress;
   }, [inProgress]);
 
   // Pause all polling while a service restart is in progress; the app is cycling,
   // so these calls would just error, and the restart gate drives recovery itself.
-  React.useEffect(() => {
+  useEffect(() => {
     restartActiveRef.current = restart.active;
   }, [restart.active]);
 
-  const refreshAll = React.useCallback(() => {
+  const refreshAll = useCallback(() => {
     if (inProgressRef.current !== InteractionStatus.None) {
       return;
     }
@@ -75,7 +75,7 @@ function Refresh() {
     })();
   }, [dispatch, enqueueSnackbar]);
 
-  const refreshMe = React.useCallback(() => {
+  const refreshMe = useCallback(() => {
     if (inProgressRef.current !== InteractionStatus.None) {
       return;
     }
@@ -96,7 +96,7 @@ function Refresh() {
     })();
   }, [dispatch]);
 
-  const refreshNotifications = React.useCallback(() => {
+  const refreshNotifications = useCallback(() => {
     if (inProgressRef.current !== InteractionStatus.None) {
       return;
     }
@@ -117,13 +117,13 @@ function Refresh() {
     })();
   }, [dispatch]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     refreshAllRef.current = refreshAll;
     refreshMeRef.current = refreshMe;
     refreshNotificationsRef.current = refreshNotifications;
   }, [refreshAll, refreshMe, refreshNotifications]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(refreshInterval) {
       refreshAllRef.current()
       clearInterval(intervalAllRef.current);
@@ -135,7 +135,7 @@ function Refresh() {
     }
   }, [refreshInterval]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     clearInterval(intervalMeRef.current);
     intervalMeRef.current = setInterval(() => refreshMeRef.current(), 60 * 1000);
     return () => {
@@ -145,7 +145,7 @@ function Refresh() {
   }, []);
 
   // The engine reuses recent check results, so polling often only reads them back.
-  React.useEffect(() => {
+  useEffect(() => {
     clearInterval(intervalNotificationsRef.current);
     intervalNotificationsRef.current = setInterval(() => refreshNotificationsRef.current(), 5 * 60 * 1000);
     return () => {
@@ -154,7 +154,7 @@ function Refresh() {
     }
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     // Wait until MSAL is idle (inProgress === None) before triggering the
     // initial data fetch.  After a redirect-based re-auth, inProgress starts
     // as "handleRedirect" and only transitions to "none" once the auth code
@@ -167,7 +167,7 @@ function Refresh() {
     }
   }, [inProgress]);
 
-  React.useEffect(()=>{
+  useEffect(()=>{
     const env = { ...import.meta.env, ...window['env'] }
     console.log("+++WEBSITE_DETAILS+++");
     console.log(env);

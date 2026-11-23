@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 
 import { useSnackbar } from "notistack";
@@ -28,9 +28,9 @@ export default function EditBlock(props) {
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const [blockName, setBlockName] = React.useState({ value: "", error: false });
-  const [cidr, setCidr] = React.useState({ value: "", error: false });
-  const [sending, setSending] = React.useState(false);
+  const [blockName, setBlockName] = useState({ value: "", error: false });
+  const [cidr, setCidr] = useState({ value: "", error: false });
+  const [sending, setSending] = useState(false);
 
   const dispatch = useDispatch();
 
@@ -44,7 +44,7 @@ export default function EditBlock(props) {
                     ? true : false
                     : true;
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(block) {
       setBlockName({
         value: block.name,

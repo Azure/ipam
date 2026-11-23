@@ -1,4 +1,4 @@
-import React from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
 import IconButton from '@mui/material/IconButton';
@@ -55,18 +55,18 @@ function NotificationCenter() {
   const worstSeverity = useSelector(getWorstNotificationSeverity);
   const refreshing = useSelector(getNotificationsRefreshing);
 
-  const [anchorEl, setAnchorEl] = React.useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
-  const [selectedId, setSelectedId] = React.useState(null);
+  const [selectedId, setSelectedId] = useState(null);
   const selected = notifications.find((n) => n.id === selectedId) ?? null;
 
   // Subtle, brief attention pulse when an urgent item is present (respects
   // reduced-motion). Deliberately not a forced panel open.
   const urgent = worstSeverity === NOTIFICATION_SEVERITY.CRITICAL;
-  const [animate, setAnimate] = React.useState(false);
+  const [animate, setAnimate] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (urgent && !reduceMotion) {
       setAnimate(true);
       const timer = setTimeout(() => setAnimate(false), 3600);
@@ -149,14 +149,14 @@ function NotificationCenter() {
     ) : (
       <List disablePadding>
         {notifications.map((notification, index) => (
-          <React.Fragment key={notification.id}>
+          <Fragment key={notification.id}>
             <NotificationListItem
               notification={notification}
               onOpen={handleOpenItem}
               onDismiss={handleDismiss}
             />
             {index < notifications.length - 1 && <Divider component="li" />}
-          </React.Fragment>
+          </Fragment>
         ))}
       </List>
     );
@@ -178,7 +178,7 @@ function NotificationCenter() {
   );
 
   return (
-    <React.Fragment>
+    <Fragment>
       <Tooltip title="Notifications">
         <IconButton
           size="large"
@@ -249,7 +249,7 @@ function NotificationCenter() {
         onClose={() => setSelectedId(null)}
         onDismiss={handleDismiss}
       />
-    </React.Fragment>
+    </Fragment>
   );
 }
 

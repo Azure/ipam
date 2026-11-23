@@ -1,4 +1,4 @@
-import React from "react";
+import { Fragment, use } from "react";
 import { styled, createTheme, ThemeProvider } from "@mui/material/styles";
 
 import { get } from 'lodash-es';
@@ -121,7 +121,7 @@ function NumberCircularProgress(props) {
 }
 
 export default function ItemDetails(props) {
-  const { rowData } = React.use(TableContext);
+  const { rowData } = use(TableContext);
   const { title, map, setExpand } = props;
 
   var isTarget = Object.keys(rowData).length;
@@ -144,12 +144,12 @@ export default function ItemDetails(props) {
           </Box>
         </Box>
         {map.showProgress &&
-          <React.Fragment>
+          <Fragment>
             <Utilization>
               <NumberCircularProgress value={progress} />
             </Utilization>
             <Divider />
-          </React.Fragment>
+          </Fragment>
         }
         <Fields>
           {map.fieldMap.map((field) => {
@@ -161,25 +161,25 @@ export default function ItemDetails(props) {
             }
 
             return (
-              <React.Fragment key={field.value}>
+              <Fragment key={field.value}>
                 <Typography variant="overline" sx={{ fontSize: 10, fontWeight: "bold", textAlign: "left", pl: 3 }}>
                   {field.name}:&nbsp;
                 </Typography>
                 <Typography noWrap variant="overline" sx={{ fontSize: 10, textAlign: "left", pl: 5 }}>
                   {Array.isArray(value) ? value.join(', ') : value.toString()}
                 </Typography>
-              </React.Fragment>
+              </Fragment>
             );
           })}
         </Fields>
         {map.showLink &&
-          <React.Fragment>
+          <Fragment>
             <Divider />
             <Link>
               {/* A private endpoint row describes its connected service, which the caller may not be able to read or which may no longer exist, so link to the endpoint itself. */}
               <Button variant="text" size="small" onClick={() => window.open(`https://${AZURE_PORTAL}/#@${rowData.tenant_id}/resource/${rowData.metadata?.pe_id ?? rowData.id}`, "_blank")}>VIEW IN PORTAL</Button>
             </Link>
-          </React.Fragment>
+          </Fragment>
         }
       </Wrapper>
     </ThemeProvider>

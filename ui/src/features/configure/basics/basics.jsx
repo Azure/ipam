@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { styled } from "@mui/material/styles";
 
@@ -53,20 +53,20 @@ const BottomSection = styled("div")(({ theme }) => ({
 export default function Basics() {
   const { enqueueSnackbar } = useSnackbar();
 
-  const [refreshing, setRefreshing] = React.useState(false);
-  const [selectedSpace, setSelectedSpace] = React.useState(null);
-  const [selectedBlock, setSelectedBlock] = React.useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedSpace, setSelectedSpace] = useState(null);
+  const [selectedBlock, setSelectedBlock] = useState(null);
 
-  const configLoadedRef = React.useRef(false);
+  const configLoadedRef = useRef(false);
 
   const spaces = useSelector(selectSpaces);
   const blocks = useSelector(selectBlocks);
 
   const dispatch = useDispatch();
 
-  var configureRef = React.useRef(null);
+  var configureRef = useRef(null);
 
-  const refresh = React.useCallback(() => {
+  const refresh = useCallback(() => {
     (async() => {
       try {
         setRefreshing(true);
@@ -83,14 +83,14 @@ export default function Basics() {
     })();
   }, [dispatch, enqueueSnackbar]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(!configLoadedRef.current) {
       refresh();
       configLoadedRef.current = true;
     }
   }, [refresh]);
 
-  // React.useEffect(() => {
+  // useEffect(() => {
   //   if(blocks && selectedBlock) {
   //     let targetBlock = blocks.find(x => x.name === selectedBlock.name);
 

@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 
 import { useSnackbar } from "notistack";
@@ -39,11 +39,11 @@ export default function EditExtNetwork(props) {
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const [extName, setExtName] = React.useState({ value: "", error: false });
-  const [extDesc, setExtDesc] = React.useState({ value: "", error: false });
-  const [extCidr, setExtCidr] = React.useState({ value: "", error: false });
+  const [extName, setExtName] = useState({ value: "", error: false });
+  const [extDesc, setExtDesc] = useState({ value: "", error: false });
+  const [extCidr, setExtCidr] = useState({ value: "", error: false });
 
-  const [sending, setSending] = React.useState(false);
+  const [sending, setSending] = useState(false);
 
   const dispatch = useDispatch();
 
@@ -196,7 +196,7 @@ export default function EditExtNetwork(props) {
     });
   }
 
-  const unchanged = React.useMemo(() => {
+  const unchanged = useMemo(() => {
     if(selectedExternal) {
       return (
         extName.value === selectedExternal.name &&
@@ -208,14 +208,14 @@ export default function EditExtNetwork(props) {
     }
   }, [selectedExternal, extName, extDesc, extCidr]);
 
-  const hasError = React.useMemo(() => {
+  const hasError = useMemo(() => {
     const errorCheck = (extName.error || extDesc.error || extCidr.error);
     const emptyCheck = (extName.value.length === 0 || extDesc.value.length === 0 || extCidr.value.length === 0);
 
     return (errorCheck || emptyCheck);
   }, [extName, extDesc, extCidr]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedExternal) {
       setExtName({ value: selectedExternal.name, error: false });
       setExtDesc({ value: selectedExternal.desc, error: false });

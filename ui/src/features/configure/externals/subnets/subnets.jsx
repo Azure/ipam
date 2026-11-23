@@ -1,4 +1,4 @@
-import * as React from "react";
+import { Fragment, use, useCallback, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 
 import { cloneDeep } from "lodash-es";
@@ -38,24 +38,24 @@ const Subnets = (props) => {
     setSubnets,
     setSelectedSubnet
   } = props;
-  const { refreshing } = React.use(ExternalContext);
+  const { refreshing } = use(ExternalContext);
 
-  const [addExtSubOpen, setAddExtSubOpen] = React.useState(false);
-  const [editExtSubOpen, setEditExtSubOpen] = React.useState(false);
-  const [delExtSubOpen, setDelExtSubOpen] = React.useState(false);
-  const [manExtEndOpen, setManExtEndOpen] = React.useState(false);
+  const [addExtSubOpen, setAddExtSubOpen] = useState(false);
+  const [editExtSubOpen, setEditExtSubOpen] = useState(false);
+  const [delExtSubOpen, setDelExtSubOpen] = useState(false);
+  const [manExtEndOpen, setManExtEndOpen] = useState(false);
 
   const isAdmin = useSelector(getAdminStatus);
 
   // Column definitions for AG Grid
-  const columns = React.useMemo(() => [
+  const columns = useMemo(() => [
     { field: "name", headerName: "Name", flex: 0.5 },
     { field: "desc", headerName: "Description", flex: 1 },
     { field: "cidr", headerName: "Address Range", flex: 0.30 },
   ], []);
 
   // Extra menu items for Add/Edit/Delete/Manage actions
-  const extraMenuItems = React.useMemo(() => [
+  const extraMenuItems = useMemo(() => [
     {
       icon: AddOutlined,
       label: "Add Subnet",
@@ -83,13 +83,13 @@ const Subnets = (props) => {
   ], [selectedExternal, selectedSubnet, isAdmin]);
 
   // Handle row selection change
-  const handleRowSelectionChanged = React.useCallback((row) => {
+  const handleRowSelectionChanged = useCallback((row) => {
     setSelectedSubnet(row);
   }, [setSelectedSubnet]);
 
   // Derive grid data synchronously from selectedExternal to prevent
   // a flash of the no-rows overlay between selection and data display.
-  const gridData = React.useMemo(() => {
+  const gridData = useMemo(() => {
     if (!selectedExternal) return [];
 
     const newSubnets = cloneDeep(selectedExternal['subnets']);
@@ -103,19 +103,19 @@ const Subnets = (props) => {
   }, [selectedExternal]);
 
   // Sync enriched subnets data to parent state (for dialogs, selection tracking, etc.)
-  React.useEffect(() => {
+  useEffect(() => {
     setSubnets(gridData);
   }, [gridData, setSubnets]);
 
   // Clear selection when subnets change
-  React.useEffect(() => {
+  useEffect(() => {
     if (!subnets || subnets.length === 0) {
       setSelectedSubnet(null);
     }
   }, [subnets, setSelectedSubnet]);
 
   // No rows overlay component
-  const noRowsOverlay = React.useMemo(() => {
+  const noRowsOverlay = useMemo(() => {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
         <Typography
@@ -134,9 +134,9 @@ const Subnets = (props) => {
   }, [selectedExternal]);
 
   return (
-    <React.Fragment>
+    <Fragment>
       {isAdmin &&
-        <React.Fragment>
+        <Fragment>
           <AddExtSubnet
             open={addExtSubOpen}
             handleClose={() => setAddExtSubOpen(false)}
@@ -162,7 +162,7 @@ const Subnets = (props) => {
             external={selectedExternal ? selectedExternal.name : null}
             subnet={selectedSubnet ? selectedSubnet.name : null}
           />
-        </React.Fragment>
+        </Fragment>
       }
       <ManageExtEndpoints
         open={manExtEndOpen}
@@ -192,7 +192,7 @@ const Subnets = (props) => {
           />
         </Box>
       </Box>
-    </React.Fragment>
+    </Fragment>
   );
 }
 

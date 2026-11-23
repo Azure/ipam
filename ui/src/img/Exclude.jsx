@@ -1,5 +1,3 @@
-import React from "react";
-
 function Exclude() {
   return (
     <svg

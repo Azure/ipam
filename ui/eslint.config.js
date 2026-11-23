@@ -52,6 +52,26 @@ export default [
     files: ["src/**/*.jsx"],
   },
 
+  // Import React APIs by name, as React's documentation does. Restricting the default export also
+  // rejects a namespace import, and a leftover React.X then fails no-undef.
+  {
+    files: ["src/**/*.{js,jsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "react",
+              importNames: ["default"],
+              message: "Import React APIs by name, such as import { useState } from \"react\". JSX doesn't need React in scope.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // Disable RSC rules (Vite SPA, not using React Server Components)
   // Disable rules-of-hooks and exhaustive-deps (covered by react-hooks)
   // Disable set-state-in-effect (widespread pattern, to be addressed incrementally)

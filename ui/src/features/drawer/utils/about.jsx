@@ -1,4 +1,4 @@
-import * as React from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 
 import dayjs from "dayjs";
@@ -61,14 +61,14 @@ function DetailValue({ loading, value }) {
 export default function About(props) {
   const { open, handleClose } = props;
 
-  const [status, setStatus] = React.useState(null);
-  const [loadError, setLoadError] = React.useState(false);
+  const [status, setStatus] = useState(null);
+  const [loadError, setLoadError] = useState(false);
 
   const updateNotification = useSelector(getUpdateNotification);
 
   const { enqueueSnackbar } = useSnackbar();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) {
       return undefined;
     }
@@ -230,12 +230,12 @@ export default function About(props) {
               }}
             >
               {details.map((detail) => (
-                <React.Fragment key={detail.label}>
+                <Fragment key={detail.label}>
                   <Typography component="dt" variant="body2" sx={{ color: 'text.secondary' }}>
                     {detail.label}
                   </Typography>
                   <DetailValue loading={loading} value={detail.value} />
-                </React.Fragment>
+                </Fragment>
               ))}
             </Box>
             <Tooltip title="Copy diagnostics">

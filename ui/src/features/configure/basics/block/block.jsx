@@ -1,4 +1,4 @@
-import * as React from "react";
+import { Fragment, use, useCallback, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { styled } from "@mui/material/styles";
 
@@ -64,16 +64,16 @@ const columns = [
 
 export default function BlockDataGrid(props) {
   const { selectedSpace, selectedBlock, setSelectedBlock } = props;
-  const { blocks, refreshing, refresh } = React.use(BasicContext);
+  const { blocks, refreshing, refresh } = use(BasicContext);
 
-  const [previousSpace, setPreviousSpace] = React.useState(null);
+  const [previousSpace, setPreviousSpace] = useState(null);
 
-  const [addBlockOpen, setAddBlockOpen] = React.useState(false);
-  const [editBlockOpen, setEditBlockOpen] = React.useState(false);
+  const [addBlockOpen, setAddBlockOpen] = useState(false);
+  const [editBlockOpen, setEditBlockOpen] = useState(false);
 
-  const [deleteBlockOpen, setDeleteBlockOpen] = React.useState(false);
+  const [deleteBlockOpen, setDeleteBlockOpen] = useState(false);
 
-  const [anchorEl, setAnchorEl] = React.useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
 
   const isAdmin = useSelector(getAdminStatus);
 
@@ -82,7 +82,7 @@ export default function BlockDataGrid(props) {
   const menuOpen = Boolean(anchorEl);
 
   // Clear selection when space changes
-  const onSpaceChange = React.useCallback(() => {
+  const onSpaceChange = useCallback(() => {
     if(selectedSpace) {
       if(selectedSpace.name !== previousSpace) {
         setSelectedBlock(null);
@@ -92,12 +92,12 @@ export default function BlockDataGrid(props) {
     setPreviousSpace(selectedSpace ? selectedSpace.name : null);
   }, [selectedSpace, previousSpace, setSelectedBlock]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     onSpaceChange()
   }, [selectedSpace, onSpaceChange]);
 
   // Sync selection when blocks data changes
-  React.useEffect(() => {
+  useEffect(() => {
     if(blocks && selectedBlock && selectedSpace) {
       const currentBlock = blocks.find(block => (block.name === selectedBlock.name) && (block.parent_space === selectedSpace.name));
 
@@ -110,7 +110,7 @@ export default function BlockDataGrid(props) {
   }, [blocks, selectedSpace, selectedBlock, setSelectedBlock]);
 
   // Handle row click from ConfigureGrid
-  const handleRowClick = React.useCallback((data) => {
+  const handleRowClick = useCallback((data) => {
     // Toggle selection: if clicking the same row, deselect; otherwise select new row
     if (selectedBlock && selectedBlock.name === data.name) {
       setSelectedBlock(null);
@@ -143,9 +143,9 @@ export default function BlockDataGrid(props) {
   };
 
   // Custom no rows overlay component
-  const noRowsOverlay = React.useMemo(() => {
+  const noRowsOverlay = useMemo(() => {
     return (
-      <React.Fragment>
+      <Fragment>
         { selectedSpace
           ? <Typography
               variant="overline"
@@ -164,19 +164,19 @@ export default function BlockDataGrid(props) {
               Please Select a Space
             </Typography>
         }
-      </React.Fragment>
+      </Fragment>
     );
   }, [selectedSpace]);
 
   // Compute row data for the grid
-  const rowData = React.useMemo(() => {
+  const rowData = useMemo(() => {
     return (selectedSpace && blocks) ? blocks.filter((block) => block.parent_space === selectedSpace.name) : [];
   }, [selectedSpace, blocks]);
 
   return (
-    <React.Fragment>
+    <Fragment>
       { isAdmin &&
-        <React.Fragment>
+        <Fragment>
           <EditBlock
             open={editBlockOpen}
             handleClose={() => setEditBlockOpen(false)}
@@ -199,7 +199,7 @@ export default function BlockDataGrid(props) {
             block={selectedBlock ? selectedBlock.name : null}
             refresh={refresh}
           />
-        </React.Fragment>
+        </Fragment>
       }
       <GridHeader
         style={{
@@ -210,7 +210,7 @@ export default function BlockDataGrid(props) {
         <Box sx={{ width: "20%" }}></Box>
         <GridTitle>{selectedBlock ? `'${selectedBlock.name}' selected` : "Blocks"}</GridTitle>
         <Box sx={{ width: "20%", display: "flex", justifyContent: "flex-end" }}>
-          <React.Fragment>
+          <Fragment>
             <Tooltip title="Actions">
               <IconButton
                 aria-label="Actions"
@@ -323,7 +323,7 @@ export default function BlockDataGrid(props) {
                 Delete
               </MenuItem>
             </Menu>
-          </React.Fragment>
+          </Fragment>
         </Box>
       </GridHeader>
       <GridBody>
@@ -336,6 +336,6 @@ export default function BlockDataGrid(props) {
           noRowsOverlay={noRowsOverlay}
         />
       </GridBody>
-    </React.Fragment>
+    </Fragment>
   );
 }

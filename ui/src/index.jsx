@@ -1,4 +1,4 @@
-import React from 'react';
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { Box, Typography } from '@mui/material';
@@ -48,13 +48,13 @@ msalInstance.initialize().then(() => {
   }
 
   root.render(
-    <React.StrictMode>
+    <StrictMode>
       <MsalProvider instance={msalInstance}>
         <Provider store={store}>
           <App />
         </Provider>
       </MsalProvider>
-    </React.StrictMode>
+    </StrictMode>
   );
 }).catch((error) => {
   // MSAL failed to initialize (misconfiguration, blocked storage access,
@@ -69,7 +69,7 @@ msalInstance.initialize().then(() => {
 
   // Render a minimal fallback so the user is not left with a blank page.
   root.render(
-    <React.StrictMode>
+    <StrictMode>
       <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 64px)', textAlign: 'center', px: 2 }}>
         <Typography variant="h3" gutterBottom component="div">
           Unable to start Azure IPAM
@@ -79,6 +79,6 @@ msalInstance.initialize().then(() => {
           page or try again later. If the problem persists, contact your administrator.
         </Typography>
       </Box>
-    </React.StrictMode>
+    </StrictMode>
   );
 });

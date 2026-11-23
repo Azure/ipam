@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useCallback, useEffect } from "react";
+import { useRef, useMemo, useCallback, useEffect, createContext, memo, use } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
 import { useTheme } from '@mui/material/styles';
@@ -16,7 +16,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 // React context changes bypass React.memo, ensuring overlays re-render
 // when parent state changes — even when AG Grid itself doesn't propagate
 // updated overlayComponentParams to an already-visible overlay.
-const OverlayContext = React.createContext(null);
+const OverlayContext = createContext(null);
 
 /**
  * CombinedOverlay - Single overlay component for both loading and no-rows states.
@@ -25,8 +25,8 @@ const OverlayContext = React.createContext(null);
  * rather than from AG Grid props, so that React context reactivity drives
  * re-renders independently of AG Grid's overlay lifecycle.
  */
-const CombinedOverlay = React.memo(({ overlayType }) => {
-  const overlayConfig = React.use(OverlayContext);
+const CombinedOverlay = memo(({ overlayType }) => {
+  const overlayConfig = use(OverlayContext);
   const noRowsContent = overlayConfig?.noRowsOverlay;
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
