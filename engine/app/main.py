@@ -411,21 +411,29 @@ if os.path.isdir(BUILD_DIR) and UI_APP_ID and VALID_APP_ID:
     def read_index(request: Request, full_path: str):
         # Resolved per request because ipam_init() may relocate BUILD_DIR at startup
         build_root = os.path.realpath(BUILD_DIR)
+        # Trailing separator so sibling paths like "<root>-evil" don't pass the prefix check
+        root_prefix = os.path.join(build_root, "")
+        index_file = os.path.join(build_root, "index.html")
 
+        # Containment is checked with normpath/realpath + startswith, the guard pattern
+        # CodeQL's py/path-injection query recognizes (it does not model commonpath)
         try:
             # String-only check first so out-of-root paths never touch the filesystem
             candidate = os.path.normpath(os.path.join(build_root, full_path))
-            is_contained = os.path.commonpath([build_root, candidate]) == build_root
 
-            if is_contained:
-                # Resolve symlinks and re-check
-                target_file = os.path.realpath(candidate)
-                is_contained = os.path.commonpath([build_root, target_file]) == build_root
+            if not candidate.startswith(root_prefix):
+                return FileResponse(index_file)
+
+            # Resolve symlinks and re-check
+            target_file = os.path.realpath(candidate)
+
+            if not target_file.startswith(root_prefix):
+                return FileResponse(index_file)
         except (ValueError, OSError):
-            # Null bytes, mismatched drives, or unreachable paths
-            is_contained = False
+            # Null bytes or unreachable paths
+            return FileResponse(index_file)
 
-        if is_contained and os.path.isfile(target_file):
+        if os.path.isfile(target_file):
             return FileResponse(target_file)
 
-        return FileResponse(os.path.join(build_root, "index.html"))
+        return FileResponse(index_file)
