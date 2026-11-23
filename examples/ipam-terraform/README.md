@@ -17,13 +17,15 @@ This example demonstrates how to integrate Azure IPAM into a Terraform deploymen
 
 | Provider | Source | Version |
 |----------|--------|---------|
-| [azurerm](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs) | `hashicorp/azurerm` | `~> 3.0` |
+| [azurerm](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs) | `hashicorp/azurerm` | `~> 5.0` |
 | [azureipam](https://registry.terraform.io/providers/XtratusCloud/azureipam/latest/docs) | `xtratuscloud/azureipam` | `~> 2.0` |
+| [external](https://registry.terraform.io/providers/hashicorp/external/latest/docs) | `hashicorp/external` | `~> 2.3` |
 
 ## Variables
 
 | Variable | Type | Required | Description |
 |----------|------|----------|-------------|
+| `subscription_id` | `string` | Yes | ID of the Azure subscription to deploy to |
 | `location` | `string` | Yes | Azure region for the deployment |
 | `rg_name` | `string` | Yes | Resource group name |
 | `vnet_name` | `string` | Yes | Virtual network name |

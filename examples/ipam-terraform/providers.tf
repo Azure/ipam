@@ -4,11 +4,15 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.0"
+      version = "~> 5.0"
     }
     azureipam = {
       source  = "xtratuscloud/azureipam"
       version = "~> 2.0"
+    }
+    external = {
+      source  = "hashicorp/external"
+      version = "~> 2.3"
     }
   }
 }
@@ -27,6 +31,8 @@ data "external" "ipam_token" {
 }
 
 provider "azurerm" {
+  subscription_id = var.subscription_id
+
   features {}
 }
 

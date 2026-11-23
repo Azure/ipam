@@ -1,3 +1,8 @@
+variable "subscription_id" {
+  type        = string
+  description = "ID of the Azure subscription to deploy the Virtual Network to."
+}
+
 variable "location" {
   type        = string
   description = "The Azure location to deploy resources to."
