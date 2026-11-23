@@ -104,6 +104,7 @@ For footnotes on a parameter table, mark the cell with `**<sup>1</sup>**` and ad
 - PowerShell examples must run on PowerShell 7.2 or later with the Azure PowerShell version listed in the deployment prerequisites. If an example needs something newer, say so above it.
 - For Azure CLI tokens, use `--scope "<scope>/.default"`, not `--resource`.
 - Show both Azure PowerShell and Azure CLI where both are practical, PowerShell first, under `####` headings named **Azure PowerShell** and **Azure CLI** (and **Azure Portal** when a portal method is shown, listed first).
+- Prefer cmdlets and `az` commands over calling a REST API, since they follow whichever cloud the reader signed in to. For Azure Resource Manager, use `Invoke-AzRestMethod -Path` and pass a resource ID to `az rest --url`, which both resolve against the signed-in cloud. For any other REST API, such as Microsoft Graph, take the host from the signed-in cloud with `(Get-AzContext).Environment` or `az cloud show` rather than hard-coding a public cloud address like `graph.microsoft.com`, which fails in sovereign clouds.
 - Use inline code for parameters (`-ResourceGroupName`), API paths (`/api/spaces`), app settings (`ENGINE_APP_ID`), file paths and values.
 - Write API paths in full the first time they appear on a page (`/api/spaces/{space}/blocks/{block}/networks`).
 - Check every example against the current code before publishing.

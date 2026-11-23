@@ -2,6 +2,8 @@
 
 This page covers common problems with deploying and running Azure IPAM. Each entry describes the symptoms, how to confirm the cause and how to fix it. If your problem isn't listed, [report an issue](https://github.com/Azure/ipam/issues/new?template=bug_report.yml).
 
+The Azure PowerShell and Azure CLI commands on this page assume you're signed in to the cloud and subscription where Azure IPAM is deployed. See [Authenticate to Azure PowerShell](/deployment/README.md#authenticate-to-azure-powershell) and [Authenticate to Azure CLI](/deployment/README.md#authenticate-to-azure-cli).
+
 ## New-AzRoleAssignment (Failed)
 
 ### Symptoms
@@ -318,7 +320,6 @@ One or more of the following, depending on which app setting can't be resolved:
 
 On the App Service or Function App's **Environment variables** page, an app setting whose **Source** is **Key vault** shows an error.
 
-<!-- SCREENSHOT PLACEHOLDER: App Service Environment variables showing a Key vault Reference app setting with an error -->
 ![Key Vault Reference Error](./images/key_vault_reference_error.png)
 
 ### Verify
@@ -485,22 +486,61 @@ az ad app show --id "<engine-app-id>"
 az ad sp show --id "<engine-app-id>"
 ```
 
-If either is missing, look for it under **Microsoft Entra ID** → **App registrations** → **Deleted applications**, or **Microsoft Entra ID** → **Enterprise applications** → **Deleted applications**.
+If the app registration is missing, look for it under **Microsoft Entra ID** → **App registrations** → **Deleted applications**. Deleting an app registration also deletes its service principal.
 
-<!-- SCREENSHOT PLACEHOLDER: App registrations Deleted applications tab listing the Engine application -->
 ![Deleted Applications](./images/deleted_applications.png)
+
+If the app registration exists but its service principal doesn't, only the service principal was deleted. The Microsoft Entra admin center doesn't list deleted service principals, so find and restore it with the commands under **Resolve** below.
 
 ### Resolve
 
-Deleted applications can be restored for 30 days. Select the Engine application under **Deleted applications** and select **Restore app registration**. Restoring the app registration from the Microsoft Entra admin center also restores its service principal. If only the enterprise application was deleted, restore it from **Enterprise applications** → **Deleted applications** instead.
+Deleted applications can be restored for 30 days.
+
+If the app registration was deleted, select the Engine application under **Deleted applications**, then select **Restore app registration**. Restoring the app registration also restores its service principal.
+
+If only the service principal was deleted, restore it with Azure PowerShell or Azure CLI.
+
+#### Azure PowerShell
+
+The restore should return `200`:
+
+```powershell
+$engineAppId = "<engine-app-id>"
+
+# Microsoft Graph's address depends on the cloud you're signed in to
+$graphUrl = (Get-AzContext).Environment.ExtendedProperties.MicrosoftGraphUrl
+
+# Find the Deleted Service Principal
+$deleted = Invoke-AzRestMethod -Method GET -Uri "$graphUrl/v1.0/directory/deletedItems/microsoft.graph.servicePrincipal?`$filter=appId eq '$engineAppId'"
+$servicePrincipal = ($deleted.Content | ConvertFrom-Json).value | Select-Object -First 1
+
+# Restore It
+(Invoke-AzRestMethod -Method POST -Uri "$graphUrl/v1.0/directory/deletedItems/$($servicePrincipal.id)/restore").StatusCode
+```
+
+#### Azure CLI
+
+```bash
+appId="<engine-app-id>"
+
+# Microsoft Graph's address depends on the cloud you're signed in to
+graphUrl=$(az cloud show --query endpoints.microsoftGraphResourceId --output tsv)
+graphUrl=${graphUrl%/}
+
+# Find the Deleted Service Principal
+spId=$(az rest --method get --url "$graphUrl/v1.0/directory/deletedItems/microsoft.graph.servicePrincipal?\$filter=appId eq '$appId'" --query "value[0].id" --output tsv)
+
+# Restore It
+az rest --method post --url "$graphUrl/v1.0/directory/deletedItems/$spId/restore"
+```
 
 After restoring, confirm the Engine still has its Azure access by following [Check Reader Access](/maintenance/README.md#check-reader-access).
 
-If the application no longer appears under **Deleted applications**, it has been permanently deleted and the app registrations must be recreated with the [Azure Identities (Only) Deployment](/deployment/README.md#azure-identities-only-deployment). The new registrations have different IDs, so the `ENGINE-ID`, `UI-ID` and `ENGINE-SECRET` secrets in Key Vault, and the UI app registration's redirect URI, must then be updated to match. [Open an issue](https://github.com/Azure/ipam/issues/new?template=bug_report.yml) if you need help.
+If the application no longer appears under **Deleted applications**, or the commands above don't find its service principal, it has been permanently deleted. The app registrations must be recreated with the [Azure Identities (Only) Deployment](/deployment/README.md#azure-identities-only-deployment). The new registrations have different IDs, so the `ENGINE-ID`, `UI-ID` and `ENGINE-SECRET` secrets in Key Vault, and the UI app registration's redirect URI, must then be updated to match. [Open an issue](https://github.com/Azure/ipam/issues/new?template=bug_report.yml) if you need help.
 
 ### Notes
 
-Restoring an application requires [Application Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#application-administrator), [Cloud Application Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#cloud-application-administrator), or ownership of the application. See [Restore a recently deleted application](https://learn.microsoft.com/entra/identity-platform/howto-restore-app) for details.
+Restoring an application requires [Application Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#application-administrator), [Cloud Application Administrator](https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#cloud-application-administrator), or ownership of the application. See [Restore a recently deleted application](https://learn.microsoft.com/entra/identity-platform/howto-restore-app) and [Restore a soft deleted enterprise application](https://learn.microsoft.com/entra/identity/enterprise-apps/restore-application) for details.
 
 ## AADSTS7000112 (Engine Application Disabled)
 
@@ -518,7 +558,7 @@ The Engine's service principal has been disabled, which stops it from signing in
 
 Navigate to **Microsoft Entra ID** → **Enterprise applications** → your Azure IPAM **Engine** application → **Properties**, and check **Enabled for users to sign-in?**
 
-<!-- SCREENSHOT PLACEHOLDER: Engine enterprise application Properties with Enabled for users to sign-in set to No -->
+![Engine Enterprise Application](./images/engine_enterprise_app.png)
 ![Engine Enterprise Application Properties](./images/engine_enterprise_app_properties.png)
 
 #### Azure PowerShell

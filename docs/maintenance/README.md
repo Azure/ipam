@@ -6,6 +6,8 @@ Azure IPAM needs very little ongoing care, but a few tasks keep a deployment hea
 
 Unlike an [update](/update/README.md), none of these tasks change the version of Azure IPAM you are running.
 
+The Azure PowerShell and Azure CLI steps assume you're signed in to the cloud and subscription where Azure IPAM is deployed. See [Authenticate to Azure PowerShell](/deployment/README.md#authenticate-to-azure-powershell) and [Authenticate to Azure CLI](/deployment/README.md#authenticate-to-azure-cli).
+
 ## Engine Client Secret
 
 The *Engine* app registration authenticates to Azure with a client secret. Azure IPAM uses it both to read your Azure environment on its own behalf and to read it on behalf of signed-in users, so every request that touches Azure depends on it.

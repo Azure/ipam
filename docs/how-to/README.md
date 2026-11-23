@@ -159,7 +159,6 @@ The **vHubs** tab shows the Azure Virtual WAN hubs you can see, whether or not t
 
 The grid displays the **vHub Name** (with a drill-down button to Endpoints), **Parent vWAN**, the **Space** and **Block** it's associated with (if any), **Resource Group**, and **Address Space**. The **Subscription Name** and **Subscription ID** columns are hidden by default.
 
-<!-- TODO: Screenshot needed -->
 ![IPAM vHubs](./images/discover_vhubs.png)
 
 ![IPAM vHubs Details](./images/discover_vhubs_details.png)
