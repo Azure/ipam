@@ -138,7 +138,7 @@ If you keep network configuration in a version-controlled repository, a CI/CD pi
 
 ## Azure IPAM Terraform Provider
 
-The [Azure IPAM Terraform provider](https://registry.terraform.io/providers/XtratusCloud/azureipam/latest/docs) (`xtratuscloud/azureipam`) is a community-maintained provider that wraps the Azure IPAM REST API and exposes it as native Terraform resources and data sources. For teams that already manage their Azure estate with Terraform, it's a declarative alternative to calling the REST API directly, covering Reservations, virtual network associations and External Networks. It doesn't manage External Network subnets or endpoints, so the CMDB and scanner flows above still call the REST API directly.
+The [Azure IPAM Terraform provider](https://registry.terraform.io/providers/XtratusCloud/azureipam/latest/docs) (`xtratuscloud/azureipam`) is a community-maintained provider that wraps the Azure IPAM REST API and exposes it as native Terraform resources and data sources. For teams that already manage their Azure estate with Terraform, it's a declarative alternative to calling the REST API directly, covering Spaces, Blocks, Reservations, virtual network associations and External Networks. It doesn't manage External Network subnets or endpoints, so the CMDB and scanner flows above still call the REST API directly.
 
 > **NOTE:** The provider is published and maintained by [XtratusCloud](https://github.com/XtratusCloud/terraform-provider-azureipam), not by the Azure IPAM project, and Microsoft doesn't support it. The REST API is the authoritative interface to Azure IPAM, and the snippets below are only a starting point. Always check the [provider documentation on the Terraform Registry](https://registry.terraform.io/providers/XtratusCloud/azureipam/latest/docs) for the current, authoritative reference.
 
@@ -147,7 +147,7 @@ The [Azure IPAM Terraform provider](https://registry.terraform.io/providers/Xtra
 The provider is a good fit when:
 
 - Your infrastructure is already managed end to end with Terraform, and you want Azure IPAM tracked the same way.
-- You want Reservations, associations and External Networks reconciled with `terraform plan` and `terraform apply`, rather than API calls in a pipeline step.
+- You want your Spaces, Blocks, Reservations, associations and External Networks reconciled with `terraform plan` and `terraform apply`, rather than API calls in a pipeline step.
 - You want Terraform's drift detection to catch changes made to Azure IPAM outside Terraform.
 
 Calling the REST API directly, with the [PowerShell and Bash scripts](https://github.com/Azure/ipam/tree/main/examples/scripts) or your own tooling, is still the better choice for one-off tasks, pipelines that don't use Terraform, or environments where a community provider isn't allowed.
