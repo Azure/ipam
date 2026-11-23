@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and discussion
+    url: https://github.com/Azure/ipam/discussions
+    about: Ask usage or configuration questions and share tips with the community.
+  - name: Documentation
+    url: https://azure.github.io/ipam/
+    about: Deployment, update, and how-to guides for Azure IPAM.
+  - name: Report a security vulnerability
+    url: https://msrc.microsoft.com/create-report
+    about: Please don't report security issues in public GitHub issues.

@@ -23,6 +23,11 @@ param engineAppId string
 @description('IPAM-Engine App Registration Client Secret')
 param engineAppSecret string
 
+// Not a secret: the expiration date of the client secret above.
+@description('IPAM-Engine App Registration Client Secret Expiration Date (ISO 8601, UTC)')
+#disable-next-line secure-secrets-in-params
+param engineAppSecretExpiry string = ''
+
 @description('Log Analytics Worskpace ID')
 param workspaceId string
 
@@ -34,6 +39,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
   name: keyVaultName
   location: location
   properties: {
+    enableSoftDelete: true
     enablePurgeProtection: true
     enableRbacAuthorization: true
     tenantId: tenantId
@@ -77,6 +83,9 @@ resource engineSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
   name: 'ENGINE-SECRET'
   properties: {
     value: engineAppSecret
+    attributes: empty(engineAppSecretExpiry) ? {} : {
+      exp: dateTimeToEpoch(engineAppSecretExpiry)
+    }
   }
 }
 

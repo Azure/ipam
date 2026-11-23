@@ -1,5 +1,5 @@
 ARG BUILD_IMAGE=node:22-slim
-ARG SERVE_IMAGE=python:3.11-slim
+ARG SERVE_IMAGE=python:3.12-slim-trixie
 
 # Set Production Build Flag
 ARG PROD_BUILD=true
@@ -21,8 +21,8 @@ ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 # Set the Working Directory
 WORKDIR /tmp
 
-# Copy UI Code
-COPY ./ui/. ./
+# Copy UI Manifests
+COPY ./ui/package*.json ./
 
 # Install UI Dependencies
 RUN if [ "${PROD_BUILD}" = true ]; then \
@@ -30,7 +30,9 @@ RUN if [ "${PROD_BUILD}" = true ]; then \
 else \
   npm install; \
 fi
-RUN chmod 777 -R node_modules
+
+# Copy UI Source Code
+COPY ./ui/. ./
 
 # Build IPAM UI
 RUN npm run build
@@ -43,32 +45,25 @@ ARG PROD_BUILD
 # Port to Listen On
 ARG PORT
 
-# Set Debian Frontend to Non-Interactive
-ARG DEBIAN_FRONTEND=noninteractive
+# Disable PIP Root Warnings
+ARG PIP_ROOT_USER_ACTION=ignore
+
+# Disable PIP Upgrade Warnings
+ARG PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# IPAM Version (for OCI Image Label)
+ARG IPAM_VERSION=0.0.0
 
 # Set Environment Variable
 ENV PORT=${PORT}
 
-# Disable PIP Root Warnings
-ENV PIP_ROOT_USER_ACTION=ignore
+# OCI Image Labels
+LABEL org.opencontainers.image.title="Azure IPAM" \
+      org.opencontainers.image.version="${IPAM_VERSION}" \
+      org.opencontainers.image.source="https://github.com/Azure/ipam"
 
-# Set Working Directory
-WORKDIR /tmp
-
-# Install OpenSSH and set the password for root to "Docker!"
-RUN apt-get update
-RUN apt-get install -qq openssh-server -y \
-      && echo "root:Docker!" | chpasswd
-
-# Enable SSH root login with Password Authentication
-# RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config
-
-# Copy 'sshd_config File' to /etc/ssh/
-COPY sshd_config /etc/ssh/
-
-# Set SSH Key Permissions
-RUN ssh-keygen -A
-RUN mkdir -p /var/run/sshd
+# Create Non-Root User (UID 1001, GID 0 to match the RHEL image)
+RUN useradd --uid 1001 --gid 0 --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin ipam
 
 # Set Working Directory
 WORKDIR /ipam
@@ -76,9 +71,6 @@ WORKDIR /ipam
 # Install Engine Dependencies
 COPY ./engine/requirements.txt /code/requirements.txt
 COPY ./engine/requirements.lock.txt /code/requirements.lock.txt
-
-# Upgrade PIP
-RUN pip install --upgrade pip --progress-bar off
 
 # Install Dependencies
 RUN if [ "${PROD_BUILD}" = true ]; then \
@@ -89,7 +81,9 @@ fi
 
 # Copy Engine Code
 COPY ./engine/app ./app
-COPY --from=builder /tmp/dist ./dist
+
+# Copy UI Build (writable so the engine can write env.js at startup)
+COPY --from=builder --chown=1001:0 /tmp/dist ./dist
 
 # Copy Init Script
 COPY ./init.sh .
@@ -97,8 +91,11 @@ COPY ./init.sh .
 # Set Script Execute Permissions
 RUN chmod +x init.sh
 
-# Expose Ports
-EXPOSE $PORT 2222
+# Switch to Non-Root User
+USER 1001
+
+# Expose Port
+EXPOSE $PORT
 
 # Execute Startup Script
-ENTRYPOINT ./init.sh ${PORT}
+ENTRYPOINT ["/bin/sh", "-c", "exec ./init.sh ${PORT}"]

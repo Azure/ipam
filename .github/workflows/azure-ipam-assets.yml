@@ -17,21 +17,26 @@ jobs:
       - run: echo "Job triggered by a ${{ github.event_name }} event."
       - run: echo "Release Tag - ${{ github.event.release.tag_name }}."
 
+      - name: Checkout Azure IPAM Code
+        id: checkoutRepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       - name: "Setup NodeJS v22"
         id: setupNode
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
 
-      - name: "Setup Python v3.11"
-        id: setupPython
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      # Must match the App Service runtime declared in engine/app/version.json
+      - name: "Read Python Version"
+        id: pythonVersion
+        run: echo "version=$(jq -r .python engine/app/version.json)" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout Azure IPAM Code
-        id: checkoutRepo
-        uses: actions/checkout@v4
+      - name: "Setup Python"
+        id: setupPython
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ steps.pythonVersion.outputs.version }}
 
       - name: Install NPM Packages
         id: installNpmPackages
@@ -51,7 +56,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Name ../assets/ -Force
-          ./build.ps1 -Path ../assets/ 
+          ./build.ps1 -Path ../assets/
 
       - name: Upload Azure IPAM Release Asset
         id: uploadReleaseAsset

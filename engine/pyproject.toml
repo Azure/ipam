@@ -1,0 +1,40 @@
+[project]
+name = "azure-ipam-engine"
+requires-python = ">=3.12"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E4",   # pycodestyle import errors
+    "E7",   # pycodestyle statement errors
+    "E9",   # pycodestyle runtime errors
+    "F",    # pyflakes
+    "I",    # isort
+    "S608", # flake8-bandit: SQL built by string formatting (Cosmos DB queries must use parameters)
+    "SIM115", # flake8-simplify: open() outside a with block (not flagged inside a return statement)
+    "TID",  # flake8-tidy-imports (banned-api, below)
+    "UP",   # pyupgrade: prefer syntax available at the target Python version
+    "W291", # trailing whitespace
+    "W293", # blank line with whitespace
+    "W605", # invalid escape sequence
+]
+
+# Synchronous HTTP clients verify TLS against the bundled certifi roots and cannot see
+# the sovereign cloud roots injected via WEBSITES_INCLUDE_CLOUD_CERTS, so they fail in
+# secret clouds (IL6) while passing every commercial-cloud test.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"requests".msg = "Use aiohttp; requests validates TLS against certifi and breaks in sovereign clouds."
+"httpx".msg = "Use aiohttp; httpx validates TLS against certifi and breaks in sovereign clouds."
+# Engine credentials must come from get_client_credentials() / get_obo_credentials(), so every sign-in
+# is classified and recorded by app.engine_access. See "Engine Credentials" in the Conventions docs.
+"azure.identity.ClientSecretCredential".msg = "Use get_client_credentials() so the sign-in is classified and recorded."
+"azure.identity.OnBehalfOfCredential".msg = "Use get_obo_credentials() so the sign-in is classified and recorded."
+"azure.identity.aio.ClientSecretCredential".msg = "Use get_client_credentials() so the sign-in is classified and recorded."
+"azure.identity.aio.OnBehalfOfCredential".msg = "Use get_obo_credentials() so the sign-in is classified and recorded."
+
+[tool.ruff.lint.per-file-ignores]
+# The one module allowed to construct the engine's credentials, as the wrappers that observe them.
+"app/engine_access.py" = ["TID251"]

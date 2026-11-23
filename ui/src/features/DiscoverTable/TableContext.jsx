@@ -1,3 +1,3 @@
-import * as React from 'react';
+import { createContext } from 'react';
 
-export const TableContext = React.createContext({});
+export const TableContext = createContext({});

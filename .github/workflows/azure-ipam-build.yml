@@ -29,7 +29,7 @@ jobs:
           releaseTag: ${{ github.event.release.tag_name }}
         shell: pwsh
         run: |
-          $version = $env:releaseTag -replace "v", ""
+          $version = $env:releaseTag -replace "^v", ""
           Write-Output "ipamVersion=$version" >> $Env:GITHUB_OUTPUT
 
   build:
@@ -40,7 +40,7 @@ jobs:
     steps:
       - name: Azure Login
         id: azureLogin
-        uses: azure/login@v2
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -49,7 +49,7 @@ jobs:
 
       - name: Checkout Azure IPAM Code
         id: checkoutRepo
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
             engine
@@ -60,8 +60,8 @@ jobs:
         env:
           IPAM_VERSION: ${{ needs.init.outputs.ipamVersion }}
         run: |
-          az acr build -r $ACR_NAME -t ipam:$IPAM_VERSION -t ipam:latest -f ./Dockerfile.deb .
-          az acr build -r $ACR_NAME -t ipamfunc:$IPAM_VERSION -t ipamfunc:latest -f ./Dockerfile.func .
+          az acr build -r $ACR_NAME -t ipam:$IPAM_VERSION -t ipam:latest --build-arg IPAM_VERSION=$IPAM_VERSION -f ./Dockerfile.deb .
+          az acr build -r $ACR_NAME -t ipamfunc:$IPAM_VERSION -t ipamfunc:latest --build-arg IPAM_VERSION=$IPAM_VERSION -f ./Dockerfile.func .
 
   build-legacy:
     name: Build Legacy Azure IPAM Containers
@@ -71,7 +71,7 @@ jobs:
     steps:
       - name: Azure Login
         id: azureLogin
-        uses: azure/login@v2
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -80,7 +80,7 @@ jobs:
 
       - name: Checkout Azure IPAM Code
         id: checkoutRepo
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
             engine
@@ -92,7 +92,7 @@ jobs:
         env:
           IPAM_VERSION: ${{ needs.init.outputs.ipamVersion }}
         run: |
-          az acr build -r $ACR_NAME -t ipam-engine:$IPAM_VERSION -t ipam-engine:latest -f ./engine/Dockerfile.deb ./engine
-          az acr build -r $ACR_NAME -t ipam-func:$IPAM_VERSION -t ipam-func:latest -f ./engine/Dockerfile.func ./engine
-          az acr build -r $ACR_NAME -t ipam-ui:$IPAM_VERSION -t ipam-ui:latest -f ./ui/Dockerfile.deb ./ui
-          az acr build -r $ACR_NAME -t ipam-lb:$IPAM_VERSION -t ipam-lb:latest -f ./lb/Dockerfile ./lb
+          az acr build -r $ACR_NAME -t ipam-engine:$IPAM_VERSION -t ipam-engine:latest --build-arg IPAM_VERSION=$IPAM_VERSION -f ./engine/Dockerfile.deb ./engine
+          az acr build -r $ACR_NAME -t ipam-func:$IPAM_VERSION -t ipam-func:latest --build-arg IPAM_VERSION=$IPAM_VERSION -f ./engine/Dockerfile.func ./engine
+          az acr build -r $ACR_NAME -t ipam-ui:$IPAM_VERSION -t ipam-ui:latest --build-arg IPAM_VERSION=$IPAM_VERSION -f ./ui/Dockerfile.deb ./ui
+          az acr build -r $ACR_NAME -t ipam-lb:$IPAM_VERSION -t ipam-lb:latest --build-arg IPAM_VERSION=$IPAM_VERSION -f ./lb/Dockerfile ./lb

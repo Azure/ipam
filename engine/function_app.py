@@ -7,29 +7,34 @@ if os.environ.get('WEBSITE_RUN_FROM_PACKAGE') == '1':
 
 import logging
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import azure.functions as func
 
-from app.main import app as ipam
 from app.logs.logs import ipam_logger as logger
+from app.main import app as ipam
 from app.routers.azure import match_resv_to_vnets
 
 azureLogger = logging.getLogger('azure')
 azureLogger.setLevel(logging.ERROR)
 
-app = func.AsgiFunctionApp(app=ipam, http_auth_level=func.AuthLevel.ANONYMOUS)
+app = func.AsgiFunctionApp(
+    app=ipam,
+    http_auth_level=func.AuthLevel.ANONYMOUS,
+    function_name="ipam"
+)
 
-# @app.function_name(name="ipam-sentinel")
-# @app.schedule(schedule="0 * * * * *", arg_name="mytimer", run_on_startup=True, use_monitor=False)
-@app.timer_trigger(schedule="0 * * * * *", arg_name="mytimer", run_on_startup=True, use_monitor=False)
+timer_blueprint = func.Blueprint()
+
+@timer_blueprint.function_name("sentinel")
+@timer_blueprint.timer_trigger(schedule="0 * * * * *", arg_name="mytimer", run_on_startup=True, use_monitor=False)
 async def ipam_sentinel(mytimer: func.TimerRequest) -> None:
-    utc_timestamp = datetime.utcnow().replace(tzinfo=timezone.utc).isoformat()
+    utc_timestamp = datetime.now(UTC).isoformat()
 
     logger.info('Azure IPAM Sentinel function was triggered')
 
     if mytimer.past_due:
-        logger.debug('The timer is past due ({})!'.format(utc_timestamp))
+        logger.debug(f'The timer is past due ({utc_timestamp})!')
 
     try:
         await match_resv_to_vnets()
@@ -38,3 +43,5 @@ async def ipam_sentinel(mytimer: func.TimerRequest) -> None:
         tb = traceback.format_exc()
         logger.debug(tb)
         raise e
+
+app.register_blueprint(timer_blueprint)

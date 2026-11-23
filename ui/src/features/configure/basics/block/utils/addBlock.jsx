@@ -1,9 +1,9 @@
-import * as React from "react";
+import { useState } from "react";
 import { useDispatch } from "react-redux";
 
 import { useSnackbar } from "notistack";
 
-import Draggable from "react-draggable";
+import DraggablePaper from "../../../../../global/DraggablePaper";
 
 import {
   Box,
@@ -14,10 +14,7 @@ import {
   DialogTitle,
   DialogActions,
   DialogContent,
-  Paper
 } from "@mui/material";
-
-import LoadingButton from "@mui/lab/LoadingButton";
 
 import { createBlockAsync } from "../../../../ipam/ipamSlice";
 
@@ -26,29 +23,14 @@ import {
   CIDR_REGEX
 } from "../../../../../global/globals";
 
-function DraggablePaper(props) {
-  const nodeRef = React.useRef(null);
-
-  return (
-    <Draggable
-      nodeRef={nodeRef}
-      handle="#draggable-dialog-title"
-      cancel={'[class*="MuiDialogContent-root"]'}
-      bounds="parent"
-    >
-      <Paper {...props} ref={nodeRef}/>
-    </Draggable>
-  );
-}
-
 export default function AddBlock(props) {
   const { open, handleClose, space, blocks } = props;
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const [blockName, setBlockName] = React.useState({ value: "", error: false });
-  const [cidr, setCidr] = React.useState({ value: "", error: false });
-  const [sending, setSending] = React.useState(false);
+  const [blockName, setBlockName] = useState({ value: "", error: false });
+  const [cidr, setCidr] = useState({ value: "", error: false });
+  const [sending, setSending] = useState(false);
 
   const dispatch = useDispatch();
 
@@ -134,7 +116,12 @@ export default function AddBlock(props) {
           Add Block
         </DialogTitle>
         <DialogContent>
-          <Box display="flex" flexDirection="column" alignItems="center">
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center"
+            }}>
             <Tooltip
               arrow
               disableFocusListener
@@ -143,9 +130,9 @@ export default function AddBlock(props) {
                 <>
                   - Block name must be unique
                   <br />- Max of 64 characters
-                  <br />- Can contain alphnumerics
-                  <br />- Can contain underscore, hypen and period
-                  <br />- Cannot start/end with underscore, hypen or period
+                  <br />- Can contain alphanumerics
+                  <br />- Can contain underscore, hyphen and period
+                  <br />- Cannot start/end with underscore, hyphen or period
                 </>
               }
             >
@@ -161,8 +148,10 @@ export default function AddBlock(props) {
                 onChange={(event) => {
                   onNameChange(event);
                 }}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -172,7 +161,7 @@ export default function AddBlock(props) {
               title={
                 <>
                   - Must be in valid CIDR notation format
-                  <br />- Example: 1.2.3.4/5
+                  <br />- Example: 10.1.0.0/16
                 </>
               }
             >
@@ -185,21 +174,23 @@ export default function AddBlock(props) {
                 variant="standard"
                 value={cidr.value}
                 onChange={(event) => onCidrChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={onCancel}>Cancel</Button>
-          <LoadingButton
+          <Button
             onClick={onSubmit}
             loading={sending}
             disabled={invalidForm}
           >
             Create
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

@@ -23,6 +23,9 @@ param deployAsFunc bool = false
 @description('Flag to Deploy IPAM as a Container')
 param deployAsContainer bool = false
 
+@description('Flag to Force the ZIP Mount Deployment Shape')
+param forceRunFromPackage bool = false
+
 @description('IPAM-UI App Registration Client/App ID')
 param uiAppId string = '00000000-0000-0000-0000-000000000000'
 
@@ -32,6 +35,11 @@ param engineAppId string
 @secure()
 @description('IPAM-Engine App Registration Client Secret')
 param engineAppSecret string
+
+// Not a secret: the expiration date of the client secret above.
+@description('IPAM-Engine App Registration Client Secret Expiration Date (ISO 8601, UTC)')
+#disable-next-line secure-secrets-in-params
+param engineAppSecretExpiry string = ''
 
 @description('Tags')
 param tags object = {}
@@ -81,6 +89,15 @@ module managedIdentity './modules/managedIdentity.bicep' = {
   }
 }
 
+// Role Assignments for the Managed Identity
+module managedIdentityRoles './modules/managedIdentityRoles.bicep' = {
+  name: 'managedIdentityRolesModule'
+  scope: resourceGroup
+  params: {
+    principalId: managedIdentity.outputs.principalId
+  }
+}
+
 // KeyVault for Secure Values
 module keyVault './modules/keyVault.bicep' = {
   name: 'keyVaultModule'
@@ -93,6 +110,7 @@ module keyVault './modules/keyVault.bicep' = {
     uiAppId: uiAppId
     engineAppId: engineAppId
     engineAppSecret: engineAppSecret
+    engineAppSecretExpiry: engineAppSecretExpiry
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
   }
 }
@@ -151,7 +169,8 @@ module appService './modules/appService.bicep' = if (!deployAsFunc) {
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     deployAsContainer: deployAsContainer
     privateAcr: privateAcr
-    privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
+    privateAcrUri: privateAcr ? containerRegistry!.outputs.acrUri : ''
+    forceRunFromPackage: forceRunFromPackage
   }
 }
 
@@ -163,7 +182,7 @@ module functionApp './modules/functionApp.bicep' = if (deployAsFunc) {
     location: location
     azureCloud: azureCloud
     functionAppName: resourceNames.functionName
-    functionPlanName: resourceNames.appServicePlanName
+    functionPlanName: resourceNames.functionPlanName
     keyVaultUri: keyVault.outputs.keyVaultUri
     cosmosDbUri: cosmos.outputs.cosmosDocumentEndpoint
     databaseName: resourceNames.cosmosDatabaseName
@@ -174,7 +193,8 @@ module functionApp './modules/functionApp.bicep' = if (deployAsFunc) {
     workspaceId: logAnalyticsWorkspace.outputs.workspaceId
     deployAsContainer: deployAsContainer
     privateAcr: privateAcr
-    privateAcrUri: privateAcr ? containerRegistry.outputs.acrUri : ''
+    privateAcrUri: privateAcr ? containerRegistry!.outputs.acrUri : ''
+    forceRunFromPackage: forceRunFromPackage
   }
 }
 
@@ -183,6 +203,6 @@ output suffix string = uniqueString(guid)
 output subscriptionId string = subscription().subscriptionId
 output resourceGroupName string = resourceGroup.name
 output appServiceName string = deployAsFunc ? resourceNames.functionName : resourceNames.appServiceName
-output appServiceHostName string = deployAsFunc ? functionApp.outputs.functionAppHostName : appService.outputs.appServiceHostName
-output acrName string = privateAcr ? containerRegistry.outputs.acrName : ''
-output acrUri string = privateAcr ? containerRegistry.outputs.acrUri : ''
+output appServiceHostName string = deployAsFunc ? functionApp!.outputs.functionAppHostName : appService!.outputs.appServiceHostName
+output acrName string = privateAcr ? containerRegistry!.outputs.acrName : ''
+output acrUri string = privateAcr ? containerRegistry!.outputs.acrUri : ''

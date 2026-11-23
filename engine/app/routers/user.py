@@ -1,46 +1,56 @@
+import copy
+import re
+import uuid
+
+import jsonpatch
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
-
-from fastapi import (
-    APIRouter,
-    HTTPException,
-    Depends,
-    Header,
-    Query
-)
-
 from pydantic import BaseModel
-from typing import Union, List
 
 from app.dependencies import (
+    UNAUTHORIZED,
     api_auth_checks,
-    get_admin,
-    get_tenant_id
+    get_tenant_id,
+    get_token_auth_header,
+    resolve_admin,
 )
-
-import re
-import jsonpatch
-import uuid
-import copy
-
-from app.models import *
-
-from app.routers.admin import (
-    new_admin_db
-)
-
+from app.models import User, UserExpand, UserUpdate, ViewSettings
+from app.permissions import Permission, requires, role_for
+from app.routers.admin import new_admin_db
 from app.routers.common.helper import (
-    get_user_id_from_jwt,
     cosmos_query,
-    cosmos_upsert,
     cosmos_replace,
-    cosmos_retry
+    cosmos_retry,
+    cosmos_upsert,
+    get_user_id_from_jwt,
 )
+
+VIEW_NAMES = "spaces|blocks|vnets|vhubs|subnets|endpoints|networks|reservations|admins|exclusions|extnetworks|extsubnets|extendpoints"
 
 router = APIRouter(
     prefix="/users",
     tags=["users"],
-    dependencies=[Depends(api_auth_checks)]
+    dependencies=[Depends(api_auth_checks)],
+    responses=UNAUTHORIZED
 )
+
+async def get_admins(tenant_id):
+    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
+
+    if not admin_query:
+        admin_query = [await new_admin_db([], [], tenant_id)]
+
+    return admin_query[0]['admins']
+
+def get_access(user_id, admins):
+    """The access fields reported for a user: their admin status and the roles they hold."""
+
+    is_admin = resolve_admin(user_id, admins)
+
+    return {
+        "isAdmin": is_admin,
+        "roles": [role_for(is_admin).id]
+    }
 
 async def new_user(user_id, tenant_id):
     new_user = {
@@ -77,9 +87,15 @@ async def scrub_patch(patch):
         },
         {
             "ops": ["add", "replace"],
-            "path": "/views/(spaces|blocks|vnets|vhubs|subnets|endpoints|networks|reservations|admins|exclusions|extnetworks|extsubnets|extendpoints)",
+            "path": f"/views/({VIEW_NAMES})",
             "valid": ViewSettings,
-            "error": "Valid views are [spaces|blocks|vnets|vhubs|subnets|endpoints|networks|reservations|admins|exclusions|extnetworks|extsubnets|extendpoints]."
+            "error": f"Valid views are [{VIEW_NAMES}]."
+        },
+        {
+            "ops": ["remove"],
+            "path": f"/views/({VIEW_NAMES})$",
+            "valid": None,
+            "error": f"Valid views are [{VIEW_NAMES}]."
         }
     ]
 
@@ -87,16 +103,18 @@ async def scrub_patch(patch):
         target = next((x for x in allowed_ops if ((item['op'] in x['ops']) and re.match(x['path'], item['path']))), None)
 
         if target:
-            if isinstance(target['valid'], str):
+            if target['valid'] is None:
+                scrubbed_patch.append(item)
+            elif isinstance(target['valid'], str):
                 if re.match(target['valid'], str(item['value']), re.IGNORECASE):
                     scrubbed_patch.append(item)
                 else:
                     raise HTTPException(status_code=400, detail=target['error'])
             elif issubclass(target['valid'], BaseModel):
                 try:
-                    test_data = target['valid'](**item['value'])
+                    target['valid'](**item['value'])
                     scrubbed_patch.append(item)
-                except:
+                except Exception:
                     raise HTTPException(status_code=400, detail=target['error'])
             else:
                 raise HTTPException(status_code=400, detail=target['error'])
@@ -106,13 +124,13 @@ async def scrub_patch(patch):
 @router.get(
     "",
     summary = "Get All Users",
-    response_model = List[User],
-    status_code = 200
+    response_model = list[User],
+    status_code = 200,
+    dependencies = [Depends(requires(Permission.USERS_READ))]
 )
 async def get_users(
-    authorization: str = Header(None, description="Azure Bearer token"),
-    tenant_id: str = Depends(get_tenant_id),
-    is_admin: str = Depends(get_admin)
+    token: str = Depends(get_token_auth_header),
+    tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get a list of IPAM Users.
@@ -120,20 +138,13 @@ async def get_users(
 
     user_list = []
 
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="API restricted to admins.")
-
     users = await cosmos_query("SELECT VALUE c.data FROM c WHERE c.type = 'user'", tenant_id)
-    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
-
-    admins = admin_query[0]
+    admins = await get_admins(tenant_id)
 
     for user in users:
-        is_admin = next((x for x in admins['admins'] if x['id'] == user['id']), None)
-
         current_user = {
             **user,
-            "isAdmin": True if is_admin else False
+            **get_access(user['id'], admins)
         }
 
         user_list.append(current_user)
@@ -143,10 +154,10 @@ async def get_users(
 @router.get(
     "/me",
     summary = "Get My User Details",
-    response_model = Union[
-        UserExpand,
-        User
-    ],
+    response_model = (
+        UserExpand
+        | User
+    ),
     status_code = 200
 )
 @cosmos_retry(
@@ -155,36 +166,23 @@ async def get_users(
 )
 async def get_user(
     expand: bool = Query(False, description="Show expanded user details"),
-    authorization: str = Header(None, description="Azure Bearer token"),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
     Get your IPAM user details.
     """
 
-    user_assertion = authorization.split(' ')[1]
-    user_id = get_user_id_from_jwt(user_assertion)
+    user_id = get_user_id_from_jwt(token)
 
-    user_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND c['data']['id'] = '{}')".format(user_id), tenant_id)
+    user_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND c['data']['id'] = @user_id)", tenant_id, [{"name": "@user_id", "value": user_id}])
 
     if not user_query:
         user_query = [await new_user(user_id, tenant_id)]
 
     user_data = copy.deepcopy(user_query[0])
 
-    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
-
-    if not admin_query:
-        admin_query = [await new_admin_db([], [], tenant_id)]
-
-    admins = admin_query[0]
-
-    if admins['admins']:
-        is_admin = next((x for x in admins['admins'] if x['id'] == user_id), None)
-    else:
-        is_admin = True
-
-    user_data['data']['isAdmin'] = True if is_admin else False
+    user_data['data'].update(get_access(user_id, await get_admins(tenant_id)))
 
     if expand:
         return UserExpand(**user_data['data'])
@@ -203,26 +201,31 @@ async def get_user(
 )
 async def update_user(
     updates: UserUpdate,
-    authorization: str = Header(None, description="Azure Bearer token"),
+    token: str = Depends(get_token_auth_header),
     tenant_id: str = Depends(get_tenant_id)
 ):
     """
-    Update a User with a JSON patch:
+    Update your own user settings with a JSON patch:
 
     - **[&lt;JSON Patch&gt;]**: Array of JSON Patches
 
-    Allowed operations:
-    - **replace**
-
-    Allowed paths:
+    Allowed paths and operations:
     - **/darkMode**
+        - **replace**: `true` or `false`
     - **/apiRefresh**
+        - **replace**: how often the UI refreshes its data, in minutes: `5`, `10`, `15` or `30`
+    - **/views/{view}**: the saved layout of a table, where **{view}** is one of
+      `spaces`, `blocks`, `vnets`, `vhubs`, `subnets`, `endpoints`, `networks`, `reservations`,
+      `admins`, `exclusions`, `extnetworks`, `extsubnets` or `extendpoints`
+        - **add**, **replace**: save the layout
+        - **remove**: remove the saved layout; returns **409** if none is saved
+
+    Operations on any other path are ignored.
     """
 
-    user_assertion = authorization.split(' ')[1]
-    user_id = get_user_id_from_jwt(user_assertion)
+    user_id = get_user_id_from_jwt(token)
 
-    user_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND c['data']['id'] = '{}')".format(user_id), tenant_id)
+    user_query = await cosmos_query("SELECT * FROM c WHERE (c.type = 'user' AND c['data']['id'] = @user_id)", tenant_id, [{"name": "@user_id", "value": user_id}])
 
     if not user_query:
         user_query = [await new_user(user_id, tenant_id)]
@@ -232,22 +235,16 @@ async def update_user(
     try:
         patch = jsonpatch.JsonPatch([x.model_dump() for x in updates])
     except jsonpatch.InvalidJsonPatch:
-        raise HTTPException(status_code=500, detail="Invalid JSON patch, please review and try again.")
+        raise HTTPException(status_code=400, detail="Invalid JSON patch, please review and try again.")
 
     try:
         scrubbed_patch = jsonpatch.JsonPatch(await scrub_patch(patch))
         user_data['data'] = scrubbed_patch.apply(user_data['data'], in_place = True)
     except jsonpatch.JsonPatchConflict as e:
-        raise HTTPException(status_code=500, detail=str(e).capitalize())
+        raise HTTPException(status_code=409, detail=str(e).capitalize())
 
     await cosmos_replace(user_query[0], user_data)
 
-    admin_query = await cosmos_query("SELECT * FROM c WHERE c.type = 'admin'", tenant_id)
-
-    admins = admin_query[0]
-
-    is_admin = next((x for x in admins['admins'] if x['id'] == user_id), None)
-
-    user_data['data']['isAdmin'] = True if is_admin else False
+    user_data['data'].update(get_access(user_id, await get_admins(tenant_id)))
 
     return user_data['data']

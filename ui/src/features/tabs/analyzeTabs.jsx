@@ -1,7 +1,6 @@
-import * as React from 'react';
+import { Fragment } from 'react';
 import { Link, useLocation } from "react-router";
 
-import PropTypes from 'prop-types';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
@@ -29,12 +28,6 @@ function TabPanel(props) {
   );
 }
 
-TabPanel.propTypes = {
-  children: PropTypes.node,
-  index: PropTypes.number.isRequired,
-  value: PropTypes.number.isRequired,
-};
-
 function a11yProps(index) {
   return {
     id: `simple-tab-${index}`,
@@ -49,7 +42,7 @@ export default function AnalyzeTabs() {
 
   return (
     <Box sx={{ width: '100%', height: 'calc(100vh - 64px)'}}>
-      <React.Fragment>
+      <Fragment>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={allTabs.indexOf(location.pathname)}>
             <Tab label="Visualize" component={Link} to={allTabs[0]} {...a11yProps(0)} />
@@ -58,7 +51,7 @@ export default function AnalyzeTabs() {
         </Box>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={0}><Visualize /></TabPanel>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={1}><Peering /></TabPanel>
-      </React.Fragment>
+      </Fragment>
     </Box>
   );
 }

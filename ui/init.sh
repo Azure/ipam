@@ -18,15 +18,15 @@ done < /tmp/react_app_
 
 printenv | grep VITE_ > /tmp/vite_
 
-echo "window.env = {" > env.js
+ENV_FILE=./dist/env.js
+
+echo "window.env = {" > "${ENV_FILE}"
 
 while IFS='=' read -r name value;
 do
-  echo "  \"$name\": \"$value\"," >> env.js
+  echo "  \"$name\": \"$value\"," >> "${ENV_FILE}"
 done < /tmp/vite_
 
-echo "}" >> env.js
+echo "}" >> "${ENV_FILE}"
 
-mv env.js ./dist/
-
-npx serve -s -L -p ${PORT} dist
+exec npx serve -s -L -p ${PORT} dist

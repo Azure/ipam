@@ -1,7 +1,6 @@
-import * as React from 'react';
+import { Fragment } from 'react';
 import { Link, useLocation } from "react-router";
 
-import PropTypes from 'prop-types';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
@@ -37,12 +36,6 @@ function TabPanel(props) {
   );
 }
 
-TabPanel.propTypes = {
-  children: PropTypes.node,
-  index: PropTypes.number.isRequired,
-  value: PropTypes.number.isRequired,
-};
-
 function a11yProps(index) {
   return {
     id: `simple-tab-${index}`,
@@ -57,7 +50,7 @@ export default function DiscoverTabs() {
 
   return (
     <Box sx={{ width: '100%', height: 'calc(100vh - 64px)'}}>
-      <React.Fragment>
+      <Fragment>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={allTabs.indexOf(location.pathname)}>
             <Tab label="Spaces" component={Link} to={allTabs[0]} {...a11yProps(0)} />
@@ -75,7 +68,7 @@ export default function DiscoverTabs() {
         <TabPanel value={allTabs.indexOf(location.pathname)} index={3}><DiscoverTable map={subnets} /></TabPanel>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={4}><DiscoverTable map={vhubs} /></TabPanel>
         <TabPanel value={allTabs.indexOf(location.pathname)} index={5}><DiscoverTable map={endpoints} /></TabPanel>
-      </React.Fragment>
+      </Fragment>
     </Box>
   );
 }

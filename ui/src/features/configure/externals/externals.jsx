@@ -1,9 +1,9 @@
-import * as React from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useLocation } from "react-router";
 import { styled } from "@mui/material/styles";
 
-import { isEqual, sortBy, pick } from "lodash";
+import { isEqual, sortBy, pick } from "lodash-es";
 
 import { useSnackbar } from "notistack";
 
@@ -68,29 +68,29 @@ export default function Externals() {
 
   const location = useLocation();
 
-  const [spaceInput, setSpaceInput] = React.useState('');
-  const [blockInput, setBlockInput] = React.useState('');
+  const [spaceInput, setSpaceInput] = useState('');
+  const [blockInput, setBlockInput] = useState('');
 
-  const [externals, setExternals] = React.useState(null);
-  const [subnets, setSubnets] = React.useState(null);
+  const [externals, setExternals] = useState(null);
+  const [subnets, setSubnets] = useState(null);
 
-  const [selectedSpace, setSelectedSpace] = React.useState(location.state?.space || null);
-  const [selectedBlock, setSelectedBlock] = React.useState(location.state?.block || null);
-  const [selectedExternal, setSelectedExternal] = React.useState(null);
-  const [selectedSubnet, setSelectedSubnet] = React.useState(null);
+  const [selectedSpace, setSelectedSpace] = useState(location.state?.space || null);
+  const [selectedBlock, setSelectedBlock] = useState(location.state?.block || null);
+  const [selectedExternal, setSelectedExternal] = useState(null);
+  const [selectedSubnet, setSelectedSubnet] = useState(null);
 
-  const [refreshing, setRefreshing] = React.useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const spaces = useSelector(selectSpaces);
   const blocks = useSelector(selectBlocks);
 
-  // const externalLoadedRef = React.useRef(false);
+  // const externalLoadedRef = useRef(false);
 
   const dispatch = useDispatch();
 
-  var externalRef = React.useRef(null);
+  var externalRef = useRef(null);
 
-  const refresh = React.useCallback(() => {
+  const refresh = useCallback(() => {
     (async() => {
       try {
         setRefreshing(true);
@@ -107,7 +107,7 @@ export default function Externals() {
     })();
   }, [dispatch, enqueueSnackbar]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (spaces) {
       if (selectedSpace) {
         const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
@@ -128,7 +128,7 @@ export default function Externals() {
     }
   }, [spaces, selectedSpace]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (blocks) {
       if (selectedBlock) {
         const blockIndex = blocks.findIndex((x) => x.id === selectedBlock.id);
@@ -140,18 +140,18 @@ export default function Externals() {
           }
         } else {
           setSelectedBlock(null);
-          setExternals(null);
+          setExternals([]);
         }
       } else {
-        setExternals(null);
+        setExternals([]);
       }
     } else {
       setSelectedBlock(null);
-      setExternals(null);
+      setExternals([]);
     }
   }, [blocks, selectedBlock]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedSpace && selectedBlock) {
       if (selectedBlock.parent_space !== selectedSpace.name) {
         setSelectedBlock(null);
@@ -159,7 +159,7 @@ export default function Externals() {
     }
   }, [selectedSpace, selectedBlock]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (externals) {
       if (selectedExternal) {
         const externalIndex = externals.findIndex((x) => x.name === selectedExternal.name);
@@ -174,11 +174,11 @@ export default function Externals() {
       }
     } else {
       setSelectedExternal(null);
-      setSubnets(null);
+      setSubnets([]);
     }
   }, [externals, selectedExternal]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (subnets) {
       if (selectedSubnet) {
         const subnetIndex = subnets.findIndex((x) => x.name === selectedSubnet.name);
@@ -197,7 +197,7 @@ export default function Externals() {
   }, [subnets, selectedSubnet]);
 
   return (
-    <ExternalContext.Provider value={{ externalRef, refreshing, refresh }}>
+    <ExternalContext value={{ externalRef, refreshing, refresh }}>
       <Wrapper ref={externalRef}>
         <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
             <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
@@ -215,7 +215,7 @@ export default function Externals() {
                   (option, value) => {
                     const newOption = pick(option, ['name']);
                     const newValue = pick(value, ['name']);
-  
+
                     return isEqual(newOption, newValue);
                   }
                 }
@@ -226,25 +226,29 @@ export default function Externals() {
                     {...params}
                     label="Space"
                     placeholder="Please Select Space..."
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <React.Fragment>
-                          {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </React.Fragment>
-                      ),
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input,
+                        endAdornment: (
+                          <Fragment>
+                            {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
+                            {params.slotProps.input.endAdornment}
+                          </Fragment>
+                        ),
+                      }
                     }}
                   />
                 )}
                 renderOption={(props, option) => {
                   return (
-                    <li {...props} key={option.name}>
+                    <li key={option.name} {...props}>
                       {option.name}
                     </li>
                   );
                 }}
-                componentsProps={{
+                slotProps={{
                   paper: {
                     sx: {
                       width: 'fit-content'
@@ -267,7 +271,7 @@ export default function Externals() {
                   (option, value) => {
                     const newOption = pick(option, ['id', 'name']);
                     const newValue = pick(value, ['id', 'name']);
-  
+
                     return isEqual(newOption, newValue);
                   }
                 }
@@ -277,19 +281,23 @@ export default function Externals() {
                     {...params}
                     label="Block"
                     placeholder="Please Select Block..."
-                    InputProps={{
-                      ...params.InputProps
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input
+                      }
                     }}
                   />
                 )}
                 renderOption={(props, option) => {
                   return (
-                    <li {...props} key={option.id}>
+                    <li key={option.id} {...props}>
                       {option.name}
                     </li>
                   );
                 }}
-                componentsProps={{
+                slotProps={{
                   paper: {
                     sx: {
                       width: 'fit-content'
@@ -347,6 +355,6 @@ export default function Externals() {
           </BottomSection>
         </MainBody>
       </Wrapper>
-    </ExternalContext.Provider>
+    </ExternalContext>
   );
 }

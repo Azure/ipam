@@ -1,77 +1,74 @@
 # Welcome to Azure IPAM
 
-<!-- 
-Guidelines on README format: https://review.docs.microsoft.com/help/onboard/admin/samples/concepts/readme-template?branch=master
-
-Guidance on onboarding samples to docs.microsoft.com/samples: https://review.docs.microsoft.com/help/onboard/admin/samples/process/onboarding?branch=master
-
-Taxonomies for products and languages: https://review.docs.microsoft.com/new-hope/information-architecture/metadata/taxonomies?branch=master
--->
-
 ## Overview and Architecture
 
-Azure IPAM was developed to give customers a simple, straightforward way to manage their IP address space in Azure. It enables end-to-end planning, deploying, managing and monitoring of your IP address space, with an intuitive user experience. Additionally, it can automatically discover IP address utilization within your Azure tenant and enables you to manage it all from a centralized UI. You can also interface with the Azure IPAM service programmatically via a RESTful API to facilitate IP address management at scale via Infrastructure as Code (IaC) and CI/CD pipelines. Azure IPAM is designed and architected based on the 5 pillars of the [Microsoft Azure Well Architected Framework](https://docs.microsoft.com/azure/architecture/framework/).
+Azure IPAM gives you a simple way to plan, deploy, manage and monitor the IP address space you use in Azure. It discovers how IP addresses are used across your Azure tenant, and lets you manage it all from one UI. You can also use its REST API to manage IP addresses at scale from infrastructure as code (IaC) and CI/CD pipelines. Azure IPAM is designed around the five pillars of the [Microsoft Azure Well-Architected Framework](https://learn.microsoft.com/azure/well-architected/).
 
-| App Service                                                      | Function                                                                   |
+| App Service Deployment                                                    | Function Deployment                                                        |
 |-----------------------------------------------------------------:|:---------------------------------------------------------------------------|
-| ![IPAM Architecture](./images/ipam_architecture_full.png ':size=70%') | ![IPAM Architecture](./images/ipam_architecture_function.png ':size=70%') |
+| ![App Service Architecture](./images/ipam_architecture_full.png ':size=70%') | ![Function Architecture](./images/ipam_architecture_function.png ':size=70%') |
 
 ## Azure IPAM Infrastructure
 
-The Azure IPAM solution is delivered via a container running in Azure App Services or as an Azure Function. It can also be deployed in an API-only fashion if no UI is required (e.g. pure IaC model). The container is built and published to a public Azure Container Registry (ACR), but you may also choose to build your own container and host it in a Private Container Registry. More details on this can be found in the [Deployment](./deployment/README.md) section. All of the supporting infrastructure is deployed and runs within your Azure Tenant and none of the resources are shared with other IPAM users (outside of the publicly hosted ACR).
+Azure IPAM runs as a container in an App Service or a Function App. You can also deploy it without the UI, for example when you only use it from infrastructure as code. We publish the container image to a public registry, or you can build your own image and host it in a private Azure Container Registry. For details, see [Deployment](/deployment/README.md). All of the supporting infrastructure is deployed to and runs in your own Azure tenant, and none of it is shared with other Azure IPAM users, apart from the public registry.
 
-Here is a more specific breakdown of the components used:
+Azure IPAM uses the following components:
 
-- **App Registrations**
-  - 2x App Registrations
-    - *Engine* App Registration
-      - Granted **reader** permission to the [Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory) to facilitate IPAM Admin operations (global visibility)
-      - Authentication point for IPAM API operations ([on-behalf-of](https://learn.microsoft.com/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow) flow)
-    - *UI* App Registration *(Optional if no UI is desired)*
-      - Granted **read** permissions for Microsoft Graph API's
-      - Added as a *known client application* for the *Engine* App Registration
-      - Authentication point for the IPAM UI ([auth code](https://learn.microsoft.com/azure/active-directory/develop/v2-oauth2-auth-code-flow) flow)
-- **Resource Group**
-  - Contains all Azure IPAM deployed resources
-- **App Service Plan with App Service** *(AppContainer Deployment only)*
-  - Runs the Azure IPAM solution as a container within App Services
-- **App Service Plan with Function App** *(FunctionContainer Deployment only)*
-  - Runs the Azure IPAM solution as a container within Azure Functions
-- **Storage Account with Blob Container** *(FunctionContainer Deployment only)*
-  - Storage for the Azure Function metadata
+- **App registrations**
+  - Two app registrations:
+    - The *Engine* app registration
+      - Assigned the **Reader** role on the [Root Management Group](https://learn.microsoft.com/azure/governance/management-groups/overview#root-management-group-for-each-directory), so Azure IPAM can see every Azure resource for administrators and for its own work
+      - Authenticates calls to the Azure IPAM API ([on-behalf-of](https://learn.microsoft.com/entra/identity-platform/v2-oauth2-on-behalf-of-flow) flow)
+      - Authenticates to Azure with a client secret that must be renewed before it expires (see [Maintenance](/maintenance/README.md))
+    - The *UI* app registration *(not needed without the UI)*
+      - Granted **read** permissions for Microsoft Graph APIs
+      - Added as a *known client application* of the *Engine* app registration
+      - Signs users in to the Azure IPAM UI ([auth code](https://learn.microsoft.com/entra/identity-platform/v2-oauth2-auth-code-flow) flow)
+- **Resource group**
+  - Contains all of the Azure IPAM resources
+- **App Service plan with an App Service** *(App Service deployments only)*
+  - Runs the Azure IPAM container in App Service
+- **App Service plan with a Function App** *(Function App deployments only)*
+  - Runs the Azure IPAM container in Azure Functions
+- **Storage account with a blob container** *(Function App deployments only)*
+  - Stores the Function App's metadata
 - **Cosmos DB**
-  - Backend NoSQL datastore for the IPAM application
-- **KeyVault**
+  - The NoSQL database for Azure IPAM's data
+- **Key Vault**
   - Stores the following secrets:
-    - App Registration application IDs and Secrets (Engine & UI)
-    - Managed Identity ID
-    - Azure Tenant ID
-- **User Assigned Managed Identity**
-  - Assigned to the App Service to retrieve secrets from KeyVault
-- **Container Registry** *(Optional)*
-  - Stores a private copy of the Azure IPAM containers
+    - Engine app registration ID and secret
+    - UI app registration ID
+    - Managed identity ID
+    - Azure tenant ID
+- **Log Analytics workspace**
+  - Collects diagnostic logs from Key Vault, Cosmos DB and the App Service or Function App
+- **User-assigned managed identity**
+  - Assigned to the App Service or Function App, which uses it to read secrets from Key Vault and to access Cosmos DB
+- **Container registry** *(optional)*
+  - Stores a private copy of the Azure IPAM container images
 
 ## How Azure IPAM Works
 
-Azure IPAM has been designed as such to radically simplify the often daunting task of IP address management within Azure and was built to accommodate use cases such as the following...
+Azure IPAM is designed to simplify IP address management in Azure, which is often a daunting task. It was built for use cases such as the following:
 
 - Discover
-  - Identify networks, subnets and endpoints holistically across your Azure tenant
-  - Visualize misconfigurations such as orphaned endpoints and improperly configured virtual network peers
+  - Find networks, subnets and endpoints across your whole Azure tenant
+  - Spot misconfigurations, such as orphaned endpoints and incorrectly configured virtual network peerings
 - Organize
-  - Group Azure networks into *Spaces* and *Blocks* aligned to internal lines of business and enterprise CIDR assignments
-  - Track IP and CIDR consumption
-  - Map external (non-Azure) networks to Azure CIDR ranges
+  - Group Azure networks into [*Spaces*](/how-to/README.md#spaces) and [*Blocks*](/how-to/README.md#blocks) that match your lines of business and enterprise CIDR assignments
+  - Track how IP addresses and CIDR ranges are used
+  - Map [external (non-Azure) networks](/how-to/README.md#external-networks) into your Blocks, including on-premises datacenters, co-location facilities and other cloud providers
+  - Track external subnets and individual endpoints, for a complete view of your IP addresses
 - Plan
-  - Explore "what if" cases such as how may subnets of a given mask are available within a given CIDR block
-- Self-Service
-  - Allow users to reserve CIDR blocks for new virtual network and subnet creation programatically
-  - Integration with Azure template deployments (ARM/Bicep), Terraform and CI/CD pipelines
+  - Explore "what if" questions, such as how many subnets of a given size are available in a CIDR range
+- Self-service
+  - Let users reserve CIDR ranges for new virtual networks and subnets, including from code
+  - Integrate with Azure template deployments (ARM and Bicep), Terraform and CI/CD pipelines
 
 ## User Interface
 
-The front end is written in [React](https://reactjs.org/) and leverages the [Material UI](https://mui.com/) for the UI components. The UI handles AuthN/AuthZ with AzureAD via [MSAL](https://learn.microsoft.com/azure/active-directory/develop/msal-overview), and manages token acquisition & refresh for communication to the backend Engine API (on your behalf).
+The UI is written in [React](https://react.dev/) and uses [Material UI](https://mui.com/) for its components. It signs users in with Microsoft Entra ID through [MSAL](https://learn.microsoft.com/entra/identity-platform/msal-overview), and gets and refreshes the tokens it uses to call the Engine API on the user's behalf.
 
 ## Backend Engine
 
-The engine is written in [Python](https://www.python.org/) and leverages the [FastAPI Framework](https://fastapi.tiangolo.com/) for building the APIs. It handles interfacing with Azure Resource Graph on the user's behalf to gather information about various Azure Networking related resources, and their states.
+The Engine is written in [Python](https://www.python.org/) and uses the [FastAPI](https://fastapi.tiangolo.com/) framework for its API. It queries Azure Resource Graph, either on the user's behalf or as itself, for information about Azure networking resources and their state.

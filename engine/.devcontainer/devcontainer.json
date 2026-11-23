@@ -6,8 +6,8 @@
 		"dockerfile": "Dockerfile",
 		"context": "..",
 		"args": {
-			// Update 'VARIANT' to pick a Python version: 3, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11
-			"VARIANT": "3.11",
+			// Python version and Debian release; keep in step with the engine images (see the Conventions documentation)
+			"VARIANT": "3.12-trixie",
 			// Options
 			"INSTALL_NODE": "true",
 			"NODE_VERSION": "lts/*"

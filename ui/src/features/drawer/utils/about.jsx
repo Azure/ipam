@@ -1,11 +1,10 @@
-import * as React from "react";
-// import { useSelector, useDispatch } from 'react-redux';
+import { Fragment, useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 
-// import { isEqual } from 'lodash';
+import dayjs from "dayjs";
+import localizedFormat from "dayjs/plugin/localizedFormat";
 
-// import { useSnackbar } from "notistack";
-
-import Draggable from 'react-draggable';
+import DraggablePaper from '../../../global/DraggablePaper';
 
 import {
   Box,
@@ -14,123 +13,165 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
+  Link,
+  Skeleton,
+  Tooltip,
   Typography,
-  // ToggleButton,
-  // ToggleButtonGroup,
-  Paper
 } from "@mui/material";
 
-// import {
-//   WbSunnyOutlined,
-//   DarkModeOutlined,
-// } from "@mui/icons-material";
+import {
+  ContentCopy as ContentCopyIcon,
+  OpenInNew as OpenInNewIcon,
+} from "@mui/icons-material";
 
-// import LoadingButton from '@mui/lab/LoadingButton';
+import { useSnackbar } from "notistack";
 
-// import {
-//   getMeAsync,
-//   getRefreshInterval,
-//   getDarkMode,
-//   setDarkMode
-// } from "../ipam/ipamSlice";
+import ipamLogo from '../../../img/logo/logo.png';
 
-// import { updateMe } from "../ipam/ipamAPI";
+import { fetchStatus } from "../../ipam/ipamAPI";
+import { getUpdateNotification } from "../../notifications/notificationsSlice";
 
-function DraggablePaper(props) {
-  const nodeRef = React.useRef(null);
+import {
+  buildIssueUrl,
+  formatDiagnostics,
+  getCloudLabel,
+  getDiagnostics,
+  getStackLabel,
+} from "./diagnostics";
 
+dayjs.extend(localizedFormat);
+
+const RELEASES_URL = "https://github.com/Azure/ipam/releases";
+const DOCS_URL = "https://azure.github.io/ipam/";
+
+const NOT_APPLICABLE = "—";
+const UNAVAILABLE = "Unavailable";
+
+// Every row is always rendered (placeholder while loading, "Unavailable" on
+// error) so the dialog never changes size once it is open.
+function DetailValue({ loading, value }) {
   return (
-    <Draggable
-      nodeRef={nodeRef}
-      handle="#draggable-dialog-title"
-      cancel={'[class*="MuiDialogContent-root"]'}
-      bounds="parent"
-    >
-      <Paper {...props} ref={nodeRef}/>
-    </Draggable>
+    <Typography component="dd" variant="body2" sx={{ m: 0 }}>
+      {loading ? <Skeleton variant="text" width={180} /> : value}
+    </Typography>
   );
 }
 
 export default function About(props) {
   const { open, handleClose } = props;
 
-  // const { enqueueSnackbar } = useSnackbar();
+  const [status, setStatus] = useState(null);
+  const [loadError, setLoadError] = useState(false);
 
-  // const [prevOpen, setPrevOpen] = React.useState(false);
-  // const [openState, setOpenState] = React.useState({});
-  // const [refreshValue, setRefreshValue] = React.useState();
-  // const [darkModeValue, setDarkModeValue] = React.useState(false);
-  const [sending, setSending] = React.useState(false);
+  const updateNotification = useSelector(getUpdateNotification);
 
-  // const darkModeSetting = useSelector(getDarkMode);
-  // const refreshInterval = useSelector(getRefreshInterval);
+  const { enqueueSnackbar } = useSnackbar();
 
-  // const dispatch = useDispatch();
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
 
-  // const changed = React.useMemo(() => {
-  //   const currentState = {
-  //     darkMode: darkModeValue,
-  //     apiRefresh: refreshValue
-  //   };
+    let canceled = false;
 
-  //   return(!isEqual(openState, currentState));
-  // },[darkModeValue, refreshValue, openState]);
+    setStatus(null);
+    setLoadError(false);
 
-  // React.useEffect(()=>{
-  //   if(!open && (open !== prevOpen)) {
-  //     dispatch(setDarkMode(openState.darkMode));
-  //     setRefreshValue(openState.apiRefresh);
-  //     setPrevOpen(open);
-  //   }
-  // }, [open, prevOpen, openState, dispatch]);
+    fetchStatus()
+      .then((data) => {
+        if (!canceled) {
+          setStatus(data);
+        }
+      })
+      .catch((e) => {
+        console.log("ERROR FETCHING STATUS");
+        console.log(e);
 
-  // React.useEffect(()=>{
-  //   if(open && (open !== prevOpen)) {
-  //     setDarkModeValue(darkModeSetting);
-  //     setRefreshValue(refreshInterval);
+        if (!canceled) {
+          setLoadError(true);
+        }
+      });
 
-  //     setOpenState(
-  //       {
-  //         darkMode: darkModeSetting,
-  //         apiRefresh: refreshInterval
-  //       }
-  //     );
+    return () => {
+      canceled = true;
+    };
+  }, [open]);
 
-  //     setPrevOpen(open);
-  //   }
-  // }, [open, prevOpen, darkModeSetting, refreshInterval]);
+  const loading = !status && !loadError;
 
-  function onSubmit() {
-    console.log("Submit");
-    // var body = [
-    //   { "op": "replace", "path": "/apiRefresh", "value": refreshValue },
-    //   { "op": "replace", "path": "/darkMode", "value": darkModeValue }
-    // ];
+  const describe = (resolve) => {
+    if (loadError) {
+      return UNAVAILABLE;
+    }
 
-    // (async () => {
-    //   try {
-    //     setSending(true);
-    //     await updateMe(body);
-    //     enqueueSnackbar("User settings updated", { variant: "success" });
-    //     setOpenState(
-    //       {
-    //         darkMode: darkModeValue,
-    //         apiRefresh: refreshValue
-    //       }
-    //     );
-    //     dispatch(getMeAsync());
-    //     handleClose();
-    //   } catch (e) {
-    //     console.log("ERROR");
-    //     console.log("------------------");
-    //     console.log(e);
-    //     console.log("------------------");
-    //     enqueueSnackbar("Error updating user settings", { variant: "error" });
-    //   } finally {
-    //     setSending(false);
-    //   }
-    // })();
-  }
+    return status ? resolve(status) : null;
+  };
+
+  const details = [
+    {
+      label: "Platform",
+      value: describe((s) => getStackLabel(s.stack) ?? NOT_APPLICABLE),
+    },
+    {
+      label: "Base image",
+      value: describe((s) => s.container?.image_pretty_name ?? NOT_APPLICABLE),
+    },
+    {
+      label: "Cloud",
+      value: describe((s) => getCloudLabel(s.environment) ?? NOT_APPLICABLE),
+    },
+    {
+      label: "Running since",
+      value: describe((s) => (s.start_time ? dayjs(s.start_time).format("lll") : NOT_APPLICABLE)),
+    },
+  ];
+
+  const version = status?.version;
+  const latestVersion = updateNotification?.data?.latestVersion;
+
+  const releaseNotesUrl = version ? `${RELEASES_URL}/tag/v${version}` : RELEASES_URL;
+
+  const diagnostics = getDiagnostics(status);
+
+  const handleCopyDiagnostics = async () => {
+    try {
+      await window.navigator.clipboard.writeText(formatDiagnostics(diagnostics));
+      enqueueSnackbar("Diagnostics copied to clipboard", { variant: "success" });
+    } catch (e) {
+      console.log("ERROR COPYING DIAGNOSTICS");
+      console.log(e);
+      enqueueSnackbar("Unable to copy diagnostics to the clipboard", { variant: "error" });
+    }
+  };
+
+  const links = [
+    { label: "Release notes", href: releaseNotesUrl },
+    { label: "Documentation", href: DOCS_URL },
+    // Disabled until /api/status loads so the report is prefilled.
+    { label: "Report an issue", href: buildIssueUrl(diagnostics), disabled: loading },
+  ];
+
+  const renderLink = (link) => (
+    <Link
+      key={link.label}
+      href={link.disabled ? undefined : link.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      variant="body2"
+      underline="hover"
+      aria-disabled={link.disabled || undefined}
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.5,
+        ...(link.disabled && { color: 'text.disabled', pointerEvents: 'none' }),
+      }}
+    >
+      {link.label}
+      <OpenInNewIcon sx={{ fontSize: 16 }} />
+    </Link>
+  );
 
   return (
     <div>
@@ -138,76 +179,84 @@ export default function About(props) {
         open={open}
         onClose={handleClose}
         PaperComponent={DraggablePaper}
+        aria-labelledby="draggable-dialog-title"
         maxWidth="xs"
         fullWidth
       >
         <DialogTitle style={{ cursor: 'move' }} id="draggable-dialog-title">
-          About
+          About Azure IPAM
         </DialogTitle>
         <DialogContent>
-          <Typography
-            variant="button"
-            sx={{
-              pt: 2,
-              pb: 1,
-              pl: 0.5,
-              fontWeight: 'bold',
-              textDecoration: 'underline'
-            }}
-          >
-            IPAM DETAILS
-          </Typography>
-          <Typography
-            variant="subtitle2"
-            sx={{
-              mt: 1,
-              pl: 0.5
-            }}
-          >
-            Current Version: v2.0.0
-          </Typography>
-          <Typography
-            variant="subtitle2"
-            sx={{
-              pl: 0.5
-            }}
-          >
-            Runtime: Native Code
-          </Typography>
-          <Typography
-            variant="subtitle2"
-            sx={{
-              pl: 0.5
-            }}
-          >
-            Framework: Azure App Service
-          </Typography>
-          <Box
-            sx={{
-              mt: 4,
-              display: 'flex',
-              width: '100%',
-              justifyContent: 'center'
-            }}
-          >
-            <Button
-              // variant="outlined"
-              variant="contained"
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box
+              component="img"
+              src={ipamLogo}
+              alt=""
+              sx={{ height: 72, width: 'auto', flexShrink: 0 }}
+            />
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h6" sx={{ lineHeight: 1.3 }}>
+                Azure IPAM
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 0.75 }}>
+                <Typography component="div" variant="body2" sx={{ color: 'text.secondary' }}>
+                  {loading ? (
+                    <Skeleton variant="text" width={48} />
+                  ) : (
+                    version ? `v${version}` : "Version unavailable"
+                  )}
+                </Typography>
+                {updateNotification && (
+                  <Tooltip title="See Notifications for update options">
+                    <Typography component="span" variant="body2" sx={{ color: 'info.main' }}>
+                      {"· "}{latestVersion ? `v${latestVersion} available` : "Update available"}
+                    </Typography>
+                  </Tooltip>
+                )}
+              </Box>
+            </Box>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mt: 3 }}>
+            <Box
+              component="dl"
               sx={{
-                width: '250px',
-                textTransform: 'none'
+                display: 'grid',
+                gridTemplateColumns: 'auto 1fr',
+                columnGap: 3,
+                rowGap: 1,
+                alignItems: 'center',
+                flexGrow: 1,
+                my: 0,
               }}
             >
-              UPDATE TO v2.0.1 {/* Check for Updates */}
-            </Button>
+              {details.map((detail) => (
+                <Fragment key={detail.label}>
+                  <Typography component="dt" variant="body2" sx={{ color: 'text.secondary' }}>
+                    {detail.label}
+                  </Typography>
+                  <DetailValue loading={loading} value={detail.value} />
+                </Fragment>
+              ))}
+            </Box>
+            <Tooltip title="Copy diagnostics">
+              <Box component="span" sx={{ mt: -0.75, mr: -1 }}>
+                <IconButton
+                  size="small"
+                  aria-label="copy diagnostics"
+                  disabled={loading}
+                  onClick={handleCopyDiagnostics}
+                >
+                  <ContentCopyIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </Tooltip>
+          </Box>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 2.5, rowGap: 1, mt: 3 }}>
+            {links.map(renderLink)}
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>OK</Button>
-          {/* <LoadingButton onClick={onSubmit} loading={sending} disabled={!changed}> */}
-          {/* <LoadingButton onClick={onSubmit} loading={sending} >
-            Apply
-          </LoadingButton> */}
         </DialogActions>
       </Dialog>
     </div>

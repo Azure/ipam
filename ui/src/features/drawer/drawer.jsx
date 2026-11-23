@@ -1,21 +1,25 @@
-import * as React from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useSelector, useDispatch } from 'react-redux';
 
 import { useMsal } from "@azure/msal-react";
-import { InteractionStatus, InteractionRequiredAuthError, BrowserAuthError } from "@azure/msal-browser";
+import { InteractionStatus } from "@azure/msal-browser";
 
 import { useSnackbar } from "notistack";
 
 import { styled, alpha } from "@mui/material/styles";
 import { SvgIcon } from "@mui/material";
 
-import { orderBy } from 'lodash';
+import { orderBy } from 'lodash-es';
 import { plural, singular } from 'pluralize';
 
 import { Routes, Route, Link, Navigate, useNavigate } from "react-router";
 
 import { callMsGraph, callMsGraphPhoto } from "../../msal/graph";
-import { msalInstance } from "../../index";
+import { copyApiToken } from "../../msal/tokenService";
+import { getInitials } from "../../utils/initials";
+
+import NotificationCenter from "../notifications/NotificationCenter";
+import ServiceRestartGate from "../restart/ServiceRestartGate";
 
 import {
   AppBar,
@@ -39,10 +43,8 @@ import {
   MoreVert as MoreIcon,
   Token as TokenIcon,
   Logout as LogoutIcon,
-  // Info as InfoIcon,
-  // Close as CloseIcon,
+  Info as InfoIcon,
   AccountCircle as AccountCircleIcon,
-  // CloudDownloadOutlined as CloudDownloadIcon
 } from "@mui/icons-material";
 
 // Imports for the Drawer
@@ -55,8 +57,7 @@ import {
   ListItemButton,
   Divider,
   Collapse,
-  Avatar,
-  Badge
+  Avatar
 } from "@mui/material";
 
 import {
@@ -100,20 +101,20 @@ import AdminTabs from "../tabs/adminTabs";
 import ConfigTabs from "../tabs/configTabs";
 
 import Refresh from "./utils/refresh";
-import UserSettings from "./utils/userSettings";
+import Profile from "./utils/profile";
 import About from "./utils/about";
 
 import {
   setUserId,
   getAdminStatus,
   getMeLoaded,
-  selectVNets,
-  selectVHubs,
+  selectUpdatedVNets,
+  selectUpdatedVHubs,
   selectSubnets,
   selectEndpoints
 } from "../ipam/ipamSlice";
 
-import { apiRequest } from "../../msal/authConfig";
+
 
 const Search = styled("div")(({ theme }) => ({
   display: "flex",
@@ -132,68 +133,29 @@ const Search = styled("div")(({ theme }) => ({
   },
 }));
 
-// const Update = styled(Typography)(({ theme }) => ({
-//   display: 'flex',
-//   justifyContent: 'center',
-//   alignItems: 'center',
-//   width: '100vw',
-//   fontSize: '12px',
-//   color: theme.palette.mode == 'dark' ? 'black' : 'white',
-//   backgroundColor: theme.palette.warning.light,
-//   height: '100%'
-// }));
-
-// const StyledBadge = styled(Badge)(({ theme }) => ({
-//   '& .MuiBadge-badge': {
-//     backgroundColor: theme.palette.warning.light,
-//     color: theme.palette.warning.light,
-//     boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
-//     '&::after': {
-//       position: 'absolute',
-//       top: 0,
-//       left: 0,
-//       width: '100%',
-//       height: '100%',
-//       borderRadius: '50%',
-//       animation: 'ripple 1.2s infinite ease-in-out',
-//       border: '1px solid currentColor',
-//       content: '""',
-//     },
-//   },
-//   '@keyframes ripple': {
-//     '0%': {
-//       transform: 'scale(.8)',
-//       opacity: 1,
-//     },
-//     '100%': {
-//       transform: 'scale(2.4)',
-//       opacity: 0,
-//     },
-//   },
-// }));
-
 export default function NavDrawer() {
-  const { instance, accounts, inProgress } = useMsal();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+  const { instance, inProgress } = useMsal();
+  const { enqueueSnackbar } = useSnackbar();
 
-  const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
-  const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = React.useState(null);
-  const [graphData, setGraphData] = React.useState(null);
-  const [graphPhoto, setGraphPhoto] = React.useState(null);
-  const [navChildOpen, setNavChildOpen] = React.useState({});
-  const [drawerState, setDrawerState] = React.useState(false);
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
-  const [aboutOpen, setAboutOpen] = React.useState(false);
-  const [searchData, setSearchData] = React.useState([]);
-  const [searchInput, setSearchInput] = React.useState('');
-  const [searchValue, setSearchValue] = React.useState(null);
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+  const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = useState(null);
+  const [graphData, setGraphData] = useState(null);
+  const [graphPhoto, setGraphPhoto] = useState(null);
+  const [navChildOpen, setNavChildOpen] = useState({});
+  const [drawerState, setDrawerState] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [searchData, setSearchData] = useState([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchValue, setSearchValue] = useState(null);
 
   const navigate = useNavigate();
 
   const isAdmin = useSelector(getAdminStatus);
   const meLoaded = useSelector(getMeLoaded);
-  const vNets = useSelector(selectVNets);
-  const vHubs = useSelector(selectVHubs);
+  const vNets = useSelector(selectUpdatedVNets);
+  const vHubs = useSelector(selectUpdatedVHubs);
   const subnets = useSelector(selectSubnets);
   const endpoints = useSelector(selectEndpoints);
 
@@ -354,27 +316,40 @@ export default function NavDrawer() {
     ]
   ];
 
-  React.useEffect(() => {
-    if (!graphData) {
-      (async() => {
-        try {
-          const graphResponse = await callMsGraph();
-          const photoResponse = await callMsGraphPhoto();
-          await dispatch(setUserId(graphResponse.userPrincipalName));
-          setGraphPhoto(photoResponse);
-          setGraphData(graphResponse);
-        } catch (e) {
-          console.log("ERROR");
-          console.log("------------------");
-          console.log(e);
-          console.log("------------------");
-          // enqueueSnackbar(e.message, { variant: "error" });
-        }
-      })();
+  useEffect(() => {
+    if (graphData || inProgress !== InteractionStatus.None) {
+      return;
     }
-  }, [graphData, dispatch]);
 
-  React.useEffect(() => {
+    let canceled = false;
+
+    (async () => {
+      try {
+        const graphResponse = await callMsGraph();
+        const photoResponse = await callMsGraphPhoto();
+
+        if (canceled) {
+          return;
+        }
+
+        await dispatch(setUserId(graphResponse.userPrincipalName));
+        setGraphPhoto(photoResponse);
+        setGraphData(graphResponse);
+      } catch (e) {
+        console.log("ERROR");
+        console.log("------------------");
+        console.log(e);
+        console.log("------------------");
+        // enqueueSnackbar(e.message, { variant: "error" });
+      }
+    })();
+
+    return () => {
+      canceled = true;
+    };
+  }, [graphData, inProgress, dispatch]);
+
+  useEffect(() => {
     // Handler to call on window resize
     function handleResize() {
       setMenuAnchorEl(null);
@@ -399,21 +374,7 @@ export default function NavDrawer() {
     setDrawerState(open);
   };
 
-  // React.useEffect(() => {
-  //   const action = snackbarId => (
-  //     <>
-  //       <IconButton onClick={() => { closeSnackbar(snackbarId) }}>
-  //         <CloseIcon sx={{ color: 'white' }} />
-  //       </IconButton>
-  //     </>
-  //   );
-
-  //   if(meLoaded && graphData) {
-  //     enqueueSnackbar("Update available! See menu for details.", { action, variant: "info", preventDuplicate: true, persist: true });
-  //   }
-  // }, [meLoaded, graphData, enqueueSnackbar, closeSnackbar]);
-
-  React.useEffect(() => {
+  useEffect(() => {
     function getTitleCase(str) {
       const titleCase = str
         .toLowerCase()
@@ -498,7 +459,7 @@ export default function NavDrawer() {
     var newSearchData = [];
 
     if(vNets) {
-      const vNetExclusions = ['id', 'peerings', 'resv', 'type', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_space', 'subscription_id', 'tenant_id', 'metadata'];
+      const vNetExclusions = ['id', 'peerings', 'resv', 'type', 'subnets', 'size', 'used', 'available', 'utilization', 'parent_containers', 'parent_spaces', 'subscription_id', 'subscription_name', 'tenant_id', 'metadata'];
       const vNetFiltered = objToFilter(vNets, 'Virtual Networks', '/discover/vnet', vNetExclusions);
       const vNetResults = orderBy(vNetFiltered, 'phrase', 'asc');
 
@@ -510,7 +471,7 @@ export default function NavDrawer() {
     }
 
     if(vHubs) {
-      const vHubExclusions = ['id', 'peerings', 'vwan_id', 'resv', 'type', 'size', 'used', 'available', 'utilization', 'parent_space'];
+      const vHubExclusions = ['id', 'peerings', 'vwan_id', 'resv', 'type', 'size', 'used', 'available', 'utilization', 'parent_containers', 'parent_spaces', 'subscription_name'];
       const vHubFiltered = objToFilter(vHubs, 'Virtual Hubs', '/discover/vhub', vHubExclusions);
       const vHubResults = orderBy(vHubFiltered, 'phrase', 'asc');
 
@@ -526,6 +487,10 @@ export default function NavDrawer() {
     }
 
     setSearchData(newSearchData);
+
+    if(vNets !== null && vHubs !== null && endpoints !== null) {
+      setDataLoaded(true);
+    }
   }, [vNets, vHubs, subnets, endpoints]);
 
   const filterOptions = createFilterOptions({
@@ -541,12 +506,12 @@ export default function NavDrawer() {
     >
       {navItems.map((navItem, navIndex) => {
         return (
-          <React.Fragment key={`navItem-${navIndex}`}>
+          <Fragment key={`navItem-${navItem[0].title}`}>
             <List>
               {navItem.map((item, itemIndex) => {
                 return item.hasOwnProperty('children')
                 ? ((item.admin && isAdmin) || !item.admin) &&
-                  <React.Fragment key={`item-${item.title}`}>
+                  <Fragment key={`item-${item.title}`}>
                     <ListItem
                       key={item.title}
                       component="div"
@@ -587,7 +552,7 @@ export default function NavDrawer() {
                       ))}
                     </List>
                     </Collapse>
-                  </React.Fragment>
+                  </Fragment>
                 : ((item.admin && isAdmin) || !item.admin) &&
                   <ListItemButton
                     key={item.title}
@@ -606,14 +571,13 @@ export default function NavDrawer() {
               })}
             </List>
             {(navIndex < (navItems.length - 1)) && <Divider />}
-          </React.Fragment>
+          </Fragment>
         )
       })}
     </Box>
   );
 
   function RequestToken() {
-    // Check if there's already an interaction in progress before starting new one
     if (inProgress !== InteractionStatus.None) {
       enqueueSnackbar("Authentication in progress, please wait and try again", { variant: "info" });
       return;
@@ -621,37 +585,9 @@ export default function NavDrawer() {
 
     (async () => {
       try {
-        const accounts = msalInstance.getAllAccounts();
-
-        if (accounts.length === 0) {
-          throw new Error("No user accounts found. Please login first.");
-        }
-
-        const tokenRequest = {
-          ...apiRequest,
-          account: accounts[0]
-        };
-
-        let token;
-        try {
-          const response = await msalInstance.acquireTokenSilent(tokenRequest);
-          token = response.accessToken;
-        } catch (e) {
-          if (e instanceof InteractionRequiredAuthError ||
-              (e instanceof BrowserAuthError && e.errorCode === "monitor_window_timeout")) {
-
-            await msalInstance.acquireTokenRedirect(tokenRequest);
-            return; // Exit since redirect will happen
-          } else {
-            throw e;
-          }
-        }
-
-        if (token) {
-          navigator.clipboard.writeText(token);
-          handleMenuClose();
-          enqueueSnackbar('Token copied to clipboard!', { variant: 'success' });
-        }
+        await copyApiToken();
+        handleMenuClose();
+        enqueueSnackbar('Token copied to clipboard!', { variant: 'success' });
       } catch (e) {
         console.log("ERROR REQUESTING TOKEN");
         console.log("------------------");
@@ -668,15 +604,7 @@ export default function NavDrawer() {
     });
   }
 
-  function stringAvatar(name) {
-    const nameSplit = name.split(" ");
-
-    return {
-      children: nameSplit.length === 1 ? `${nameSplit[0][0]}` : `${nameSplit[0][0]}${nameSplit[1][0]}`,
-    };
-  }
-
-  const handleProfileMenuOpen = (event) => {
+  const handleAccountMenuOpen = (event) => {
     setMenuAnchorEl(event.currentTarget);
   };
 
@@ -693,8 +621,8 @@ export default function NavDrawer() {
     setMobileMenuAnchorEl(event.currentTarget);
   };
 
-  const handleSettingsOpen = () => {
-    setSettingsOpen(true);
+  const handleProfileOpen = () => {
+    setProfileOpen(true);
     handleMenuClose();
     handleMobileMenuClose();
   };
@@ -705,8 +633,8 @@ export default function NavDrawer() {
     handleMobileMenuClose();
   };
 
-  const handleSettingsClose = () => {
-    setSettingsOpen(false);
+  const handleProfileClose = () => {
+    setProfileOpen(false);
   };
 
   const handleAboutClose = () => {
@@ -729,37 +657,39 @@ export default function NavDrawer() {
       }}
       open={isMenuOpen}
       onClose={handleMenuClose}
-      PaperProps={{
-        elevation: 0,
-        style: {
-          width: 200,
-        },
-        sx: {
-          overflow: 'visible',
-          filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-          mt: 1.5,
-          '& .MuiAvatar-root': {
-            width: 32,
-            height: 32,
-            ml: -0.5,
-            mr: 1,
+      slotProps={{
+        paper: {
+          elevation: 0,
+          style: {
+            width: 200,
           },
-          '&:before': {
-            content: '""',
-            display: 'block',
-            position: 'absolute',
-            top: 0,
-            right: 26,
-            width: 10,
-            height: 10,
-            bgcolor: 'background.paper',
-            transform: 'translateY(-50%) rotate(45deg)',
-            zIndex: 0,
+          sx: {
+            overflow: 'visible',
+            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+            mt: 1.5,
+            '& .MuiAvatar-root': {
+              width: 32,
+              height: 32,
+              ml: -0.5,
+              mr: 1,
+            },
+            '&:before': {
+              content: '""',
+              display: 'block',
+              position: 'absolute',
+              top: 0,
+              right: 26,
+              width: 10,
+              height: 10,
+              bgcolor: 'background.paper',
+              transform: 'translateY(-50%) rotate(45deg)',
+              zIndex: 0,
+            },
           },
         },
       }}
     >
-      <MenuItem key='settings' onClick={() => handleSettingsOpen()}>
+      <MenuItem key='profile' onClick={() => handleProfileOpen()}>
         <ListItemIcon>
           <AccountCircleIcon fontSize="small" />
         </ListItemIcon>
@@ -771,13 +701,12 @@ export default function NavDrawer() {
         </ListItemIcon>
         <ListItemText>Token</ListItemText>
       </MenuItem>
-      {/* <MenuItem key='about' onClick={() => handleAboutOpen()}>
+      <MenuItem key='about' onClick={() => handleAboutOpen()}>
         <ListItemIcon>
           <InfoIcon fontSize="small" />
         </ListItemIcon>
         <ListItemText>About</ListItemText>
-        <CloudDownloadIcon fontSize="small" color="warning" />
-      </MenuItem> */}
+      </MenuItem>
       <Divider />
       <MenuItem key='logout' onClick={() => handleLogout()}>
         <ListItemIcon>
@@ -804,37 +733,39 @@ export default function NavDrawer() {
       }}
       open={isMobileMenuOpen}
       onClose={handleMobileMenuClose}
-      PaperProps={{
-        elevation: 0,
-        style: {
-          width: 200,
-        },
-        sx: {
-          overflow: 'visible',
-          filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-          mt: 1.5,
-          '& .MuiAvatar-root': {
-            width: 32,
-            height: 32,
-            ml: -0.5,
-            mr: 1,
+      slotProps={{
+        paper: {
+          elevation: 0,
+          style: {
+            width: 200,
           },
-          '&:before': {
-            content: '""',
-            display: 'block',
-            position: 'absolute',
-            top: 0,
-            right: 19,
-            width: 10,
-            height: 10,
-            bgcolor: 'background.paper',
-            transform: 'translateY(-50%) rotate(45deg)',
-            zIndex: 0,
+          sx: {
+            overflow: 'visible',
+            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+            mt: 1.5,
+            '& .MuiAvatar-root': {
+              width: 32,
+              height: 32,
+              ml: -0.5,
+              mr: 1,
+            },
+            '&:before': {
+              content: '""',
+              display: 'block',
+              position: 'absolute',
+              top: 0,
+              right: 19,
+              width: 10,
+              height: 10,
+              bgcolor: 'background.paper',
+              transform: 'translateY(-50%) rotate(45deg)',
+              zIndex: 0,
+            },
           },
         },
       }}
     >
-      <MenuItem key='mobile-settings' onClick={() => handleSettingsOpen()}>
+      <MenuItem key='mobile-profile' onClick={() => handleProfileOpen()}>
         <ListItemIcon>
           <AccountCircleIcon fontSize="small" />
         </ListItemIcon>
@@ -846,13 +777,12 @@ export default function NavDrawer() {
         </ListItemIcon>
         <ListItemText>Token</ListItemText>
       </MenuItem>
-      {/* <MenuItem key='about' onClick={() => handleAboutOpen()}>
+      <MenuItem key='mobile-about' onClick={() => handleAboutOpen()}>
         <ListItemIcon>
           <InfoIcon fontSize="small" />
         </ListItemIcon>
         <ListItemText>About</ListItemText>
-        <CloudDownloadIcon fontSize="small" color="warning" />
-      </MenuItem> */}
+      </MenuItem>
       <Divider />
       <MenuItem key='mobile-logout' onClick={() => handleLogout()}>
         <ListItemIcon>
@@ -864,7 +794,7 @@ export default function NavDrawer() {
   );
 
   return (
-    <React.Fragment>
+    <Fragment>
       <Backdrop
         sx={{ color: '#fff', backgroundColor: 'rgba(192, 200, 200, 1)', zIndex: (theme) => theme.zIndex.drawer + 1 }}
         transitionDuration={{ appear: 0, enter: 0, exit: 500 }}
@@ -897,7 +827,7 @@ export default function NavDrawer() {
                 options={searchData ? orderBy(searchData, 'category', 'asc') : []}
                 groupBy={(option) => option.category}
                 getOptionLabel={(option) => option.phrase}
-                disabled={searchData.length > 0 ? false : true}
+                disabled={!dataLoaded || searchData.length === 0}
                 inputValue={searchInput}
                 onInputChange={(event, newSearchInput) => {
                   setSearchInput(newSearchInput);
@@ -911,19 +841,23 @@ export default function NavDrawer() {
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    placeholder={searchData.length > 0 ? "Search..." : "Loading..."}
+                    placeholder={dataLoaded ? (searchData.length > 0 ? "Search..." : "No Resources...") : "Loading..."}
                     fullWidth
                     variant="standard"
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment:
-                        <InputAdornment position="start">
-                          <SearchIcon sx={{ color: 'white', pl: 1}}/>
-                        </InputAdornment>,
-                      disableUnderline: true,
-                      type: 'search',
-                      sx: {
-                        color: 'inherit'
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input,
+                        startAdornment:
+                          <InputAdornment position="start">
+                            <SearchIcon sx={{ color: 'white', pl: 1}}/>
+                          </InputAdornment>,
+                        disableUnderline: true,
+                        type: 'search',
+                        sx: {
+                          color: 'inherit'
+                        }
                       }
                     }}
                   />
@@ -937,6 +871,7 @@ export default function NavDrawer() {
               />
             </Search>
             <Box sx={{ flexGrow: 1 }} />
+            <NotificationCenter />
             <Box sx={{ display: { xs: "none", md: "flex" } }}>
               <IconButton
                 size="large"
@@ -944,21 +879,15 @@ export default function NavDrawer() {
                 aria-label="account of current user"
                 aria-controls={menuId}
                 aria-haspopup="true"
-                onClick={handleProfileMenuOpen}
+                onClick={handleAccountMenuOpen}
                 color="inherit"
               >
-                {/* <StyledBadge
-                  overlap="circular"
-                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                  variant="dot"
-                > */}
                 { graphData ?
-                  graphPhoto ?
-                  <Avatar alt={graphData.displayName} src={graphPhoto} /> :
-                  <Avatar {...stringAvatar(graphData.displayName)} /> :
+                  <Avatar alt={graphData.displayName} src={graphPhoto ?? undefined}>
+                    {getInitials(graphData.displayName)}
+                  </Avatar> :
                   <Avatar />
                 }
-                {/* </StyledBadge> */}
               </IconButton>
             </Box>
             <Box sx={{ display: { xs: "flex", md: "none" } }}>
@@ -999,9 +928,11 @@ export default function NavDrawer() {
         </Box>
       </Drawer>
       <Box sx={{ height: "calc(100vh - 64px)", overflow: "hidden" }}>
-        <UserSettings
-          open={settingsOpen}
-          handleClose={handleSettingsClose}
+        <Profile
+          open={profileOpen}
+          handleClose={handleProfileClose}
+          user={graphData}
+          photo={graphPhoto}
         />
         <About
           open={aboutOpen}
@@ -1044,6 +975,7 @@ export default function NavDrawer() {
           </Update>
         </Box> */}
       </Box>
-    </React.Fragment>
+      <ServiceRestartGate />
+    </Fragment>
   );
 }

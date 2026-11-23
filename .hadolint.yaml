@@ -1,0 +1,9 @@
+ignored:
+  - DL3002
+  - DL3006
+  - DL3008
+  - DL3013
+  - DL3041
+  - DL3059
+  # Added in hadolint v2.15.0; `USER root` is intentional in the RHEL images
+  - DL3066

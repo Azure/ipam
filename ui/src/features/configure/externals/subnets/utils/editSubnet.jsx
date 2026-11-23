@@ -1,9 +1,9 @@
-import * as React from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 
 import { useSnackbar } from "notistack";
 
-import Draggable from "react-draggable";
+import DraggablePaper from "../../../../../global/DraggablePaper";
 
 import {
   Box,
@@ -14,10 +14,9 @@ import {
   DialogTitle,
   DialogActions,
   DialogContent,
-  Paper
 } from "@mui/material";
 
-import LoadingButton from "@mui/lab/LoadingButton";
+
 
 import {
   updateBlockExtSubnetAsync
@@ -34,31 +33,16 @@ import {
   CIDR_REGEX
 } from "../../../../../global/globals";
 
-function DraggablePaper(props) {
-  const nodeRef = React.useRef(null);
-
-  return (
-    <Draggable
-      nodeRef={nodeRef}
-      handle="#draggable-dialog-title"
-      cancel={'[class*="MuiDialogContent-root"]'}
-      bounds="parent"
-    >
-      <Paper {...props} ref={nodeRef}/>
-    </Draggable>
-  );
-}
-
 export default function EditExtSubnet(props) {
   const { open, handleClose, space, block, external, subnets, selectedSubnet } = props;
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const [subName, setSubName] = React.useState({ value: "", error: false });
-  const [subDesc, setSubDesc] = React.useState({ value: "", error: false });
-  const [subCidr, setSubCidr] = React.useState({ value: "", error: false });
+  const [subName, setSubName] = useState({ value: "", error: false });
+  const [subDesc, setSubDesc] = useState({ value: "", error: false });
+  const [subCidr, setSubCidr] = useState({ value: "", error: false });
 
-  const [sending, setSending] = React.useState(false);
+  const [sending, setSending] = useState(false);
 
   const dispatch = useDispatch();
 
@@ -182,7 +166,7 @@ export default function EditExtSubnet(props) {
     });
   }
 
-  const unchanged = React.useMemo(() => {
+  const unchanged = useMemo(() => {
     if(selectedSubnet) {
       return (
         subName.value === selectedSubnet.name &&
@@ -194,17 +178,14 @@ export default function EditExtSubnet(props) {
     }
   }, [selectedSubnet, subName, subDesc, subCidr]);
 
-  const hasError = React.useMemo(() => {
-    var emptyCheck = false;
-    var errorCheck = false;
-
-    errorCheck = (subName.error || subDesc.error || subCidr.error);
-    emptyCheck = (subName.value.length === 0 || subDesc.value.length === 0 || subCidr.value.length === 0);
+  const hasError = useMemo(() => {
+    const errorCheck = (subName.error || subDesc.error || subCidr.error);
+    const emptyCheck = (subName.value.length === 0 || subDesc.value.length === 0 || subCidr.value.length === 0);
 
     return (errorCheck || emptyCheck);
   }, [subName, subDesc, subCidr]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedSubnet) {
       setSubName({ value: selectedSubnet.name, error: false });
       setSubDesc({ value: selectedSubnet.desc, error: false });
@@ -231,7 +212,12 @@ export default function EditExtSubnet(props) {
           Edit External Subnet
         </DialogTitle>
         <DialogContent>
-          <Box display="flex" flexDirection="column" alignItems="center">
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center"
+            }}>
             <Tooltip
               arrow
               disableFocusListener
@@ -240,9 +226,9 @@ export default function EditExtSubnet(props) {
                 <>
                   - Subnet name must be unique
                   <br />- Max of 64 characters
-                  <br />- Can contain alphnumerics
-                  <br />- Can contain underscore, hypen and period
-                  <br />- Cannot start/end with underscore, hypen or period
+                  <br />- Can contain alphanumerics
+                  <br />- Can contain underscore, hyphen and period
+                  <br />- Cannot start/end with underscore, hyphen or period
                 </>
               }
             >
@@ -256,8 +242,10 @@ export default function EditExtSubnet(props) {
                 variant="standard"
                 value={subName.value}
                 onChange={(event) => onNameChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -267,10 +255,10 @@ export default function EditExtSubnet(props) {
               title={
                 <>
                   - Max of 128 characters
-                  <br />- Can contain alphnumerics
+                  <br />- Can contain alphanumerics
                   <br />- Can contain spaces
-                  <br />- Can contain underscore, hypen, slash and period
-                  <br />- Cannot start/end with underscore, hypen, slash or period
+                  <br />- Can contain underscore, hyphen, slash and period
+                  <br />- Cannot start/end with underscore, hyphen, slash or period
                 </>
               }
             >
@@ -283,8 +271,10 @@ export default function EditExtSubnet(props) {
                 variant="standard"
                 value={subDesc.value}
                 onChange={(event) => onDescChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -294,7 +284,7 @@ export default function EditExtSubnet(props) {
               title={
                 <>
                   - Must be in valid CIDR notation format
-                  <br />&nbsp;&nbsp;&nbsp;&nbsp;- Example: 1.2.3.4/5
+                  <br />&nbsp;&nbsp;&nbsp;&nbsp;- Example: 10.1.5.0/26
                   <br />- Cannot overlap existing subnets
                 </>
               }
@@ -308,8 +298,10 @@ export default function EditExtSubnet(props) {
                 variant="standard"
                 value={subCidr.value}
                 onChange={(event) => onCidrChange(event)}
-                inputProps={{ spellCheck: false }}
                 sx={{ width: "80%" }}
+                slotProps={{
+                  htmlInput: { spellCheck: false }
+                }}
               />
             </Tooltip>
           </Box>
@@ -321,13 +313,13 @@ export default function EditExtSubnet(props) {
           >
             Cancel
           </Button>
-          <LoadingButton
+          <Button
             onClick={onSubmit}
             loading={sending}
             disabled={hasError || unchanged}
           >
             Update
-          </LoadingButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

@@ -1,7 +1,7 @@
 ###############################################################################################################
 ##
 ## Azure IPAM Version Update Script
-## 
+##
 ###############################################################################################################
 
 # Set minimum version requirements
@@ -10,26 +10,22 @@
 # Intake and set global parameters
 [CmdletBinding(DefaultParameterSetName = 'Explicit')]
 param(
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $true,
+  [Parameter(Mandatory = $true,
     ParameterSetName = 'Explicit')]
   [System.Version]
   $Version,
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false,
+  [Parameter(Mandatory = $false,
     ParameterSetName = 'Implicit')]
   [switch]
   $BumpMajor,
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false,
+  [Parameter(Mandatory = $false,
     ParameterSetName = 'Implicit')]
   [switch]
   $BumpMinor,
 
-  [Parameter(ValueFromPipelineByPropertyName = $true,
-    Mandatory = $false,
+  [Parameter(Mandatory = $false,
     ParameterSetName = 'Implicit')]
   [switch]
   $BumpBuild
@@ -43,9 +39,9 @@ $ErrorActionPreference = "Stop"
 
 # Set Log File Location
 $logPath = Join-Path -Path $ROOT_DIR -ChildPath "logs"
-New-Item -ItemType Directory -Path $logpath -Force | Out-Null
+New-Item -ItemType Directory -Path $logPath -Force | Out-Null
 
-$versionLog = Join-Path -Path $logPath -ChildPath "version_$(get-date -format `"yyyyMMddhhmmsstt`").log"
+$versionLog = Join-Path -Path $logPath -ChildPath "version_$(Get-Date -Format `"yyyyMMddhhmmsstt`").log"
 
 $versionSuccess = $false
 

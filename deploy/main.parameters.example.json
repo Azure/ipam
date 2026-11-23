@@ -20,6 +20,9 @@
     "engineAppSecret": {
       "value": "<ENGINE APP REGISTRATION CLIENT SECRET>"
     },
+    "engineAppSecretExpiry": {
+      "value": "<ENGINE APP REGISTRATION CLIENT SECRET EXPIRATION DATE IN UTC, E.G. 2028-11-03T03:51:05Z (OPTIONAL)>"
+    },
     "deployAsFunc": {
       "value": false
     },

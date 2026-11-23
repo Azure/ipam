@@ -1,7 +1,7 @@
-import React from "react";
+import { Fragment, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useSelector } from 'react-redux';
 
-import { concat } from 'lodash';
+import { concat, cloneDeep, isEmpty } from 'lodash-es';
 
 import ReactECharts from "echarts-for-react";
 
@@ -14,8 +14,6 @@ import {
 } from '@mui/material';
 
 import RestoreIcon from '@mui/icons-material/Restore';
-
-import { cloneDeep, isEmpty } from "lodash";
 
 import {
   selectSpaces,
@@ -332,13 +330,13 @@ const opt = {
             float: left;
             margin-right: 10px;
           }
-          
+
           .gt50 {
             background-image:
               linear-gradient(90deg, ${usedColor} 50%, transparent 50%),
               linear-gradient(${deg}deg, white 50%, transparent 50%);
           }
-        
+
           .lt50 {
             background-image:
               linear-gradient(${deg}deg, white 50%, transparent 50%),
@@ -542,16 +540,15 @@ const Reset = (props) => {
   );
 };
 
-const Search = React.forwardRef((props, ref) => {
-  const { options, setDataFocus } = props;
+const Search = ({ ref, options, setDataFocus }) => {
 
-  const [value, setValue] = React.useState(null);
-  const [inputValue, setInputValue] = React.useState('');
-  const [searchOptions, setSearchOptions] = React.useState([]);
+  const [value, setValue] = useState(null);
+  const [inputValue, setInputValue] = useState('');
+  const [searchOptions, setSearchOptions] = useState([]);
 
   const theme = useTheme();
 
-  React.useImperativeHandle(ref, () => ({
+  useImperativeHandle(ref, () => ({
     getValue() {
       return value;
     },
@@ -567,11 +564,11 @@ const Search = React.forwardRef((props, ref) => {
     }
   }));
 
-  React.useEffect(() => {
+  useEffect(() => {
     isEmpty(options) ? setSearchOptions([]) : setSearchOptions(options);
   }, [options]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     value ? setDataFocus(value) : setDataFocus(null);
   }, [value, setDataFocus])
 
@@ -603,7 +600,7 @@ const Search = React.forwardRef((props, ref) => {
       }}
       renderOption={(props, option) => {
         return (
-          <li {...props} key={option}>
+          <li key={option} {...props}>
             {option}
           </li>
         );
@@ -620,14 +617,14 @@ const Search = React.forwardRef((props, ref) => {
       }}
     />
   );
-});
+};
 
 const Visualize = () => {
-  const [options, setOptions] = React.useState(opt);
-  const [searchOptions, setSearchOptions] = React.useState([]);
-  const [eChartsRef, setEChartsRef] = React.useState(null);
+  const [options, setOptions] = useState(opt);
+  const [searchOptions, setSearchOptions] = useState([]);
+  const [eChartsRef, setEChartsRef] = useState(null);
 
-  const searchRef = React.useRef(null);
+  const searchRef = useRef(null);
 
   const spaces = useSelector(selectSpaces);
   const vnets = useSelector(selectUpdatedVNets);
@@ -636,13 +633,13 @@ const Visualize = () => {
 
   const theme = useTheme();
 
-  const ref = React.useCallback(node => {
+  const ref = useCallback(node => {
     if (node !== null) {
       setEChartsRef(node);
     }
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if(spaces && vnets && vhubs && endpoints) {
       var newOptions = cloneDeep(opt);
 
@@ -656,6 +653,21 @@ const Visualize = () => {
         }
       });
 
+      const selected = searchRef.current?.getValue?.() ?? null;
+
+      if (selected) {
+        newOptions.title.show = false;
+        newOptions.legend.selectedMode = 'single';
+        newOptions.legend.selected = Object.fromEntries(
+          newOptions.series.map(s => [s.name, s.name === selected])
+        );
+      } else {
+        newOptions.title.show = true;
+        newOptions.legend.selected = Object.fromEntries(
+          newOptions.series.map(s => [s.name, false])
+        );
+      }
+
       setOptions(newOptions);
       setSearchOptions(
         newOptions.series.map((opt) => {
@@ -665,7 +677,7 @@ const Visualize = () => {
     }
   }, [spaces, vnets, vhubs, endpoints, theme]);
 
-  function setDataFocus(target) {
+  const setDataFocus = useCallback((target) => {
     if(eChartsRef && !isEmpty(options.series)) {
       let newOptions = cloneDeep(options);
 
@@ -689,7 +701,7 @@ const Visualize = () => {
         });
       }
     }
-  }
+  }, [eChartsRef, options]);
 
   function resetView() {
     if(!searchRef.current.hasValue()) {
@@ -703,7 +715,7 @@ const Visualize = () => {
   }
 
   return (
-    <React.Fragment>
+    <Fragment>
       <Search
         options={searchOptions}
         setDataFocus={setDataFocus}
@@ -728,7 +740,7 @@ const Visualize = () => {
           style={{ height: "100%", width: "100%" }}
         />
       </div>
-    </React.Fragment>
+    </Fragment>
   );
 };
 

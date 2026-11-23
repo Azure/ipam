@@ -1,14 +1,15 @@
-import * as React from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 
 import { useNavigate } from "react-router";
 
 import { useSnackbar } from "notistack";
 
-import { isEqual, sortBy, pick } from "lodash";
+import { isEqual, sortBy, pick } from "lodash-es";
 
 import {
   Box,
+  Button,
   TextField,
   Menu,
   MenuItem,
@@ -27,8 +28,6 @@ import {
   Popper,
   CircularProgress
 } from "@mui/material";
-
-import LoadingButton from "@mui/lab/LoadingButton";
 
 import {
   MenuOpenOutlined,
@@ -91,36 +90,36 @@ const MyPopper = function (props) {
 const Generator = () => {
   const { enqueueSnackbar } = useSnackbar();
 
-  const [blocks, setBlocks] = React.useState(null);
-  const [networks, setNetworks] = React.useState(null);
+  const [blocks, setBlocks] = useState(null);
+  const [networks, setNetworks] = useState(null);
 
-  const [spaceInput, setSpaceInput] = React.useState('');
-  const [blockInput, setBlockInput] = React.useState('');
+  const [spaceInput, setSpaceInput] = useState('');
+  const [blockInput, setBlockInput] = useState('');
 
-  const [subscriptionInput, setSubscriptionInput] = React.useState('');
-  const [networkInput, setNetworkInput] = React.useState('');
+  const [subscriptionInput, setSubscriptionInput] = useState('');
+  const [networkInput, setNetworkInput] = useState('');
 
-  const [maskInput, setMaskInput] = React.useState('');
+  const [maskInput, setMaskInput] = useState('');
 
-  const [selectedSpace, setSelectedSpace] = React.useState(null);
-  const [selectedBlock, setSelectedBlock] = React.useState(null);
+  const [selectedSpace, setSelectedSpace] = useState(null);
+  const [selectedBlock, setSelectedBlock] = useState(null);
 
-  const [selectedSubscription, setSelectedSubscription] = React.useState(null);
-  const [selectedNetwork, setSelectedNetwork] = React.useState(null);
+  const [selectedSubscription, setSelectedSubscription] = useState(null);
+  const [selectedNetwork, setSelectedNetwork] = useState(null);
 
-  const [selectedMask, setSelectedMask] = React.useState(null);
-  const [maskOptions, setMaskOptions] = React.useState(null);
+  const [selectedMask, setSelectedMask] = useState(null);
+  const [maskOptions, setMaskOptions] = useState(null);
 
-  const [reverseSearch, setReverseSearch] = React.useState(false);
-  const [smallestCIDR, setSmallestCIDR] = React.useState(false);
+  const [reverseSearch, setReverseSearch] = useState(false);
+  const [smallestCIDR, setSmallestCIDR] = useState(false);
 
-  const [nextAvailable, setNextAvailable] = React.useState(null);
+  const [nextAvailable, setNextAvailable] = useState(null);
 
-  const [showSubnets, setShowSubnets] = React.useState(false);
+  const [showSubnets, setShowSubnets] = useState(false);
 
-  const [sending, setSending] = React.useState(false);
+  const [sending, setSending] = useState(false);
 
-  const [anchorEl, setAnchorEl] = React.useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
 
   const subscriptions = useSelector(selectSubscriptions);
   const spaces = useSelector(selectSpaces);
@@ -130,7 +129,7 @@ const Generator = () => {
 
   const open = Boolean(anchorEl);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setSelectedSpace(null);
     setSelectedSubscription(null);
     setNextAvailable(null);
@@ -138,13 +137,13 @@ const Generator = () => {
     setSmallestCIDR(false);
   }, [showSubnets]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!spaces) {
       setSelectedSpace(null);
     }
   }, [spaces]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (spaces) {
       if (selectedSpace) {
         const spaceIndex = spaces.findIndex((x) => x.name === selectedSpace.name);
@@ -165,7 +164,7 @@ const Generator = () => {
     }
   }, [spaces, selectedSpace]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (blocks) {
       if (selectedBlock) {
         const blockIndex = blocks.findIndex((x) => x.id === selectedBlock.id);
@@ -183,13 +182,13 @@ const Generator = () => {
     }
   }, [blocks, selectedBlock]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedSpace) {
       setBlocks(selectedSpace.blocks);
     }
   }, [selectedSpace]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedSpace && selectedBlock) {
       if (selectedBlock.parent_space !== selectedSpace.name) {
         setSelectedBlock(null);
@@ -197,7 +196,7 @@ const Generator = () => {
     }
   }, [selectedSpace, selectedBlock]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedBlock) {
       let prefixParts = selectedBlock.cidr.split("/");
       let currentMask = parseInt(prefixParts[1], 10);
@@ -212,13 +211,13 @@ const Generator = () => {
     }
   }, [selectedBlock]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!subscriptions) {
       setSelectedSubscription(null);
     }
   }, [subscriptions]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (subscriptions && selectedSubscription) {
       const subscriptionIndex = subscriptions.findIndex((x) => x.subscription_id === selectedSubscription.subscription_id);
 
@@ -235,7 +234,7 @@ const Generator = () => {
     }
   }, [subscriptions, selectedSubscription]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (networks && selectedNetwork) {
       const networkIndex = networks.findIndex((x) => x.id === selectedNetwork.id);
 
@@ -249,13 +248,13 @@ const Generator = () => {
     }
   }, [networks, selectedNetwork]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (vNets && selectedSubscription) {
       setNetworks(vNets.filter((x) => x.subscription_id === selectedSubscription.subscription_id));
     }
   }, [selectedSubscription, vNets]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedNetwork) {
       const maskList = selectedNetwork.prefixes.map((prefix) => {
         let prefixParts = prefix.split("/");
@@ -275,7 +274,7 @@ const Generator = () => {
     }
   }, [selectedNetwork]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setNextAvailable(null);
   }, [selectedMask, reverseSearch, smallestCIDR]);
 
@@ -295,7 +294,6 @@ const Generator = () => {
   };
 
   function onSubmit() {
-    console.log("Fetching Next Available...");
     (async () => {
       try {
         setSending(true);
@@ -334,7 +332,6 @@ const Generator = () => {
       <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px', pt: 2, pb: 2, pr: 3, pl: 3, alignItems: 'center', borderBottom: 'solid 1px rgba(0, 0, 0, 0.12)' }}>
         <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
           <Autocomplete
-            PopperComponent={MyPopper}
             forcePopupIcon={false}
             id="grouped-demo"
             size="small"
@@ -359,23 +356,30 @@ const Generator = () => {
                 {...params}
                 label={ showSubnets ? "Subscription" : "Space" }
                 placeholder={ `Please Select ${showSubnets ? "Subscription" : "Space"}...` }
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <React.Fragment>
-                      {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </React.Fragment>
-                  ),
+                slotProps={{
+                  ...params.slotProps,
+
+                  input: {
+                    ...params.slotProps.input,
+                    endAdornment: (
+                      <Fragment>
+                        {!spaces ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.slotProps.input.endAdornment}
+                      </Fragment>
+                    ),
+                  }
                 }}
               />
             )}
             renderOption={(props, option) => {
               return (
-                <li {...props} key={ showSubnets ? option.id: option.name }>
+                <li key={ showSubnets ? option.id: option.name } {...props}>
                   { showSubnets ? `${option.name} (${option.subscription_id})` : option.name }
                 </li>
               );
+            }}
+            slots={{
+              popper: MyPopper
             }}
           />
           <Autocomplete
@@ -403,19 +407,23 @@ const Generator = () => {
                 {...params}
                 label={ showSubnets ? "Network" : "Block" }
                 placeholder={ `Please Select ${showSubnets ? "Network" : "Block"}...` }
-                InputProps={{
-                  ...params.InputProps
+                slotProps={{
+                  ...params.slotProps,
+
+                  input: {
+                    ...params.slotProps.input
+                  }
                 }}
               />
             )}
             renderOption={(props, option) => {
               return (
-                <li {...props} key={option.id}>
+                <li key={option.id} {...props}>
                   {option.name}
                 </li>
               );
             }}
-            componentsProps={{
+            slotProps={{
               paper: {
                 sx: {
                   width: 'fit-content'
@@ -431,9 +439,9 @@ const Generator = () => {
                 <>
                   {
                     selectedNetwork.prefixes.map((prefix) => (
-                      <React.Fragment key={prefix}>
+                      <Fragment key={prefix}>
                         {prefix}<br />
-                      </React.Fragment>
+                      </Fragment>
                     ))
                   }
                 </> :
@@ -561,12 +569,6 @@ const Generator = () => {
                   value={selectedMask}
                   onChange={(event, newValue) => setSelectedMask(newValue)}
                   sx={{ width: '5ch' }}
-                  ListboxProps={{
-                    style: {
-                      maxHeight: "15rem"
-                    },
-                    position: "bottom-start"
-                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -574,6 +576,14 @@ const Generator = () => {
                       placeholder="Mask"
                     />
                   )}
+                  slotProps={{
+                    listbox: {
+                      style: {
+                        maxHeight: "15rem"
+                      },
+                      position: "bottom-start"
+                    }
+                  }}
                 />
                 <Box
                   sx={{
@@ -648,8 +658,10 @@ const Generator = () => {
                     vertical: 'top',
                     horizontal: 'left',
                   }}
-                  MenuListProps={{
-                    'aria-labelledby': 'basic-button',
+                  slotProps={{
+                    list: {
+                      'aria-labelledby': 'basic-button',
+                    }
                   }}
                 >
                   <MenuItem onClick={handleCopy}>
@@ -675,31 +687,33 @@ const Generator = () => {
                   label="Next Available"
                   value={ nextAvailable || "" }
                   variant="outlined"
-                  InputProps={{
-                    endAdornment:
-                      <IconButton
-                        disabled={ !nextAvailable }
-                        disableRipple
-                        onClick={handleClick}
-                      >
-                        <MenuOpenOutlined />
-                      </IconButton>
-                  }}
                   sx={{
                     width: '13ch',
                     '& .MuiOutlinedInput-root': {
                       paddingRight: 'unset',
                     }
                   }}
+                  slotProps={{
+                    input: {
+                      endAdornment:
+                        <IconButton
+                          disabled={ !nextAvailable }
+                          disableRipple
+                          onClick={handleClick}
+                        >
+                          <MenuOpenOutlined />
+                        </IconButton>
+                    }
+                  }}
                 />
-                <LoadingButton
+                <Button
                   disabled={ showSubnets ? (!selectedSubscription || !selectedNetwork || !selectedMask) : (!selectedSpace || !selectedBlock || !selectedMask) }
                   variant="contained"
                   loading={sending}
                   onClick={onSubmit}
                 >
                   Generate
-                </LoadingButton>
+                </Button>
               </Box>
             </Box>
           </Box>
